@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -15,6 +16,17 @@ import (
 const maxJSONBodyBytes int64 = 1 << 20 // 1 MiB
 
 var k8sNamePattern = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+var adminToken string
+var allowedOrigins = "http://localhost:5173,https://dune-admin.layout.tools"
+
+func init() {
+	if v := os.Getenv("ADMIN_TOKEN"); v != "" {
+		adminToken = v
+	}
+	if v := os.Getenv("ALLOWED_ORIGINS"); v != "" {
+		allowedOrigins = v
+	}
+}
 
 func generateAdminToken() string {
 	b := make([]byte, 32)
@@ -29,6 +41,9 @@ func authMiddleware(next http.Handler) http.Handler {
 		if r.Method == http.MethodOptions {
 			next.ServeHTTP(w, r)
 			return
+		}
+		if adminToken == "" {
+			adminToken = os.Getenv("ADMIN_TOKEN")
 		}
 		if adminToken == "" {
 			log.Printf("security: rejecting request because ADMIN_TOKEN is not configured")
@@ -69,6 +84,9 @@ func parseAllowedOrigins(raw string) map[string]bool {
 func originAllowed(origin string) bool {
 	if origin == "" {
 		return true
+	}
+	if v := os.Getenv("ALLOWED_ORIGINS"); v != "" {
+		allowedOrigins = v
 	}
 	return parseAllowedOrigins(allowedOrigins)[origin]
 }
@@ -115,7 +133,7 @@ func isReadOnlySQL(sql string) bool {
 	}
 	allowedPrefixes := []string{"select ", "with ", "show ", "explain "}
 	for _, prefix := range allowedPrefixes {
-		if strings.HasPrefix(lower, prefix) || strings.TrimSpace(lower) == strings.TrimSpace(prefix) {
+		if strings.HasPrefix(lower, prefix) {
 			return true
 		}
 	}

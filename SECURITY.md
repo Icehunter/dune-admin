@@ -18,7 +18,7 @@ Generate a token with:
 openssl rand -base64 32
 ```
 
-The frontend stores the token in browser `localStorage` and sends it as a bearer token to the backend.
+Open the frontend settings gear and paste the same `ADMIN_TOKEN` into the Admin Token field. The token is stored in browser `localStorage` and sent to the backend as the `X-Admin-Token` header.
 
 ## Exposure rules
 

@@ -9,10 +9,9 @@ import (
 )
 
 var wsUpgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool { return originAllowed(r.Header.Get("Origin")) },
 }
 
-// logPod is a discovered kubernetes pod available for log streaming.
 type logPod struct {
 	Namespace string `json:"namespace"`
 	Name      string `json:"name"`
@@ -20,25 +19,24 @@ type logPod struct {
 
 func handleLogPods(w http.ResponseWriter, r *http.Request) {
 	out, err := sshExec(fmt.Sprintf(
-		"sudo kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>&1", globalPodNS))
+		"%s %s %s %s %s %s %s %s",
+		"sudo", "kubectl", "get", "pods", "-n", globalPodNS, "--no-headers", "-o custom-columns=NAME:.metadata.name 2>&1"))
 	if err != nil {
 		jsonErr(w, fmt.Errorf("kubectl: %w", err), 500)
 		return
 	}
-	// Also get funcom-operators namespace pods
-	out2, _ := sshExec(
-		"sudo kubectl get pods -n funcom-operators --no-headers -o custom-columns=NAME:.metadata.name 2>&1")
+	out2, _ := sshExec("sudo kubectl get pods -n funcom-operators --no-headers -o custom-columns=NAME:.metadata.name 2>&1")
 
 	var pods []logPod
 	for _, line := range splitLines(out) {
 		name := strings.TrimSpace(line)
-		if name != "" && !strings.Contains(name, "db-dbdepl") {
+		if name != "" && isValidK8sName(name) && !strings.Contains(name, "db-dbdepl") {
 			pods = append(pods, logPod{Namespace: globalPodNS, Name: name})
 		}
 	}
 	for _, line := range splitLines(out2) {
 		name := strings.TrimSpace(line)
-		if name != "" {
+		if name != "" && isValidK8sName(name) {
 			pods = append(pods, logPod{Namespace: "funcom-operators", Name: name})
 		}
 	}
@@ -55,6 +53,10 @@ func handleLogStream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "ns and pod required", 400)
 		return
 	}
+	if !isAllowedLogTarget(ns, pod) {
+		http.Error(w, "invalid log stream target", 400)
+		return
+	}
 
 	conn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -62,7 +64,7 @@ func handleLogStream(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	cmd := fmt.Sprintf("sudo kubectl logs -f -n %s %s 2>&1", ns, pod)
+	cmd := strings.Join([]string{"sudo", "kubectl", "logs", "-f", "-n", ns, pod}, " ") + " 2>&1"
 	ch, cancel, err := sshStream(cmd)
 	if err != nil {
 		conn.WriteMessage(websocket.TextMessage, []byte("error: "+err.Error()))

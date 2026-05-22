@@ -720,6 +720,8 @@ function PlayerActionsModal({ player, open, onClose }: { player: Player; open: b
   const [nodesLoaded, setNodesLoaded] = useState(false)
   const [nodesLoading, setNodesLoading] = useState(false)
   const [nodeSearch, setNodeSearch] = useState('')
+  const [unlockFaction, setUnlockFaction] = useState('atreides')
+  const [unlockPreset, setUnlockPreset] = useState('rank19_eligible')
 
   // Admin / Teleport
   const [partitions, setPartitions] = useState<TeleportLocation[]>([])
@@ -1021,6 +1023,38 @@ function PlayerActionsModal({ player, open, onClose }: { player: Player; open: b
 
                 {section === 'journey' && (
                   <div className="flex flex-col gap-3 flex-1 min-h-0">
+                    {/* ── Progression Unlock ─────────────────────────────────── */}
+                    <div className="rounded-lg p-3 shrink-0 flex flex-col gap-2" style={{ background: '#0f0d09', border: '1px solid #2a2418' }}>
+                      <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-primary)' }}>Progression Unlock</div>
+                      <div className="text-xs" style={{ color: 'var(--color-text-dim)' }}>Atomically applies faction journey flags from BP_ProgressionUnlockComponent presets.</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Select selectedKey={unlockFaction} onSelectionChange={k => setUnlockFaction(String(k))} className="w-36">
+                          <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              <ListBox.Item key="atreides" id="atreides" textValue="Atreides">Atreides<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item key="harkonnen" id="harkonnen" textValue="Harkonnen">Harkonnen<ListBox.ItemIndicator /></ListBox.Item>
+                            </ListBox>
+                          </Select.Popover>
+                        </Select>
+                        <Select selectedKey={unlockPreset} onSelectionChange={k => setUnlockPreset(String(k))} className="w-48">
+                          <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              <ListBox.Item key="ch3_start" id="ch3_start" textValue="Ch3 Start">Ch3 Start<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item key="rank19_eligible" id="rank19_eligible" textValue="Rank 19 Eligible">Rank 19 Eligible<ListBox.ItemIndicator /></ListBox.Item>
+                            </ListBox>
+                          </Select.Popover>
+                        </Select>
+                        <Button size="sm" variant="secondary" isDisabled={busy}
+                          onPress={() => run(
+                            () => api.players.progressionUnlock(player.id, unlockFaction, unlockPreset),
+                            `Applied ${unlockPreset} (${unlockFaction}) to ${player.name}`
+                          ).then(() => { setNodesLoaded(false) })}>
+                          Apply Unlock
+                        </Button>
+                      </div>
+                    </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <input
                         className="flex-1 rounded px-2 py-1.5 text-xs border"

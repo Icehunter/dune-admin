@@ -103,6 +103,8 @@ export const api = {
       req<MutateResult>('POST', '/players/reset-spec', { player_id, track_type }),
     setFactionTier: (actor_id: number, faction_id: number, tier: number) =>
       req<MutateResult>('POST', '/players/set-faction-tier', { actor_id, faction_id, tier }),
+    progressionUnlock: (player_id: number, faction: string, preset: string) =>
+      req<MutateResult>('POST', '/players/progression-unlock', { player_id, faction, preset }),
     journeyComplete: (account_id: number, node_id: string) =>
       req<MutateResult>('POST', '/players/journey/complete', { account_id, node_id }),
     journeyReset: (account_id: number, node_id: string) =>

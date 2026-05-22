@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -74,6 +75,7 @@ func handleLogStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+	conn.SetWriteDeadline(time.Time{})
 
 	cmd := fmt.Sprintf("sudo kubectl logs -f -n %s %s 2>&1", ns, pod)
 	ch, cancel, err := sshStream(cmd)

@@ -571,7 +571,7 @@ function GiveItemModal({ player, open, onClose }: { player: Player; open: boolea
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState('')
   const [qty, setQty] = useState(1)
-  const [quality, setQuality] = useState(1)
+  const [quality, setQuality] = useState(0)
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 

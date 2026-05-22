@@ -289,7 +289,7 @@ func importBlueprintData(ctx context.Context, playerPawnID int64, bf blueprintFi
 			batch.Queue(`
 				INSERT INTO dune.building_blueprint_instances
 					(building_blueprint_id, instance_id, building_type, transform, hologram, provides_stability, health)
-				VALUES ($1, $2, $3, $4::real[], true, false, 1.0)`,
+				VALUES ($1, $2, $3, $4::real[], true, false, 0)`,
 				blueprintID, start+i, inst.BuildingType, transform)
 		}
 		br := tx.SendBatch(ctx, batch)

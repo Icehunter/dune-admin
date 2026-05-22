@@ -866,7 +866,7 @@ func resolveStackMax(ctx context.Context, template string, quality int64) (int64
 	if itemData.DefaultStackMax > 0 {
 		return itemData.DefaultStackMax, nil
 	}
-	return 0, fmt.Errorf("stack max unknown for template %s", template)
+	return 1, nil
 }
 
 func resolveItemVolume(ctx context.Context, template string) (float64, error) {

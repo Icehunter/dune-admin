@@ -1,0 +1,9 @@
+web/node_modules
+web/dist
+dune-admin
+dune-admin-linux
+db-snapshots
+.env
+sshKey
+sshKey.pub
+*.log

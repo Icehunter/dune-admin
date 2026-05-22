@@ -430,6 +430,26 @@ func handleUpdatePlayerTags(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"ok": msg.ok})
 }
 
+func handleDismissReturningPlayerAward(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AccountID int64 `json:"account_id"`
+	}
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, err, 400)
+		return
+	}
+	msg, ok := cmdDismissReturningPlayerAward(req.AccountID)().(msgMutate)
+	if !ok {
+		jsonErr(w, fmt.Errorf("internal error"), 500)
+		return
+	}
+	if msg.err != nil {
+		jsonErr(w, msg.err, 500)
+		return
+	}
+	jsonOK(w, map[string]string{"ok": msg.ok})
+}
+
 func handleGrantReturningPlayerAward(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		AccountID int64 `json:"account_id"`

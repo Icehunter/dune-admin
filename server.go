@@ -83,6 +83,7 @@ func startServer(addr string) {
 	mux.HandleFunc("GET /api/v1/players/{id}/tags", handleGetPlayerTags)
 	mux.HandleFunc("POST /api/v1/players/update-tags", handleUpdatePlayerTags)
 	mux.HandleFunc("POST /api/v1/players/returning-player-award", handleGrantReturningPlayerAward)
+	mux.HandleFunc("POST /api/v1/players/dismiss-returning-player-award", handleDismissReturningPlayerAward)
 	mux.HandleFunc("GET /api/v1/players/{id}/export", handleCharacterExport)
 	mux.HandleFunc("POST /api/v1/players/delete-account", handleDeleteAccount)
 	mux.HandleFunc("DELETE /api/v1/players/item/{id}", handleDeleteItem)

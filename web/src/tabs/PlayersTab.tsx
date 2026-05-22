@@ -1177,6 +1177,8 @@ api.players.partitions().then(setPartitions).catch(() => {})
                       {actionRow('Returning Player Award', <span className="text-xs" style={{ color: 'var(--color-text-dim)' }}>Reset returning player status — triggers award on next login</span>, 'Grant',
                         () => run(() => api.players.returningPlayerAward(player.account_id), `Returning player award reset for ${player.name}`), true)}
                     </div>
+                    {actionRow('Dismiss Returning Player Popup', <span className="text-xs" style={{ color: 'var(--color-text-dim)' }}>Marks the award as claimed so the login popup stops appearing</span>, 'Dismiss',
+                      () => run(() => api.players.dismissReturningPlayerAward(player.account_id), `Dismissed returning player popup for ${player.name}`), true)}
                     {/* Character Export */}
                     <div className="flex items-end gap-3 py-3" style={{ borderBottom: '1px solid #1a1610' }}>
                       <div className="w-36 shrink-0 text-sm" style={{ color: 'var(--color-text-dim)' }}>Character Export</div>

@@ -115,6 +115,7 @@ export const api = {
     tags: (account_id: number) => req<string[]>('GET', `/players/${account_id}/tags`),
     updateTags: (account_id: number, add: string[], remove: string[]) => req<MutateResult>('POST', '/players/update-tags', { account_id, add, remove }),
     returningPlayerAward: (account_id: number) => req<MutateResult>('POST', '/players/returning-player-award', { account_id }),
+    dismissReturningPlayerAward: (account_id: number) => req<MutateResult>('POST', '/players/dismiss-returning-player-award', { account_id }),
     exportUrl: (account_id: number) => `${BASE}/players/${account_id}/export`,
     deleteAccount: (account_id: number, reason: string) => req<MutateResult>('POST', '/players/delete-account', { account_id, reason }),
     deleteItem: (id: number) => req<MutateResult>('DELETE', `/players/item/${id}`),

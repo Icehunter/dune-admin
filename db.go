@@ -669,6 +669,24 @@ func cmdGrantReturningPlayerAward(accountID int64) Cmd {
 	}
 }
 
+func cmdDismissReturningPlayerAward(accountID int64) Cmd {
+	return func() Msg {
+		if globalDB == nil {
+			return msgMutate{err: fmt.Errorf("not connected")}
+		}
+		ctx := context.Background()
+		_, err := globalDB.Exec(ctx, `
+			UPDATE dune.encrypted_player_state
+			SET last_returning_player_awarded_time = NOW(),
+			    last_returning_player_event_time = NOW()
+			WHERE account_id = $1`, accountID)
+		if err != nil {
+			return msgMutate{err: fmt.Errorf("dismiss returning player award: %w", err)}
+		}
+		return msgMutate{ok: "Returning player popup dismissed"}
+	}
+}
+
 func cmdDeleteAccount(accountID int64, reason string) Cmd {
 	return func() Msg {
 		if globalDB == nil {

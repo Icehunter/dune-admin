@@ -698,7 +698,7 @@ function GiveItemsModal({ player, open, onClose }: { player: Player; open: boole
                             <input type="number" min={0} value={item.quality} onChange={e => updateStaged(idx, 'quality', Math.max(0, parseInt(e.target.value) || 0))}
                               className="rounded px-2 py-1 border w-14 text-center"
                               style={{ background: 'var(--color-bg)', color: 'var(--color-text)', borderColor: '#2a2418', outline: 'none' }} />
-                            <button onClick={() => removeFromStaged(idx)} className="text-red-400 hover:text-red-300 px-1">✕</button>
+                            <button onClick={() => removeFromStaged(idx)} className="text-red-400 hover:text-red-300 px-1" style={{ cursor: 'pointer' }}>✕</button>
                           </div>
                         ))}
                       </div>

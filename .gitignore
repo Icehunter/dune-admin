@@ -14,6 +14,14 @@ fetch-item-data.js
 # Compiled binaries
 dune-admin
 dune-admin-linux
+dune-admin.exe
+*.exe
+
+# Tools (downloaded, not part of the project)
+repak_win/
+repak_win.zip
+*.tar.gz
+*.tar.xz
 
 # macOS
 .DS_Store
@@ -25,3 +33,6 @@ blueprint.json
 .go-cache/
 .superpowers/
 docs/
+
+# Local dev/testing artifacts
+local/

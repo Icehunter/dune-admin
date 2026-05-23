@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 WORKDIR /app
 
 COPY --from=builder /build/dune-admin .
+COPY --from=builder /build/tags-data.json /build/item-data.json ./
 
 EXPOSE 8080
 

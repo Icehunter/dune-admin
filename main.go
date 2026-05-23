@@ -140,7 +140,7 @@ var tagsData tagsDataFile
 func loadTagsData() error {
 	path := resolveTagsDataPath()
 	if path == "" {
-		return nil
+		return fmt.Errorf("tags-data.json not found (looked in ./ and ../) — contract picker will be empty")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -157,7 +157,7 @@ var itemData itemDataFile
 func loadItemData() error {
 	path := resolveItemDataPath()
 	if path == "" {
-		return nil
+		return fmt.Errorf("item-data.json not found (looked in ./ and ../) — item grant features will be broken")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {

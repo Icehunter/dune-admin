@@ -63,10 +63,17 @@ export type DungeonRecord = { dungeon_id: string; difficulty: string; duration_m
 export type TeleportLocation = { name: string; x: number; y: number; z: number }
 export type OnlineRow = { player_id: number; name: string; map: string; status: string; last_seen: string }
 export type BackupFile = { name: string; size_bytes: number; modified: string; has_yaml: boolean }
+export type ProgressionPreset = { id: string; name: string; description: string; node_count: number; nodes: string[] }
 
 export const api = {
   status: () => req<Status>('GET', '/status'),
   reconnect: () => req<Status>('POST', '/reconnect'),
+
+  progression: {
+    presets: () => req<ProgressionPreset[]>('GET', '/progression/presets'),
+    applyPreset: (account_id: number, preset_id: string) =>
+      req<MutateResult>('POST', '/players/progression/apply-preset', { account_id, preset_id }),
+  },
 
   battlegroup: {
     status: () => req<unknown>('GET', '/battlegroup/status'),

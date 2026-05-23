@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { Button, Modal, Spinner, toast, Select, ListBox } from '@heroui/react'
 import { api } from '../api/client'
+import type { ProgressionPreset } from '../api/client'
 import allGameplayTags from '../data/gameplayTags.json'
 type PacksData = { packs: Record<string, { name: string; category: string; tier: number; items: { template: string; qty: number; quality: number }[] }> }
 
@@ -805,6 +806,12 @@ function PlayerActionsModal({ player, open, onClose }: { player: Player; open: b
   const [unlockFaction, setUnlockFaction] = useState('atreides')
   const [unlockPreset, setUnlockPreset] = useState('ch3_start')
 
+  // Progression presets (curated journey-completion bundles)
+  const [progressionPresets, setProgressionPresets] = useState<ProgressionPreset[]>([])
+  const [presetsLoaded, setPresetsLoaded] = useState(false)
+  const [selectedPresetId, setSelectedPresetId] = useState('')
+  const [confirmPreset, setConfirmPreset] = useState<ProgressionPreset | null>(null)
+
   // Contract picker
   const [contractCatalog, setContractCatalog] = useState<{id: string; alias: string; tag_count: number}[]>([])
   const [contractCatalogLoaded, setContractCatalogLoaded] = useState(false)
@@ -865,7 +872,12 @@ api.players.partitions().then(setPartitions).catch(() => {})
         .then(c => { setContractCatalog(c); setContractCatalogLoaded(true); setContractCatalogError('') })
         .catch((e: unknown) => { setContractCatalogError(e instanceof Error ? e.message : String(e)); setContractCatalogLoaded(true) })
     }
-  }, [section, nodesLoaded, contractCatalogLoaded, open, player.account_id])
+    if (section === 'progression' && !presetsLoaded && open) {
+      api.progression.presets()
+        .then(p => { setProgressionPresets(p); setPresetsLoaded(true) })
+        .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
+    }
+  }, [section, nodesLoaded, contractCatalogLoaded, presetsLoaded, open, player.account_id])
 
   useEffect(() => {
     if (section === 'specs' && !specsLoaded && open) {
@@ -1137,6 +1149,42 @@ api.players.partitions().then(setPartitions).catch(() => {})
 
                 {section === 'progression' && (
                   <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto pr-1">
+                    {/* ── Progression Presets ──────────────────────────────── */}
+                    <div className="rounded-lg p-3 shrink-0 flex flex-col gap-2" style={{ background: '#0f0d09', border: '1px solid #2a2418' }}>
+                      <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-primary)' }}>Progression Presets</div>
+                      <div className="text-xs" style={{ color: 'var(--color-text-dim)' }}>One-click bundles to fast-forward common progression chains. Player should be offline; changes apply on next login.</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Select selectedKey={selectedPresetId} onSelectionChange={k => setSelectedPresetId(String(k))} className="flex-1 min-w-[280px]">
+                          <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              {progressionPresets.map(p => (
+                                <ListBox.Item key={p.id} id={p.id} textValue={p.name}>
+                                  {p.name} <span style={{ color: 'var(--color-text-dim)' }}>({p.node_count})</span>
+                                  <ListBox.ItemIndicator />
+                                </ListBox.Item>
+                              ))}
+                            </ListBox>
+                          </Select.Popover>
+                        </Select>
+                        <Button size="sm" variant="secondary" isDisabled={busy || !selectedPresetId}
+                          onPress={() => {
+                            const p = progressionPresets.find(p => p.id === selectedPresetId)
+                            if (p) setConfirmPreset(p)
+                          }}>
+                          Apply Preset
+                        </Button>
+                      </div>
+                      {selectedPresetId && (() => {
+                        const p = progressionPresets.find(p => p.id === selectedPresetId)
+                        return p ? (
+                          <div className="text-xs mt-1" style={{ color: 'var(--color-text-dim)' }}>
+                            {p.description}
+                          </div>
+                        ) : null
+                      })()}
+                    </div>
+
                     {/* ── Progression Unlock ─────────────────────────────────── */}
                     <div className="rounded-lg p-3 shrink-0 flex flex-col gap-2" style={{ background: '#0f0d09', border: '1px solid #2a2418' }}>
                       <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-primary)' }}>Progression Unlock</div>
@@ -1664,6 +1712,45 @@ api.players.partitions().then(setPartitions).catch(() => {})
                 )}
               </div>
             </Modal.Body>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+
+      {/* Progression preset confirmation */}
+      <Modal.Backdrop isOpen={confirmPreset !== null} onOpenChange={v => { if (!v) setConfirmPreset(null) }}>
+        <Modal.Container>
+          <Modal.Dialog>
+            <Modal.CloseTrigger />
+            <Modal.Header><Modal.Heading>Apply Progression Preset</Modal.Heading></Modal.Header>
+            <Modal.Body>
+              {confirmPreset && (
+                <div className="flex flex-col gap-2">
+                  <div className="font-semibold" style={{ color: 'var(--color-primary)' }}>{confirmPreset.name}</div>
+                  <div className="text-sm" style={{ color: 'var(--color-text)' }}>{confirmPreset.description}</div>
+                  <div className="text-sm" style={{ color: 'var(--color-text-dim)' }}>
+                    Will mark <b>~{confirmPreset.node_count}</b> journey nodes complete for <b>{player.name}</b>.
+                  </div>
+                  <div className="text-xs mt-2" style={{ color: '#f0a830' }}>
+                    ⚠ Player should be offline. Changes apply on next login.
+                  </div>
+                </div>
+              )}
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="tertiary" onPress={() => setConfirmPreset(null)}>Cancel</Button>
+              <Button variant="primary" isDisabled={busy}
+                onPress={() => {
+                  if (!confirmPreset) return
+                  const p = confirmPreset
+                  setConfirmPreset(null)
+                  run(
+                    () => api.progression.applyPreset(player.account_id, p.id),
+                    `Applied preset: ${p.name}`
+                  ).then(() => { setNodesLoaded(false) })
+                }}>
+                Apply
+              </Button>
+            </Modal.Footer>
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>

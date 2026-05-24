@@ -3219,23 +3219,66 @@ func cmdRepairItem(itemID int64) Cmd {
 		if globalDB == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
-		res, err := globalDB.Exec(context.Background(), `
-			UPDATE dune.items
+		ctx := context.Background()
+
+		// Derive owning player from item → inventory → actor (pawn) so we can gate Offline.
+		var pawnID int64
+		err := globalDB.QueryRow(ctx, `
+			SELECT inv.actor_id
+			FROM dune.items i
+			JOIN dune.inventories inv ON inv.id = i.inventory_id
+			WHERE i.id = $1::bigint`, itemID).Scan(&pawnID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return msgMutate{err: fmt.Errorf("item %d not found", itemID)}
+		}
+		if err != nil {
+			return msgMutate{err: fmt.Errorf("look up item owner: %w", err)}
+		}
+		if err := checkPlayerOffline(ctx, pawnID); err != nil {
+			return msgMutate{err: err}
+		}
+
+		// Write both fields: Current-only gets clamped to surviving Decayed on reload.
+		// Fallback target = 100.0 covers the 0-100 gear scale when MaxDurability is absent.
+		res, err := globalDB.Exec(ctx, `
+			UPDATE dune.items i
 			SET stats = jsonb_set(
-				stats,
-				'{FItemStackAndDurabilityStats,1,CurrentDurability}',
-				(stats->'FItemStackAndDurabilityStats'->1->'MaxDurability')
-			)
-			WHERE id = $1::bigint
-			  AND stats->'FItemStackAndDurabilityStats'->1->>'MaxDurability' IS NOT NULL
-			  AND (stats->'FItemStackAndDurabilityStats'->1->>'MaxDurability')::float > 0`, itemID)
+				jsonb_set(i.stats,
+					'{FItemStackAndDurabilityStats,1,CurrentDurability}',
+					to_jsonb(t.val), true),
+				'{FItemStackAndDurabilityStats,1,DecayedMaxDurability}',
+				to_jsonb(t.val), true)
+			FROM (
+				SELECT COALESCE(
+					(stats->'FItemStackAndDurabilityStats'->1->>'MaxDurability')::float8,
+					100.0
+				) AS val
+				FROM dune.items
+				WHERE id = $1::bigint
+				  AND stats ? 'FItemStackAndDurabilityStats'
+			) AS t
+			WHERE i.id = $1::bigint
+			  AND (
+				abs(COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'CurrentDurability')::float8, 0) - t.val) > 0.01
+				OR abs(COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'DecayedMaxDurability')::float8, 0) - t.val) > 0.01
+			  )`, itemID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("repair item: %w", err)}
 		}
 		if res.RowsAffected() == 0 {
-			return msgMutate{err: fmt.Errorf("item %d not found or has no repairable durability", itemID)}
+			// Item exists (owner lookup succeeded). Either no durability field, or already at ceiling.
+			var hasDur bool
+			if err := globalDB.QueryRow(ctx, `
+				SELECT stats ? 'FItemStackAndDurabilityStats'
+				FROM dune.items WHERE id = $1::bigint`, itemID).Scan(&hasDur); err != nil {
+				return msgMutate{err: fmt.Errorf("check item: %w", err)}
+			}
+			if !hasDur {
+				return msgMutate{err: fmt.Errorf("item %d has no durability field", itemID)}
+			}
+			return msgMutate{ok: fmt.Sprintf("Item %d already at full durability", itemID)}
 		}
-		return msgMutate{ok: fmt.Sprintf("Repaired item %d", itemID)}
+		return msgMutate{ok: fmt.Sprintf("Repaired item %d — relog to see in-game", itemID)}
 	}
 }
 

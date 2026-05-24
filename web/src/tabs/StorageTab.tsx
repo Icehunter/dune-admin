@@ -2,6 +2,18 @@ import { useState, useEffect, useMemo } from 'react'
 import { Button, Modal, Spinner, toast } from '@heroui/react'
 import { api } from '../api/client'
 import type { InventoryItem } from '../api/client'
+import { useTableSort } from '../hooks/useTableSort'
+import { SortIndicator } from '../components/SortIndicator'
+
+type ItemSortKey = 'id' | 'template' | 'stack_size' | 'quality' | 'durability'
+
+const ITEM_COLUMNS: { key: ItemSortKey; label: string }[] = [
+  { key: 'id', label: 'ID' },
+  { key: 'template', label: 'Template' },
+  { key: 'stack_size', label: 'Stack' },
+  { key: 'quality', label: 'Quality' },
+  { key: 'durability', label: 'Durability' },
+]
 
 type Container = { id: number; name: string; class: string; map: string; item_count: number }
 
@@ -65,6 +77,12 @@ export default function StorageTab() {
     const q = search.toLowerCase()
     return containers.filter(c => String(c.id).includes(q) || c.map.toLowerCase().includes(q) || shortClass(c.class).toLowerCase().includes(q))
   }, [containers, search])
+
+  const { sorted: sortedItems, sortKey: itemSortKey, sortDir: itemSortDir, toggle: toggleItemSort } =
+    useTableSort<InventoryItem, ItemSortKey>(items, 'id', (r, k) => {
+      if (k === 'template') return r.name || r.template_id
+      return r[k] as string | number
+    })
 
   return (
     <div className="flex flex-col gap-3 h-full overflow-hidden">
@@ -161,13 +179,22 @@ export default function StorageTab() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr style={{ background: '#1a1610', borderBottom: '1px solid #2a2418' }}>
-                      {['ID', 'Template', 'Stack', 'Quality', 'Durability', ''].map(h => (
-                        <th key={h} className="text-left px-3 py-2 font-semibold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>{h}</th>
+                      {ITEM_COLUMNS.map(c => (
+                        <th
+                          key={c.key}
+                          onClick={() => toggleItemSort(c.key)}
+                          className="text-left px-3 py-2 font-semibold uppercase tracking-wide select-none"
+                          style={{ color: 'var(--color-primary)', cursor: 'pointer' }}
+                        >
+                          {c.label}
+                          <SortIndicator active={itemSortKey === c.key} dir={itemSortDir} />
+                        </th>
                       ))}
+                      <th className="text-left px-3 py-2 font-semibold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((item, i) => (
+                    {sortedItems.map((item, i) => (
                       <tr key={item.id} style={{ borderBottom: '1px solid #1a1610', background: i % 2 === 0 ? '#0d0b07' : '#0f0d09' }}>
                         <td className="px-3 py-1.5 font-mono" style={{ color: 'var(--color-text-dim)' }}>{item.id}</td>
                         <td className="px-3 py-1.5">

@@ -17,6 +17,18 @@ import type {
   CurrencyRow, FactionRep, SpecTrack, KeystoneRow, OnlineRow,
   VehicleRow, TeleportLocation, GameEvent, DungeonRecord
 } from '../api/client'
+import { useTableSort } from '../hooks/useTableSort'
+import { SortIndicator } from '../components/SortIndicator'
+
+type PlayerSortKey = 'id' | 'name' | 'class' | 'map' | 'faction_id'
+
+const PLAYER_COLUMNS: { key: PlayerSortKey; label: string }[] = [
+  { key: 'id', label: 'ID' },
+  { key: 'name', label: 'Name' },
+  { key: 'class', label: 'Class' },
+  { key: 'map', label: 'Map' },
+  { key: 'faction_id', label: 'Faction' },
+]
 
 type Sidebar = 'players' | 'currency' | 'factions' | 'specs' | 'online'
 type ActionSection = 'resources' | 'specs' | 'progression' | 'journey' | 'admin' | 'tags' | 'history'
@@ -122,6 +134,9 @@ export default function PlayersTab() {
     )
   }, [players, search])
 
+  const { sorted: sortedPlayers, sortKey: playerSortKey, sortDir: playerSortDir, toggle: togglePlayerSort } =
+    useTableSort<Player, PlayerSortKey>(filtered, 'id', (r, k) => r[k])
+
   const controllerToName = useMemo(() => {
     const m = new Map<number, string>()
     for (const p of players) m.set(p.controller_id, p.name)
@@ -222,13 +237,22 @@ export default function PlayersTab() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr style={{ background: '#1a1610', borderBottom: '1px solid #2a2418' }}>
-                      {['ID', 'Name', 'Class', 'Map', 'Faction', 'Actions'].map(h => (
-                        <th key={h} className="text-left px-3 py-2 font-semibold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>{h}</th>
+                      {PLAYER_COLUMNS.map(c => (
+                        <th
+                          key={c.key}
+                          onClick={() => togglePlayerSort(c.key)}
+                          className="text-left px-3 py-2 font-semibold uppercase tracking-wide select-none"
+                          style={{ color: 'var(--color-primary)', cursor: 'pointer' }}
+                        >
+                          {c.label}
+                          <SortIndicator active={playerSortKey === c.key} dir={playerSortDir} />
+                        </th>
                       ))}
+                      <th className="text-left px-3 py-2 font-semibold uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((player, i) => (
+                    {sortedPlayers.map((player, i) => (
                       <tr key={player.id} style={{ borderBottom: '1px solid #1a1610', background: i % 2 === 0 ? '#0d0b07' : '#0f0d09' }}>
                         <td className="px-3 py-2 font-mono" style={{ color: 'var(--color-text-dim)' }}>{player.id}</td>
                         <td className="px-3 py-2 font-semibold" style={{ color: 'var(--color-text)' }}>

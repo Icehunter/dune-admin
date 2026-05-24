@@ -1,25 +1,58 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Button, Spinner, toast } from '@heroui/react'
 import { api } from '../api/client'
+import type { SortDir } from '../hooks/useTableSort'
+import { SortIndicator } from '../components/SortIndicator'
 
 type Section = 'tables' | 'describe' | 'sample' | 'search' | 'sql'
 
 type TableData = { headers: string[]; rows: string[][] }
 
 function ResultTable({ headers, rows }: TableData) {
+  const [sortCol, setSortCol] = useState<number | null>(null)
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  const sorted = useMemo(() => {
+    if (sortCol === null) return rows
+    const out = [...rows]
+    out.sort((a, b) => {
+      const av = a[sortCol] ?? ''
+      const bv = b[sortCol] ?? ''
+      const an = Number(av), bn = Number(bv)
+      const cmp = !isNaN(an) && !isNaN(bn) && av !== '' && bv !== ''
+        ? an - bn
+        : av.localeCompare(bv, undefined, { numeric: true })
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+    return out
+  }, [rows, sortCol, sortDir])
+
+  const toggle = (i: number) => {
+    if (i === sortCol) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortCol(i); setSortDir('asc') }
+  }
+
   if (rows.length === 0) return <p className="text-sm" style={{ color: 'var(--color-text-dim)' }}>No results.</p>
   return (
     <div className="overflow-auto rounded-lg flex-1 min-h-0" style={{ border: '1px solid #2a2418' }}>
       <table className="w-full text-xs">
         <thead>
           <tr style={{ background: '#1a1610', borderBottom: '1px solid #2a2418' }}>
-            {headers.map(h => (
-              <th key={h} className="text-left px-3 py-2 font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: 'var(--color-primary)' }}>{h}</th>
+            {headers.map((h, i) => (
+              <th
+                key={h}
+                onClick={() => toggle(i)}
+                className="text-left px-3 py-2 font-semibold uppercase tracking-wide whitespace-nowrap select-none"
+                style={{ color: 'var(--color-primary)', cursor: 'pointer' }}
+              >
+                {h}
+                <SortIndicator active={sortCol === i} dir={sortDir} />
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
+          {sorted.map((row, i) => (
             <tr key={i} style={{ borderBottom: '1px solid #1a1610', background: i % 2 === 0 ? '#0d0b07' : '#0f0d09' }}>
               {row.map((cell, j) => (
                 <td key={j} className="px-3 py-1.5 font-mono whitespace-nowrap" style={{ color: 'var(--color-text)' }}>{cell}</td>

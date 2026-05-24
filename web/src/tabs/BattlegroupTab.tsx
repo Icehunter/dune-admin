@@ -2,6 +2,19 @@ import { useState, useEffect, useCallback } from 'react'
 import { Button, Modal, Spinner, toast } from '@heroui/react'
 import { api } from '../api/client'
 import type { BackupFile } from '../api/client'
+import { useTableSort } from '../hooks/useTableSort'
+import { SortIndicator } from '../components/SortIndicator'
+
+type ServerSortKey = 'map' | 'phase' | 'players' | 'ready' | 'dimension' | 'partition'
+
+const SERVER_COLUMNS: { key: ServerSortKey; label: string }[] = [
+  { key: 'map', label: 'Map' },
+  { key: 'phase', label: 'Phase' },
+  { key: 'players', label: 'Players' },
+  { key: 'ready', label: 'Ready' },
+  { key: 'dimension', label: 'Dim' },
+  { key: 'partition', label: 'Part' },
+]
 
 type ServerRow = {
   map: string
@@ -122,6 +135,11 @@ export default function BattlegroupTab() {
 
   const bg = status?.battlegroup
   const servers = status?.servers ?? []
+  const { sorted: sortedServers, sortKey: serverSortKey, sortDir: serverSortDir, toggle: toggleServerSort } =
+    useTableSort<ServerRow, ServerSortKey>(servers, 'map', (r, k) => {
+      if (k === 'ready') return r.ready ? 1 : 0
+      return r[k] as string | number
+    })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '16px', gap: '0' }}>
@@ -176,14 +194,21 @@ export default function BattlegroupTab() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ background: '#1a1610', borderBottom: '1px solid #2a2418' }}>
-                    {['Map', 'Phase', 'Players', 'Ready', 'Dim', 'Part'].map(h => (
-                      <th key={h} className="text-left px-4 py-2 font-semibold text-xs uppercase tracking-wide"
-                        style={{ color: 'var(--color-primary)' }}>{h}</th>
+                    {SERVER_COLUMNS.map(c => (
+                      <th
+                        key={c.key}
+                        onClick={() => toggleServerSort(c.key)}
+                        className="text-left px-4 py-2 font-semibold text-xs uppercase tracking-wide select-none"
+                        style={{ color: 'var(--color-primary)', cursor: 'pointer' }}
+                      >
+                        {c.label}
+                        <SortIndicator active={serverSortKey === c.key} dir={serverSortDir} />
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {servers.map((s, i) => (
+                  {sortedServers.map((s, i) => (
                     <tr key={`${s.map}-${s.dimension}-${s.partition}`}
                       style={{ borderBottom: '1px solid #1a1610', background: i % 2 === 0 ? '#0d0b07' : '#111009' }}>
                       <td className="px-4 py-2 font-mono text-xs" style={{ color: 'var(--color-text)' }}>{s.map}</td>

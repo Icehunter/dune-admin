@@ -2,11 +2,25 @@ import { useState, useEffect } from 'react'
 import { Button, Spinner, toast } from '@heroui/react'
 import { api, ApiError } from '../api/client'
 import type { BaseRow } from '../api/client'
+import { useTableSort } from '../hooks/useTableSort'
+import { SortIndicator } from '../components/SortIndicator'
+
+type SortKey = 'id' | 'name' | 'pieces' | 'placeables'
+
+const COLUMNS: { key: SortKey; label: string }[] = [
+  { key: 'id', label: 'ID' },
+  { key: 'name', label: 'Name' },
+  { key: 'pieces', label: 'Pieces' },
+  { key: 'placeables', label: 'Placeables' },
+]
 
 export default function BasesTab() {
   const [bases, setBases] = useState<BaseRow[]>([])
   const [loading, setLoading] = useState(false)
   const [unsupported, setUnsupported] = useState(false)
+  const { sorted, sortKey, sortDir, toggle } = useTableSort<BaseRow, SortKey>(
+    bases, 'id', (r, k) => r[k],
+  )
 
   const load = async () => {
     setLoading(true)
@@ -64,15 +78,24 @@ export default function BasesTab() {
           <table className="w-full text-sm">
             <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: '#1a1610' }}>
               <tr style={{ borderBottom: '1px solid #2a2418' }}>
-                {['ID', 'Name', 'Pieces', 'Placeables', 'Actions'].map(h => (
-                  <th key={h} className="text-left px-4 py-2 font-semibold text-xs uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
-                    {h}
+                {COLUMNS.map(c => (
+                  <th
+                    key={c.key}
+                    onClick={() => toggle(c.key)}
+                    className="text-left px-4 py-2 font-semibold text-xs uppercase tracking-wide select-none"
+                    style={{ color: 'var(--color-primary)', cursor: 'pointer' }}
+                  >
+                    {c.label}
+                    <SortIndicator active={sortKey === c.key} dir={sortDir} />
                   </th>
                 ))}
+                <th className="text-left px-4 py-2 font-semibold text-xs uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
-              {bases.map((base, i) => (
+              {sorted.map((base, i) => (
                 <tr key={base.id} style={{ borderBottom: '1px solid #1a1610', background: i % 2 === 0 ? '#0d0b07' : '#111009' }}>
                   <td className="px-4 py-2 font-mono text-xs" style={{ color: 'var(--color-text)' }}>{base.id}</td>
                   <td className="px-4 py-2 text-xs" style={{ color: 'var(--color-text)' }}>{base.name || '—'}</td>
@@ -88,7 +111,7 @@ export default function BasesTab() {
                   </td>
                 </tr>
               ))}
-              {bases.length === 0 && (
+              {sorted.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--color-text-dim)' }}>
                     No bases found.

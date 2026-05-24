@@ -2,11 +2,27 @@ import { useState, useEffect, useRef } from 'react'
 import { Button, Modal, Spinner, toast, Label } from '@heroui/react'
 import { api } from '../api/client'
 import type { BlueprintRow, Player } from '../api/client'
+import { useTableSort } from '../hooks/useTableSort'
+import { SortIndicator } from '../components/SortIndicator'
+
+type SortKey = 'id' | 'owner_name' | 'name' | 'item_id' | 'pieces' | 'placeables'
+
+const COLUMNS: { key: SortKey; label: string }[] = [
+  { key: 'id', label: 'ID' },
+  { key: 'owner_name', label: 'Owner' },
+  { key: 'name', label: 'Name' },
+  { key: 'item_id', label: 'Item ID' },
+  { key: 'pieces', label: 'Pieces' },
+  { key: 'placeables', label: 'Placeables' },
+]
 
 export default function BlueprintsTab() {
   const [blueprints, setBlueprints] = useState<BlueprintRow[]>([])
   const [loading, setLoading] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const { sorted, sortKey, sortDir, toggle } = useTableSort<BlueprintRow, SortKey>(
+    blueprints, 'id', (r, k) => r[k],
+  )
 
   const load = async () => {
     setLoading(true)
@@ -56,15 +72,24 @@ export default function BlueprintsTab() {
           <table className="w-full text-sm">
               <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: '#1a1610' }}>
                 <tr style={{ borderBottom: '1px solid #2a2418' }}>
-                  {['ID', 'Owner', 'Name', 'Item ID', 'Pieces', 'Placeables', 'Actions'].map(h => (
-                    <th key={h} className="text-left px-4 py-2 font-semibold text-xs uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
-                      {h}
+                  {COLUMNS.map(c => (
+                    <th
+                      key={c.key}
+                      onClick={() => toggle(c.key)}
+                      className="text-left px-4 py-2 font-semibold text-xs uppercase tracking-wide select-none"
+                      style={{ color: 'var(--color-primary)', cursor: 'pointer' }}
+                    >
+                      {c.label}
+                      <SortIndicator active={sortKey === c.key} dir={sortDir} />
                     </th>
                   ))}
+                  <th className="text-left px-4 py-2 font-semibold text-xs uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {blueprints.map((bp, i) => (
+                {sorted.map((bp, i) => (
                   <tr key={bp.id} style={{ borderBottom: '1px solid #1a1610', background: i % 2 === 0 ? '#0d0b07' : '#111009' }}>
                     <td className="px-4 py-2 font-mono text-xs" style={{ color: 'var(--color-text)' }}>{bp.id}</td>
                     <td className="px-4 py-2 text-xs" style={{ color: 'var(--color-text)' }}>{bp.owner_name}</td>
@@ -84,7 +109,7 @@ export default function BlueprintsTab() {
                     </td>
                   </tr>
                 ))}
-                {blueprints.length === 0 && (
+                {sorted.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-sm" style={{ color: 'var(--color-text-dim)' }}>
                       No blueprints found.

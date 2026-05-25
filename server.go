@@ -102,6 +102,8 @@ func startServer(addr string) {
 	mux.HandleFunc("POST /api/v1/players/progression-unlock", handleProgressionUnlock)
 	mux.HandleFunc("GET /api/v1/progression/presets", handleListProgressionPresets)
 	mux.HandleFunc("POST /api/v1/players/progression/apply-preset", handleApplyProgressionPreset)
+	mux.HandleFunc("GET /api/v1/server-settings", handleGetServerSettings)
+	mux.HandleFunc("PUT /api/v1/server-settings", handleUpdateServerSettings)
 	mux.HandleFunc("POST /api/v1/players/journey/complete", handleJourneyComplete)
 	mux.HandleFunc("POST /api/v1/players/journey/reset", handleJourneyReset)
 	mux.HandleFunc("POST /api/v1/players/journey/wipe", handleJourneyWipe)

@@ -74,6 +74,7 @@ export type ServerSetting = {
   category: string
   current: string
   is_overridden: boolean
+  source: 'userOverrides' | 'userGame' | ''
 }
 export type ServerSettingUpdate = { section: string; key: string; value: string }
 

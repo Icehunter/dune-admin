@@ -17,6 +17,16 @@ import (
 // This path is also baked into /etc/sudoers.d/dune-admin — keep them in sync.
 const userOverridesPath = "/home/amp/.ampdata/instances/MehDune01/duneawakening/server/state/UserOverrides.ini"
 
+// AMP's primary UserGame.ini, edited by the AMP UI (or by hand above the
+// marker line). We read this so the dune-admin UI can reflect what's already
+// set there. WRITES still go only to UserOverrides.ini — we don't touch
+// UserGame.ini ever.
+const userGameIniPath = "/home/amp/.ampdata/instances/MehDune01/duneawakening/server/state/ue5-saved/UserSettings/UserGame.ini"
+
+// The literal marker AMP writes into UserGame.ini before appending
+// UserOverrides.ini. We read only the content above this line.
+const userOverridesMarker = "; >>>>> AMP: UserOverrides.ini appended below"
+
 const userOverridesHeader = `; ============================================================================
 ; UserOverrides.ini  -  managed by dune-admin (Server Settings tab)
 ;
@@ -150,6 +160,22 @@ func readUserOverrides() (map[string]map[string]string, error) {
 	return parseINI(string(out)), nil
 }
 
+// readUserGameIni reads the content of UserGame.ini ABOVE the AMP marker.
+// Best-effort: returns an empty map (no error) if sudo/read fails, since
+// UserGame.ini access is optional — we still serve the UI from UserOverrides
+// + defaults if this is unreachable.
+func readUserGameIni() map[string]map[string]string {
+	out, err := exec.Command("sudo", "-u", "amp", "/usr/bin/cat", userGameIniPath).Output()
+	if err != nil {
+		return map[string]map[string]string{}
+	}
+	content := string(out)
+	if idx := strings.Index(content, userOverridesMarker); idx >= 0 {
+		content = content[:idx]
+	}
+	return parseINI(content)
+}
+
 // parseINI handles the subset of UE INI we care about: [Section] headers + key=value
 // lines. Comments (lines starting with ;) and blank lines are skipped. Array
 // keys (+key=val) are not part of the MVP schema and aren't preserved.
@@ -276,7 +302,8 @@ func normalizeValue(t settingType, raw string) (string, error) {
 type serverSettingItem struct {
 	settingDef
 	Current      string `json:"current"`       // raw INI value if overridden, empty otherwise
-	IsOverridden bool   `json:"is_overridden"` // whether the user has set it explicitly
+	IsOverridden bool   `json:"is_overridden"` // whether the value differs from default
+	Source       string `json:"source"`        // "userOverrides", "userGame", or "" (default)
 }
 
 func handleGetServerSettings(w http.ResponseWriter, _ *http.Request) {
@@ -290,14 +317,25 @@ func handleGetServerSettings(w http.ResponseWriter, _ *http.Request) {
 		jsonErr(w, err, http.StatusInternalServerError)
 		return
 	}
+	// UserGame.ini is best-effort: returns empty map on read failure.
+	userGame := readUserGameIni()
 
 	items := make([]serverSettingItem, 0, len(serverSettingsSchema))
 	for _, def := range serverSettingsSchema {
-		current := overrides[def.Section][def.Key]
+		var current, source string
+		// UserOverrides.ini wins (it's appended after UserGame.ini at server start).
+		if v := overrides[def.Section][def.Key]; v != "" {
+			current = v
+			source = "userOverrides"
+		} else if v := userGame[def.Section][def.Key]; v != "" {
+			current = v
+			source = "userGame"
+		}
 		items = append(items, serverSettingItem{
 			settingDef:   def,
 			Current:      current,
-			IsOverridden: current != "",
+			IsOverridden: source != "",
+			Source:       source,
 		})
 	}
 	jsonOK(w, items)

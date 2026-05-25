@@ -124,7 +124,7 @@ export default function ServerSettingsTab() {
       <div className="rounded-md px-3 py-2 text-xs flex items-start gap-2 bg-surface-secondary border border-border/40 shrink-0">
         <Icon name="info" />
         <div>
-          <div>Changes write to <code className="font-mono">UserOverrides.ini</code> on the VM and take precedence over AMP-managed settings in <code className="font-mono">UserGame.ini</code>.</div>
+          <div>Settings flagged <Chip size="sm" color="accent" variant="soft">Dune Admin</Chip> are set in <code className="font-mono">UserOverrides.ini</code> by this tool. Settings flagged <Chip size="sm" color="default" variant="soft">AMP UI</Chip> are managed by AMP via <code className="font-mono">UserGame.ini</code>. Saving here writes to UserOverrides.ini, which takes precedence over the AMP-managed value at server start.</div>
           <div className="text-muted mt-1">Restart the Dune instance via the AMP UI to apply.</div>
         </div>
       </div>
@@ -168,7 +168,6 @@ type RowProps = {
 
 function SettingRow({ item, value, isDirty, onChange, onReset }: RowProps) {
   const placeholder = `default: ${String(item.default)}`
-  const isOverridden = item.is_overridden || isDirty
 
   return (
     <div className="flex items-start gap-3 py-3 border-b border-border/40 last:border-0">
@@ -176,7 +175,12 @@ function SettingRow({ item, value, isDirty, onChange, onReset }: RowProps) {
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold">{item.label}</span>
           {isDirty && <Chip size="sm" color="warning" variant="soft">unsaved</Chip>}
-          {isOverridden && !isDirty && <Chip size="sm" color="accent" variant="soft">overridden</Chip>}
+          {!isDirty && item.source === 'userOverrides' && (
+            <Chip size="sm" color="accent" variant="soft">Dune Admin</Chip>
+          )}
+          {!isDirty && item.source === 'userGame' && (
+            <Chip size="sm" color="default" variant="soft">AMP UI</Chip>
+          )}
         </div>
         <div className="text-xs text-muted mt-0.5">{item.description}</div>
         <div className="text-xs text-muted/60 font-mono mt-0.5">{item.section} · {item.key}</div>

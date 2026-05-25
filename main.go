@@ -171,8 +171,8 @@ func resolveKeyPath() string {
 	exeDir := filepath.Dir(exe)
 	candidates := []string{
 		filepath.Join(home, ".dune-admin", "sshKey"), // user config dir (package-manager installs)
-		filepath.Join(exeDir, "sshKey"),               // next to the binary (drag-and-drop / unzipped release)
-		"./sshKey",                                     // working directory fallback
+		filepath.Join(exeDir, "sshKey"),              // next to the binary (drag-and-drop / unzipped release)
+		"./sshKey",                                   // working directory fallback
 	}
 	if runtime.GOOS == "windows" {
 		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {

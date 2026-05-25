@@ -8,10 +8,15 @@ import { PageHeader, Panel, SectionLabel, Icon } from '../../dune-ui'
 // the end alphabetically.
 const CATEGORY_ORDER = [
   'Survival',
+  'Inventory',
   'Building',
   'Progression',
   'Harvesting',
   'Storm',
+  'Sandworm',
+  'PvP & Security',
+  'Spice',
+  'Taxation',
   'Guilds',
 ]
 

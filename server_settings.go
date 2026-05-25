@@ -88,6 +88,47 @@ var serverSettingsSchema = []settingDef{
 	{"/Script/DuneSandbox.DuneGameMode", "m_MaxGuildsAllowed", settingInt, 3, "Max Guilds Per Player", "Concurrent guild memberships allowed per player", "Guilds"},
 	{"/Script/DuneSandbox.DuneGameMode", "m_GuildCreationCost", settingInt, 1000, "Guild Creation Cost (Solari)", "Cost in Solari to form a guild", "Guilds"},
 	{"/Script/DuneSandbox.DuneGameMode", "m_MaxPermissionsPerActor", settingInt, 20, "Max Permissions Per Actor", "Permission slots per structure or container", "Guilds"},
+
+	// ── Inventory ─────────────────────────────────────────────────────────
+	{"/Script/DuneSandbox.InventorySystemSettings", "PlayerInventoryStartingSize", settingInt, 40, "Starting Inventory Slots", "Item slot count on first spawn", "Inventory"},
+	{"/Script/DuneSandbox.InventorySystemSettings", "PlayerInventoryStartingVolumeCapacity", settingFloat, 225.0, "Starting Inventory Volume", "Bulk capacity on first spawn", "Inventory"},
+
+	// ── Item Durability (existing Survival category) ─────────────────────
+	{"/DeteriorationSystem.ItemDeteriorationConstants", "UpdateRateInSeconds", settingFloat, 1.0, "Deterioration Tick Rate (s)", "Seconds between deterioration ticks (0 disables it)", "Survival"},
+
+	// ── Building (additions) ─────────────────────────────────────────────
+	{"/Script/DuneSandbox.BuildingSettings", "m_MaxNumLandclaimSegments", settingInt, 3, "Max Landclaim Segments", "How many landclaim tiles a player can own (also needs client-side match)", "Building"},
+	{"/Script/DuneSandbox.BuildingSettings", "m_BuildingBlueprintMaxExtensions", settingInt, 3, "Max Blueprint Extensions", "How many times a blueprint can be extended", "Building"},
+	{"/Script/DuneSandbox.BuildingSettings", "m_BaseBackupMaxExtensions", settingInt, 3, "Max Base Backup Extensions", "How many extensions a base backup allows", "Building"},
+	{"/Script/DuneSandbox.BuildingSettings", "m_bBuildingRestrictionLimitsEnabled", settingBool, true, "Building Restriction Limits Enabled", "Whether per-claim build limits apply", "Building"},
+
+	// ── Storm (toggle additions) ──────────────────────────────────────────
+	{"/Script/DuneSandbox.SandStormConfig", "m_bCoriolisAutoSpawnEnabled", settingBool, true, "Coriolis Auto-Spawn", "Whether the Coriolis storm auto-spawns on its cycle", "Storm"},
+	{"/Script/DuneSandbox.SandStormConfig", "m_bIsDbWipeEnabled", settingBool, true, "DB Wipe on Coriolis Cycle", "Whether the database wipes on each Coriolis cycle (Deep Desert reset)", "Storm"},
+
+	// ── Sandworm ──────────────────────────────────────────────────────────
+	{"/Script/DuneSandbox.SandwormSettings", "WormDetectionDistance", settingFloat, 5000.0, "Worm Detection Distance", "Sensory radius — how far away a worm can detect a player", "Sandworm"},
+	{"/Script/DuneSandbox.SandwormSettings", "m_MinWormSpawnInternal", settingFloat, 300.0, "Min Worm Spawn Interval (s)", "Minimum seconds between worm spawns (typo in upstream key name preserved)", "Sandworm"},
+	{"/Script/DuneSandbox.SandwormSettings", "m_MinDistanceBetweenSandworms", settingFloat, 3000.0, "Min Distance Between Worms", "Spacing requirement for multiple worms", "Sandworm"},
+	{"/Script/DuneSandbox.SandwormSettings", "m_SandwormQuicksandSpeedModifier", settingFloat, 0.5, "Quicksand Speed Modifier", "Movement speed multiplier when on a worm's quicksand", "Sandworm"},
+	{"/Script/DuneSandbox.SandwormSettings", "m_GiantWormMinimumPlayersOnSpiceField", settingInt, 1, "Giant Worm Min Players", "Minimum players on a spice field before giant worm can appear", "Sandworm"},
+
+	// ── PvP & Security ────────────────────────────────────────────────────
+	{"/Script/DuneSandbox.DuneGameMode", "bPvPEnabled", settingBool, false, "PvP Enabled", "Server-wide PvP master toggle (per-partition rules in PvpPveSettings)", "PvP & Security"},
+	{"/Script/DuneSandbox.DuneGameMode", "bServerPVE", settingBool, true, "Server PvE Mode", "Whether server enforces PvE ruleset", "PvP & Security"},
+	{"/Script/DuneSandbox.PvpPveSettings", "m_bShouldForceEnablePvpOnAllPartitions", settingBool, false, "Force PvP On All Partitions", "Override per-partition PvP settings — force PvP everywhere", "PvP & Security"},
+	{"/Script/DuneSandbox.SecurityZonesSubsystem", "m_bAreSecurityZonesEnabled", settingBool, true, "Security Zones Enabled", "Whether security zones apply (disabling allows PvP and ability use everywhere)", "PvP & Security"},
+
+	// ── Spice Harvesting ──────────────────────────────────────────────────
+	{"/Script/DuneSandbox.SpiceHarvestingSystem", "m_PrimeRateInSeconds", settingFloat, 30.0, "Spice Prime Rate (s)", "Seconds for a spice field to prime before harvesting", "Spice"},
+	{"/Script/DuneSandbox.SpiceHarvestingSystem", "m_NodeValueToSpiceResourceRatio", settingFloat, 10.0, "Spice Node Value Ratio", "Conversion ratio from node value to spice yield", "Spice"},
+	{"/Script/DuneSandbox.SpiceHarvestingSystem", "m_bSpawningActive", settingBool, true, "Spice Spawning Active", "Whether spice fields spawn at all", "Spice"},
+	{"/Script/DuneSandbox.SpiceHarvestingSystem", "m_bPlayerMustWitnessBloom", settingBool, false, "Player Must Witness Bloom", "Whether spice blooms only happen when a player can see them", "Spice"},
+
+	// ── Taxation ──────────────────────────────────────────────────────────
+	{"/Script/DuneSandbox.TaxationSettings", "m_bTaxationEnabled", settingBool, true, "Taxation Enabled", "Whether the landclaim tax system runs", "Taxation"},
+	{"/Script/DuneSandbox.TaxationSettings", "m_TaxationCycleLengthSeconds", settingInt, 86400, "Tax Cycle Length (s)", "Seconds in one tax cycle (default 86400 = 1 day)", "Taxation"},
+	{"/Script/DuneSandbox.TaxationSettings", "m_SpicePerHour", settingInt, 100, "Base Spice Per Hour", "Base spice tax rate per hour per landclaim", "Taxation"},
 }
 
 func findSettingDef(section, key string) *settingDef {

@@ -40,3 +40,6 @@ docs/*
 
 # Local dev/testing artifacts
 local/
+
+# Reference material / ideas / scratch — not for sharing
+Samples-Ideas/

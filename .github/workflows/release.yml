@@ -3,28 +3,39 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*"
 
 permissions:
   contents: write
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    name: Release
+    runs-on: macos-latest # macOS so codesign is available for ad-hoc signing
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: "1.26"
           cache: true
 
-      - uses: goreleaser/goreleaser-action@v6
+      - name: Install syft (SBOMs)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - uses: goreleaser/goreleaser-action@v7
         with:
-          distribution: goreleaser
-          version: '~> v2'
+          version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # PAT with `repo` scope on Icehunter/homebrew-tap.
+          # If unset, the brews publisher will fail; configure before
+          # cutting a release that should land in the tap.
+          # PAT with `repo` scope on Icehunter/scoop-bucket.
+          # PAT with `repo` scope and a fork of microsoft/winget-pkgs
+          # at Icehunter/winget-pkgs.
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}

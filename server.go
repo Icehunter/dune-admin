@@ -181,7 +181,9 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 		"pod_ns":        globalPodNS,
 		"pod_ip":        globalPodIP,
 		"ssh_host":      sshHost,
-		"version":       version,
+		"version":       AppVersion,
+		"commit":        GitCommit,
+		"build_time":    BuildTime,
 	})
 }
 

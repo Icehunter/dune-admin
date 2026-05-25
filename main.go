@@ -6,12 +6,19 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-var version = "dev" // set by goreleaser ldflags
+// AppVersion is the conduit release version shown to users.
+// Populated at build time via -ldflags "-X main.AppVersion=$(VERSION)".
+// Defaults to "dev" so unreleased builds don't masquerade as a real
+// release and don't trigger the update notifier.
+var AppVersion = "dev"
+
+// GitCommit and BuildTime are stamped at build time.
+var GitCommit = "unknown"
+var BuildTime = "unknown"
 
 // ── config ────────────────────────────────────────────────────────────────────
 
@@ -98,11 +105,8 @@ func resolveKeyPath() string {
 		return sshKeyPath
 	}
 	candidates := []string{
-		filepath.Join(os.Getenv("HOME"), ".ssh", "id_ed25519"),
-		filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa"),
-		filepath.Join(os.Getenv("HOME"), ".ssh", "dune"),
-		"../sshKey",
-		"./sshKey",
+		"%LOCALAPPDATA%/DuneSandboxServer/sshKey", // per-user app data folder on windows
+		"./sshKey", // in folder with the binary, for easy drag-and-drop usage
 	}
 	for _, p := range candidates {
 		if _, err := os.Stat(p); err == nil { // #nosec G703 -- paths are hardcoded candidates, not user input
@@ -116,7 +120,7 @@ func resolveItemDataPath() string {
 	if itemDataPath != "" {
 		return itemDataPath
 	}
-	candidates := []string{"./item-data.json", "../item-data.json"}
+	candidates := []string{"./item-data.json"}
 	for _, p := range candidates {
 		if _, err := os.Stat(p); err == nil {
 			return p
@@ -126,7 +130,7 @@ func resolveItemDataPath() string {
 }
 
 func resolveTagsDataPath() string {
-	candidates := []string{"./tags-data.json", "../tags-data.json"}
+	candidates := []string{"./tags-data.json"}
 	for _, p := range candidates {
 		if _, err := os.Stat(p); err == nil {
 			return p

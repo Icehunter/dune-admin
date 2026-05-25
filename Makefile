@@ -5,11 +5,26 @@
         version version-patch version-minor version-major
 
 # ── Build ─────────────────────────────────────────────────────────────────────
+BIN    := bin/dune-admin
+PKG    := ./...
+GO     := go
+PREFIX ?= /usr/local
 
-build: go
+VERSION    ?= $(shell cat VERSION 2>/dev/null || git describe --tags --always --dirty 2>/dev/null || echo "dev")
+GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+LDFLAGS    := -ldflags "-s -w -X main.AppVersion=$(VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.BuildTime=$(BUILD_TIME)"
 
-go:
-	go build -o dune-admin .
+# Build the binary.
+build:
+	@mkdir -p bin
+	$(GO) build -trimpath $(LDFLAGS) -o $(BIN) ./
+	install -m 0755 $(BIN) ./dune-admin
+
+# Install the binary system-wide.
+install: build
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install -m 0755 $(BIN) $(DESTDIR)$(PREFIX)/bin/dune-admin
 
 linux:
 	GOOS=linux GOARCH=amd64 go build -o dune-admin-linux .
@@ -73,34 +88,42 @@ tools:
 	@go tool github.com/securego/gosec/v2/cmd/gosec --version || true
 	@echo "Done!"
 
-# ── Version ───────────────────────────────────────────────────────────────────
-
+# Print current version.
 version:
-	@cat VERSION
+	@echo $(VERSION)
 
+# Bump patch version (1.0.0 → 1.0.1), commit, tag, and push — triggers release workflow.
 version-patch:
 	@V=$$(cat VERSION); \
 	MAJOR=$$(echo $$V | cut -d. -f1); \
 	MINOR=$$(echo $$V | cut -d. -f2); \
 	PATCH=$$(echo $$V | cut -d. -f3); \
 	NEW="$$MAJOR.$$MINOR.$$((PATCH + 1))"; \
+	printf "Push tag v$$NEW to origin? [y/N] "; read ans; [ "$$ans" = "y" ] || { echo "Aborted."; exit 1; }; \
 	echo $$NEW > VERSION; \
 	git add VERSION && git commit -m "chore: bump version to $$NEW" && git tag "v$$NEW"; \
-	echo "Bumped $$V -> $$NEW (tagged v$$NEW — push when ready)"
+	git push && git push origin "v$$NEW"; \
+	echo "Bumped $$V -> $$NEW (tagged and pushed v$$NEW)"
 
+# Bump minor version (1.0.0 → 1.1.0), commit, tag, and push — triggers release workflow.
 version-minor:
 	@V=$$(cat VERSION); \
 	MAJOR=$$(echo $$V | cut -d. -f1); \
 	MINOR=$$(echo $$V | cut -d. -f2); \
 	NEW="$$MAJOR.$$((MINOR + 1)).0"; \
+	printf "Push tag v$$NEW to origin? [y/N] "; read ans; [ "$$ans" = "y" ] || { echo "Aborted."; exit 1; }; \
 	echo $$NEW > VERSION; \
 	git add VERSION && git commit -m "chore: bump version to $$NEW" && git tag "v$$NEW"; \
-	echo "Bumped $$V -> $$NEW (tagged v$$NEW — push when ready)"
+	git push && git push origin "v$$NEW"; \
+	echo "Bumped $$V -> $$NEW (tagged and pushed v$$NEW)"
 
+# Bump major version (1.0.0 → 2.0.0), commit, tag, and push — triggers release workflow.
 version-major:
 	@V=$$(cat VERSION); \
 	MAJOR=$$(echo $$V | cut -d. -f1); \
 	NEW="$$((MAJOR + 1)).0.0"; \
+	printf "Push tag v$$NEW to origin? [y/N] "; read ans; [ "$$ans" = "y" ] || { echo "Aborted."; exit 1; }; \
 	echo $$NEW > VERSION; \
 	git add VERSION && git commit -m "chore: bump version to $$NEW" && git tag "v$$NEW"; \
-	echo "Bumped $$V -> $$NEW (tagged v$$NEW — push when ready)"
+	git push && git push origin "v$$NEW"; \
+	echo "Bumped $$V -> $$NEW (tagged and pushed v$$NEW)"

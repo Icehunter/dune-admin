@@ -1,15 +1,25 @@
 version: 2
 
+project_name: dune-admin
+
 before:
   hooks:
-    - go mod download
+    - go mod tidy
 
 builds:
-  - env:
+  - id: dune-admin
+    main: ./
+    binary: dune-admin
+    env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X main.AppVersion={{.Version}}
+      - -X main.GitCommit={{.Commit}}
+      - -X main.BuildTime={{.Date}}
     goos:
-      - linux
       - darwin
+      - linux
       - windows
     goarch:
       - amd64
@@ -17,31 +27,176 @@ builds:
     ignore:
       - goos: windows
         goarch: arm64
-    main: .
-    binary: dune-admin
-    ldflags:
-      - -s -w -X main.version={{.Version}}
+
+# Combine darwin amd64 + arm64 into a single fat binary so `brew install`
+# gets one artifact that runs natively on both Intel and Apple Silicon.
+universal_binaries:
+  - id: dune-admin-darwin-universal
+    ids:
+      - dune-admin
+    replace: true
+    name_template: dune-admin
+
+# Ad-hoc sign the macOS universal binary. Free, no Apple Developer
+# account required. Satisfies the Apple Silicon "must be signed"
+# requirement; Gatekeeper still won't run a notarization check because
+# Homebrew's curl-based download doesn't set the quarantine xattr.
+signs:
+  - id: macos-adhoc
+    ids:
+      - dune-admin-darwin-universal
+    cmd: codesign
+    args:
+      - "-s"
+      - "-"
+      - "--force"
+      - "--preserve-metadata=entitlements,requirements,flags,runtime"
+      - "${artifact}"
+    artifacts: binary
+    output: true
 
 archives:
-  - formats: [tar.gz]
+  - id: dune-admin
+    formats:
+      - tar.gz
     format_overrides:
       - goos: windows
-        formats: [zip]
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+        formats:
+          - zip
+    name_template: "dune-admin_{{ .Os }}_{{ .Arch }}"
     files:
       - item-data.json
       - tags-data.json
       - README.md
       - .env.example
 
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}_{{ .Version }}_source"
+
 checksum:
   name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - artifacts: archive
 
 changelog:
+  use: github
   sort: asc
+  groups:
+    - title: Features
+      regexp: "^feat"
+      order: 0
+    - title: Bug Fixes
+      regexp: "^fix"
+      order: 1
+    - title: Performance
+      regexp: "^perf"
+      order: 2
+    - title: Other
+      order: 999
   filters:
     exclude:
-      - '^chore:'
-      - '^docs:'
-      - Merge pull request
-      - Merge branch
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+release:
+  github:
+    owner: Icehunter
+    name: dune-admin
+  name_template: "{{.ProjectName}} {{.Tag}}"
+  draft: false
+  prerelease: auto
+
+# Homebrew formula. GoReleaser renamed the `brews:` key to
+# `homebrew_casks:` in v2.13 but that type generates a Homebrew Cask
+# (for GUI .app bundles), not a Formula — wrong for a CLI binary.
+# `brews:` still generates a proper Formula and is the correct key for
+# this use case. The deprecation warning can be ignored until GoReleaser
+# provides a first-class Formula key again. Requires RELEASE_TOKEN
+# secret (PAT with `repo` scope on Icehunter/homebrew-tap). Skipped on
+# prereleases.
+brews:
+  - name: dune-admin
+    ids:
+      - dune-admin
+    repository:
+      owner: Icehunter
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.RELEASE_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/Icehunter/dune-admin"
+    description: "Local-first, provider-aware terminal agent (Claude Code wire-compatible)."
+    license: "MIT"
+    skip_upload: auto
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "brew: bump {{ .ProjectName }} to {{ .Tag }}"
+    test: |
+      system "#{bin}/dune-admin version"
+    install: |
+      bin.install "dune-admin"
+
+# Scoop bucket. Requires RELEASE_TOKEN secret (PAT with `repo` scope on
+# Icehunter/scoop-bucket). Windows-only; goreleaser uses the windows
+# zip archive.
+scoops:
+  - name: dune-admin
+    ids:
+      - dune-admin
+    repository:
+      owner: Icehunter
+      name: scoop-bucket
+      branch: main
+      token: "{{ .Env.RELEASE_TOKEN }}"
+    directory: bucket
+    homepage: "https://github.com/Icehunter/dune-admin"
+    description: "Local-first, provider-aware terminal agent (Claude Code wire-compatible)."
+    license: "MIT"
+    skip_upload: auto
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "scoop: bump {{ .ProjectName }} to {{ .Tag }}"
+
+# winget manifest. Requires RELEASE_TOKEN secret (PAT with `repo` scope
+# and a fork of microsoft/winget-pkgs at Icehunter/winget-pkgs).
+# GoReleaser commits the manifest to your fork on the branch
+# `dune-admin-{version}` and you (or automation) open the PR upstream.
+winget:
+  - name: dune-admin
+    ids:
+      - dune-admin
+    publisher: Icehunter
+    publisher_url: "https://github.com/Icehunter"
+    publisher_support_url: "https://github.com/Icehunter/dune-admin/issues"
+    package_identifier: Icehunter.dune-admin
+    short_description: "Local-first, provider-aware terminal agent."
+    description: "dune-admin is a local-first, provider-aware terminal agent that maintains Claude Code wire compatibility while innovating on behavior and architecture."
+    license: "MIT"
+    license_url: "https://github.com/Icehunter/dune-admin/blob/main/LICENSE"
+    homepage: "https://github.com/Icehunter/dune-admin"
+    skip_upload: auto
+    repository:
+      owner: Icehunter
+      name: winget-pkgs
+      branch: "dune-admin-{{.Version}}"
+      token: "{{ .Env.RELEASE_TOKEN }}"
+      pull_request:
+        enabled: true
+        draft: false
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "New version: {{ .ProjectName }} {{ .Version }}"

@@ -32,7 +32,11 @@ blueprint.json
 # Local Go build cache (used when system cache is unavailable)
 .go-cache/
 .superpowers/
-docs/
+
+# docs/ — default-private (local notes, scratch).
+# Exception: community-facing ADRs and deployment docs are tracked.
+docs/*
+!docs/amp-direct-connect/
 
 # Local dev/testing artifacts
 local/

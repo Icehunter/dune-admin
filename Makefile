@@ -1,5 +1,5 @@
 .PHONY: build web go linux dev-server setup deploy-web \
-        vulncheck gosec npm-audit \
+        vulncheck gosec pnpm-audit \
         test test-race vet fmt fmt-check \
         tools verify \
         version version-patch version-minor version-major
@@ -69,7 +69,7 @@ vulncheck:
 gosec:
 	go tool github.com/securego/gosec/v2/cmd/gosec -severity high -confidence high ./...
 
-npm-audit:
+pnpm-audit:
 	cd web && pnpm audit --audit-level=high
 
 verify:

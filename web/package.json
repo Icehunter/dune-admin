@@ -11,7 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@clerk/react": "^6.6.6",
+    "@clerk/react": "^6.7.1",
     "@clerk/themes": "^2.4.57",
     "@heroui/react": "^3.0.5",
     "@heroui/styles": "^3.0.5",

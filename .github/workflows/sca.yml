@@ -20,7 +20,7 @@ jobs:
       - name: Run govulncheck
         run: make vulncheck
 
-  npm-audit:
+  pnpm-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,4 +34,4 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
 
       - name: Run pnpm audit
-        run: make npm-audit
+        run: make pnpm-audit

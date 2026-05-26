@@ -43,6 +43,12 @@ type ControlPlane interface {
 	// UserOverrides.ini. kubectl auto-discovers this from k3s storage;
 	// docker and local require server_ini_dir to be set in config.
 	DiscoverIniDir(ctx context.Context, exec Executor) (string, error)
+
+	// ReadDefaultINI reads DefaultGame.ini or DefaultEngine.ini from inside the
+	// game container/pod, where the file lives as part of the image. Returns the
+	// file contents or "" if unavailable. The local control plane returns "" and
+	// lets the host-path fallback handle it.
+	ReadDefaultINI(ctx context.Context, exec Executor, filename string) string
 }
 
 // ── Types shared across control plane implementations ─────────────────────────

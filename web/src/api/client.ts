@@ -42,17 +42,23 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   return res.json()
 }
 
+export type SettingLayer = {
+  source: string
+  value: string
+}
+
 export type ServerSetting = {
   section: string
   key: string
-  type: 'float' | 'int' | 'bool'
+  type: 'float' | 'int' | 'bool' | 'string'
   default: string
   label: string
   description: string
   category: string
   current: string
   is_overridden: boolean
-  source: 'userOverrides' | 'userGame' | ''
+  source: 'userOverrides' | 'userGame' | 'userEngine' | 'defaultGame' | 'defaultEngine' | ''
+  layers: SettingLayer[]
 }
 
 export type ServerSettingUpdate = {
@@ -69,7 +75,7 @@ export type RawLine = {
 
 export type RawSection = {
   section: string
-  source: 'userGame' | 'userOverrides' | 'userEngine'
+  source: 'userGame' | 'userOverrides' | 'userEngine' | 'defaultGame' | 'defaultEngine'
   lines: RawLine[]
 }
 

@@ -104,6 +104,12 @@ type appConfig struct {
 	// e.g. /home/amp/.ampdata/instances/DuneAwakening01/duneawakening/server/state
 	ServerIniDir string `yaml:"server_ini_dir"`
 
+	// DefaultIniDir is a local or remote path that contains DefaultGame.ini and
+	// DefaultEngine.ini — the base layer of the INI hierarchy. When set, these
+	// files are read from here instead of being searched relative to ServerIniDir.
+	// Example: /path/to/game/Config
+	DefaultIniDir string `yaml:"default_ini_dir"`
+
 	ScripCurrency int    `yaml:"scrip_currency"`
 	ListenAddr    string `yaml:"listen_addr"`
 }

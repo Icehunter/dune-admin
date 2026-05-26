@@ -131,6 +131,27 @@ func (c *dockerControl) EnsureCaptureUser(_ context.Context, exec Executor) {
 	}
 }
 
+func (c *dockerControl) ReadDefaultINI(_ context.Context, exec Executor, filename string) string {
+	if c.gameserver == "" {
+		return ""
+	}
+	pathOut, err := exec.Exec(fmt.Sprintf(
+		"docker exec %s find / -name %s -not -path '*/Saved/*' -not -path '*/proc/*' -not -path '*/sys/*' -not -path '*/dev/*' 2>/dev/null | head -1",
+		c.gameserver, shellQuote(filename)))
+	if err != nil {
+		return ""
+	}
+	p := strings.TrimSpace(pathOut)
+	if p == "" {
+		return ""
+	}
+	content, err := exec.Exec(fmt.Sprintf("docker exec %s cat %s 2>/dev/null", c.gameserver, shellQuote(p)))
+	if err != nil {
+		return ""
+	}
+	return content
+}
+
 func (c *dockerControl) DiscoverIniDir(_ context.Context, _ Executor) (string, error) {
 	return "", fmt.Errorf("docker control plane requires server_ini_dir to be set in config")
 }

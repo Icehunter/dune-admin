@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -259,6 +260,55 @@ func ensureBrokerViaExec(exec Executor, namespace, podPattern, label string) {
 		"%s rabbitmqctl eval 'application:set_env(rabbitmq_auth_backend_cache, cache_ttl, 86400000).' 2>&1",
 		base))
 	fmt.Printf("[capture] [%s] auth backends updated\n", label)
+}
+
+func (c *kubectlControl) ReadDefaultINI(_ context.Context, exec Executor, filename string) string {
+	if c.namespace == "" {
+		return ""
+	}
+	// Find the game daemon pod — same pattern used by CaptureJWT.
+	pod, err := exec.Exec(fmt.Sprintf(
+		"sudo kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep bgd | head -1",
+		c.namespace))
+	if err != nil || strings.TrimSpace(pod) == "" {
+		return ""
+	}
+	pod = strings.TrimSpace(pod)
+
+	// Try well-known Config directories directly. find / misses paths that are
+	// only accessible via bind-mount roots or require following symlinks.
+	candidates := []string{
+		"/DuneSandbox/Config/" + filename,
+		"/home/dune/server/DuneSandbox/Config/" + filename,
+		"/home/dune/DuneSandbox/Config/" + filename,
+		"/game/DuneSandbox/Config/" + filename,
+	}
+	for _, p := range candidates {
+		content, err := exec.Exec(fmt.Sprintf(
+			"sudo kubectl exec -n %s %s -- cat %s 2>/dev/null",
+			c.namespace, pod, shellQuote(p)))
+		if err == nil && len(strings.TrimSpace(content)) > 0 {
+			log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
+			return content
+		}
+	}
+
+	// Fall back: find with symlink-following under game-relevant roots.
+	pathOut, _ := exec.Exec(fmt.Sprintf(
+		"sudo kubectl exec -n %s %s -- find -L /DuneSandbox /home /app /game -name %s -not -path '*/Saved/*' 2>/dev/null | head -1",
+		c.namespace, pod, shellQuote(filename)))
+	if p := strings.TrimSpace(pathOut); p != "" {
+		content, err := exec.Exec(fmt.Sprintf(
+			"sudo kubectl exec -n %s %s -- cat %s 2>/dev/null",
+			c.namespace, pod, shellQuote(p)))
+		if err == nil && len(strings.TrimSpace(content)) > 0 {
+			log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
+			return content
+		}
+	}
+
+	log.Printf("[default-ini] kubectl: %s not found in pod %s", filename, pod)
+	return ""
 }
 
 func (c *kubectlControl) DiscoverIniDir(_ context.Context, exec Executor) (string, error) {

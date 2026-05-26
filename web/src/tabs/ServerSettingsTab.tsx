@@ -10,10 +10,22 @@ const CATEGORY_ORDER = [
 ]
 
 const SOURCE_FILE: Record<string, string> = {
-  userGame:      'UserGame.ini',
-  userOverrides: 'UserOverrides.ini',
-  userEngine:    'UserEngine.ini',
+  defaultGame:    'DefaultGame.ini',
+  defaultEngine:  'DefaultEngine.ini',
+  userGame:       'UserGame.ini',
+  userEngine:     'UserEngine.ini',
+  userOverrides:  'UserOverrides.ini',
 }
+
+const LAYER_STYLE: Record<string, { cls: string }> = {
+  defaultGame:   { cls: 'text-muted/60' },
+  defaultEngine: { cls: 'text-muted/60' },
+  userEngine:    { cls: 'text-foreground/70' },
+  userGame:      { cls: 'text-warning' },
+  userOverrides: { cls: 'text-accent' },
+}
+
+const SOURCE_PRIORITY = ['defaultGame', 'defaultEngine', 'userGame', 'userEngine', 'userOverrides'] as const
 
 function groupByCategory(items: ServerSetting[]) {
   const map = new Map<string, ServerSetting[]>()
@@ -33,9 +45,10 @@ function groupByCategory(items: ServerSetting[]) {
 }
 
 function sourceLabel(s: string) {
-  if (s === 'userOverrides') return { text: 'UserOverrides.ini', cls: 'text-accent' }
-  if (s === 'userGame')      return { text: 'UserGame.ini',      cls: 'text-warning' }
-  return null
+  const file  = SOURCE_FILE[s]
+  const style = LAYER_STYLE[s]
+  if (!file || !style) return null
+  return { text: file, cls: style.cls }
 }
 
 function shortSection(section: string) {
@@ -45,17 +58,20 @@ function shortSection(section: string) {
 }
 
 function SettingRow({
-  item, pending, onChange, onReset,
+  item, pending, onChange, onDelete,
 }: {
   item: ServerSetting
   pending: string | undefined
   onChange: (value: string) => void
-  onReset: () => void
+  onDelete: () => Promise<void>
 }) {
-  const display  = pending !== undefined ? pending : item.current
-  const dirty    = pending !== undefined && pending !== item.current
+  const rawDisplay = pending !== undefined ? pending : item.current
+  const display = item.type === 'bool'
+    ? (/^(true|1|yes)$/i.test(rawDisplay) ? 'True' : /^(false|0|no)$/i.test(rawDisplay) ? 'False' : rawDisplay)
+    : rawDisplay
+  const dirty    = pending !== undefined && rawDisplay !== item.current
   const src      = sourceLabel(item.source)
-  const isDefault = item.current === item.default && !pending
+
 
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-border/40 last:border-0">
@@ -66,8 +82,23 @@ function SettingRow({
           {dirty && <span className="text-xs text-warning">unsaved</span>}
         </div>
         <p className="text-xs text-muted mt-0.5 leading-relaxed">{item.description}</p>
-        {!isDefault && !dirty && (
-          <p className="text-xs text-muted/60 mt-0.5">default: {item.default}</p>
+        {item.layers.length > 1 && (
+          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+            {item.layers.map((layer, i) => {
+              const style   = LAYER_STYLE[layer.source] ?? { cls: 'text-muted' }
+              const isActive = i === item.layers.length - 1
+              return (
+                <span key={layer.source} className="flex items-center gap-1">
+                  <span className={`text-xs font-mono px-1.5 py-0.5 rounded border border-border/30 bg-surface/60 ${style.cls} ${isActive ? 'font-semibold' : 'opacity-50'}`}>
+                    {SOURCE_FILE[layer.source] ?? layer.source}: {trimFloat(layer.value)}{isActive ? ' ✓' : ''}
+                  </span>
+                  {i < item.layers.length - 1 && (
+                    <span className="text-muted/30 text-xs select-none">→</span>
+                  )}
+                </span>
+              )
+            })}
+          </div>
         )}
       </div>
 
@@ -84,6 +115,13 @@ function SettingRow({
               </ListBox>
             </Select.Popover>
           </Select>
+        ) : item.type === 'string' ? (
+          <input
+            type="text"
+            value={display}
+            onChange={e => onChange(e.target.value)}
+            className="w-40 bg-surface border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60"
+          />
         ) : (
           <input
             type="number"
@@ -93,9 +131,15 @@ function SettingRow({
             className="w-28 bg-surface border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60 text-right"
           />
         )}
-        <button onClick={onReset} title="Reset to default" className="text-muted/50 hover:text-muted transition-colors">
-          <Icon name="x" className="w-3.5 h-3.5" />
-        </button>
+        {item.source === 'userOverrides' && (
+          <button
+            onClick={onDelete}
+            title="Remove from UserOverrides.ini"
+            className="text-muted/50 hover:text-danger transition-colors"
+          >
+            <Icon name="trash-2" className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -105,22 +149,41 @@ function linesToText(lines: RawSection['lines']) {
   return lines.map(l => `${l.prefix}${l.key}=${l.value}`).join('\n')
 }
 
-function RawSectionPanel({ section, onSaved }: { section: RawSection; onSaved: () => void }) {
-  const fileLabel = SOURCE_FILE[section.source] ?? section.source
-  const srcCls = section.source === 'userOverrides' ? 'text-accent'
-               : section.source === 'userEngine'    ? 'text-info'
-               : 'text-warning'
+// Trim Go's 6-decimal float formatting: "500.000000" → "500", "0.300000" → "0.3"
+function trimFloat(v: string): string {
+  if (!v.includes('.')) return v
+  const n = parseFloat(v)
+  return isNaN(n) ? v : n.toString()
+}
 
+function groupLinesByKey(lines: RawSection['lines']) {
+  const grouped: { key: string; lines: typeof lines }[] = []
+  const seen = new Map<string, number>()
+  for (const line of lines) {
+    const idx = seen.get(line.key)
+    if (idx !== undefined) {
+      grouped[idx].lines.push(line)
+    } else {
+      seen.set(line.key, grouped.length)
+      grouped.push({ key: line.key, lines: [line] })
+    }
+  }
+  return grouped
+}
+
+// One panel per INI section name, merging all source files that contain it.
+function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSaved: () => void }) {
+  const sectionName    = sections[0].section
+  const overridesSec   = sections.find(s => s.source === 'userOverrides')
+
+  // Editing always targets UserOverrides.ini regardless of which sources are present.
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState('')
   const [saving, setSaving]   = useState(false)
   const textareaRef           = useRef<HTMLTextAreaElement>(null)
 
-  const target = 'userOverrides' as const
-  const targetLabel = 'UserOverrides.ini'
-
   const startEdit = () => {
-    setDraft(linesToText(section.lines))
+    setDraft(overridesSec ? linesToText(overridesSec.lines) : '')
     setEditing(true)
     setTimeout(() => textareaRef.current?.focus(), 0)
   }
@@ -130,8 +193,8 @@ function RawSectionPanel({ section, onSaved }: { section: RawSection; onSaved: (
   const save = async () => {
     setSaving(true)
     try {
-      await api.serverSettings.updateRaw(section.section, target, draft)
-      toast.success(`Saved to ${targetLabel}`)
+      await api.serverSettings.updateRaw(sectionName, 'userOverrides', draft)
+      toast.success('Saved to UserOverrides.ini')
       setEditing(false)
       onSaved()
     } catch (e: unknown) {
@@ -141,38 +204,60 @@ function RawSectionPanel({ section, onSaved }: { section: RawSection; onSaved: (
     }
   }
 
-  // Group lines by bare key so array entries cluster together
-  const grouped: { key: string; lines: typeof section.lines }[] = []
-  const seen = new Map<string, number>()
-  for (const line of section.lines) {
-    const idx = seen.get(line.key)
-    if (idx !== undefined) {
-      grouped[idx].lines.push(line)
-    } else {
-      seen.set(line.key, grouped.length)
-      grouped.push({ key: line.key, lines: [line] })
+  const deleteOverride = async () => {
+    setSaving(true)
+    try {
+      await api.serverSettings.updateRaw(sectionName, 'userOverrides', '')
+      toast.success('Removed from UserOverrides.ini')
+      onSaved()
+    } catch (e: unknown) {
+      toast.danger(`Delete failed: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setSaving(false)
     }
   }
 
+  // Sort sources low → high priority for display
+  const sorted = [...sections].sort((a, b) => {
+    const ai = SOURCE_PRIORITY.indexOf(a.source as typeof SOURCE_PRIORITY[number])
+    const bi = SOURCE_PRIORITY.indexOf(b.source as typeof SOURCE_PRIORITY[number])
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+  })
+  const multiSource = sorted.length > 1
+
   return (
     <Panel>
-      <div className="flex items-center gap-2 mb-1">
-        <SectionLabel>{shortSection(section.section)}</SectionLabel>
-        <span className={`text-xs ${srcCls} ml-1`}>{fileLabel}</span>
-        <div className="ml-auto flex items-center gap-1">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <SectionLabel>{shortSection(sectionName)}</SectionLabel>
+        {sorted.map(s => (
+          <span key={s.source} className={`text-xs ${LAYER_STYLE[s.source]?.cls ?? 'text-muted'}`}>
+            {SOURCE_FILE[s.source] ?? s.source}
+          </span>
+        ))}
+        <div className="ml-auto flex items-center gap-1 min-w-[2rem]">
           {editing ? (
             <>
-              <Button size="sm" variant="ghost" onPress={cancel} isDisabled={saving}>
-                Cancel
-              </Button>
+              <Button size="sm" variant="ghost" onPress={cancel} isDisabled={saving}>Cancel</Button>
               <Button size="sm" onPress={save} isDisabled={saving}>
                 {saving ? <Spinner size="sm" color="current" /> : 'Save'}
               </Button>
             </>
           ) : (
-            <Button size="sm" variant="ghost" onPress={startEdit}>
-              <Icon name="pencil" className="w-3.5 h-3.5" />
-            </Button>
+            <>
+              {overridesSec && (
+                <button
+                  onClick={deleteOverride}
+                  title="Remove from UserOverrides.ini"
+                  className="text-muted/50 hover:text-danger transition-colors"
+                  disabled={saving}
+                >
+                  <Icon name="trash-2" className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <Button size="sm" variant="ghost" onPress={startEdit} isDisabled={saving}>
+                <Icon name="pencil" className="w-3.5 h-3.5" />
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -185,29 +270,50 @@ function RawSectionPanel({ section, onSaved }: { section: RawSection; onSaved: (
           rows={Math.max(4, draft.split('\n').length + 1)}
           className="w-full bg-surface border border-border rounded px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60 resize-y"
           spellCheck={false}
+          placeholder="Key=Value or +Key=Value for array entries"
         />
       ) : (
-        <div className="flex flex-col gap-0.5">
-          {grouped.map(({ key, lines }) => (
-            <div key={key} className="py-1 border-b border-border/30 last:border-0">
-              <span className="text-xs font-mono text-muted">{key}</span>
-              {lines.map((l, i) => (
-                <div key={i} className="flex items-baseline gap-1.5 mt-0.5 ml-3">
-                  {l.prefix && (
-                    <span className={`text-xs font-mono w-3 shrink-0 ${l.prefix === '+' ? 'text-success' : 'text-danger'}`}>
-                      {l.prefix}
-                    </span>
-                  )}
-                  <span className="text-xs font-mono text-foreground/80 break-all">{l.value}</span>
+        <div className="flex flex-col gap-2">
+          {sorted.map(sec => {
+            const style   = LAYER_STYLE[sec.source] ?? { cls: 'text-muted' }
+            const isActive = sec.source === sorted[sorted.length - 1].source
+            return (
+              <div
+                key={sec.source}
+                className={multiSource ? `pl-2 border-l-2 ${isActive ? 'border-accent/40' : 'border-border/30'}` : ''}
+              >
+                {multiSource && (
+                  <span className={`text-xs ${style.cls} block mb-1`}>
+                    {SOURCE_FILE[sec.source] ?? sec.source}{isActive ? ' ✓' : ''}
+                  </span>
+                )}
+                <div className="flex flex-col gap-0.5">
+                  {groupLinesByKey(sec.lines).map(({ key, lines }) => (
+                    <div key={key} className="py-1 border-b border-border/30 last:border-0">
+                      <span className="text-xs font-mono text-muted">{key}</span>
+                      {lines.map((l, i) => (
+                        <div key={i} className="flex items-baseline gap-1.5 mt-0.5 ml-3">
+                          {l.prefix && (
+                            <span className={`text-xs font-mono w-3 shrink-0 ${l.prefix === '+' ? 'text-success' : 'text-danger'}`}>
+                              {l.prefix}
+                            </span>
+                          )}
+                          <span className={`text-xs font-mono break-all ${isActive ? 'text-foreground/80' : 'text-muted/50'}`}>{l.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </div>
       )}
     </Panel>
   )
 }
+
+const USER_SOURCES = new Set(['userGame', 'userEngine', 'userOverrides'])
 
 export default function ServerSettingsTab() {
   const [items, setItems]     = useState<ServerSetting[]>([])
@@ -216,6 +322,9 @@ export default function ServerSettingsTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(() =>
+    localStorage.getItem('serverSettings.showAll') === 'true'
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -241,8 +350,14 @@ export default function ServerSettingsTab() {
     setPending(prev => { const n = new Map(prev); n.set(pendingKey(item), value); return n })
   }
 
-  const handleReset = (item: ServerSetting) => {
-    setPending(prev => { const n = new Map(prev); n.set(pendingKey(item), ''); return n })
+  const handleDelete = async (item: ServerSetting) => {
+    try {
+      await api.serverSettings.update([{ section: item.section, key: item.key, value: '' }])
+      toast.success('Removed from UserOverrides.ini')
+      load()
+    } catch (e: unknown) {
+      toast.danger(`Delete failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   const save = async () => {
@@ -288,15 +403,38 @@ export default function ServerSettingsTab() {
     )
   }
 
-  const categories = groupByCategory(items)
+  const toggleShowAll = () => setShowAll(v => {
+    localStorage.setItem('serverSettings.showAll', String(!v))
+    return !v
+  })
 
-  // Raw sections grouped by source file for the reference panels
-  const rawBySource = new Map<string, RawSection[]>()
-  for (const sec of raw) {
-    const arr = rawBySource.get(sec.source) ?? []
-    arr.push(sec)
-    rawBySource.set(sec.source, arr)
+  // In "user settings" mode, show only items that have at least one value
+  // from a user-controlled file (userGame / userEngine / userOverrides).
+  const visibleItems = showAll
+    ? items
+    : items.filter(item => item.layers.some(l => USER_SOURCES.has(l.source)))
+
+  const categories = groupByCategory(visibleItems)
+
+  // Group raw sections by INI section name, merging all source files.
+  // Iteration in priority order ensures the Map key insertion order
+  // matches the first-seen source (lowest priority first).
+  const rawBySection = new Map<string, RawSection[]>()
+  for (const src of SOURCE_PRIORITY) {
+    for (const sec of raw) {
+      if (sec.source !== src) continue
+      const arr = rawBySection.get(sec.section) ?? []
+      arr.push(sec)
+      rawBySection.set(sec.section, arr)
+    }
   }
+
+  // In "user settings" mode, hide raw panels whose entries are only from default files.
+  const visibleRawSections = showAll
+    ? [...rawBySection.values()]
+    : [...rawBySection.values()].filter(secs =>
+        secs.some(s => USER_SOURCES.has(s.source))
+      )
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
@@ -304,6 +442,15 @@ export default function ServerSettingsTab() {
         <div className="flex items-center gap-2">
           <Button size="sm" variant="ghost" onPress={load} isDisabled={loading || saving}>
             <Icon name="refresh-cw" />
+          </Button>
+          <Button
+            size="sm"
+            variant={showAll ? 'primary' : 'ghost'}
+            onPress={toggleShowAll}
+            aria-label={showAll ? 'Showing all settings — click to show user settings only' : 'Showing user settings only — click to show all'}
+          >
+            <Icon name={showAll ? 'eye' : 'eye-off'} className="w-3.5 h-3.5" />
+            <span className="ml-1">{showAll ? 'All' : 'User'}</span>
           </Button>
           <Button size="sm" onPress={save} isDisabled={dirtyCount === 0 || saving}>
             {saving
@@ -320,7 +467,7 @@ export default function ServerSettingsTab() {
 
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 pb-6">
 
-        {/* Typed / schema settings — only configured ones */}
+        {/* Typed / schema settings */}
         {categories.map(([cat, catItems]) => (
           <Panel key={cat}>
             <SectionLabel>{cat}</SectionLabel>
@@ -331,28 +478,21 @@ export default function ServerSettingsTab() {
                   item={item}
                   pending={pending.get(pendingKey(item))}
                   onChange={v => handleChange(item, v)}
-                  onReset={() => handleReset(item)}
+                  onDelete={() => handleDelete(item)}
                 />
               ))}
             </div>
           </Panel>
         ))}
 
-        {/* Raw sections — non-schema keys and array entries, grouped by file */}
-        {(['userGame', 'userEngine', 'userOverrides'] as const).map(src => {
-          const sections = rawBySource.get(src)
-          if (!sections?.length) return null
-          return (
-            <div key={src} className="flex flex-col gap-3">
-              <p className="text-xs text-muted shrink-0 px-0.5">
-                <span className="font-mono">{SOURCE_FILE[src]}</span>
-              </p>
-              {sections.map((sec, i) => (
-                <RawSectionPanel key={`${src}-${i}`} section={sec} onSaved={load} />
-              ))}
-            </div>
-          )
-        })}
+        {/* Raw sections — non-schema keys and array entries, one panel per INI section */}
+        {visibleRawSections.map(sections => (
+          <RawSectionPanel
+            key={sections[0].section}
+            sections={sections}
+            onSaved={load}
+          />
+        ))}
 
       </div>
     </div>

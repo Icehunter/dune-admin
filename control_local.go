@@ -104,6 +104,10 @@ func (c *localControl) EnsureCaptureUser(_ context.Context, exec Executor) {
 	fmt.Println("[capture] [local] auth backends updated")
 }
 
+func (c *localControl) ReadDefaultINI(_ context.Context, _ Executor, _ string) string {
+	return "" // host-path traversal in readDefaultINIContent handles local/Hyper-V
+}
+
 func (c *localControl) DiscoverIniDir(_ context.Context, _ Executor) (string, error) {
 	return "", fmt.Errorf("local control plane requires server_ini_dir to be set in config")
 }

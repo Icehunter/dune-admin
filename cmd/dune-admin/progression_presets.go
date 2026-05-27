@@ -89,35 +89,61 @@ var progressionPresets = []progressionPreset{
 
 // cmdApplyProgressionPreset applies a preset by completing each node (and its
 // children + tags) via the existing cmdCompleteJourneyNode logic.
+func progressionPresetByID(presetID string) *progressionPreset {
+	for i := range progressionPresets {
+		if progressionPresets[i].ID == presetID {
+			return &progressionPresets[i]
+		}
+	}
+	return nil
+}
+
+func completionError(presetID, nodeID string, msg msgMutate, ok bool) error {
+	if ok && msg.err == nil {
+		return nil
+	}
+	if ok && msg.err != nil {
+		return fmt.Errorf("apply %s (node %s): %w", presetID, nodeID, msg.err)
+	}
+	return fmt.Errorf("apply %s (node %s): internal error", presetID, nodeID)
+}
+
+func applyProgressionPresetNodes(
+	accountID int64,
+	presetID string,
+	nodeIDs []string,
+	complete func(accountID int64, nodeID string) (msgMutate, bool),
+) (int, int, error) {
+	totalNodes := 0
+	totalTags := 0
+	for _, nodeID := range nodeIDs {
+		msg, ok := complete(accountID, nodeID)
+		if err := completionError(presetID, nodeID, msg, ok); err != nil {
+			return totalNodes, totalTags, err
+		}
+		n, t := parseCompletionCounts(msg.ok)
+		totalNodes += n
+		totalTags += t
+	}
+	return totalNodes, totalTags, nil
+}
+
 func cmdApplyProgressionPreset(accountID int64, presetID string) Cmd {
 	return func() Msg {
 		if globalDB == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
-		var preset *progressionPreset
-		for i := range progressionPresets {
-			if progressionPresets[i].ID == presetID {
-				preset = &progressionPresets[i]
-				break
-			}
-		}
+		preset := progressionPresetByID(presetID)
 		if preset == nil {
 			return msgMutate{err: fmt.Errorf("unknown preset: %s", presetID)}
 		}
 
-		totalNodes := 0
-		totalTags := 0
-		for _, nodeID := range preset.Nodes {
-			msg, ok := cmdCompleteJourneyNode(accountID, nodeID)().(msgMutate)
-			if !ok || msg.err != nil {
-				if msg.err != nil {
-					return msgMutate{err: fmt.Errorf("apply %s (node %s): %w", presetID, nodeID, msg.err)}
-				}
-				return msgMutate{err: fmt.Errorf("apply %s (node %s): internal error", presetID, nodeID)}
-			}
-			n, t := parseCompletionCounts(msg.ok)
-			totalNodes += n
-			totalTags += t
+		totalNodes, totalTags, err := applyProgressionPresetNodes(accountID, presetID, preset.Nodes, func(id int64, nodeID string) (msgMutate, bool) {
+			msg, ok := cmdCompleteJourneyNode(id, nodeID)().(msgMutate)
+			return msg, ok
+		})
+		if err != nil {
+			return msgMutate{err: err}
 		}
 		return msgMutate{ok: fmt.Sprintf(
 			"Applied preset '%s': %d node(s), %d tag(s) — takes effect on next login",

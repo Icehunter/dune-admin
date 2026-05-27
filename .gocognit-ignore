@@ -1,7 +1,6 @@
 # Functions excluded from the gocognit complexity gate.
 # Each entry has a GitHub issue tracking the refactor work.
 # Format: FuncName  file:line  score  issue-url
-cmdApplyProgressionPreset      progression_presets.go:92:1         19   https://github.com/Icehunter/dune-admin/issues/43
 connectAll                     connection.go:40:1                  18   https://github.com/Icehunter/dune-admin/issues/44
 cmdRepairItem                  db.go:3265:1                        18   https://github.com/Icehunter/dune-admin/issues/45
 listGameProcesses              control_amp.go:104:1                17   https://github.com/Icehunter/dune-admin/issues/46

@@ -30,7 +30,7 @@ func (e *ampExecutor) WriteFile(path string, data io.Reader) error {
 	if _, err := io.Copy(&buf, data); err != nil {
 		return fmt.Errorf("read payload: %w", err)
 	}
-	c := exec.Command("sudo", "-i", "-u", e.ampUser, "tee", path) // #nosec G204 -- ampUser and path are admin-supplied config
+	c := exec.Command("sudo", "-i", "-u", e.ampUser, "tee", path) // #nosec G204,G702 -- args passed as slice (no shell); ampUser and path are admin-supplied config
 	c.Stdin = &buf
 	c.Stdout = io.Discard
 	var errBuf bytes.Buffer

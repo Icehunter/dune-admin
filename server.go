@@ -267,7 +267,7 @@ func spaHandler(distDir string) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		if _, err := os.Stat(p); err == nil {
+		if _, err := os.Stat(p); err == nil { // #nosec G703 -- path validated against cleanDist prefix above
 			fileServer.ServeHTTP(w, r)
 			return
 		}

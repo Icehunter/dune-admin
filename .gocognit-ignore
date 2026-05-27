@@ -1,7 +1,6 @@
 # Functions excluded from the gocognit complexity gate.
 # Each entry has a GitHub issue tracking the refactor work.
 # Format: FuncName  file:line  score  issue-url
-handleBGBackupUpload           handlers_battlegroup.go:203:1       37   https://github.com/Icehunter/dune-admin/issues/25
 checkInventoryCapacity         db.go:476:1                         37   https://github.com/Icehunter/dune-admin/issues/26
 handleMarketItems              handlers_market.go:12:1             34   https://github.com/Icehunter/dune-admin/issues/27
 cmdAwardCharXP                 db.go:2723:1                        33   https://github.com/Icehunter/dune-admin/issues/28

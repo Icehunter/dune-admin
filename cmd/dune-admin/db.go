@@ -1708,70 +1708,39 @@ func cmdCompleteContracts(accountID int64, contractIDs []string) Cmd {
 		if globalDB == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
-		if accountID == 0 {
-			return msgMutate{err: fmt.Errorf("account ID required")}
-		}
-		if len(contractIDs) == 0 {
-			return msgMutate{err: fmt.Errorf("at least one contract required")}
+		if err := validateContractMutationInput(accountID, contractIDs); err != nil {
+			return msgMutate{err: err}
 		}
 
-		seenTag := map[string]bool{}
-		var allTags []string
-		seenSkill := map[string]bool{}
-		var allSkillGrants []string
-		var resolved []string
-		for _, id := range contractIDs {
-			name, tags, err := resolveContractTags(id)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-			resolved = append(resolved, name)
-			for _, t := range tags {
-				if !seenTag[t] {
-					seenTag[t] = true
-					allTags = append(allTags, t)
-				}
-			}
-			for _, sk := range tagsData.ContractSkillGrants[name] {
-				if !seenSkill[sk] {
-					seenSkill[sk] = true
-					allSkillGrants = append(allSkillGrants, sk)
-				}
-			}
-		}
-
-		ctx := context.Background()
-		extra, err := applyTagsWithTierBump(ctx, accountID, allTags)
+		set, err := buildContractRemovalSet(contractIDs)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 
-		if len(allSkillGrants) > 0 {
-			grantedExtra, err := grantSkillBlocks(ctx, accountID, allSkillGrants)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-			extra += grantedExtra
+		ctx := context.Background()
+		extra, err := applyTagsWithTierBump(ctx, accountID, set.removeTags)
+		if err != nil {
+			return msgMutate{err: err}
 		}
+
+		grantedExtra, err := applyContractSkillGrants(ctx, accountID, set.removeSkills)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+		extra += grantedExtra
 
 		// Strip any in-progress ContractItem rows so the in-game quest
 		// tracker doesn't keep showing the conditions for a contract we just
 		// force-completed. ContractName.Name uses the short alias form
 		// (no DA_CT_ prefix).
-		shortNames := make([]string, 0, len(resolved))
-		for _, full := range resolved {
-			shortNames = append(shortNames, strings.TrimPrefix(full, "DA_CT_"))
-		}
+		shortNames := contractShortNames(set.resolvedNames)
 		dismissedExtra, err := dismissActiveContracts(ctx, accountID, shortNames)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 		extra += dismissedExtra
 
-		summary := resolved[0]
-		if len(resolved) > 1 {
-			summary = fmt.Sprintf("%d contracts", len(resolved))
-		}
+		summary := contractBatchSummary(set.resolvedNames)
 		return msgMutate{ok: fmt.Sprintf("Applied %s%s — takes effect on next login", summary, extra)}
 	}
 }
@@ -1824,6 +1793,21 @@ func buildContractRemovalSet(contractIDs []string) (contractRemovalSet, error) {
 	}
 
 	return set, nil
+}
+
+func applyContractSkillGrants(ctx context.Context, accountID int64, skills []string) (string, error) {
+	if len(skills) == 0 {
+		return "", nil
+	}
+	return grantSkillBlocks(ctx, accountID, skills)
+}
+
+func contractShortNames(resolvedNames []string) []string {
+	shortNames := make([]string, 0, len(resolvedNames))
+	for _, full := range resolvedNames {
+		shortNames = append(shortNames, strings.TrimPrefix(full, "DA_CT_"))
+	}
+	return shortNames
 }
 
 func removeContractTags(ctx context.Context, accountID int64, removeTags []string) error {

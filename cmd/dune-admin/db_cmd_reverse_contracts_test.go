@@ -39,8 +39,6 @@ func TestValidateContractMutationInput(t *testing.T) {
 }
 
 func TestBuildContractRemovalSet(t *testing.T) {
-	t.Parallel()
-
 	originalTagsData := tagsData
 	tagsData = tagsDataFile{
 		ContractAliases: map[string]string{
@@ -79,8 +77,6 @@ func TestBuildContractRemovalSet(t *testing.T) {
 }
 
 func TestBuildContractRemovalSet_UnknownContract(t *testing.T) {
-	t.Parallel()
-
 	originalTagsData := tagsData
 	tagsData = tagsDataFile{
 		ContractAliases: map[string]string{},
@@ -121,5 +117,27 @@ func TestStripContractSkillBlocks_NoopCases(t *testing.T) {
 	}
 	if stripped, err := stripContractSkillBlocks(context.Background(), 10, nil); err != nil || stripped != 0 {
 		t.Fatalf("expected empty skills no-op, stripped=%d err=%v", stripped, err)
+	}
+}
+
+func TestApplyContractSkillGrants_NoSkillsIsNoop(t *testing.T) {
+	t.Parallel()
+
+	extra, err := applyContractSkillGrants(context.Background(), 123, nil)
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if extra != "" {
+		t.Fatalf("expected empty extra string, got %q", extra)
+	}
+}
+
+func TestContractShortNames(t *testing.T) {
+	t.Parallel()
+
+	got := contractShortNames([]string{"DA_CT_Trainer", "NoPrefix"})
+	want := []string{"Trainer", "NoPrefix"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected short names: %#v", got)
 	}
 }

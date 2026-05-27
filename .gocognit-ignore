@@ -1,7 +1,6 @@
 # Functions excluded from the gocognit complexity gate.
 # Each entry has a GitHub issue tracking the refactor work.
 # Format: FuncName  file:line  score  issue-url
-discoverDefaultINI             handlers_server_settings.go:339:1   26   https://github.com/Icehunter/dune-admin/issues/34
 cmdSetStarterClass             db.go:1866:1                        25   https://github.com/Icehunter/dune-admin/issues/35
 runKubectlSetup                setup.go:99:1                       25   https://github.com/Icehunter/dune-admin/issues/36
 parseINILines                  handlers_server_settings.go:198:1   24   https://github.com/Icehunter/dune-admin/issues/37

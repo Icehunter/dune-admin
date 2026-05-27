@@ -384,72 +384,122 @@ func readDefaultINIContent(iniDir, filename string) string {
 //  3. Common host paths — /home, /root, /dune first, then k3s containerd layers
 //  4. Relative path traversal from iniDir (Hyper-V / bare-metal layouts)
 //  5. kubectl/docker exec into the game container (requires pod running)
+func configuredDefaultINIPath(filename string) string {
+	if loadedConfig.DefaultIniDir == "" {
+		return ""
+	}
+	return filepath.Join(loadedConfig.DefaultIniDir, filename)
+}
+
+func k8sDerivedDefaultINICandidates(inPodDir, filename string) []string {
+	return []string{
+		pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "..", "Config", filename)),
+		pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "Config", filename)),
+		pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "..", "..", "Config", filename)),
+		"/DuneSandbox/Config/" + filename,
+		"/home/dune/server/DuneSandbox/Config/" + filename,
+		"/home/dune/DuneSandbox/Config/" + filename,
+		"/game/DuneSandbox/Config/" + filename,
+	}
+}
+
+func hostDefaultINICandidates(filename string) []string {
+	return []string{
+		"/home/dune/" + filename,
+		"/home/" + filename,
+		"/root/" + filename,
+		"/dune/" + filename,
+		"/home/dune/server/DuneSandbox/Config/" + filename,
+	}
+}
+
+func relativeDefaultINICandidates(iniDir, filename string) []string {
+	return []string{
+		filepath.Join(iniDir, "..", "..", "..", "Config", filename),
+		filepath.Join(iniDir, "..", "..", "Config", filename),
+		filepath.Join(iniDir, "..", "..", "..", "..", "Config", filename),
+	}
+}
+
+func discoverViaConfiguredPath(filename string) string {
+	path := configuredDefaultINIPath(filename)
+	if path == "" {
+		return ""
+	}
+	if data, err := os.ReadFile(path); err == nil && len(data) > 0 {
+		return string(data)
+	}
+	return readINIContent(path)
+}
+
+func discoverViaK8sDerivedPath(iniDir, filename string) string {
+	ns, pod, inPodDir, ok := parseK8sINIPath(iniDir)
+	if !ok {
+		return ""
+	}
+	for _, inPodPath := range k8sDerivedDefaultINICandidates(inPodDir, filename) {
+		if content := readINIContent(fmt.Sprintf("k8s://%s/%s%s", ns, pod, inPodPath)); content != "" {
+			return content
+		}
+	}
+	return ""
+}
+
+func discoverViaHostPaths(filename string) string {
+	for _, path := range hostDefaultINICandidates(filename) {
+		if content := readINIContent(path); content != "" {
+			return content
+		}
+	}
+	return ""
+}
+
+func discoverViaHostFind(filename string) string {
+	out, _ := globalExecutor.Exec(fmt.Sprintf(
+		"sudo find /home /root /dune /run/k3s/containerd /var/lib/rancher/k3s/agent/containerd"+
+			" -maxdepth 10 -name %s -not -path '*/Saved/*' -not -path '*/saved/*' 2>/dev/null | head -1",
+		shellQuote(filename)))
+	if path := strings.TrimSpace(out); path != "" {
+		return readINIContent(path)
+	}
+	return ""
+}
+
+func discoverViaRelativePath(iniDir, filename string) string {
+	for _, path := range relativeDefaultINICandidates(iniDir, filename) {
+		if content := readINIContent(path); content != "" {
+			return content
+		}
+	}
+	return ""
+}
+
 func discoverDefaultINI(iniDir, filename string) string {
-	// 1. Explicit config path.
-	if loadedConfig.DefaultIniDir != "" {
-		p := filepath.Join(loadedConfig.DefaultIniDir, filename)
-		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
-			return string(data)
-		}
-		if c := readINIContent(p); c != "" {
-			return c
-		}
+	if content := discoverViaConfiguredPath(filename); content != "" {
+		return content
 	}
 
 	// 1b. When INI dir points to a k8s pod path, derive nearby Config paths in
 	// the same pod first. This is the most reliable source in deployed mode.
-	if ns, pod, inPodDir, ok := parseK8sINIPath(iniDir); ok {
-		candidates := []string{
-			pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "..", "Config", filename)),
-			pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "Config", filename)),
-			pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "..", "..", "Config", filename)),
-			"/DuneSandbox/Config/" + filename,
-			"/home/dune/server/DuneSandbox/Config/" + filename,
-			"/home/dune/DuneSandbox/Config/" + filename,
-			"/game/DuneSandbox/Config/" + filename,
-		}
-		for _, inPodPath := range candidates {
-			if c := readINIContent(fmt.Sprintf("k8s://%s/%s%s", ns, pod, inPodPath)); c != "" {
-				return c
-			}
-		}
+	if content := discoverViaK8sDerivedPath(iniDir, filename); content != "" {
+		return content
 	}
 
 	if globalExecutor != nil {
 		// 2a. Well-known host directories — tried in order before any find.
-		for _, p := range []string{
-			"/home/dune/" + filename,
-			"/home/" + filename,
-			"/root/" + filename,
-			"/dune/" + filename,
-			"/home/dune/server/DuneSandbox/Config/" + filename,
-		} {
-			if c := readINIContent(p); c != "" {
-				return c
-			}
+		if content := discoverViaHostPaths(filename); content != "" {
+			return content
 		}
 
 		// 2b. Host filesystem scan: /home /root /dune first, then k3s containerd
 		// paths. These require sudo but the executor already runs with sudo access.
-		out, _ := globalExecutor.Exec(fmt.Sprintf(
-			"sudo find /home /root /dune /run/k3s/containerd /var/lib/rancher/k3s/agent/containerd"+
-				" -maxdepth 10 -name %s -not -path '*/Saved/*' -not -path '*/saved/*' 2>/dev/null | head -1",
-			shellQuote(filename)))
-		if p := strings.TrimSpace(out); p != "" {
-			if c := readINIContent(p); c != "" {
-				return c
-			}
+		if content := discoverViaHostFind(filename); content != "" {
+			return content
 		}
 
 		// 3. Relative candidates from iniDir (non-k8s layouts).
-		for _, p := range []string{
-			filepath.Join(iniDir, "..", "..", "..", "Config", filename),
-			filepath.Join(iniDir, "..", "..", "Config", filename),
-			filepath.Join(iniDir, "..", "..", "..", "..", "Config", filename),
-		} {
-			if c := readINIContent(p); c != "" {
-				return c
-			}
+		if content := discoverViaRelativePath(iniDir, filename); content != "" {
+			return content
 		}
 	}
 

@@ -7,6 +7,14 @@ declare global {
 function getApiBase(): string {
   const stored = localStorage.getItem('dune_admin_backend')
   if (stored) return stored.replace(/\/$/, '') + '/api/v1'
+  // When the SPA is served from a Go-binary deploy (any host other than the
+  // Vite dev server's localhost), the backend is the same origin. Only the
+  // dev-time localhost case needs the :8080 default.
+  if (typeof window !== 'undefined' &&
+      window.location.hostname !== 'localhost' &&
+      window.location.hostname !== '127.0.0.1') {
+    return window.location.origin + '/api/v1'
+  }
   return 'http://localhost:8080/api/v1'
 }
 

@@ -12,7 +12,7 @@ import (
 
 var wsUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return originAllowed(r.Header.Get("Origin"))
+		return originAllowedForRequest(r, true)
 	},
 }
 

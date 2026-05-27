@@ -61,6 +61,98 @@ func publishServerCommand(fields map[string]any) error {
 	return nil
 }
 
+// ── courier (chat) publish ────────────────────────────────────────────────────
+
+// publishCourierMessage publishes a chat / courier message to the game broker.
+// Unlike publishServerCommand (which goes to exchange=heartbeats,
+// routingKey=notifications via the ServerCommand AuthToken-protected envelope),
+// courier messages are routed by exchange + routingKey directly — exchange is
+// chat-channel-specific (chat.whispers, chat.faction.{id}, ...) and routing key
+// varies by channel (target FLS for whispers, "" for faction broadcasts, etc.).
+//
+// EXPERIMENTAL — Adain's chat-and-courier.md documents the wire format from
+// IDA/DWARF analysis but explicitly notes "live external publish recipe still
+// not pinned." This is the first attempt at sending one of these as an external
+// operator. If the game ignores the message or the broker rejects it, see
+// chat-and-courier.md and iterate the basic_properties or body shape.
+//
+// body should be the JSON-serialized FCourierMessageContent — caller's
+// responsibility. typeStr is the AMQP basic_properties `type` value, set to
+// "12" for text_chat per the FNotificationsSystemMessage type-byte mapping.
+func publishCourierMessage(exchange, routingKey string, body []byte, typeStr string) error {
+	bodyB64 := base64.StdEncoding.EncodeToString(body)
+	msgID := fmt.Sprintf("dune-admin-chat-%d", time.Now().UnixMilli())
+
+	// AMQP basic_properties P_basic record order:
+	//   content_type, content_encoding, headers, delivery_mode, priority,
+	//   correlation_id, reply_to, expiration, message_id, timestamp, type,
+	//   user_id, app_id, cluster_id
+	// We set type to the courier message-type byte string ("12") and reuse
+	// the fls / fls_backend user/app identity that the game expects.
+	erlang := fmt.Sprintf(
+		`Body = base64:decode(<<"%s">>),`+
+			`XName = rabbit_misc:r(<<"/">>, exchange, <<"%s">>),`+
+			`X = rabbit_exchange:lookup_or_die(XName),`+
+			`MsgId = <<"%s">>,`+
+			`P = {list_to_atom("P_basic"), <<"Content">>, undefined, [], undefined,`+
+			` undefined, undefined, undefined, undefined, MsgId, undefined,`+
+			` <<"%s">>, <<"fls">>, <<"fls_backend">>, undefined},`+
+			`Content = rabbit_basic:build_content(P, Body),`+
+			`{ok, Msg} = rabbit_basic:message(XName, <<"%s">>, Content),`+
+			`rabbit_queue_type:publish_at_most_once(X, Msg).`,
+		bodyB64, exchange, msgID, typeStr, routingKey)
+
+	if globalControl == nil || globalExecutor == nil {
+		return fmt.Errorf("control plane not connected")
+	}
+	out, err := globalControl.EvalOnGameBroker(context.Background(), globalExecutor, erlang)
+	if err != nil {
+		return fmt.Errorf("publish courier message: %w (output: %s)", err, out)
+	}
+	return nil
+}
+
+// rmqSendWhisper sends a private chat message ("whisper") to one player.
+// The target sees it in their whispers chat tab; only they receive it.
+//
+// senderName is the display name shown on the whisper. impersonatedFlsID is
+// optional — if non-empty, the message appears to come from that FLS player
+// (admin-only feature, useful for "GM" personas). Leave empty for an unsigned
+// admin whisper.
+func rmqSendWhisper(targetFlsID, targetName, senderName, message, impersonatedFlsID string) error {
+	// FChatMessageData per chat-and-courier.md. JSON field names match the C++
+	// member names with the m_ prefix stripped (broadcast struct uses the same
+	// convention).
+	chatMsg := map[string]any{
+		"Id":              fmt.Sprintf("%d", time.Now().UnixNano()),
+		"ChannelType":     "ETextChatChannelType::Whispers",
+		"FuncomIdFrom":    impersonatedFlsID,
+		"UserNameTo":      targetName,
+		"Message":         map[string]any{"Body": message},
+		"TimeStamp":       time.Now().UTC().Format(time.RFC3339),
+		"bUseSpoofedUserName": senderName != "",
+		"SpoofedUserNameFrom": map[string]any{"AuthorName": senderName},
+	}
+	chatJSON, err := json.Marshal(chatMsg)
+	if err != nil {
+		return fmt.Errorf("marshal chat message: %w", err)
+	}
+
+	// FCourierMessageContent: outer wrapper with stringified inner Content +
+	// Type discriminator.
+	envelope := map[string]any{
+		"Content": string(chatJSON),
+		"Type":    "ECourierMessageType::TextChat",
+	}
+	envelopeJSON, err := json.Marshal(envelope)
+	if err != nil {
+		return fmt.Errorf("marshal courier envelope: %w", err)
+	}
+
+	// Whisper routing: exchange=chat.whispers, routing key=target's FLS id.
+	return publishCourierMessage("chat.whispers", targetFlsID, envelopeJSON, "12")
+}
+
 // ── typed wrappers ────────────────────────────────────────────────────────────
 
 func rmqAddItemToInventory(flsID, itemName string, qty int, durability float64) error {

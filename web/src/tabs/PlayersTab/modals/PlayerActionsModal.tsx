@@ -121,6 +121,10 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
   const [selectedTeleportTarget, setSelectedTeleportTarget] = useState<number | null>(null)
   const [targetSearch, setTargetSearch] = useState('')
 
+  // Whisper
+  const [whisperText, setWhisperText] = useState('')
+  const [whisperSenderName, setWhisperSenderName] = useState('GM')
+
   // Spawn vehicle
   const [spawnVehicleId, setSpawnVehicleId] = useState('')
   const [spawnVehicleTemplate, setSpawnVehicleTemplate] = useState('')
@@ -1097,6 +1101,49 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                             }}
                           >
                             Move
+                          </Button>
+                        </div>
+                      </div>
+                    </Panel>
+
+                    <Panel>
+                      <SectionLabel>Whisper</SectionLabel>
+                      <div className="text-xs text-muted mb-2">
+                        Send a private chat message to {player.name}. <span className="text-warning">Experimental</span> — first external use of the courier publish path; if it doesn't show up in their whispers tab, the wire format may need tweaking.
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted shrink-0">From:</span>
+                          <input
+                            type="text"
+                            value={whisperSenderName}
+                            onChange={e => setWhisperSenderName(e.target.value)}
+                            placeholder="GM"
+                            maxLength={32}
+                            className="w-32 bg-surface border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:border-accent/60"
+                          />
+                          <span className="text-xs text-muted">(shown as the sender)</span>
+                        </div>
+                        <textarea
+                          value={whisperText}
+                          onChange={e => setWhisperText(e.target.value)}
+                          placeholder={`Message to ${player.name}…`}
+                          rows={2}
+                          maxLength={500}
+                          className="w-full bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent/60 resize-y"
+                        />
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-xs text-muted">{whisperText.length} / 500</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            isDisabled={busy || !whisperText.trim()}
+                            onPress={() => run(
+                              () => api.chat.whisper(player.fls_id, player.name, whisperSenderName.trim() || 'GM', whisperText.trim()),
+                              `Whisper sent to ${player.name}`,
+                            ).then(() => setWhisperText(''))}
+                          >
+                            Send
                           </Button>
                         </div>
                       </div>

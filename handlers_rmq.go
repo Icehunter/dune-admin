@@ -292,6 +292,42 @@ func handleRMQSpawnVehicle(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /api/v1/players/{id}/player-ids
+// POST /api/v1/chat/whisper
+//
+// EXPERIMENTAL — first attempt at an external chat publish per Adain's
+// chat-and-courier.md. The wire format is reconstructed from IDA/DWARF
+// evidence; live external publish wasn't pinned by Adain, so the message
+// may be silently dropped by the game even though the broker accepts it.
+// Iterate based on what the target sees in-game.
+func handleRMQWhisper(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		TargetFlsID       string `json:"target_fls_id"`
+		TargetName        string `json:"target_name"`
+		SenderName        string `json:"sender_name"`
+		Message           string `json:"message"`
+		ImpersonatedFlsID string `json:"impersonated_fls_id,omitempty"`
+	}
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, err, 400)
+		return
+	}
+	if req.TargetFlsID == "" || req.Message == "" {
+		jsonErr(w, fmt.Errorf("target_fls_id and message required"), 400)
+		return
+	}
+	if req.SenderName == "" {
+		req.SenderName = "GM"
+	}
+	if err := rmqSendWhisper(req.TargetFlsID, req.TargetName, req.SenderName, req.Message, req.ImpersonatedFlsID); err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
+	jsonOK(w, map[string]string{
+		"ok":   fmt.Sprintf("whisper sent to %s (broker accepted; in-game delivery is experimental)", req.TargetFlsID),
+		"note": "Adain's chat publish recipe is not live-tested externally — check the target's whispers tab to confirm delivery.",
+	})
+}
+
 // Returns both ID forms for an actor so you can verify which PlayerId the
 // game server would receive. Also renders a sample AddItemToInventory envelope
 // (without sending it) so the exact message format can be confirmed.

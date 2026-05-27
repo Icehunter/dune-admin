@@ -420,6 +420,22 @@ export const api = {
       req<MutateResult>('POST', '/broadcast/shutdown', { shutdown_type, delay_minutes, cancel }),
   },
 
+  chat: {
+    // EXPERIMENTAL — first attempt at sending a chat whisper from outside the
+    // game per Adain's chat-and-courier.md. Broker should accept the publish;
+    // in-game delivery is unverified.
+    whisper: (
+      target_fls_id: string,
+      target_name: string,
+      sender_name: string,
+      message: string,
+      impersonated_fls_id?: string,
+    ) =>
+      req<MutateResult & { note?: string }>('POST', '/chat/whisper', {
+        target_fls_id, target_name, sender_name, message, impersonated_fls_id,
+      }),
+  },
+
   contracts: {
     list: () => req<{id: string; alias: string; tag_count: number}[]>('GET', '/contracts'),
   },

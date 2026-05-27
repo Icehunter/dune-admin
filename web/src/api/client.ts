@@ -7,12 +7,21 @@ declare global {
 function getApiBase(): string {
   const stored = localStorage.getItem('dune_admin_backend')
   if (stored) return stored.replace(/\/$/, '') + '/api/v1'
-  // When the SPA is served from a Go-binary deploy (any host other than the
-  // Vite dev server's localhost), the backend is the same origin. Only the
-  // dev-time localhost case needs the :8080 default.
-  if (typeof window !== 'undefined' &&
-      window.location.hostname !== 'localhost' &&
-      window.location.hostname !== '127.0.0.1') {
+
+  // CDN-hosted deploy detection: VITE_CDN_BASE_URL is set at build time by
+  // the Cloudflare Pages workflow and unset for single-binary Go builds
+  // (AMP / local make build / GoReleaser). On a CDN deploy the SPA and the
+  // backend are on different origins, so defaulting to window.location.origin
+  // would hit Cloudflare's SPA fallback (index.html) instead of the API,
+  // producing the "Unexpected token '<', '<!DOCTYPE'" JSON parse error on
+  // every tab. Fall through to the localhost dev default and require k8s
+  // users to set localStorage('dune_admin_backend') to their SSH tunnel.
+  const isCdnDeploy = !!(import.meta.env.VITE_CDN_BASE_URL as string | undefined)
+
+  // Single-binary deploys (AMP, local Go): SPA and API are same-origin.
+  // Anything that isn't the Vite dev server gets the auto-detected origin.
+  const devHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
+  if (!isCdnDeploy && typeof window !== 'undefined' && !devHosts.has(window.location.hostname)) {
     return window.location.origin + '/api/v1'
   }
   return 'http://localhost:8080/api/v1'

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import { Button, ListBox, Select, Spinner, toast } from '@heroui/react'
 import { api } from '../api/client'
 import type { ServerSetting, ServerSettingUpdate, RawSection } from '../api/client'
@@ -8,6 +8,45 @@ const CATEGORY_ORDER = [
   'Survival', 'Progression', 'Harvesting', 'Building', 'Inventory',
   'Guilds & Economy', 'Storm Cycle', 'PvP & Security', 'Spice', 'Taxation', 'Sandworm',
 ]
+
+// CATEGORY_ICONS picks a small set of lucide icon names that map to each
+// category so the grid of category cards is scannable by glance. Unknown
+// categories fall back to "sliders".
+const CATEGORY_ICONS: Record<string, string> = {
+  'Survival':         'heart-pulse',
+  'Progression':      'trending-up',
+  'Harvesting':       'pickaxe',
+  'Building':         'home',
+  'Inventory':        'package',
+  'Guilds & Economy': 'coins',
+  'Storm Cycle':      'wind',
+  'PvP & Security':   'shield',
+  'Spice':            'sparkles',
+  'Taxation':         'receipt',
+  'Sandworm':         'worm',
+}
+
+// COMMON_KEYS is the curated list of settings most admins want to touch
+// regularly. Rendered at the top of the page so they don't need to drill
+// into a category. Other settings live in the per-category grid below.
+//
+// Each entry is "section|key" — same shape as pendingKey().
+const COMMON_KEYS = new Set([
+  '/Script/DuneSandbox.DuneGameMode|m_GlobalXPMultiplier',
+  '/Script/DuneSandbox.DuneGameMode|m_GlobalHealthMultiplier',
+  '/Script/DuneSandbox.DuneGameMode|m_GlobalDamageToNpcsMultiplier',
+  '/Script/DuneSandbox.DuneGameMode|m_GlobalDamageToPlayersMultiplier',
+  '/Script/DuneSandbox.DuneGameMode|m_GlobalHarvestAmountMultiplier',
+  '/Script/DuneSandbox.DuneGameMode|m_WaterConsumptionRate',
+  '/Script/DuneSandbox.PvpPveSettings|bPvPEnabled',
+  '/Script/DuneSandbox.PvpPveSettings|bServerPVE',
+  '/Script/DuneSandbox.SandStormConfig|m_StormCycleDuration',
+  '/Script/DuneSandbox.InventorySystemSettings|PlayerInventoryStartingSize',
+  '/Script/DuneSandbox.BuildingSettings|m_MaxNumLandclaimSegments',
+  '/Script/DuneSandbox.GuildSettings|m_MaxGuildMembersAllowed',
+  '/DeteriorationSystem.ItemDeteriorationConstants|m_ItemDurabilityLossMultiplier',
+  '/Script/DuneSandbox.SpiceHarvestingSystem|m_bSpawningActive',
+])
 
 const SOURCE_FILE: Record<string, string> = {
   defaultGame:   'DefaultGame.ini',
@@ -179,7 +218,15 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSave
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState('')
   const [saving, setSaving]   = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
   const textareaRef           = useRef<HTMLTextAreaElement>(null)
+
+  const toggle = () => {
+    // While editing, the header click stays a no-op so users don't lose
+    // their draft by accident. Cancel first if they want to collapse.
+    if (editing) return
+    setCollapsed(v => !v)
+  }
 
   const startEdit = () => {
     setDraft(userSec ? linesToText(userSec.lines) : '')
@@ -226,14 +273,27 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSave
 
   return (
     <Panel>
-      <div className="flex items-center gap-2 mb-2 flex-wrap">
+      <div
+        className={`flex items-center gap-2 flex-wrap ${collapsed && !editing ? 'cursor-pointer select-none' : 'mb-2'}`}
+        onClick={collapsed && !editing ? toggle : undefined}
+      >
+        <Icon
+          name={collapsed && !editing ? 'chevron-right' : 'chevron-down'}
+          className="w-4 h-4 shrink-0 text-muted/70"
+        />
         <SectionLabel>{shortSection(sectionName)}</SectionLabel>
         {sorted.map(s => (
           <span key={s.source} className={`text-xs ${LAYER_STYLE[s.source]?.cls ?? 'text-muted'}`}>
             {SOURCE_FILE[s.source] ?? s.source}
           </span>
         ))}
-        <div className="ml-auto flex items-center gap-1 min-w-[2rem]">
+        {userSec && collapsed && !editing && (
+          <span className="text-xs text-warning">· user override</span>
+        )}
+        <div
+          className="ml-auto flex items-center gap-1 min-w-[2rem]"
+          onClick={e => e.stopPropagation()}
+        >
           {editing ? (
             <>
               <Button size="sm" variant="ghost" onPress={cancel} isDisabled={saving}>Cancel</Button>
@@ -241,7 +301,7 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSave
                 {saving ? <Spinner size="sm" color="current" /> : 'Save'}
               </Button>
             </>
-          ) : (
+          ) : !collapsed && (
             <>
               {userSec && (
                 <button
@@ -256,12 +316,20 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSave
               <Button size="sm" variant="ghost" onPress={startEdit} isDisabled={saving}>
                 <Icon name="pencil" className="w-3.5 h-3.5" />
               </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onPress={() => setCollapsed(true)}
+                aria-label="Collapse section"
+              >
+                <Icon name="x" className="w-3.5 h-3.5" />
+              </Button>
             </>
           )}
         </div>
       </div>
 
-      {editing ? (
+      {!collapsed && (editing ? (
         <textarea
           ref={textareaRef}
           value={draft}
@@ -307,7 +375,7 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSave
             )
           })}
         </div>
-      )}
+      ))}
     </Panel>
   )
 }
@@ -323,6 +391,9 @@ export default function ServerSettingsTab() {
   const [error, setError]     = useState<string | null>(null)
   const [showAll, setShowAll] = useState(() =>
     localStorage.getItem('serverSettings.showAll') === 'true'
+  )
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(() =>
+    localStorage.getItem('serverSettings.expandedCategory') || null
   )
 
   const load = useCallback(async () => {
@@ -413,7 +484,22 @@ export default function ServerSettingsTab() {
     ? items
     : items.filter(item => item.layers.some(l => USER_SOURCES.has(l.source)))
 
-  const categories = groupByCategory(visibleItems)
+  // Partition into "common" (curated top-of-page list) vs "everything else"
+  // (the categorised grid below). When the showAll toggle is off and a
+  // common key has no user override, it's still surfaced — common settings
+  // are interesting even before they've been touched.
+  const commonItems = items.filter(item => COMMON_KEYS.has(`${item.section}|${item.key}`))
+  const advancedItems = visibleItems.filter(item => !COMMON_KEYS.has(`${item.section}|${item.key}`))
+  const categories = groupByCategory(advancedItems)
+
+  const toggleCategory = (cat: string) => {
+    setExpandedCategory(prev => {
+      const next = prev === cat ? null : cat
+      if (next === null) localStorage.removeItem('serverSettings.expandedCategory')
+      else localStorage.setItem('serverSettings.expandedCategory', next)
+      return next
+    })
+  }
 
   // Group raw sections by INI section name, merging all source files.
   // Iteration in priority order ensures the Map key insertion order
@@ -466,14 +552,17 @@ export default function ServerSettingsTab() {
 
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 pb-6">
 
-        {/* Typed / schema settings */}
-        {categories.map(([cat, catItems]) => (
-          <Panel key={cat}>
-            <SectionLabel>{cat}</SectionLabel>
+        {/* Common Settings — curated subset, always visible at top */}
+        {commonItems.length > 0 && (
+          <Panel>
+            <SectionLabel>Common Settings</SectionLabel>
+            <div className="text-xs text-muted mb-2">
+              The dozen or so knobs admins reach for most often. Everything else lives in the categories below.
+            </div>
             <div>
-              {catItems.map(item => (
+              {commonItems.map(item => (
                 <SettingRow
-                  key={`${item.section}|${item.key}`}
+                  key={`common|${item.section}|${item.key}`}
                   item={item}
                   pending={pending.get(pendingKey(item))}
                   onChange={v => handleChange(item, v)}
@@ -482,16 +571,103 @@ export default function ServerSettingsTab() {
               ))}
             </div>
           </Panel>
-        ))}
+        )}
+
+        {/* Category grid — clicking a card expands that category's settings
+            inline, spanning the full grid row right below the clicked card.
+            Subsequent cards reflow down. col-span-full on the expanded Panel
+            is what makes the grid break cleanly at that point. */}
+        {categories.length > 0 && (
+          <div>
+            <SectionLabel>Advanced — All Categories</SectionLabel>
+            <div className="text-xs text-muted mb-2">
+              Click a category to expand it in place. Click again or pick another to switch.
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-2">
+              {categories.map(([cat, catItems]) => {
+                const isOpen = expandedCategory === cat
+                const overrideCount = catItems.filter(i =>
+                  i.layers.some(l => USER_SOURCES.has(l.source))
+                ).length
+                return (
+                  <Fragment key={cat}>
+                    <button
+                      onClick={() => toggleCategory(cat)}
+                      className={`flex items-center gap-2 rounded border px-3 py-2.5 text-left transition-colors ${
+                        isOpen
+                          ? 'bg-accent/15 border-accent/60 text-foreground'
+                          : 'bg-surface border-border/60 hover:bg-surface-secondary hover:border-border text-foreground/90'
+                      }`}
+                    >
+                      <Icon
+                        name={CATEGORY_ICONS[cat] ?? 'sliders'}
+                        className={`w-4 h-4 shrink-0 ${isOpen ? 'text-accent' : 'text-muted'}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{cat}</div>
+                        <div className="text-xs text-muted">
+                          {catItems.length} {catItems.length === 1 ? 'setting' : 'settings'}
+                          {overrideCount > 0 && (
+                            <span className="ml-1 text-warning">· {overrideCount} overridden</span>
+                          )}
+                        </div>
+                      </div>
+                      <Icon
+                        name={isOpen ? 'chevron-up' : 'chevron-down'}
+                        className={`w-4 h-4 shrink-0 ${isOpen ? 'text-accent' : 'text-muted/50'}`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <Panel className="col-span-full mt-1 mb-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <SectionLabel>{cat}</SectionLabel>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onPress={() => toggleCategory(cat)}
+                            aria-label="Collapse category"
+                          >
+                            <Icon name="x" className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        <div>
+                          {catItems.map(item => (
+                            <SettingRow
+                              key={`${item.section}|${item.key}`}
+                              item={item}
+                              pending={pending.get(pendingKey(item))}
+                              onChange={v => handleChange(item, v)}
+                              onDelete={() => handleDelete(item)}
+                            />
+                          ))}
+                        </div>
+                      </Panel>
+                    )}
+                  </Fragment>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Raw sections — non-schema keys and array entries, one panel per INI section */}
-        {visibleRawSections.map(sections => (
-          <RawSectionPanel
-            key={sections[0].section}
-            sections={sections}
-            onSaved={load}
-          />
-        ))}
+        {visibleRawSections.length > 0 && (
+          <div>
+            <SectionLabel>Raw INI Sections</SectionLabel>
+            <div className="text-xs text-muted mb-2">
+              Array entries (<code className="font-mono">+key=val</code>) and unrecognised keys, grouped by INI section.
+            </div>
+            <div className="flex flex-col gap-3 mt-2">
+              {visibleRawSections.map(sections => (
+                <RawSectionPanel
+                  key={sections[0].section}
+                  sections={sections}
+                  onSaved={load}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

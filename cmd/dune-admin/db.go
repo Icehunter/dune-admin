@@ -3607,33 +3607,24 @@ func cmdGetPlayerVehicles(controllerID int64) Cmd {
 	}
 }
 
-func cmdRepairItem(itemID int64) Cmd {
-	return func() Msg {
-		if globalDB == nil {
-			return msgMutate{err: fmt.Errorf("not connected")}
-		}
-		ctx := context.Background()
-
-		// Derive owning player from item → inventory → actor (pawn) so we can gate Offline.
-		var pawnID int64
-		err := globalDB.QueryRow(ctx, `
+func lookupRepairItemOwner(ctx context.Context, itemID int64) (int64, error) {
+	var pawnID int64
+	err := globalDB.QueryRow(ctx, `
 			SELECT inv.actor_id
 			FROM dune.items i
 			JOIN dune.inventories inv ON inv.id = i.inventory_id
 			WHERE i.id = $1::bigint`, itemID).Scan(&pawnID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return msgMutate{err: fmt.Errorf("item %d not found", itemID)}
-		}
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("look up item owner: %w", err)}
-		}
-		if err := checkPlayerOffline(ctx, pawnID); err != nil {
-			return msgMutate{err: err}
-		}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, fmt.Errorf("item %d not found", itemID)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("look up item owner: %w", err)
+	}
+	return pawnID, nil
+}
 
-		// Write both fields: Current-only gets clamped to surviving Decayed on reload.
-		// Fallback target = 100.0 covers the 0-100 gear scale when MaxDurability is absent.
-		res, err := globalDB.Exec(ctx, `
+func repairItemDurability(ctx context.Context, itemID int64) (int64, error) {
+	res, err := globalDB.Exec(ctx, `
 			UPDATE dune.items i
 			SET stats = jsonb_set(
 				jsonb_set(i.stats,
@@ -3655,23 +3646,64 @@ func cmdRepairItem(itemID int64) Cmd {
 				abs(COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'CurrentDurability')::float8, 0) - t.val) > 0.01
 				OR abs(COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'DecayedMaxDurability')::float8, 0) - t.val) > 0.01
 			  )`, itemID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected(), nil
+}
+
+func itemHasDurabilityStats(ctx context.Context, itemID int64) (bool, error) {
+	var hasDurability bool
+	if err := globalDB.QueryRow(ctx, `
+				SELECT stats ? 'FItemStackAndDurabilityStats'
+				FROM dune.items WHERE id = $1::bigint`, itemID).Scan(&hasDurability); err != nil {
+		return false, fmt.Errorf("check item: %w", err)
+	}
+	return hasDurability, nil
+}
+
+func repairItemNoChangeMessage(itemID int64, hasDurability bool) msgMutate {
+	if !hasDurability {
+		return msgMutate{err: fmt.Errorf("item %d has no durability field", itemID)}
+	}
+	return msgMutate{ok: fmt.Sprintf("Item %d already at full durability", itemID)}
+}
+
+func repairItemSuccessMessage(itemID int64) msgMutate {
+	return msgMutate{ok: fmt.Sprintf("Repaired item %d — relog to see in-game", itemID)}
+}
+
+func cmdRepairItem(itemID int64) Cmd {
+	return func() Msg {
+		if globalDB == nil {
+			return msgMutate{err: fmt.Errorf("not connected")}
+		}
+		ctx := context.Background()
+
+		// Derive owning player from item → inventory → actor (pawn) so we can gate Offline.
+		pawnID, err := lookupRepairItemOwner(ctx, itemID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+		if err := checkPlayerOffline(ctx, pawnID); err != nil {
+			return msgMutate{err: err}
+		}
+
+		// Write both fields: Current-only gets clamped to surviving Decayed on reload.
+		// Fallback target = 100.0 covers the 0-100 gear scale when MaxDurability is absent.
+		rowsAffected, err := repairItemDurability(ctx, itemID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("repair item: %w", err)}
 		}
-		if res.RowsAffected() == 0 {
+		if rowsAffected == 0 {
 			// Item exists (owner lookup succeeded). Either no durability field, or already at ceiling.
-			var hasDur bool
-			if err := globalDB.QueryRow(ctx, `
-				SELECT stats ? 'FItemStackAndDurabilityStats'
-				FROM dune.items WHERE id = $1::bigint`, itemID).Scan(&hasDur); err != nil {
-				return msgMutate{err: fmt.Errorf("check item: %w", err)}
+			hasDurability, err := itemHasDurabilityStats(ctx, itemID)
+			if err != nil {
+				return msgMutate{err: err}
 			}
-			if !hasDur {
-				return msgMutate{err: fmt.Errorf("item %d has no durability field", itemID)}
-			}
-			return msgMutate{ok: fmt.Sprintf("Item %d already at full durability", itemID)}
+			return repairItemNoChangeMessage(itemID, hasDurability)
 		}
-		return msgMutate{ok: fmt.Sprintf("Repaired item %d — relog to see in-game", itemID)}
+		return repairItemSuccessMessage(itemID)
 	}
 }
 

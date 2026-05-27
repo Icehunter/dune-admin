@@ -143,6 +143,150 @@ func isStructuralBuilding(buildingType string) bool {
 	return structuralBuildingTypes[buildingType]
 }
 
+func fetchBlueprintName(ctx context.Context, blueprintID int64) string {
+	var name string
+	_ = globalDB.QueryRow(ctx, `
+		SELECT COALESCE(i.stats->'FBuildingBlueprintItemStats'->1->>'BuildingBlueprintName', '')
+		FROM dune.building_blueprints bb
+		JOIN dune.items i ON i.id = bb.item_id
+		WHERE bb.id = $1`, blueprintID).Scan(&name)
+	return name
+}
+
+func buildBlueprintInstance(iid int, buildingType string, transform []float32, stability bool) (blueprintInstance, bool) {
+	if len(transform) < 4 {
+		return blueprintInstance{}, false
+	}
+	return blueprintInstance{
+		InstanceID:        &iid,
+		BuildingType:      buildingType,
+		X:                 float64(transform[0]),
+		Y:                 float64(transform[1]),
+		Z:                 float64(transform[2]),
+		Rotation:          float64(transform[3]),
+		ProvidesStability: &stability,
+	}, true
+}
+
+func fetchBlueprintInstances(ctx context.Context, blueprintID int64) ([]blueprintInstance, error) {
+	rows, err := globalDB.Query(ctx, `
+		SELECT instance_id, building_type, transform, provides_stability
+		FROM dune.building_blueprint_instances
+		WHERE building_blueprint_id = $1
+		ORDER BY instance_id`, blueprintID)
+	if err != nil {
+		return nil, fmt.Errorf("query instances: %w", err)
+	}
+	defer rows.Close()
+
+	var instances []blueprintInstance
+	for rows.Next() {
+		var iid int
+		var buildingType string
+		var transform []float32
+		var stability bool
+		if err := rows.Scan(&iid, &buildingType, &transform, &stability); err != nil {
+			continue
+		}
+		instance, ok := buildBlueprintInstance(iid, buildingType, transform, stability)
+		if !ok {
+			continue
+		}
+		instances = append(instances, instance)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read instances: %w", err)
+	}
+	return instances, nil
+}
+
+func buildBlueprintPlaceable(pid int, buildingType string, transform []float32) (blueprintPlaceable, bool) {
+	if len(transform) < 6 {
+		return blueprintPlaceable{}, false
+	}
+	return blueprintPlaceable{
+		PlaceableID:  &pid,
+		BuildingType: buildingType,
+		X:            float64(transform[0]),
+		Y:            float64(transform[1]),
+		Z:            float64(transform[2]),
+		RX:           float64(transform[3]),
+		RY:           float64(transform[4]),
+		RZ:           float64(transform[5]),
+	}, true
+}
+
+func fetchBlueprintPlaceables(ctx context.Context, blueprintID int64) ([]blueprintPlaceable, error) {
+	rows, err := globalDB.Query(ctx, `
+		SELECT placeable_id, building_type, transform
+		FROM dune.building_blueprint_placeables
+		WHERE building_blueprint_id = $1
+		ORDER BY placeable_id`, blueprintID)
+	if err != nil {
+		return nil, fmt.Errorf("query placeables: %w", err)
+	}
+	defer rows.Close()
+
+	var placeables []blueprintPlaceable
+	for rows.Next() {
+		var pid int
+		var buildingType string
+		var transform []float32
+		if err := rows.Scan(&pid, &buildingType, &transform); err != nil {
+			continue
+		}
+		placeable, ok := buildBlueprintPlaceable(pid, buildingType, transform)
+		if !ok {
+			continue
+		}
+		placeables = append(placeables, placeable)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read placeables: %w", err)
+	}
+	return placeables, nil
+}
+
+func buildBlueprintPentashield(pid int, scale []int16) (blueprintPentashield, bool) {
+	if len(scale) < 3 {
+		return blueprintPentashield{}, false
+	}
+	return blueprintPentashield{
+		PlaceableID: pid,
+		Scale:       [3]int{int(scale[0]), int(scale[1]), int(scale[2])},
+	}, true
+}
+
+func fetchBlueprintPentashields(ctx context.Context, blueprintID int64) ([]blueprintPentashield, error) {
+	rows, err := globalDB.Query(ctx, `
+		SELECT placeable_id, scale
+		FROM dune.building_blueprint_pentashields
+		WHERE building_blueprint_id = $1
+		ORDER BY placeable_id`, blueprintID)
+	if err != nil {
+		return nil, fmt.Errorf("query pentashields: %w", err)
+	}
+	defer rows.Close()
+
+	var pentashields []blueprintPentashield
+	for rows.Next() {
+		var pid int
+		var scale []int16
+		if err := rows.Scan(&pid, &scale); err != nil {
+			continue
+		}
+		pentashield, ok := buildBlueprintPentashield(pid, scale)
+		if !ok {
+			continue
+		}
+		pentashields = append(pentashields, pentashield)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read pentashields: %w", err)
+	}
+	return pentashields, nil
+}
+
 // fetchBlueprintData fetches blueprint instances, placeables, and pentashields
 // from the DB and returns a blueprintFile ready for JSON serialization.
 func fetchBlueprintData(ctx context.Context, blueprintID int64) (blueprintFile, error) {
@@ -150,116 +294,18 @@ func fetchBlueprintData(ctx context.Context, blueprintID int64) (blueprintFile, 
 		return blueprintFile{}, fmt.Errorf("not connected")
 	}
 
-	// Fetch the blueprint name from the item stats.
-	var name string
-	_ = globalDB.QueryRow(ctx, `
-		SELECT COALESCE(i.stats->'FBuildingBlueprintItemStats'->1->>'BuildingBlueprintName', '')
-		FROM dune.building_blueprints bb
-		JOIN dune.items i ON i.id = bb.item_id
-		WHERE bb.id = $1`, blueprintID).Scan(&name)
-
-	// Fetch instances.
-	iRows, err := globalDB.Query(ctx, `
-		SELECT instance_id, building_type, transform, provides_stability
-		FROM dune.building_blueprint_instances
-		WHERE building_blueprint_id = $1
-		ORDER BY instance_id`, blueprintID)
+	name := fetchBlueprintName(ctx, blueprintID)
+	instances, err := fetchBlueprintInstances(ctx, blueprintID)
 	if err != nil {
-		return blueprintFile{}, fmt.Errorf("query instances: %w", err)
+		return blueprintFile{}, err
 	}
-	defer iRows.Close()
-
-	var instances []blueprintInstance
-	for iRows.Next() {
-		var iid int
-		var btype string
-		var t []float32
-		var stability bool
-		if err := iRows.Scan(&iid, &btype, &t, &stability); err != nil {
-			continue
-		}
-		if len(t) < 4 {
-			continue
-		}
-		instances = append(instances, blueprintInstance{
-			InstanceID:        &iid,
-			BuildingType:      btype,
-			X:                 float64(t[0]),
-			Y:                 float64(t[1]),
-			Z:                 float64(t[2]),
-			Rotation:          float64(t[3]),
-			ProvidesStability: &stability,
-		})
-	}
-	if err := iRows.Err(); err != nil {
-		return blueprintFile{}, fmt.Errorf("read instances: %w", err)
-	}
-
-	// Fetch placeables.
-	pRows, err := globalDB.Query(ctx, `
-		SELECT placeable_id, building_type, transform
-		FROM dune.building_blueprint_placeables
-		WHERE building_blueprint_id = $1
-		ORDER BY placeable_id`, blueprintID)
+	placeables, err := fetchBlueprintPlaceables(ctx, blueprintID)
 	if err != nil {
-		return blueprintFile{}, fmt.Errorf("query placeables: %w", err)
+		return blueprintFile{}, err
 	}
-	defer pRows.Close()
-
-	var placeables []blueprintPlaceable
-	for pRows.Next() {
-		var pid int
-		var btype string
-		var t []float32
-		if err := pRows.Scan(&pid, &btype, &t); err != nil {
-			continue
-		}
-		if len(t) < 6 {
-			continue
-		}
-		placeables = append(placeables, blueprintPlaceable{
-			PlaceableID:  &pid,
-			BuildingType: btype,
-			X:            float64(t[0]),
-			Y:            float64(t[1]),
-			Z:            float64(t[2]),
-			RX:           float64(t[3]),
-			RY:           float64(t[4]),
-			RZ:           float64(t[5]),
-		})
-	}
-	if err := pRows.Err(); err != nil {
-		return blueprintFile{}, fmt.Errorf("read placeables: %w", err)
-	}
-
-	// Fetch pentashield scale data.
-	psRows, err := globalDB.Query(ctx, `
-		SELECT placeable_id, scale
-		FROM dune.building_blueprint_pentashields
-		WHERE building_blueprint_id = $1
-		ORDER BY placeable_id`, blueprintID)
+	pentashields, err := fetchBlueprintPentashields(ctx, blueprintID)
 	if err != nil {
-		return blueprintFile{}, fmt.Errorf("query pentashields: %w", err)
-	}
-	defer psRows.Close()
-
-	var pentashields []blueprintPentashield
-	for psRows.Next() {
-		var pid int
-		var scale []int16
-		if err := psRows.Scan(&pid, &scale); err != nil {
-			continue
-		}
-		if len(scale) < 3 {
-			continue
-		}
-		pentashields = append(pentashields, blueprintPentashield{
-			PlaceableID: pid,
-			Scale:       [3]int{int(scale[0]), int(scale[1]), int(scale[2])},
-		})
-	}
-	if err := psRows.Err(); err != nil {
-		return blueprintFile{}, fmt.Errorf("read pentashields: %w", err)
+		return blueprintFile{}, err
 	}
 
 	return blueprintFile{

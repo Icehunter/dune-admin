@@ -15,13 +15,11 @@ cmdAwardCharXP                 db.go:2723:1                        33   https://
 cmdProgressionUnlock           db.go:2314:1                        32   https://github.com/Icehunter/dune-admin/issues/29
 cmdReverseProgressionUnlock    db.go:2457:1                        32   https://github.com/Icehunter/dune-admin/issues/30
 main                           main.go:420:1                       30   https://github.com/Icehunter/dune-admin/issues/31
-captureBroker                  capture.go:191:1                    27   https://github.com/Icehunter/dune-admin/issues/32
 handleUpdateServerSettings     handlers_server_settings.go:862:1   26   https://github.com/Icehunter/dune-admin/issues/33
 discoverDefaultINI             handlers_server_settings.go:339:1   26   https://github.com/Icehunter/dune-admin/issues/34
 cmdSetStarterClass             db.go:1866:1                        25   https://github.com/Icehunter/dune-admin/issues/35
 runKubectlSetup                setup.go:99:1                       25   https://github.com/Icehunter/dune-admin/issues/36
 parseINILines                  handlers_server_settings.go:198:1   24   https://github.com/Icehunter/dune-admin/issues/37
-runCapture                     capture.go:98:1                     24   https://github.com/Icehunter/dune-admin/issues/38
 cmdRepairVehicle               db.go:3440:1                        24   https://github.com/Icehunter/dune-admin/issues/39
 stripEmptySections             handlers_server_settings.go:703:1   22   https://github.com/Icehunter/dune-admin/issues/40
 handleGiveItems                handlers_players.go:230:1           22   https://github.com/Icehunter/dune-admin/issues/41

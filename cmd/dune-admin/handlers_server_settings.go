@@ -1041,6 +1041,39 @@ func joinINILinesWithoutSkipped(lines []string, skip map[int]bool) string {
 // or "-Foo" appears in owned, any line with that exact prefixed key is removed;
 // if plain "Foo" is owned, all variants (plain, +Foo, -Foo) are removed.
 // Comments and unrelated lines are left alone.
+func parseOwnedINIKey(trim string) (lineKey, baseKey string, ok bool) {
+	if len(trim) == 0 || trim[0] == ';' || trim[0] == '#' {
+		return "", "", false
+	}
+	rest := trim
+	prefix := ""
+	if trim[0] == '+' || trim[0] == '-' {
+		prefix = string(trim[0])
+		rest = trim[1:]
+	}
+	eq := strings.Index(rest, "=")
+	if eq <= 0 {
+		return "", "", false
+	}
+	baseKey = strings.TrimSpace(rest[:eq])
+	return prefix + baseKey, baseKey, true
+}
+
+func shouldStripOwnedLine(section, trim string, owned map[string]map[string]bool) bool {
+	if section == "" {
+		return false
+	}
+	lineKey, baseKey, ok := parseOwnedINIKey(trim)
+	if !ok {
+		return false
+	}
+	secOwned := owned[section]
+	if secOwned == nil {
+		return false
+	}
+	return secOwned[lineKey] || secOwned[baseKey]
+}
+
 func stripKeysFromContent(content string, owned map[string]map[string]bool) string {
 	if len(owned) == 0 || content == "" {
 		return content
@@ -1056,24 +1089,8 @@ func stripKeysFromContent(content string, owned map[string]map[string]bool) stri
 			out = append(out, line)
 			continue
 		}
-		// Drop lines where the (possibly-prefixed) key is dune-admin-owned.
-		// Comments, blank lines, and section headers are preserved as-is.
-		if curSec != "" && len(trim) > 0 && trim[0] != ';' && trim[0] != '#' {
-			rest := trim
-			pfx := ""
-			if trim[0] == '+' || trim[0] == '-' {
-				pfx = string(trim[0])
-				rest = trim[1:]
-			}
-			if eq := strings.Index(rest, "="); eq > 0 {
-				baseKey := strings.TrimSpace(rest[:eq])
-				lineKey := pfx + baseKey
-				secOwned := owned[curSec]
-				// Drop if: exact prefixed key owned, OR plain base key owned (covers all variants).
-				if secOwned != nil && (secOwned[lineKey] || secOwned[baseKey]) {
-					continue
-				}
-			}
+		if shouldStripOwnedLine(curSec, trim, owned) {
+			continue
 		}
 		out = append(out, line)
 	}

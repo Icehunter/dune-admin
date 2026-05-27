@@ -550,7 +550,7 @@ export default function ServerSettingsTab() {
         A server restart is required for them to take effect.
       </p>
 
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 pb-6">
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 pb-6 pr-1">
 
         {/* Common Settings — curated subset, always visible at top */}
         {commonItems.length > 0 && (

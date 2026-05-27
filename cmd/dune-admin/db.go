@@ -261,212 +261,300 @@ func cmdRunSQL(sql string) Cmd {
 
 func cmdGiveItem(playerID int64, template string, qty, quality int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
-			return msgMutate{err: fmt.Errorf("not connected")}
-		}
-		if playerID == 0 {
-			return msgMutate{err: fmt.Errorf("player ID required")}
-		}
-		template = strings.TrimSpace(template)
-		if template == "" {
-			return msgMutate{err: fmt.Errorf("item template required")}
-		}
-		if qty <= 0 {
-			return msgMutate{err: fmt.Errorf("quantity must be > 0")}
-		}
-		ctx := context.Background()
+		return runGiveItem(playerID, template, qty, quality)
+	}
+}
 
-		// Prefer the backpack (inventory_type=0) — that's where resources live.
-		// Fall back to the first available inventory if not found.
-		var invID int64
-		var maxSlots int
-		var maxVolume float64
-		err := globalDB.QueryRow(ctx, `
-			SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
-			FROM dune.inventories
-			WHERE actor_id = $1::bigint AND inventory_type = 0
-			LIMIT 1`, playerID).Scan(&invID, &maxSlots, &maxVolume)
-		if err != nil {
-			err = globalDB.QueryRow(ctx,
-				`SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
-				 FROM dune.inventories WHERE actor_id = $1::bigint LIMIT 1`, playerID).Scan(&invID, &maxSlots, &maxVolume)
-			if err != nil {
-				return msgMutate{err: fmt.Errorf("find inventory: %w", err)}
+func runGiveItem(playerID int64, template string, qty, quality int64) Msg {
+	if globalDB == nil {
+		return msgMutate{err: fmt.Errorf("not connected")}
+	}
+	trimmedTemplate, err := validateGiveItemInput(playerID, template, qty)
+	if err != nil {
+		return msgMutate{err: err}
+	}
+	template = trimmedTemplate
+
+	ctx := context.Background()
+	inv, err := findGiveItemInventory(ctx, playerID)
+	if err != nil {
+		return msgMutate{err: err}
+	}
+	state, err := loadGiveItemInventoryState(ctx, inv.id, template, quality, inv.hasVolumeCap)
+	if err != nil {
+		return msgMutate{err: err}
+	}
+	stackMax, err := resolveStackMax(ctx, template, quality)
+	if err != nil {
+		return msgMutate{err: err}
+	}
+	if stackMax < 1 {
+		stackMax = 1
+	}
+	if err := ensureGiveItemVolumeCapacity(ctx, inv, state, template, qty); err != nil {
+		return msgMutate{err: err}
+	}
+
+	updates, newStacks := planGiveItemStacks(qty, stackMax, state.stacks)
+	if err := ensureGiveItemSlotCapacity(inv, state, len(newStacks)); err != nil {
+		return msgMutate{err: err}
+	}
+	if err := applyGiveItemChanges(ctx, inv.id, template, quality, state.maxPos, updates, newStacks); err != nil {
+		return msgMutate{err: err}
+	}
+	return msgMutate{ok: formatGiveItemResult(playerID, template, qty, len(updates), len(newStacks))}
+}
+
+type giveItemInventory struct {
+	id           int64
+	maxSlots     int
+	maxVolume    float64
+	hasSlotCap   bool
+	hasVolumeCap bool
+}
+
+type giveItemStackSlot struct {
+	id   int64
+	size int64
+}
+
+type giveItemInventoryState struct {
+	stacks     []giveItemStackSlot
+	usedSlots  int
+	usedVolume float64
+	maxPos     int64
+}
+
+type giveItemStackUpdate struct {
+	id  int64
+	add int64
+}
+
+func validateGiveItemInput(playerID int64, template string, qty int64) (string, error) {
+	if playerID == 0 {
+		return "", fmt.Errorf("player ID required")
+	}
+	template = strings.TrimSpace(template)
+	if template == "" {
+		return "", fmt.Errorf("item template required")
+	}
+	if qty <= 0 {
+		return "", fmt.Errorf("quantity must be > 0")
+	}
+	return template, nil
+}
+
+func findGiveItemInventory(ctx context.Context, playerID int64) (giveItemInventory, error) {
+	var inv giveItemInventory
+	err := globalDB.QueryRow(ctx, `
+		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
+		FROM dune.inventories
+		WHERE actor_id = $1::bigint AND inventory_type = 0
+		LIMIT 1`, playerID).Scan(&inv.id, &inv.maxSlots, &inv.maxVolume)
+	if err == nil {
+		inv.hasSlotCap = inv.maxSlots > 0
+		inv.hasVolumeCap = inv.maxVolume > 0
+		return inv, nil
+	}
+	err = globalDB.QueryRow(ctx, `
+		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
+		FROM dune.inventories
+		WHERE actor_id = $1::bigint
+		LIMIT 1`, playerID).Scan(&inv.id, &inv.maxSlots, &inv.maxVolume)
+	if err != nil {
+		return giveItemInventory{}, fmt.Errorf("find inventory: %w", err)
+	}
+	inv.hasSlotCap = inv.maxSlots > 0
+	inv.hasVolumeCap = inv.maxVolume > 0
+	return inv, nil
+}
+
+func loadGiveItemInventoryState(ctx context.Context, invID int64, template string, quality int64, includeVolume bool) (giveItemInventoryState, error) {
+	rows, err := globalDB.Query(ctx, `
+		SELECT id, template_id, stack_size, quality_level, volume_override, position_index
+		FROM dune.items
+		WHERE inventory_id = $1::bigint`, invID)
+	if err != nil {
+		return giveItemInventoryState{}, err
+	}
+	defer rows.Close()
+
+	state := giveItemInventoryState{maxPos: -1}
+	for rows.Next() {
+		var id int64
+		var tmpl string
+		var stackSize int64
+		var qLevel int64
+		var vol pgtype.Float8
+		var pos int64
+		if err := rows.Scan(&id, &tmpl, &stackSize, &qLevel, &vol, &pos); err != nil {
+			continue
+		}
+		state.usedSlots++
+		if pos > state.maxPos {
+			state.maxPos = pos
+		}
+		if qLevel == quality && tmpl == template {
+			state.stacks = append(state.stacks, giveItemStackSlot{id: id, size: stackSize})
+		}
+		if includeVolume {
+			state.usedVolume += inventoryItemVolume(tmpl, vol) * float64(stackSize)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return giveItemInventoryState{}, err
+	}
+	return state, nil
+}
+
+func inventoryItemVolume(template string, vol pgtype.Float8) float64 {
+	if vol.Valid && vol.Float64 > 0 {
+		return vol.Float64
+	}
+	if itemData.Items != nil {
+		if rule, ok := itemData.Items[strings.ToLower(template)]; ok {
+			return rule.Volume // 0 is valid — item takes no volume
+		}
+		if itemData.DefaultVolume > 0 {
+			return itemData.DefaultVolume
+		}
+		// Unknown volume: treat as 0 (no space consumed).
+		return 0
+	}
+	if itemData.DefaultVolume > 0 {
+		return itemData.DefaultVolume
+	}
+	return 0
+}
+
+func ensureGiveItemVolumeCapacity(
+	ctx context.Context,
+	inv giveItemInventory,
+	state giveItemInventoryState,
+	template string,
+	qty int64,
+) error {
+	if !inv.hasVolumeCap {
+		return nil
+	}
+	perItemVol, err := resolveItemVolume(ctx, template)
+	if err != nil {
+		return err
+	}
+	if perItemVol <= 0 {
+		return nil
+	}
+	availableVol := inv.maxVolume - state.usedVolume
+	if availableVol < 0 {
+		availableVol = 0
+	}
+	maxByVolume := int64(math.Floor(availableVol / perItemVol))
+	if maxByVolume < qty {
+		return fmt.Errorf(
+			"over weight limit: room for %d more %s (%.2f/%.2f volume used)",
+			maxByVolume, template, state.usedVolume, inv.maxVolume)
+	}
+	return nil
+}
+
+func planGiveItemStacks(qty, stackMax int64, stacks []giveItemStackSlot) ([]giveItemStackUpdate, []int64) {
+	sorted := make([]giveItemStackSlot, len(stacks))
+	copy(sorted, stacks)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].size > sorted[j].size
+	})
+	remaining := qty
+	updates := make([]giveItemStackUpdate, 0, len(sorted))
+	if stackMax > 1 {
+		for _, st := range sorted {
+			if remaining == 0 {
+				break
 			}
-		}
-
-		hasSlotCap := maxSlots > 0
-		hasVolumeCap := maxVolume > 0
-
-		type stackSlot struct {
-			id   int64
-			size int64
-		}
-		var stacks []stackSlot
-		usedSlots := 0
-		usedVolume := 0.0
-		maxPos := int64(-1)
-
-		rows, err := globalDB.Query(ctx, `
-			SELECT id, template_id, stack_size, quality_level, volume_override, position_index
-			FROM dune.items
-			WHERE inventory_id = $1::bigint`, invID)
-		if err != nil {
-			return msgMutate{err: err}
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var id int64
-			var tmpl string
-			var stackSize int64
-			var qLevel int64
-			var vol pgtype.Float8
-			var pos int64
-			if err := rows.Scan(&id, &tmpl, &stackSize, &qLevel, &vol, &pos); err != nil {
+			space := stackMax - st.size
+			if space <= 0 {
 				continue
 			}
-			usedSlots++
-			if pos > maxPos {
-				maxPos = pos
+			add := space
+			if add > remaining {
+				add = remaining
 			}
-			if qLevel == quality && tmpl == template {
-				stacks = append(stacks, stackSlot{id: id, size: stackSize})
-			}
-			if hasVolumeCap {
-				itemVol := 0.0
-				if vol.Valid && vol.Float64 > 0 {
-					itemVol = vol.Float64
-				} else if itemData.Items != nil {
-					if rule, ok := itemData.Items[strings.ToLower(tmpl)]; ok {
-						itemVol = rule.Volume // 0 is valid — item takes no volume
-					} else if itemData.DefaultVolume > 0 {
-						itemVol = itemData.DefaultVolume
-					}
-					// Unknown volume: treat as 0 (no space consumed).
-				} else if itemData.DefaultVolume > 0 {
-					itemVol = itemData.DefaultVolume
-				}
-				usedVolume += itemVol * float64(stackSize)
-			}
+			updates = append(updates, giveItemStackUpdate{id: st.id, add: add})
+			remaining -= add
 		}
-		if rows.Err() != nil {
-			return msgMutate{err: rows.Err()}
-		}
-		stackMax, err := resolveStackMax(ctx, template, quality)
-		if err != nil {
-			return msgMutate{err: err}
-		}
-		if stackMax < 1 {
-			stackMax = 1
-		}
-
-		if hasVolumeCap {
-			perItemVol, err := resolveItemVolume(ctx, template)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-			if perItemVol > 0 {
-				availableVol := maxVolume - usedVolume
-				if availableVol < 0 {
-					availableVol = 0
-				}
-				maxByVolume := int64(math.Floor(availableVol / perItemVol))
-				if maxByVolume < qty {
-					return msgMutate{err: fmt.Errorf(
-						"over weight limit: room for %d more %s (%.2f/%.2f volume used)",
-						maxByVolume, template, usedVolume, maxVolume)}
-				}
-			}
-			// perItemVol == 0: item takes no volume, always fits.
-		}
-
-		sort.Slice(stacks, func(i, j int) bool {
-			return stacks[i].size > stacks[j].size
-		})
-
-		remaining := qty
-		type stackUpdate struct {
-			id  int64
-			add int64
-		}
-		var updates []stackUpdate
-		if stackMax > 1 {
-			for _, st := range stacks {
-				if remaining == 0 {
-					break
-				}
-				space := stackMax - st.size
-				if space <= 0 {
-					continue
-				}
-				add := space
-				if add > remaining {
-					add = remaining
-				}
-				updates = append(updates, stackUpdate{id: st.id, add: add})
-				remaining -= add
-			}
-		}
-
-		var newStacks []int64
-		for remaining > 0 {
-			size := stackMax
-			if size > remaining {
-				size = remaining
-			}
-			newStacks = append(newStacks, size)
-			remaining -= size
-		}
-
-		if hasSlotCap {
-			freeSlots := maxSlots - usedSlots
-			if freeSlots < len(newStacks) {
-				return msgMutate{err: fmt.Errorf(
-					"inventory full: need %d free slots, have %d",
-					len(newStacks), freeSlots)}
-			}
-		}
-
-		tx, err := globalDB.Begin(ctx)
-		if err != nil {
-			return msgMutate{err: err}
-		}
-		defer func() { _ = tx.Rollback(ctx) }()
-
-		for _, u := range updates {
-			_, err = tx.Exec(ctx, `
-				UPDATE dune.items
-				SET stack_size = stack_size + $1::bigint
-				WHERE id = $2::bigint`, u.add, u.id)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-		}
-
-		nextPos := maxPos + 1
-		for _, size := range newStacks {
-			_, err = tx.Exec(ctx, `
-				INSERT INTO dune.items (inventory_id, stack_size, position_index, template_id, quality_level, stats)
-				VALUES ($1::bigint, $2::bigint, $3::bigint, $4::text, $5::bigint, '{}'::jsonb)`,
-				invID, size, nextPos, template, quality)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-			nextPos++
-		}
-
-		if err := tx.Commit(ctx); err != nil {
-			return msgMutate{err: err}
-		}
-
-		msg := fmt.Sprintf("Added %d × %s to player %d", qty, template, playerID)
-		if len(updates) > 0 || len(newStacks) > 0 {
-			msg = fmt.Sprintf(
-				"Added %d × %s to player %d (%d stack(s) topped up, %d new stack(s))",
-				qty, template, playerID, len(updates), len(newStacks))
-		}
-		return msgMutate{ok: msg}
 	}
+	newStackCap := 0
+	if stackMax > 0 {
+		newStackCap = int((remaining + stackMax - 1) / stackMax)
+	}
+	newStacks := make([]int64, 0, newStackCap)
+	for remaining > 0 {
+		size := stackMax
+		if size > remaining {
+			size = remaining
+		}
+		newStacks = append(newStacks, size)
+		remaining -= size
+	}
+	return updates, newStacks
+}
+
+func ensureGiveItemSlotCapacity(inv giveItemInventory, state giveItemInventoryState, newStackCount int) error {
+	if !inv.hasSlotCap {
+		return nil
+	}
+	freeSlots := inv.maxSlots - state.usedSlots
+	if freeSlots < newStackCount {
+		return fmt.Errorf("inventory full: need %d free slots, have %d", newStackCount, freeSlots)
+	}
+	return nil
+}
+
+func applyGiveItemChanges(
+	ctx context.Context,
+	invID int64,
+	template string,
+	quality int64,
+	maxPos int64,
+	updates []giveItemStackUpdate,
+	newStacks []int64,
+) error {
+	tx, err := globalDB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	for _, u := range updates {
+		if _, err := tx.Exec(ctx, `
+			UPDATE dune.items
+			SET stack_size = stack_size + $1::bigint
+			WHERE id = $2::bigint`, u.add, u.id); err != nil {
+			return err
+		}
+	}
+
+	nextPos := maxPos + 1
+	for _, size := range newStacks {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO dune.items (inventory_id, stack_size, position_index, template_id, quality_level, stats)
+			VALUES ($1::bigint, $2::bigint, $3::bigint, $4::text, $5::bigint, '{}'::jsonb)`,
+			invID, size, nextPos, template, quality); err != nil {
+			return err
+		}
+		nextPos++
+	}
+
+	return tx.Commit(ctx)
+}
+
+func formatGiveItemResult(playerID int64, template string, qty int64, toppedUp, created int) string {
+	msg := fmt.Sprintf("Added %d × %s to player %d", qty, template, playerID)
+	if toppedUp > 0 || created > 0 {
+		return fmt.Sprintf(
+			"Added %d × %s to player %d (%d stack(s) topped up, %d new stack(s))",
+			qty, template, playerID, toppedUp, created)
+	}
+	return msg
 }
 
 // checkInventoryCapacity verifies that qty items of template fit in the player's

@@ -66,7 +66,9 @@ type itemRule struct {
 	Volume        float64  `json:"volume"`
 	Tier          int      `json:"tier"`
 	Rarity        string   `json:"rarity"`
+	Category      string   `json:"category"`
 	MaxDurability *float64 `json:"max_durability,omitempty"`
+	Icon          *string  `json:"icon"`
 }
 
 type itemDataFile struct {
@@ -217,6 +219,68 @@ type dungeonRecord struct {
 	DurationMs   int64  `json:"duration_ms"`
 	PlayersNum   int    `json:"players_num"`
 	CompletionID int64  `json:"completion_id"`
+}
+
+// ── market board types ────────────────────────────────────────────────────────
+
+type marketItem struct {
+	TemplateID   string  `json:"template_id"`
+	Quality      int64   `json:"quality"`
+	DisplayName  string  `json:"display_name"`
+	Category     string  `json:"category"`
+	Tier         int     `json:"tier"`
+	Rarity       string  `json:"rarity"`
+	LowestPrice  int64   `json:"lowest_price"`
+	TotalStock   int64   `json:"total_stock"`
+	BotStock     int64   `json:"bot_stock"`
+	ListingCount int64   `json:"listing_count"`
+	Icon         *string `json:"icon"`
+}
+
+type marketListing struct {
+	OrderID    int64  `json:"order_id"`
+	TemplateID string `json:"template_id"`
+	OwnerType  string `json:"owner_type"` // "bot" or "player"
+	OwnerName  string `json:"owner_name"`
+	Price      int64  `json:"price"`
+	Stock      int64  `json:"stock"`
+	Quality    int64  `json:"quality"`
+}
+
+type marketSale struct {
+	OrderID    int64  `json:"order_id"`
+	TemplateID string `json:"template_id"`
+	SellerType string `json:"seller_type"` // "bot" or "player"
+	SellerName string `json:"seller_name"`
+	Price      int64  `json:"price"`
+	Quantity   int64  `json:"quantity"`
+}
+
+type marketStats struct {
+	TotalListings  int64 `json:"total_listings"`
+	BotListings    int64 `json:"bot_listings"`
+	PlayerListings int64 `json:"player_listings"`
+	TotalStock     int64 `json:"total_stock"`
+	BotStock       int64 `json:"bot_stock"`
+	PlayerStock    int64 `json:"player_stock"`
+	UniqueItems    int64 `json:"unique_items"`
+}
+
+type msgMarketItems struct {
+	rows []marketItem
+	err  error
+}
+type msgMarketListings struct {
+	rows []marketListing
+	err  error
+}
+type msgMarketSales struct {
+	rows []marketSale
+	err  error
+}
+type msgMarketStats struct {
+	stats marketStats
+	err   error
 }
 
 type teleportLocation struct {

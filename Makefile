@@ -1,5 +1,5 @@
-.PHONY: build web go linux dev-server setup deploy-web \
-        vulncheck gosec npm-audit \
+.PHONY: build web go linux dev dev-server setup deploy-web \
+        vulncheck gosec pnpm-audit \
         test test-race vet fmt fmt-check \
         tools verify \
         version version-patch version-minor version-major
@@ -31,6 +31,9 @@ linux:
 
 dev-server:
 	go run .
+
+dev:
+	go tool github.com/air-verse/air
 
 setup:
 	go run . -setup
@@ -69,8 +72,8 @@ vulncheck:
 gosec:
 	go tool github.com/securego/gosec/v2/cmd/gosec -severity high -confidence high ./...
 
-npm-audit:
-	cd web && npm audit --audit-level=high
+pnpm-audit:
+	cd web && pnpm audit --audit-level=high
 
 verify:
 	@$(MAKE) fmt-check && \
@@ -86,6 +89,7 @@ tools:
 	@echo "Caching dev tools (versions pinned in go.mod)..."
 	@go tool golang.org/x/vuln/cmd/govulncheck -version || true
 	@go tool github.com/securego/gosec/v2/cmd/gosec --version || true
+	@go tool github.com/air-verse/air -v || true
 	@echo "Done!"
 
 # Print current version.

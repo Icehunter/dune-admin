@@ -17,11 +17,12 @@ const CHEAT_COLUMNS: Column<CheatKey>[] = [
 ]
 
 export default function LogsTab() {
-  // In direct (AMP) mode the "pods" returned by /api/v1/logs/pods are
-  // really log files inside the container; rename the UI strings to match.
-  const isDirect = useStatus()?.connection_mode === 'direct'
-  const sourceLabel = isDirect ? 'Log Files' : 'Pods'
-  const itemLabel = isDirect ? 'log file' : 'pod'
+  // Control planes that surface log files (amp, docker, local) get
+  // file-oriented labels; kubectl keeps "Pods".
+  const control = useStatus()?.control
+  const isFileBased = control === 'amp' || control === 'docker' || control === 'local'
+  const sourceLabel = isFileBased ? 'Log Files' : 'Pods'
+  const itemLabel = isFileBased ? 'log file' : 'pod'
 
   const [pods, setPods] = useState<LogPod[]>([])
   const [podsLoading, setPodsLoading] = useState(false)

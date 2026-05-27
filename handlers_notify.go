@@ -1,13 +1,10 @@
 package main
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
-	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -18,36 +15,26 @@ var (
 	mqGameConn *amqp.Connection
 	mqGameCh   *amqp.Channel
 	mqGameMu   sync.Mutex
-	mqGameAddr = "10.43.48.246:5672" // ClusterIP, TLS
 )
 
 func mqGameChannel() (*amqp.Channel, error) {
 	mqGameMu.Lock()
 	defer mqGameMu.Unlock()
 
-	// Return healthy existing channel.
 	if mqGameCh != nil && !mqGameCh.IsClosed() {
 		return mqGameCh, nil
 	}
-
-	// (Re)connect.
 	if mqGameConn != nil && !mqGameConn.IsClosed() {
 		mqGameConn.Close()
 	}
 
-	cfg := amqp.Config{
-		SASL:            []amqp.Authentication{&amqp.PlainAuth{Username: capUser, Password: capPass}},
-		Vhost:           "/",
-		Heartbeat:       10 * time.Second,
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- internal RabbitMQ tunnel over SSH, self-signed cert
-		Dial: func(_, _ string) (net.Conn, error) {
-			if globalSSH == nil {
-				return nil, fmt.Errorf("SSH not connected")
-			}
-			return globalSSH.Dial("tcp", mqGameAddr)
-		},
+	addr := brokerGameAddr
+	if addr == "" {
+		// Legacy fallback for existing K8s configs that predate broker_game_addr.
+		addr = "10.43.48.246:5672"
 	}
-	conn, err := amqp.DialConfig("amqps://"+mqGameAddr+"/", cfg)
+
+	conn, err := dialAMQP(addr, capUser, capPass, brokerTLS || addr == "10.43.48.246:5672")
 	if err != nil {
 		return nil, fmt.Errorf("mq-game connect: %w", err)
 	}
@@ -115,7 +102,8 @@ func publishNotification(routingKey string, keywords []string, content string) e
 //	  "content":     "Hello World!"
 //	}
 func handleNotify(w http.ResponseWriter, r *http.Request) {
-	if !requireSSH(w) {
+	if globalExecutor == nil {
+		jsonErr(w, fmt.Errorf("not connected"), http.StatusServiceUnavailable)
 		return
 	}
 	var req struct {

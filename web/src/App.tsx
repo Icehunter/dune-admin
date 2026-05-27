@@ -11,9 +11,10 @@ import BlueprintsTab from './tabs/BlueprintsTab'
 import BasesTab from './tabs/BasesTab'
 import StorageTab from './tabs/StorageTab'
 import ServerSettingsTab from './tabs/ServerSettingsTab'
+import MarketTab from './tabs/MarketTab'
 import { Icon } from './dune-ui'
 
-const TAB_IDS = ['battlegroup', 'players', 'database', 'logs', 'blueprints', 'bases', 'storage', 'server-settings'] as const
+const TAB_IDS = ['battlegroup', 'players', 'database', 'logs', 'blueprints', 'bases', 'storage', 'server', 'market'] as const
 type TabId = typeof TAB_IDS[number]
 const DEFAULT_TAB: TabId = 'battlegroup'
 
@@ -86,8 +87,14 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
           <span className="text-xl font-bold uppercase tracking-[0.2em] text-accent">
             DUNE ADMIN
           </span>
+          {status?.control && status.control !== 'none' && (
+            <span className="text-xs text-muted">{status.control}</span>
+          )}
           {status?.ssh_host && (
             <span className="text-xs text-muted">{status.ssh_host}</span>
+          )}
+          {status?.db_host && status.control !== 'kubectl' && (
+            <span className="text-xs text-muted">{status.db_host}</span>
           )}
           {status?.version && (
             <span className="text-xs text-muted">v{status.version}</span>
@@ -105,15 +112,10 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
         </div>
 
         <div className="flex items-center gap-3">
-          {status?.connection_mode !== 'direct' && (
-            <ConnectionBadge label="SSH" connected={status?.ssh_connected ?? false} />
+          {status?.executor === 'ssh' && (
+            <ConnectionBadge label="SSH" connected={status.ssh_connected} />
           )}
           <ConnectionBadge label="DB" connected={status?.db_connected ?? false} />
-          {status?.connection_mode === 'direct' && (
-            <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#1a2a1a', color: '#8d8', border: '1px solid #2a4a2a' }}>
-              direct
-            </span>
-          )}
           {status?.pod_ns && (
             <span className="text-xs text-muted">ns: {status.pod_ns}</span>
           )}
@@ -210,7 +212,8 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
               <Tabs.Tab id="blueprints">Blueprints<Tabs.Indicator /></Tabs.Tab>
               <Tabs.Tab id="bases">Bases<Tabs.Indicator /></Tabs.Tab>
               <Tabs.Tab id="storage">Storage<Tabs.Indicator /></Tabs.Tab>
-              <Tabs.Tab id="server-settings">Server Settings<Tabs.Indicator /></Tabs.Tab>
+              <Tabs.Tab id="server">Server<Tabs.Indicator /></Tabs.Tab>
+              <Tabs.Tab id="market">Market<Tabs.Indicator /></Tabs.Tab>
             </Tabs.List>
           </Tabs.ListContainer>
           <Tabs.Panel id="battlegroup" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
@@ -234,8 +237,11 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
           <Tabs.Panel id="storage" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
             <StorageTab />
           </Tabs.Panel>
-          <Tabs.Panel id="server-settings" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+          <Tabs.Panel id="server" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
             <ServerSettingsTab />
+          </Tabs.Panel>
+          <Tabs.Panel id="market" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+            <MarketTab isSignedIn={isSignedIn} />
           </Tabs.Panel>
         </Tabs>
       </div>

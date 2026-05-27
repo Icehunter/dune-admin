@@ -31,6 +31,8 @@ type Props<T, K extends string> = {
   sortValue?: (row: T, key: K) => string | number | null | undefined
   /** Rendered when `rows` is empty. */
   emptyState?: ReactNode
+  /** Called when a row is clicked / activated. */
+  onRowAction?: (row: T) => void
   /** Extra classes for the outer Table element. */
   className?: string
   /**
@@ -61,6 +63,7 @@ export function DataTable<T, K extends string>({
   initialSort,
   sortValue,
   emptyState,
+  onRowAction,
   className,
   virtualized = false,
   rowHeight = 32,
@@ -95,6 +98,12 @@ export function DataTable<T, K extends string>({
           aria-label={ariaLabel}
           sortDescriptor={sortDescriptor}
           onSortChange={setSortDescriptor}
+          {...(onRowAction ? {
+            onRowAction: (key) => {
+              const row = sorted.find(r => rowId(r) === String(key))
+              if (row) onRowAction(row)
+            }
+          } : {})}
         >
           {/* React Aria collections require the `columns` prop + render-function
               pattern when the parent (Virtualizer/items) does its own

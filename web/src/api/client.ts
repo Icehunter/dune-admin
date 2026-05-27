@@ -7,7 +7,7 @@ declare global {
 function getApiBase(): string {
   const stored = localStorage.getItem('dune_admin_backend')
   if (stored) return stored.replace(/\/$/, '') + '/api/v1'
-  return window.location.origin + '/api/v1'
+  return 'http://localhost:8080/api/v1'
 }
 
 export function getWsBase(): string {
@@ -42,7 +42,89 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   return res.json()
 }
 
-export type Status = { ssh_connected: boolean; db_connected: boolean; connection_mode: string; pod_ns: string; pod_ip: string; ssh_host: string; version?: string }
+export type SettingLayer = {
+  source: string
+  value: string
+}
+
+export type ServerSetting = {
+  section: string
+  key: string
+  type: 'float' | 'int' | 'bool' | 'string'
+  default: string
+  label: string
+  description: string
+  category: string
+  current: string
+  is_overridden: boolean
+  source: 'userGame' | 'userEngine' | 'defaultGame' | 'defaultEngine' | ''
+  layers: SettingLayer[]
+}
+
+export type ServerSettingUpdate = {
+  section: string
+  key: string
+  value: string
+}
+
+export type RawLine = {
+  prefix: string  // '', '+', or '-'
+  key: string
+  value: string
+}
+
+export type RawSection = {
+  section: string
+  source: 'userGame' | 'userEngine' | 'defaultGame' | 'defaultEngine'
+  lines: RawLine[]
+}
+
+export type ServerSettingsResponse = {
+  settings: ServerSetting[]
+  raw: RawSection[]
+}
+
+export type AppConfig = {
+  control: string
+  ssh_host: string
+  ssh_user: string
+  ssh_key: string
+  db_host: string
+  db_port: number
+  db_user: string
+  db_pass: string
+  db_name: string
+  db_schema: string
+  control_namespace: string
+  docker_gameserver: string
+  docker_broker_game: string
+  docker_broker_admin: string
+  cmd_start: string
+  cmd_stop: string
+  cmd_restart: string
+  cmd_status: string
+  broker_game_addr: string
+  broker_admin_addr: string
+  broker_tls: boolean
+  broker_exec_prefix: string
+  backup_dir: string
+  listen_addr: string
+  scrip_currency: number
+}
+
+export type Status = {
+  executor: string       // "ssh" | "local" | "none"
+  control: string        // "kubectl" | "docker" | "local" | "none"
+  ssh_connected: boolean
+  db_connected: boolean
+  ssh_host: string
+  db_host: string
+  pod_ns: string
+  pod_ip: string
+  version?: string
+  commit?: string
+  build_time?: string
+}
 export type Player = { id: number; account_id: number; controller_id: number; fls_id: string; name: string; class: string; map: string; faction_id: number; online_status: string }
 export type InventoryItem = { id: number; template_id: string; name: string; stack_size: number; quality: number; durability: string; max_durability: string }
 export type CurrencyRow = { player_id: number; currency_id: number; balance: number }
@@ -63,35 +145,116 @@ export type DungeonRecord = { dungeon_id: string; difficulty: string; duration_m
 export type TeleportLocation = { name: string; x: number; y: number; z: number }
 export type OnlineRow = { player_id: number; name: string; map: string; status: string; last_seen: string }
 export type BackupFile = { name: string; size_bytes: number; modified: string; has_yaml: boolean }
-export type ProgressionPreset = { id: string; name: string; description: string; node_count: number; nodes: string[] }
-export type ServerSetting = {
-  section: string
-  key: string
-  type: 'float' | 'int' | 'bool'
-  default: number | boolean | string
-  label: string
-  description: string
+
+export type MarketItem = {
+  template_id: string
+  quality: number
+  display_name: string
   category: string
-  current: string
-  is_overridden: boolean
-  source: 'userOverrides' | 'userGame' | ''
+  tier: number
+  rarity: string
+  lowest_price: number
+  total_stock: number
+  bot_stock: number
+  listing_count: number
+  icon: string | null
 }
-export type ServerSettingUpdate = { section: string; key: string; value: string }
+export type MarketListing = {
+  order_id: number
+  template_id: string
+  owner_type: 'bot' | 'player'
+  owner_name: string
+  price: number
+  stock: number
+  quality: number
+}
+export type MarketSale = {
+  order_id: number
+  template_id: string
+  seller_type: 'bot' | 'player'
+  seller_name: string
+  price: number
+  quantity: number
+}
+export type MarketStats = {
+  total_listings: number
+  bot_listings: number
+  player_listings: number
+  total_stock: number
+  bot_stock: number
+  player_stock: number
+  unique_items: number
+}
+export type MarketItemsParams = {
+  search?: string
+  category?: string
+  tier?: number
+  rarity?: string
+  owner?: 'bot' | 'player'
+  page?: number
+  limit?: number
+}
+export type MarketItemsResponse = {
+  items: MarketItem[]
+  total: number
+  page: number
+  limit: number
+}
+export type CatalogItem = {
+  template_id: string
+  display_name: string
+}
+export type BotStatus = {
+  running: boolean      // injected by dune-admin proxy (true = bot responded)
+  uptime: string
+  last_list_tick: string | null
+  last_buy_tick: string | null
+  next_list_tick?: string | null
+  next_buy_tick?: string | null
+  listing_count: number
+  balance?: number
+  error_count: number
+  error?: string        // set when running=false
+}
+export type BotConfig = {
+  list_tick_interval: string
+  buy_tick_interval: string
+  rarity_multipliers: Record<string, number>
+  vendor_multipliers?: Record<string, number>
+  grade_multipliers: number[]
+  buy_threshold: number
+  max_buys_per_tick: number
+  listings_per_grade: number
+  disabled_items: string[]
+  enabled: boolean
+}
+
+export type ProgressionPreset = {
+  id: string
+  name: string
+  description: string
+  node_count: number
+  nodes: string[]
+}
 
 export const api = {
   status: () => req<Status>('GET', '/status'),
   reconnect: () => req<Status>('POST', '/reconnect'),
-
   progression: {
     presets: () => req<ProgressionPreset[]>('GET', '/progression/presets'),
     applyPreset: (account_id: number, preset_id: string) =>
       req<MutateResult>('POST', '/players/progression/apply-preset', { account_id, preset_id }),
   },
-
+  config: {
+    get: () => req<AppConfig>('GET', '/config'),
+    save: (cfg: AppConfig) => req<Status>('POST', '/config', cfg),
+  },
   serverSettings: {
-    get: () => req<ServerSetting[]>('GET', '/server-settings'),
+    get: () => req<ServerSettingsResponse>('GET', '/server-settings'),
     update: (updates: ServerSettingUpdate[]) =>
       req<{ ok: string; applied: number; cleared: number }>('PUT', '/server-settings', { updates }),
+    updateRaw: (section: string, lines: string) =>
+      req<{ ok: string }>('PUT', '/server-settings/raw', { section, lines }),
   },
 
   battlegroup: {
@@ -246,5 +409,39 @@ export const api = {
   bases: {
     list: () => req<BaseRow[]>('GET', '/bases'),
     exportUrl: (id: number) => `${BASE}/bases/${id}/export`,
+  },
+
+  market: {
+    items: (params?: MarketItemsParams) => {
+      const q = new URLSearchParams()
+      if (params?.search)   q.set('search', params.search)
+      if (params?.category) q.set('category', params.category)
+      if (params?.tier != null) q.set('tier', String(params.tier))
+      if (params?.rarity)   q.set('rarity', params.rarity)
+      if (params?.owner)    q.set('owner', params.owner)
+      if (params?.page != null) q.set('page', String(params.page))
+      if (params?.limit != null) q.set('limit', String(params.limit))
+      const qs = q.toString()
+      return req<MarketItemsResponse>('GET', `/market/items${qs ? '?' + qs : ''}`)
+    },
+    listings: (templateId?: string, owner?: 'bot' | 'player') => {
+      const q = new URLSearchParams()
+      if (templateId) q.set('template_id', templateId)
+      if (owner) q.set('owner', owner)
+      const qs = q.toString()
+      return req<MarketListing[]>('GET', `/market/listings${qs ? '?' + qs : ''}`)
+    },
+    sales: () => req<MarketSale[]>('GET', '/market/sales'),
+    stats: () => req<MarketStats>('GET', '/market/stats'),
+    categories: () => req<string[]>('GET', '/market/categories'),
+    catalog: () => req<CatalogItem[]>('GET', '/market/catalog'),
+  },
+
+  marketBot: {
+    status: () => req<BotStatus>('GET', '/market-bot/status'),
+    config: () => req<BotConfig>('GET', '/market-bot/config'),
+    saveConfig: (cfg: BotConfig) => req<BotConfig>('PUT', '/market-bot/config', cfg),
+    lifecycle: (cmd: 'start' | 'stop' | 'restart') => req<{ output: string }>('POST', '/market-bot/exec', { cmd }),
+    logsReady: () => req<{ ready: boolean; reason?: string; namespace?: string; name?: string }>('GET', '/market-bot/logs-ready'),
   },
 }

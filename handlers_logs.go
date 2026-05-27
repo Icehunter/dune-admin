@@ -10,7 +10,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-
 var wsUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return originAllowed(r.Header.Get("Origin"))
@@ -30,34 +29,19 @@ func isValidK8sName(name string) bool {
 }
 
 func handleLogPods(w http.ResponseWriter, r *http.Request) {
-	if connectionMode == "direct" {
-		handleLogFilesDirect(w, r)
+	if globalControl == nil {
+		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
-	if !requireSSH(w) {
-		return
-	}
-	out, err := sshExec(fmt.Sprintf(
-		"sudo kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>&1", globalPodNS))
+	sources, err := globalControl.ListLogSources(r.Context(), globalExecutor)
 	if err != nil {
-		jsonErr(w, fmt.Errorf("kubectl: %w", err), 500)
+		jsonErr(w, err, 500)
 		return
 	}
-	out2, _ := sshExec(
-		"sudo kubectl get pods -n funcom-operators --no-headers -o custom-columns=NAME:.metadata.name 2>&1")
-
+	// Convert to logPod for frontend compat.
 	var pods []logPod
-	for _, line := range splitLines(out) {
-		name := strings.TrimSpace(line)
-		if name != "" && !strings.Contains(name, "db-dbdepl") {
-			pods = append(pods, logPod{Namespace: globalPodNS, Name: name})
-		}
-	}
-	for _, line := range splitLines(out2) {
-		name := strings.TrimSpace(line)
-		if name != "" {
-			pods = append(pods, logPod{Namespace: "funcom-operators", Name: name})
-		}
+	for _, s := range sources {
+		pods = append(pods, logPod{Namespace: s.Namespace, Name: s.Name})
 	}
 	if pods == nil {
 		pods = []logPod{}
@@ -65,35 +49,22 @@ func handleLogPods(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, pods)
 }
 
-func handleLogFilesDirect(w http.ResponseWriter, _ *http.Request) {
-	files, err := listLogFiles()
-	if err != nil {
-		jsonErr(w, err, 500)
-		return
-	}
-	pods := make([]logPod, 0, len(files))
-	for _, f := range files {
-		pods = append(pods, logPod{Namespace: "logs", Name: f.Name})
-	}
-	jsonOK(w, pods)
-}
-
 func handleLogStream(w http.ResponseWriter, r *http.Request) {
-	if connectionMode == "direct" {
-		handleLogStreamDirect(w, r)
-		return
-	}
-	if !requireSSH(w) {
-		return
-	}
 	ns := r.URL.Query().Get("ns")
 	pod := r.URL.Query().Get("pod")
 	if ns == "" || pod == "" {
 		http.Error(w, "ns and pod required", 400)
 		return
 	}
-	if !isValidK8sName(ns) || !isValidK8sName(pod) {
-		http.Error(w, "invalid ns or pod name", 400)
+	if isValidK8sName(ns) && isValidK8sName(pod) {
+		// K8s names validated — safe for kubectl.
+	} else if strings.ContainsAny(ns+pod, ";|&`$(){}\\") {
+		http.Error(w, "invalid characters in ns or pod", 400)
+		return
+	}
+
+	if globalControl == nil {
+		http.Error(w, "not connected", 503)
 		return
 	}
 
@@ -104,46 +75,9 @@ func handleLogStream(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	conn.SetWriteDeadline(time.Time{})
 
-	cmd := fmt.Sprintf("sudo kubectl logs -f -n %s %s 2>&1", ns, pod)
-	ch, cancel, err := sshStream(cmd)
+	ch, cancel, err := globalControl.StreamLog(r.Context(), globalExecutor, ns, pod)
 	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("error: "+err.Error()))
-		return
-	}
-	defer cancel()
-
-	for line := range ch {
-		if err := conn.WriteMessage(websocket.TextMessage, []byte(line)); err != nil {
-			return
-		}
-	}
-}
-
-var logFileNameRe = regexp.MustCompile(`^[a-zA-Z0-9._-]+\.log$`)
-
-func handleLogStreamDirect(w http.ResponseWriter, r *http.Request) {
-	file := r.URL.Query().Get("pod") // frontend sends filename as "pod"
-	if file == "" {
-		http.Error(w, "file name required", 400)
-		return
-	}
-	if !logFileNameRe.MatchString(file) {
-		http.Error(w, "invalid log file name", 400)
-		return
-	}
-
-	conn, err := wsUpgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return
-	}
-	defer conn.Close()
-	conn.SetWriteDeadline(time.Time{})
-
-	cmd := fmt.Sprintf("sudo -i -u %s podman exec %s tail -n 200 -f %s/%s",
-		containerUser, containerName, containerLogPath, file)
-	ch, cancel, err := localStream(cmd)
-	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("error: "+err.Error()))
+		conn.WriteMessage(websocket.TextMessage, []byte("error: "+err.Error())) //nolint:errcheck
 		return
 	}
 	defer cancel()

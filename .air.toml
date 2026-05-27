@@ -1,0 +1,31 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd        = "go build -o ./tmp/dune-admin ."
+  bin        = "./tmp/dune-admin"
+  full_bin   = "./tmp/dune-admin"
+  include_ext = ["go"]
+  exclude_dir = ["web", "bin", "tmp", "db-routines", "db-snapshots", "docs"]
+  exclude_file = ["*_test.go"]
+  exclude_regex = ["_test\\.go$"]
+  delay = 1000
+  kill_delay = "0s"
+  rerun = false
+  rerun_delay = 500
+  send_interrupt = false
+  stop_on_error = true
+  log = "build-errors.log"
+
+[log]
+  time = false
+  main_only = true
+
+[color]
+  main    = "magenta"
+  watcher = "cyan"
+  build   = "yellow"
+  runner  = "green"
+
+[misc]
+  clean_on_exit = true

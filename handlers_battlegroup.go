@@ -3,11 +3,11 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -26,71 +26,21 @@ var bgCmdAllowlist = map[string]bool{
 }
 
 func handleBGStatus(w http.ResponseWriter, r *http.Request) {
-	if connectionMode == "direct" {
-		handleBGStatusDirect(w, r)
+	if globalControl == nil {
+		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
-	if !requireSSH(w) {
+	status, err := globalControl.GetStatus(r.Context(), globalExecutor)
+	if err != nil {
+		jsonErr(w, err, 500)
 		return
 	}
-
-	bgName := strings.TrimPrefix(globalPodNS, "funcom-seabass-")
-
-	// Battlegroup-level: title, phase, database phase.
-	bgOut, _ := sshExec(fmt.Sprintf(
-		`sudo kubectl get battlegroups -n %s -o jsonpath="{.items[0].spec.title}|{.items[0].status.phase}|{.items[0].status.database.phase}" 2>/dev/null`,
-		globalPodNS))
-
-	bgParts := strings.SplitN(strings.TrimSpace(bgOut), "|", 3)
-	bg := map[string]string{
-		"name":     bgName,
-		"title":    safeIdx(bgParts, 0),
-		"phase":    safeIdx(bgParts, 1),
-		"database": safeIdx(bgParts, 2),
-	}
-
-	// Per-server stats: map, sietch, dimension, partition, gamePhase, ready, players.
-	ssOut, _ := sshExec(fmt.Sprintf(
-		"sudo kubectl get serverstats -n %s -o jsonpath='{range .items[*]}{.spec.area.map}|{.spec.area.sietch}|{.spec.area.dimension}|{.spec.area.partition}|{.status.runtime.gamePhase}|{.status.runtime.ready}|{.status.runtime.players}{\"\\n\"}{end}' 2>/dev/null",
-		globalPodNS))
-
-	type serverRow struct {
-		Map       string `json:"map"`
-		Sietch    string `json:"sietch"`
-		Dimension int    `json:"dimension"`
-		Partition int    `json:"partition"`
-		Phase     string `json:"phase"`
-		Ready     bool   `json:"ready"`
-		Players   int    `json:"players"`
-	}
-	var servers []serverRow
-	for _, line := range strings.Split(strings.TrimSpace(ssOut), "\n") {
-		if line == "" {
-			continue
-		}
-		p := strings.SplitN(line, "|", 7)
-		if len(p) < 7 {
-			continue
-		}
-		dim, _ := strconv.Atoi(p[2])
-		part, _ := strconv.Atoi(p[3])
-		players, _ := strconv.Atoi(p[6])
-		servers = append(servers, serverRow{
-			Map:       p[0],
-			Sietch:    p[1],
-			Dimension: dim,
-			Partition: part,
-			Phase:     p[4],
-			Ready:     p[5] == "true",
-			Players:   players,
-		})
-	}
-	sort.Slice(servers, func(i, j int) bool { return servers[i].Map < servers[j].Map })
-	if servers == nil {
-		servers = []serverRow{}
-	}
-
-	jsonOK(w, map[string]any{"battlegroup": bg, "servers": servers})
+	jsonOK(w, map[string]any{"battlegroup": map[string]string{
+		"name":     status.Name,
+		"title":    status.Title,
+		"phase":    status.Phase,
+		"database": status.Database,
+	}, "servers": status.Servers})
 }
 
 func safeIdx(s []string, i int) string {
@@ -101,9 +51,6 @@ func safeIdx(s []string, i int) string {
 }
 
 func handleBGExec(w http.ResponseWriter, r *http.Request) {
-	if !requireSSH(w) {
-		return
-	}
 	var req struct {
 		Cmd string `json:"cmd"`
 	}
@@ -115,31 +62,11 @@ func handleBGExec(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("unknown command %q", req.Cmd), 400)
 		return
 	}
-
-	bgName := strings.TrimPrefix(globalPodNS, "funcom-seabass-")
-	ns := globalPodNS
-
-	var out string
-	var err error
-
-	switch req.Cmd {
-	case "start":
-		out, err = sshExec(fmt.Sprintf(
-			`sudo kubectl patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":false}}' 2>&1 && echo "Battlegroup starting"`,
-			bgName, ns))
-	case "stop":
-		out, err = sshExec(fmt.Sprintf(
-			`sudo kubectl patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":true}}' 2>&1 && echo "Battlegroup stopping"`,
-			bgName, ns))
-	case "restart":
-		out, err = sshExec(fmt.Sprintf(
-			`sudo kubectl patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":true}}' 2>/dev/null && sleep 5 && sudo kubectl patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":false}}' 2>/dev/null && echo "Battlegroup restarting"`,
-			bgName, ns, bgName, ns))
-	default:
-		// update/backup/restore stay on the script — complex operations.
-		out, err = sshExec(fmt.Sprintf("sudo ~/.dune/download/scripts/battlegroup.sh %s 2>&1", req.Cmd))
+	if globalControl == nil {
+		jsonErr(w, fmt.Errorf("not connected"), 503)
+		return
 	}
-
+	out, err := globalControl.ExecCommand(r.Context(), globalExecutor, req.Cmd)
 	if err != nil {
 		jsonErr(w, fmt.Errorf("exec: %w — output: %s", err, out), 500)
 		return
@@ -148,32 +75,45 @@ func handleBGExec(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleBGPods(w http.ResponseWriter, r *http.Request) {
-	if !requireSSH(w) {
+	if globalControl == nil {
+		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
-	out, err := sshExec(fmt.Sprintf("sudo kubectl get pods -n %s --no-headers 2>&1", globalPodNS))
+	procs, ns, err := globalControl.ListProcesses(r.Context(), globalExecutor)
 	if err != nil {
-		jsonErr(w, fmt.Errorf("kubectl: %w", err), 500)
+		jsonErr(w, err, 500)
 		return
 	}
-	lines := strings.Split(strings.TrimSpace(out), "\n")
-	jsonOK(w, map[string]any{"pods": lines, "namespace": globalPodNS})
+	// Return raw lines for backward compat with the frontend which renders them as-is.
+	var lines []string
+	for _, p := range procs {
+		lines = append(lines, p.Name)
+	}
+	jsonOK(w, map[string]any{"pods": lines, "namespace": ns})
 }
 
 func bgName() string { return strings.TrimPrefix(globalPodNS, "funcom-seabass-") }
 
+func activeBackupDir() string {
+	if backupDir != "" {
+		return backupDir
+	}
+	// Legacy K8s default.
+	return fmt.Sprintf("/funcom/artifacts/database-dumps/%s", bgName())
+}
+
 func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
-	if !requireSSH(w) {
+	if globalExecutor == nil {
+		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
-	bgDir := fmt.Sprintf("/funcom/artifacts/database-dumps/%s", bgName())
-	out, _ := sshExec(fmt.Sprintf(
+	dir := activeBackupDir()
+	out, _ := globalExecutor.Exec(fmt.Sprintf(
 		`sudo ls -lt %s/ 2>/dev/null | awk '/\.backup$/{print $NF"|"$5"|"$6" "$7" "$8}'`,
-		bgDir))
-	// Build set of which backups have a .yaml companion.
-	yamlOut, _ := sshExec(fmt.Sprintf(
+		dir))
+	yamlOut, _ := globalExecutor.Exec(fmt.Sprintf(
 		`sudo ls %s/*.backup.yaml 2>/dev/null | xargs -r -I{} basename {} .yaml`,
-		bgDir))
+		dir))
 	hasYAML := make(map[string]bool)
 	for _, n := range strings.Split(strings.TrimSpace(yamlOut), "\n") {
 		if n != "" {
@@ -200,7 +140,8 @@ func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
-	if !requireSSH(w) {
+	if globalExecutor == nil {
+		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
 	filename := r.URL.Query().Get("file")
@@ -209,7 +150,7 @@ func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	baseName := strings.TrimSuffix(filename, ".backup")
-	bgDir := fmt.Sprintf("/funcom/artifacts/database-dumps/%s", bgName())
+	dir := activeBackupDir()
 
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.zip"`, baseName))
 	w.Header().Set("Content-Type", "application/zip")
@@ -217,8 +158,8 @@ func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 	zw := zip.NewWriter(w)
 	for _, ext := range []string{".backup", ".backup.yaml"} {
 		name := baseName + ext
-		remotePath := bgDir + "/" + name
-		exists, _ := sshExec(fmt.Sprintf("sudo test -f %s && echo yes || echo no", shellQuote(remotePath)))
+		remotePath := dir + "/" + name
+		exists, _ := globalExecutor.Exec(fmt.Sprintf("sudo test -f %s && echo yes || echo no", shellQuote(remotePath)))
 		if strings.TrimSpace(exists) != "yes" {
 			continue
 		}
@@ -226,7 +167,7 @@ func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		if err := sshPipeToWriter(fmt.Sprintf("sudo cat %s", shellQuote(remotePath)), fw); err != nil {
+		if err := globalExecutor.PipeToWriter(fmt.Sprintf("sudo cat %s", shellQuote(remotePath)), fw); err != nil {
 			fmt.Printf("zip entry %s: %v\n", name, err)
 		}
 	}
@@ -234,7 +175,8 @@ func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleBGRestore(w http.ResponseWriter, r *http.Request) {
-	if !requireSSH(w) {
+	if globalControl == nil || globalExecutor == nil {
+		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
 	var req struct {
@@ -248,38 +190,17 @@ func handleBGRestore(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid filename"), 400)
 		return
 	}
-	// Script handles staging into PVC + DatabaseOperation creation + waiting.
-	out, err := sshExec(fmt.Sprintf(
-		`echo yes | sudo ~/.dune/download/scripts/battlegroup.sh import %s 2>&1`,
-		shellQuote(req.File)))
+	out, err := restoreViaControl(r.Context(), req.File)
 	if err != nil {
 		jsonErr(w, fmt.Errorf("restore failed: %w\n%s", err, out), 500)
 		return
 	}
 	jsonOK(w, map[string]string{"output": out})
 }
-func sshWriteFile(remotePath string, data io.Reader) error {
-	sess, err := globalSSH.NewSession()
-	if err != nil {
-		return err
-	}
-	defer sess.Close()
-	stdin, err := sess.StdinPipe()
-	if err != nil {
-		return err
-	}
-	if err := sess.Start(fmt.Sprintf("sudo tee %s > /dev/null", shellQuote(remotePath))); err != nil {
-		return err
-	}
-	if _, err := io.Copy(stdin, data); err != nil {
-		return err
-	}
-	stdin.Close()
-	return sess.Wait()
-}
 
 func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
-	if !requireSSH(w) {
+	if globalExecutor == nil {
+		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 4<<30)
@@ -295,10 +216,9 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	filename := header.Filename
-	bgDir := fmt.Sprintf("/funcom/artifacts/database-dumps/%s", bgName())
+	dir := activeBackupDir()
 
 	if strings.HasSuffix(filename, ".zip") {
-		// Read zip fully (needed for zip.NewReader which requires ReaderAt + size).
 		data, err := io.ReadAll(file)
 		if err != nil {
 			jsonErr(w, fmt.Errorf("read zip: %w", err), 400)
@@ -322,7 +242,7 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			_ = sshWriteFile(bgDir+"/"+name, rc)
+			globalExecutor.WriteFile(dir+"/"+name, rc) //nolint:errcheck
 			rc.Close()
 			if strings.HasSuffix(name, ".backup") && !strings.HasSuffix(name, ".yaml") {
 				backupName = name
@@ -334,7 +254,7 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 		}
 		jsonOK(w, map[string]string{"name": backupName})
 	} else if strings.HasSuffix(filename, ".backup") && !strings.ContainsAny(filename, "/\\") {
-		if err := sshWriteFile(bgDir+"/"+filename, file); err != nil {
+		if err := globalExecutor.WriteFile(dir+"/"+filename, file); err != nil {
 			jsonErr(w, fmt.Errorf("upload failed: %w", err), 500)
 			return
 		}
@@ -344,54 +264,21 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ── direct mode ──────────────────────────────────────────────────────────────
-
-func handleBGStatusDirect(w http.ResponseWriter, _ *http.Request) {
-	procs, err := listGameProcesses()
-	if err != nil {
-		jsonErr(w, err, 500)
-		return
+// restoreViaControl runs a restore command appropriate for the active control plane.
+// Called by handleBGRestore — kept separate so the restore logic per-provider
+// can be extended without touching the HTTP handler.
+func restoreViaControl(ctx context.Context, filename string) (string, error) {
+	// kubectl uses the battlegroup.sh import script.
+	// TODO: NEVER run battlegroup.sh with sudo — see ExecCommand in control_kubectl.go.
+	if globalControl != nil && globalControl.Name() == "kubectl" {
+		return globalExecutor.Exec(fmt.Sprintf(
+			`echo yes | ~/.dune/download/scripts/battlegroup.sh import %s 2>&1`,
+			shellQuote(filename)))
 	}
-
-	type serverRow struct {
-		Map       string  `json:"map"`
-		Sietch    string  `json:"sietch"`
-		Dimension int     `json:"dimension"`
-		Partition int     `json:"partition"`
-		Phase     string  `json:"phase"`
-		Ready     bool    `json:"ready"`
-		Players   int     `json:"players"`
-		PID       int     `json:"pid"`
-		CPU       float64 `json:"cpu"`
-		MemMB     float64 `json:"mem_mb"`
-		Port      int     `json:"port"`
-	}
-
-	servers := make([]serverRow, 0, len(procs))
-	for _, p := range procs {
-		servers = append(servers, serverRow{
-			Map:       p.Map,
-			Partition: p.Partition,
-			Phase:     "Running",
-			Ready:     true,
-			PID:       p.PID,
-			CPU:       p.CPU,
-			MemMB:     p.MemMB,
-			Port:      p.Port,
-		})
-	}
-
-	dbPhase := "Disconnected"
-	if globalDB != nil {
-		dbPhase = "Connected"
-	}
-
-	bg := map[string]string{
-		"name":     containerName,
-		"title":    "AMP Managed",
-		"phase":    "Running",
-		"database": dbPhase,
-	}
-
-	jsonOK(w, map[string]any{"battlegroup": bg, "servers": servers})
+	// docker / local: pg_restore from the backup directory.
+	dir := activeBackupDir()
+	path := dir + "/" + filename
+	return globalExecutor.Exec(fmt.Sprintf(
+		`pg_restore --clean --if-exists -h %s -p %d -U %s -d %s %s 2>&1`,
+		dbHost, dbPort, dbUser, dbName, shellQuote(path)))
 }

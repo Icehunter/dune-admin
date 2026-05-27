@@ -20,16 +20,12 @@ jobs:
       - name: Run govulncheck
         run: make vulncheck
 
-  npm-audit:
+  pnpm-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+      - uses: pnpm/action-setup@v4
 
-      - name: Run npm audit
-        run: make npm-audit
+      - name: Run pnpm audit
+        run: make pnpm-audit

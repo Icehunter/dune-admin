@@ -2,13 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -16,7 +14,7 @@ import (
 var allowedOrigins []string
 
 func init() {
-	raw := envOr("ALLOWED_ORIGINS", "https://dune-admin.layout.tools,http://localhost:5173,http://localhost:9090")
+	raw := envOr("ALLOWED_ORIGINS", "https://dune-admin.layout.tools,http://localhost:5173")
 	for _, o := range strings.Split(raw, ",") {
 		if o = strings.TrimSpace(o); o != "" {
 			allowedOrigins = append(allowedOrigins, o)
@@ -25,11 +23,6 @@ func init() {
 }
 
 func originAllowed(origin string) bool {
-	// Same-origin requests: if the frontend is served by this process,
-	// the origin will match our listen address.
-	if strings.HasSuffix(origin, listenAddr) {
-		return true
-	}
 	for _, o := range allowedOrigins {
 		if o == origin {
 			return true
@@ -61,6 +54,13 @@ func startServer(addr string) {
 	// ── status ────────────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/v1/status", handleStatus)
 	mux.HandleFunc("POST /api/v1/reconnect", handleReconnect)
+	mux.HandleFunc("GET /api/v1/config", handleGetConfig)
+	mux.HandleFunc("POST /api/v1/config", handleSaveConfig)
+
+	// ── server settings (UserGame.ini / UserOverrides.ini) ────────────────
+	mux.HandleFunc("GET /api/v1/server-settings", handleGetServerSettings)
+	mux.HandleFunc("PUT /api/v1/server-settings", handleUpdateServerSettings)
+	mux.HandleFunc("PUT /api/v1/server-settings/raw", handleUpdateRawSection)
 
 	// ── battlegroup ───────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/v1/battlegroup/status", handleBGStatus)
@@ -100,11 +100,9 @@ func startServer(addr string) {
 	mux.HandleFunc("POST /api/v1/players/reset-spec", handleResetSpec)
 	mux.HandleFunc("POST /api/v1/players/set-faction-tier", handleSetFactionTier)
 	mux.HandleFunc("POST /api/v1/players/progression-unlock", handleProgressionUnlock)
+	mux.HandleFunc("POST /api/v1/players/progression-reverse", handleProgressionReverse)
 	mux.HandleFunc("GET /api/v1/progression/presets", handleListProgressionPresets)
 	mux.HandleFunc("POST /api/v1/players/progression/apply-preset", handleApplyProgressionPreset)
-	mux.HandleFunc("GET /api/v1/server-settings", handleGetServerSettings)
-	mux.HandleFunc("PUT /api/v1/server-settings", handleUpdateServerSettings)
-	mux.HandleFunc("POST /api/v1/players/progression-reverse", handleProgressionReverse)
 	mux.HandleFunc("POST /api/v1/players/journey/complete", handleJourneyComplete)
 	mux.HandleFunc("POST /api/v1/players/journey/reset", handleJourneyReset)
 	mux.HandleFunc("POST /api/v1/players/journey/wipe", handleJourneyWipe)
@@ -163,9 +161,25 @@ func startServer(addr string) {
 	mux.HandleFunc("GET /api/v1/bases", handleListBases)
 	mux.HandleFunc("GET /api/v1/bases/{id}/export", handleExportBase)
 
-	// ── director proxy (direct mode) ─────────────────────────────────────────
-	if connectionMode == "direct" && directorURL != "" {
-		if target, err := url.Parse(directorURL); err == nil {
+	// ── market board ─────────────────────────────────────────────────────────
+	mux.HandleFunc("GET /api/v1/market/items", handleMarketItems)
+	mux.HandleFunc("GET /api/v1/market/listings", handleMarketListings)
+	mux.HandleFunc("GET /api/v1/market/sales", handleMarketSales)
+	mux.HandleFunc("GET /api/v1/market/stats", handleMarketStats)
+	mux.HandleFunc("GET /api/v1/market/categories", handleMarketCategories)
+	mux.HandleFunc("GET /api/v1/market/catalog", handleMarketCatalog)
+
+	// ── market bot control ────────────────────────────────────────────────────
+	mux.HandleFunc("GET /api/v1/market-bot/status", handleMarketBotStatus)
+	mux.HandleFunc("GET /api/v1/market-bot/config", handleMarketBotConfig)
+	mux.HandleFunc("PUT /api/v1/market-bot/config", handleMarketBotConfig)
+	mux.HandleFunc("POST /api/v1/market-bot/exec", handleMarketBotExec)
+	mux.HandleFunc("GET /api/v1/market-bot/logs-ready", handleMarketBotLogsReady)
+	mux.HandleFunc("GET /api/v1/market-bot/logs", handleMarketBotLogs)
+
+	// ── director reverse proxy (universal, opt-in) ──────────────────────────
+	if loadedConfig.DirectorURL != "" {
+		if target, err := url.Parse(loadedConfig.DirectorURL); err == nil {
 			proxy := httputil.NewSingleHostReverseProxy(target)
 			mux.HandleFunc("/director/", func(w http.ResponseWriter, r *http.Request) {
 				r.URL.Path = strings.TrimPrefix(r.URL.Path, "/director")
@@ -175,12 +189,16 @@ func startServer(addr string) {
 				r.Host = target.Host
 				proxy.ServeHTTP(w, r)
 			})
-			log.Printf("Proxying /director/ → %s", directorURL)
+			log.Printf("Proxying /director/ → %s", loadedConfig.DirectorURL)
 		}
 	}
 
-	// ── frontend (SPA) ───────────────────────────────────────────────────────
-	for _, dir := range []string{"./dist", "./web/dist"} {
+	// ── SPA frontend (universal, opt-in) ────────────────────────────────────
+	candidates := []string{"./dist", "./web/dist"}
+	if loadedConfig.FrontendDir != "" {
+		candidates = append([]string{loadedConfig.FrontendDir}, candidates...)
+	}
+	for _, dir := range candidates {
 		if info, err := os.Stat(dir); err == nil && info.IsDir() {
 			log.Printf("Serving frontend from %s", dir)
 			mux.Handle("/", spaHandler(dir))
@@ -205,12 +223,12 @@ func startServer(addr string) {
 func spaHandler(distDir string) http.Handler {
 	fileServer := http.FileServer(http.Dir(distDir))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := filepath.Join(distDir, filepath.Clean(r.URL.Path))
-		if _, err := os.Stat(path); err == nil {
+		p := distDir + "/" + strings.TrimLeft(r.URL.Path, "/")
+		if _, err := os.Stat(p); err == nil {
 			fileServer.ServeHTTP(w, r)
 			return
 		}
-		http.ServeFile(w, r, filepath.Join(distDir, "index.html"))
+		http.ServeFile(w, r, distDir+"/index.html")
 	})
 }
 
@@ -231,52 +249,46 @@ func decode(r *http.Request, v any) error {
 	return json.NewDecoder(r.Body).Decode(v)
 }
 
-// handleStatus returns SSH and DB connection state.
+// handleStatus returns connection state and provider info.
 func handleStatus(w http.ResponseWriter, r *http.Request) {
+	executorType := "none"
+	controlName := "none"
+	if globalExecutor != nil {
+		executorType = globalExecutor.Type()
+	}
+	if globalControl != nil {
+		controlName = globalControl.Name()
+	}
 	jsonOK(w, map[string]any{
-		"ssh_connected":   globalSSH != nil,
-		"db_connected":    globalDB != nil,
-		"connection_mode": connectionMode,
-		"pod_ns":          globalPodNS,
-		"pod_ip":          globalPodIP,
-		"ssh_host":        sshHost,
-		"version":         AppVersion,
-		"commit":          GitCommit,
-		"build_time":      BuildTime,
+		"executor":      executorType,
+		"control":       controlName,
+		"ssh_connected": globalSSH != nil,
+		"db_connected":  globalDB != nil,
+		"pod_ns":        globalPodNS,
+		"pod_ip":        globalPodIP,
+		"ssh_host":      sshHost,
+		"db_host":       dbHost,
+		"version":       AppVersion,
+		"commit":        GitCommit,
+		"build_time":    BuildTime,
 	})
 }
 
-// requireSSH returns false and writes an error response if the current
-// connection mode does not support SSH-dependent operations.
-func requireSSH(w http.ResponseWriter) bool {
-	if connectionMode == "direct" {
-		jsonErr(w, fmt.Errorf("not available in direct connection mode"), http.StatusNotImplemented)
-		return false
-	}
-	if globalSSH == nil {
-		jsonErr(w, fmt.Errorf("SSH not connected"), http.StatusServiceUnavailable)
-		return false
-	}
-	return true
-}
-
-// handleReconnect attempts to re-establish SSH+DB connections.
+// handleReconnect tears down and re-establishes all connections.
 func handleReconnect(w http.ResponseWriter, r *http.Request) {
 	if globalDB != nil {
 		globalDB.Close()
 		globalDB = nil
 	}
-	if connectionMode != "direct" && globalSSH != nil {
-		globalSSH.Close()
-		globalSSH = nil
+	if globalExecutor != nil {
+		globalExecutor.Close()
+		globalExecutor = nil
 	}
-	msg, ok := cmdConnect().(msgConnect)
-	if !ok || msg.err != nil {
-		var errMsg string
-		if msg.err != nil {
-			errMsg = msg.err.Error()
-		}
-		jsonErr(w, fmt.Errorf("%s", errMsg), 500)
+	globalSSH = nil
+	globalControl = nil
+
+	if err := connectAll(); err != nil {
+		jsonErr(w, err, 500)
 		return
 	}
 	handleStatus(w, r)

@@ -4041,6 +4041,63 @@ func cmdTeleportPlayer(flsID string, locationName string) Cmd {
 	}
 }
 
+// playerPosition is the live world position of a player's character.
+type playerPosition struct {
+	PartitionID int64   `json:"partition_id"`
+	Map         string  `json:"map"`
+	X           float64 `json:"x"`
+	Y           float64 `json:"y"`
+	Z           float64 `json:"z"`
+}
+
+// cmdGetPlayerPosition reads a player's current world position from the
+// actors table. The transform column is a composite type holding a vector
+// location plus a quaternion rotation; we only need the vector.
+// playerID is the actor id (dune.actors.id) — matches playerInfo.ID.
+func cmdGetPlayerPosition(playerID int64) Cmd {
+	return func() Msg {
+		if globalDB == nil {
+			return msgPlayerPosition{err: fmt.Errorf("not connected")}
+		}
+		var pos playerPosition
+		err := globalDB.QueryRow(context.Background(), `
+			SELECT
+				COALESCE(a.partition_id, 0),
+				COALESCE(a.map, ''),
+				((a.transform).location).x,
+				((a.transform).location).y,
+				((a.transform).location).z
+			FROM dune.actors a
+			WHERE a.id = $1`, playerID).Scan(&pos.PartitionID, &pos.Map, &pos.X, &pos.Y, &pos.Z)
+		if err != nil {
+			return msgPlayerPosition{err: fmt.Errorf("read position: %w", err)}
+		}
+		return msgPlayerPosition{pos: pos}
+	}
+}
+
+// cmdTeleportPlayerToCoords moves an offline player to a specific
+// (partition_id, x, y, z). For online players this should be skipped in
+// favour of rmqTeleportTo, which has immediate effect.
+func cmdTeleportPlayerToCoords(flsID string, partitionID int64, x, y, z float64) Cmd {
+	return func() Msg {
+		if globalDB == nil {
+			return msgMutate{err: fmt.Errorf("not connected")}
+		}
+		if partitionID == 0 {
+			_ = globalDB.QueryRow(context.Background(),
+				`SELECT id FROM dune.world_partition WHERE blocked = false LIMIT 1`).Scan(&partitionID)
+		}
+		_, err := globalDB.Exec(context.Background(), `
+			SELECT dune.admin_move_offline_player_to_partition($1::text, $2::bigint, ROW($3::float8,$4::float8,$5::float8)::dune.Vector)`,
+			flsID, partitionID, x, y, z)
+		if err != nil {
+			return msgMutate{err: fmt.Errorf("teleport: %w", err)}
+		}
+		return msgMutate{ok: fmt.Sprintf("Moved %s to (%.0f, %.0f, %.0f)", flsID, x, y, z)}
+	}
+}
+
 // ── storage container commands ────────────────────────────────────────────────
 
 type storageContainerRow struct {

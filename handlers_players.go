@@ -1312,6 +1312,87 @@ func handleTeleportPlayer(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]any{"ok": msg.ok, "path": "db"})
 }
 
+// handleGetPlayerPosition returns the current world coordinates of a player's
+// character (dune.actors.id). Used by the "teleport to player" UI to look up
+// the target's position before publishing the teleport command.
+func handleGetPlayerPosition(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		jsonErr(w, fmt.Errorf("invalid id"), 400)
+		return
+	}
+	msg, ok := cmdGetPlayerPosition(id)().(msgPlayerPosition)
+	if !ok {
+		jsonErr(w, fmt.Errorf("internal error"), 500)
+		return
+	}
+	if msg.err != nil {
+		jsonErr(w, msg.err, 500)
+		return
+	}
+	jsonOK(w, msg.pos)
+}
+
+// handleTeleportToPlayer moves a source player to a target player's exact
+// position. Online sources use TeleportToExact via RMQ; offline sources fall
+// through to the DB write at the target's partition_id.
+func handleTeleportToPlayer(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		SourceFLSID string `json:"source_fls_id"`
+		TargetID    int64  `json:"target_id"` // actor id of the target character
+	}
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, err, 400)
+		return
+	}
+	if req.SourceFLSID == "" || req.TargetID == 0 {
+		jsonErr(w, fmt.Errorf("source_fls_id and target_id required"), 400)
+		return
+	}
+
+	posMsg, ok := cmdGetPlayerPosition(req.TargetID)().(msgPlayerPosition)
+	if !ok {
+		jsonErr(w, fmt.Errorf("internal error"), 500)
+		return
+	}
+	if posMsg.err != nil {
+		jsonErr(w, fmt.Errorf("target position: %w", posMsg.err), 404)
+		return
+	}
+	target := posMsg.pos
+
+	ctx := context.Background()
+	if isHexIDOnline(ctx, req.SourceFLSID) {
+		if err := rmqTeleportToExact(req.SourceFLSID, target.X, target.Y, target.Z); err != nil {
+			jsonErr(w, fmt.Errorf("rmq teleport: %w", err), 500)
+			return
+		}
+		jsonOK(w, map[string]any{
+			"ok":   fmt.Sprintf("teleported to target (live, exact)"),
+			"path": "rmq",
+			"x":    target.X, "y": target.Y, "z": target.Z,
+		})
+		return
+	}
+
+	// Offline: write directly to DB at the target's partition.
+	msg, ok := cmdTeleportPlayerToCoords(req.SourceFLSID, target.PartitionID, target.X, target.Y, target.Z)().(msgMutate)
+	if !ok {
+		jsonErr(w, fmt.Errorf("internal error"), 500)
+		return
+	}
+	if msg.err != nil {
+		jsonErr(w, msg.err, 500)
+		return
+	}
+	jsonOK(w, map[string]any{
+		"ok":   msg.ok,
+		"path": "db",
+		"x":    target.X, "y": target.Y, "z": target.Z,
+	})
+}
+
 func handleGetPlayerEvents(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)

@@ -146,6 +146,8 @@ func startServer(addr string) {
 	mux.HandleFunc("POST /api/v1/players/refuel-vehicle", handleRefuelVehicle)
 	mux.HandleFunc("GET /api/v1/players/partitions", handleGetPartitions)
 	mux.HandleFunc("POST /api/v1/players/teleport", handleTeleportPlayer)
+	mux.HandleFunc("GET /api/v1/players/{id}/position", handleGetPlayerPosition)
+	mux.HandleFunc("POST /api/v1/players/teleport-to-player", handleTeleportToPlayer)
 	mux.HandleFunc("GET /api/v1/players/{id}/events", handleGetPlayerEvents)
 	mux.HandleFunc("GET /api/v1/players/{id}/dungeons", handleGetPlayerDungeons)
 

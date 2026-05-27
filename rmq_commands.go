@@ -170,6 +170,20 @@ func rmqTeleportTo(flsID string, x, y, z float64) error {
 	})
 }
 
+// rmqTeleportToExact uses the engine's exact-location teleport path (no snap
+// to nearest safe ground). Used for teleport-to-player, where the admin wants
+// the source player to land precisely on top of the target rather than
+// somewhere "safe" nearby. Per Adain's protocol docs.
+func rmqTeleportToExact(flsID string, x, y, z float64) error {
+	return publishServerCommand(map[string]any{
+		"ServerCommand": "TeleportToExact",
+		"PlayerId":      flsID,
+		"X":             x,
+		"Y":             y,
+		"Z":             z,
+	})
+}
+
 func rmqSkillsSetModuleLevel(flsID, module string, level int) error {
 	return publishServerCommand(map[string]any{
 		"ServerCommand": "SkillsSetModuleLevel",

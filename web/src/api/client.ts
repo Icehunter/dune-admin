@@ -388,6 +388,11 @@ export const api = {
     partitions: () => req<TeleportLocation[]>('GET', '/players/partitions'),
     teleport: (fls_id: string, partition_label: string) =>
       req<MutateResult>('POST', '/players/teleport', { fls_id, partition_label }),
+    position: (id: number) =>
+      req<{ partition_id: number; map: string; x: number; y: number; z: number }>('GET', `/players/${id}/position`),
+    teleportToPlayer: (source_fls_id: string, target_id: number) =>
+      req<MutateResult & { path: string; x: number; y: number; z: number }>(
+        'POST', '/players/teleport-to-player', { source_fls_id, target_id }),
     events: (id: number) => req<GameEvent[]>('GET', `/players/${id}/events`),
     dungeons: (id: number) => req<DungeonRecord[]>('GET', `/players/${id}/dungeons`),
     kick: (fls_id: string) =>

@@ -154,6 +154,10 @@ type msgMutate struct {
 	ok  string
 	err error
 }
+type msgPlayerPosition struct {
+	pos playerPosition
+	err error
+}
 type msgRepairGear struct {
 	repaired int
 	scanned  int

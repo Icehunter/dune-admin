@@ -138,7 +138,12 @@ type appConfig struct {
 	AmpContainer string `yaml:"amp_container"`
 	AmpUser      string `yaml:"amp_user"`
 	AmpLogPath   string `yaml:"amp_log_path"`
-	DirectorURL  string `yaml:"director_url"`
+	// AmpUseContainer toggles between the two AMP topologies. When true (default,
+	// matching CubeCoders' containerised template), commands are wrapped in
+	// `podman exec`. When false, AMP runs the game server natively on the host
+	// as the AMP user; the same operations run directly via sudo.
+	AmpUseContainer *bool  `yaml:"amp_use_container"`
+	DirectorURL     string `yaml:"director_url"`
 
 	// FrontendDir overrides the auto-detected SPA directory. When unset the
 	// server looks in ./dist then ./web/dist and serves the first match.

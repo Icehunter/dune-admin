@@ -352,28 +352,52 @@ func runLocalSetup(ask func(string, string) string, ok, fail func(string), cfg *
 
 // ── amp setup flow ────────────────────────────────────────────────────────────
 
-// runAmpSetup configures the AMP control plane (CubeCoders AMP managing a
-// podman game-server container). All instance/container/path details are
-// configurable; defaults match a conventional fresh install.
+// runAmpSetup configures the AMP control plane (CubeCoders AMP). AMP supports
+// two deployment topologies — game server in a podman container, or running
+// natively on the host as the AMP user. All paths/names are configurable.
 func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
 	fmt.Println("AMP instance:")
 	cfg.AmpInstance = ask("Instance name (ampinstmgr instance)", "DuneAwakening01")
-	defaultContainer := "AMP_" + cfg.AmpInstance
-	cfg.AmpContainer = ask("Podman container name", defaultContainer)
 	cfg.AmpUser = ask("OS user that runs AMP", "amp")
-	cfg.AmpLogPath = ask("In-container log directory", "/AMP/duneawakening/logs")
-	cfg.DirectorURL = ask("Battlegroup Director URL (optional, for proxy + status)", "http://127.0.0.1:11717")
+	fmt.Println()
+
+	fmt.Println("AMP topology:")
+	fmt.Println("  container — game server runs inside `podman exec AMP_<instance>` (default template)")
+	fmt.Println("  native    — game server runs directly on the host as the AMP user")
+	topology := ask("Topology [container/native]", "container")
+	useContainer := topology != "native"
+	cfg.AmpUseContainer = &useContainer
+
+	defaultLogPath := "/AMP/duneawakening/logs"
+	defaultIniDir := fmt.Sprintf("/home/%s/.ampdata/instances/%s/duneawakening/server/state",
+		cfg.AmpUser, cfg.AmpInstance)
+	if !useContainer {
+		// Native topology: game files live under /AMP/<game>/extracted/...
+		defaultLogPath = "/AMP/duneawakening/extracted/game-server/home/dune/server/DuneSandbox/Saved/Logs"
+		defaultIniDir = "/AMP/duneawakening/extracted/game-server/home/dune/server/DuneSandbox/Saved/Config/LinuxServer"
+	}
+
+	if useContainer {
+		defaultContainer := "AMP_" + cfg.AmpInstance
+		cfg.AmpContainer = ask("Podman container name", defaultContainer)
+	}
+	cfg.AmpLogPath = ask("Log directory", defaultLogPath)
+	cfg.DirectorURL = ask("Battlegroup Director URL (optional)", "http://127.0.0.1:11717")
 	fmt.Println()
 
 	fmt.Println("INI directories:")
-	cfg.ServerIniDir = ask("UserGame.ini directory (host path)",
-		fmt.Sprintf("/home/%s/.ampdata/instances/%s/duneawakening/server/state", cfg.AmpUser, cfg.AmpInstance))
+	cfg.ServerIniDir = ask("UserGame.ini directory (host path)", defaultIniDir)
 	cfg.DefaultIniDir = ask("DefaultGame.ini directory (optional)", "")
 	fmt.Println()
 
 	fmt.Println("RabbitMQ broker (optional — used by capture mode):")
-	cfg.BrokerExecPrefix = ask("Broker exec prefix (e.g. 'sudo podman exec "+cfg.AmpContainer+"')",
-		fmt.Sprintf("sudo -i -u %s podman exec %s", cfg.AmpUser, cfg.AmpContainer))
+	var defaultBrokerPrefix string
+	if useContainer {
+		defaultBrokerPrefix = fmt.Sprintf("sudo -i -u %s podman exec %s", cfg.AmpUser, cfg.AmpContainer)
+	} else {
+		defaultBrokerPrefix = fmt.Sprintf("sudo -i -u %s", cfg.AmpUser)
+	}
+	cfg.BrokerExecPrefix = ask("Broker exec prefix", defaultBrokerPrefix)
 	fmt.Println()
 
 	fmt.Println("Database connection:")

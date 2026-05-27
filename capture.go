@@ -100,6 +100,11 @@ func runCapture() {
 
 	if globalControl != nil && globalExecutor != nil {
 		globalControl.EnsureCaptureUser(ctx, globalExecutor)
+		// AMP can restart the broker container at any time, which clears the
+		// in-memory user list. Re-apply on a 15s tick so capture self-heals.
+		if amp, ok := globalControl.(*ampControl); ok {
+			amp.startEnsureCaptureUserLoop(globalExecutor)
+		}
 	}
 
 	fmt.Println("=== Dune Admin — RabbitMQ Message Capture ===")

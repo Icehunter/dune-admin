@@ -105,13 +105,20 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 		if container == "" && cfg.AmpInstance != "" {
 			container = "AMP_" + cfg.AmpInstance
 		}
+		// Default to container mode (CubeCoders' standard template) unless the
+		// admin explicitly opts out.
+		useContainer := true
+		if cfg.AmpUseContainer != nil {
+			useContainer = *cfg.AmpUseContainer
+		}
 		return &ampControl{
-			instance:    cfg.AmpInstance,
-			container:   container,
-			ampUser:     user,
-			logPath:     cfg.AmpLogPath,
-			directorURL: cfg.DirectorURL,
-			iniDir:      cfg.ServerIniDir,
+			instance:     cfg.AmpInstance,
+			container:    container,
+			ampUser:      user,
+			logPath:      cfg.AmpLogPath,
+			directorURL:  cfg.DirectorURL,
+			iniDir:       cfg.ServerIniDir,
+			useContainer: useContainer,
 		}
 	default:
 		return &localControl{

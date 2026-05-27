@@ -12,20 +12,28 @@ import (
 	"time"
 )
 
-// ampControl implements ControlPlane for CubeCoders AMP installations running
-// the Dune Awakening game server inside a podman container. It uses the host's
-// process table for game-server discovery and `podman exec` for in-container
-// operations. Lifecycle commands route through `ampinstmgr`.
+// ampControl implements ControlPlane for CubeCoders AMP installations. AMP can
+// run the game server in two modes:
+//
+//   - containerised: game processes run inside a podman container. Log/INI access
+//     and broker control require `podman exec`. Set useContainer = true.
+//   - native: game processes run directly on the host as the AMP user. Logs and
+//     INI files are on the host filesystem; rabbitmqctl is on the host PATH. Set
+//     useContainer = false.
+//
+// Process discovery (GetStatus/ListProcesses/CaptureJWT) is identical in both
+// modes — game-server processes appear in the host's `ps` output regardless.
 //
 // All instance- and container-specific names come from config; this provider
 // is not specialised to any particular AMP install.
 type ampControl struct {
-	instance    string // ampinstmgr instance name (e.g. "MehDune01")
-	container   string // podman container name (e.g. "AMP_MehDune01")
-	ampUser     string // OS user that owns the AMP instance (default "amp")
-	logPath     string // log directory inside the container (e.g. "/AMP/duneawakening/logs")
-	directorURL string // optional Battlegroup Director URL for status/exchange discovery
-	iniDir      string // host path to UserGame.ini directory (configured)
+	instance     string // ampinstmgr instance name (e.g. "MehDune01")
+	container    string // podman container name (only used when useContainer=true)
+	ampUser      string // OS user that owns the AMP instance (default "amp")
+	logPath      string // log directory — in-container path if containerised, host path if native
+	directorURL  string // optional Battlegroup Director URL for status/exchange discovery
+	iniDir       string // host path to UserGame.ini directory (configured)
+	useContainer bool   // true: wrap in-container ops in `podman exec`; false: run on host directly
 }
 
 func (c *ampControl) Name() string { return "amp" }
@@ -146,14 +154,36 @@ func (c *ampControl) ListProcesses(_ context.Context, exec Executor) ([]ProcessI
 	return infos, c.container, nil
 }
 
-func (c *ampControl) ListLogSources(_ context.Context, exec Executor) ([]LogSource, error) {
-	if c.container == "" || c.logPath == "" {
-		return nil, fmt.Errorf("amp control requires amp_container and amp_log_path to be set")
+// wrapInContainer returns a command string that, when executed via the host
+// executor, runs the given remote command. In container mode this is wrapped
+// in `sudo -i -u <ampUser> podman exec <container> sh -c '<remoteCmd>'`. In
+// native mode it's wrapped in `sudo -i -u <ampUser> sh -c '<remoteCmd>'`.
+//
+// The remote command is single-quoted; the caller MUST NOT embed single quotes
+// in the command itself.
+func (c *ampControl) wrapInContainer(remoteCmd string) string {
+	if c.useContainer {
+		return fmt.Sprintf("sudo -i -u %s podman exec %s sh -c %s",
+			c.ampUser, c.container, shellQuote(remoteCmd))
 	}
-	out, err := exec.Exec(fmt.Sprintf("sudo -i -u %s podman exec %s ls -1 %s 2>/dev/null",
-		c.ampUser, c.container, c.logPath))
+	return fmt.Sprintf("sudo -i -u %s sh -c %s", c.ampUser, shellQuote(remoteCmd))
+}
+
+func (c *ampControl) ListLogSources(_ context.Context, exec Executor) ([]LogSource, error) {
+	if c.logPath == "" {
+		return nil, fmt.Errorf("amp control requires amp_log_path to be set")
+	}
+	if c.useContainer && c.container == "" {
+		return nil, fmt.Errorf("amp control in container mode requires amp_container to be set")
+	}
+	cmd := c.wrapInContainer(fmt.Sprintf("ls -1 %s 2>/dev/null", c.logPath))
+	out, err := exec.Exec(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("podman exec ls: %w (%s)", err, out)
+		return nil, fmt.Errorf("list log dir: %w (%s)", err, out)
+	}
+	ns := c.container
+	if !c.useContainer {
+		ns = "host:" + c.logPath
 	}
 	var sources []LogSource
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
@@ -161,7 +191,7 @@ func (c *ampControl) ListLogSources(_ context.Context, exec Executor) ([]LogSour
 		if !strings.HasSuffix(name, ".log") {
 			continue
 		}
-		sources = append(sources, LogSource{Namespace: c.container, Name: name})
+		sources = append(sources, LogSource{Namespace: ns, Name: name})
 	}
 	if sources == nil {
 		sources = []LogSource{}
@@ -175,8 +205,7 @@ func (c *ampControl) StreamLog(_ context.Context, exec Executor, _, name string)
 	if !ampLogFileNameRe.MatchString(name) {
 		return nil, func() {}, fmt.Errorf("invalid log file name %q", name)
 	}
-	cmd := fmt.Sprintf("sudo -i -u %s podman exec %s tail -n 200 -f %s/%s",
-		c.ampUser, c.container, c.logPath, name)
+	cmd := c.wrapInContainer(fmt.Sprintf("tail -n 200 -f %s/%s", c.logPath, name))
 	return exec.Stream(cmd)
 }
 
@@ -206,18 +235,19 @@ func (c *ampControl) CaptureJWT(_ context.Context, exec Executor) (string, strin
 
 // ── RabbitMQ admin (exchange listing + capture user provisioning) ─────────────
 
-// rabbitmqctlPrefix returns the shell-prefix that runs rabbitmqctl against the
-// AMP container's broker. AMP runs both brokers (admin + game) inside the same
-// container, so we use `podman exec`. If a broker_exec_prefix is configured we
-// honour it; otherwise we default to `podman exec <container>`.
+// rabbitmqctlPrefix returns the shell-prefix that runs rabbitmqctl for this
+// AMP install. If an explicit broker_exec_prefix is configured we honour it.
+// Otherwise: container mode wraps in `podman exec`; native mode runs rabbitmqctl
+// directly on the host (as the AMP user, so RABBITMQ_ERLANG_COOKIE is read from
+// ~amp/.erlang.cookie).
 func (c *ampControl) rabbitmqctlPrefix(prefix string) string {
 	if prefix != "" {
 		return prefix + " rabbitmqctl"
 	}
-	if c.container != "" {
+	if c.useContainer && c.container != "" {
 		return fmt.Sprintf("sudo -i -u %s podman exec %s rabbitmqctl", c.ampUser, c.container)
 	}
-	return "rabbitmqctl"
+	return fmt.Sprintf("sudo -i -u %s rabbitmqctl", c.ampUser)
 }
 
 func (c *ampControl) ListExchanges(_ context.Context, exec Executor, _ string) ([]binding, error) {
@@ -277,24 +307,28 @@ func (c *ampControl) DiscoverIniDir(_ context.Context, _ Executor) (string, erro
 	return "", fmt.Errorf("amp control requires server_ini_dir or amp_instance to derive an INI directory")
 }
 
-// ReadDefaultINI returns the contents of DefaultGame.ini / DefaultEngine.ini
-// read from inside the game container. AMP mounts these files into the
-// container at a conventional path; we fall back to "" when the container or
-// path is unset so the host-path traversal in handlers_server_settings.go can
-// take over.
+// ReadDefaultINI returns the contents of DefaultGame.ini / DefaultEngine.ini.
+// In container mode this `find`s inside the game container; in native mode it
+// searches under the AMP install root. Returns "" when nothing matches so the
+// host-path traversal in handlers_server_settings.go can take over.
 func (c *ampControl) ReadDefaultINI(_ context.Context, exec Executor, filename string) string {
-	if c.container == "" {
+	if c.useContainer && c.container == "" {
 		return ""
 	}
-	out, err := exec.Exec(fmt.Sprintf(
-		"sudo -i -u %s podman exec %s find / -name %s -not -path '*/Saved/*' -not -path '*/saved/*' 2>/dev/null | head -1",
-		c.ampUser, c.container, filename))
+	findRoot := "/"
+	if !c.useContainer {
+		// Native AMP installs put the game tree under /AMP/<game>/. Scan that
+		// instead of /, which is faster and avoids permission noise.
+		findRoot = "/AMP"
+	}
+	out, err := exec.Exec(c.wrapInContainer(fmt.Sprintf(
+		"find %s -name %s -not -path '*/Saved/*' -not -path '*/saved/*' 2>/dev/null | head -1",
+		findRoot, filename)))
 	if err != nil || strings.TrimSpace(out) == "" {
 		return ""
 	}
 	path := strings.TrimSpace(out)
-	out, err = exec.Exec(fmt.Sprintf("sudo -i -u %s podman exec %s cat %s 2>/dev/null",
-		c.ampUser, c.container, path))
+	out, err = exec.Exec(c.wrapInContainer(fmt.Sprintf("cat %s 2>/dev/null", path)))
 	if err != nil {
 		return ""
 	}

@@ -1064,6 +1064,75 @@ func applyDuneAdminRawSection(content, section, rawLines string) (string, error)
 	return strings.TrimRight(preMarker, "\n") + "\n\n" + block, nil
 }
 
+type normalizedServerSettingUpdates struct {
+	updates map[string]map[string]string
+	applied int
+	cleared int
+}
+
+func buildServerSettingsSchemaMap() map[string]settingDef {
+	schemaMap := make(map[string]settingDef, len(serverSettingsSchema))
+	for _, d := range serverSettingsSchema {
+		schemaMap[d.Section+"|"+d.Key] = d
+	}
+	return schemaMap
+}
+
+func normalizeServerSettingsUpdates(
+	requested []serverSettingUpdate,
+	schemaMap map[string]settingDef,
+) (normalizedServerSettingUpdates, error) {
+	normalized := normalizedServerSettingUpdates{
+		updates: make(map[string]map[string]string, len(requested)),
+	}
+	for _, update := range requested {
+		if normalized.updates[update.Section] == nil {
+			normalized.updates[update.Section] = map[string]string{}
+		}
+		if update.Value == "" {
+			normalized.updates[update.Section][update.Key] = ""
+			normalized.cleared++
+			continue
+		}
+
+		def, known := schemaMap[update.Section+"|"+update.Key]
+		if known {
+			norm, err := normalizeValue(def.Type, update.Value)
+			if err != nil {
+				return normalizedServerSettingUpdates{}, fmt.Errorf("invalid value for %s: %w", update.Key, err)
+			}
+			normalized.updates[update.Section][update.Key] = norm
+		} else {
+			normalized.updates[update.Section][update.Key] = update.Value
+		}
+		normalized.applied++
+	}
+	return normalized, nil
+}
+
+func splitServerSettingsUpdatesByFile(
+	defaultEngineIni map[string]map[string]string,
+	updates map[string]map[string]string,
+) (gameUpdates, engineUpdates map[string]map[string]string) {
+	gameUpdates = map[string]map[string]string{}
+	engineUpdates = map[string]map[string]string{}
+	for sec, kvs := range updates {
+		if _, inEngine := defaultEngineIni[sec]; inEngine {
+			engineUpdates[sec] = kvs
+		} else {
+			gameUpdates[sec] = kvs
+		}
+	}
+	return gameUpdates, engineUpdates
+}
+
+func buildUpdatedINIContent(path string, updates map[string]map[string]string) (string, error) {
+	if len(updates) == 0 {
+		return "", nil
+	}
+	return applyDuneAdminUpdates(readINIContent(path), updates)
+}
+
 func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 	if globalExecutor == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
@@ -1083,79 +1152,48 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build schema lookup for type validation.
-	schemaMap := map[string]settingDef{}
-	for _, d := range serverSettingsSchema {
-		schemaMap[d.Section+"|"+d.Key] = d
-	}
-
-	// Normalise values and build the update map.
-	updates := map[string]map[string]string{}
-	applied, cleared := 0, 0
-	for _, u := range req.Updates {
-		if updates[u.Section] == nil {
-			updates[u.Section] = map[string]string{}
-		}
-		if u.Value == "" {
-			updates[u.Section][u.Key] = ""
-			cleared++
-		} else {
-			def, known := schemaMap[u.Section+"|"+u.Key]
-			if known {
-				norm, err := normalizeValue(def.Type, u.Value)
-				if err != nil {
-					jsonErr(w, fmt.Errorf("invalid value for %s: %w", u.Key, err), 400)
-					return
-				}
-				updates[u.Section][u.Key] = norm
-			} else {
-				updates[u.Section][u.Key] = u.Value
-			}
-			applied++
-		}
+	normalized, err := normalizeServerSettingsUpdates(req.Updates, buildServerSettingsSchemaMap())
+	if err != nil {
+		jsonErr(w, err, 400)
+		return
 	}
 
 	// Route each section to UserGame.ini or UserEngine.ini based on which default
 	// file declares it. Sections found in DefaultEngine.ini go to UserEngine.ini;
 	// everything else goes to UserGame.ini.
 	defaultEngineIni := parseINI(readDefaultINIContent(dir, "DefaultEngine.ini"))
-	gameUpdates, engineUpdates := map[string]map[string]string{}, map[string]map[string]string{}
-	for sec, kvs := range updates {
-		if _, inEngine := defaultEngineIni[sec]; inEngine {
-			engineUpdates[sec] = kvs
-		} else {
-			gameUpdates[sec] = kvs
-		}
+	gameUpdates, engineUpdates := splitServerSettingsUpdatesByFile(defaultEngineIni, normalized.updates)
+
+	gamePath := dir + "/UserGame.ini"
+	gameBody, err := buildUpdatedINIContent(gamePath, gameUpdates)
+	if err != nil {
+		jsonErr(w, fmt.Errorf("UserGame.ini: %w", err), 409)
+		return
 	}
-	if len(gameUpdates) > 0 {
-		path := dir + "/UserGame.ini"
-		body, err := applyDuneAdminUpdates(readINIContent(path), gameUpdates)
-		if err != nil {
-			jsonErr(w, fmt.Errorf("UserGame.ini: %w", err), 409)
-			return
-		}
-		if err := writeINIContent(path, body); err != nil {
+	if gameBody != "" {
+		if err := writeINIContent(gamePath, gameBody); err != nil {
 			jsonErr(w, fmt.Errorf("write UserGame.ini: %w", err), 500)
 			return
 		}
 	}
-	if len(engineUpdates) > 0 {
-		path := dir + "/UserEngine.ini"
-		body, err := applyDuneAdminUpdates(readINIContent(path), engineUpdates)
-		if err != nil {
-			jsonErr(w, fmt.Errorf("UserEngine.ini: %w", err), 409)
-			return
-		}
-		if err := writeINIContent(path, body); err != nil {
+
+	enginePath := dir + "/UserEngine.ini"
+	engineBody, err := buildUpdatedINIContent(enginePath, engineUpdates)
+	if err != nil {
+		jsonErr(w, fmt.Errorf("UserEngine.ini: %w", err), 409)
+		return
+	}
+	if engineBody != "" {
+		if err := writeINIContent(enginePath, engineBody); err != nil {
 			jsonErr(w, fmt.Errorf("write UserEngine.ini: %w", err), 500)
 			return
 		}
 	}
 
 	jsonOK(w, map[string]any{
-		"ok":      fmt.Sprintf("Saved (%d set, %d cleared). Restart the game server to apply.", applied, cleared),
-		"applied": applied,
-		"cleared": cleared,
+		"ok":      fmt.Sprintf("Saved (%d set, %d cleared). Restart the game server to apply.", normalized.applied, normalized.cleared),
+		"applied": normalized.applied,
+		"cleared": normalized.cleared,
 	})
 }
 

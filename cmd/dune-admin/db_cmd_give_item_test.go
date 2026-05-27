@@ -94,8 +94,6 @@ func TestEnsureGiveItemSlotCapacity(t *testing.T) {
 }
 
 func TestInventoryItemVolume(t *testing.T) {
-	t.Parallel()
-
 	oldItemData := itemData
 	itemData = itemDataFile{
 		DefaultVolume: 2.5,
@@ -132,8 +130,6 @@ func TestFormatGiveItemResult(t *testing.T) {
 }
 
 func TestEnsureGiveItemVolumeCapacity(t *testing.T) {
-	t.Parallel()
-
 	oldItemData := itemData
 	itemData = itemDataFile{
 		Items: map[string]itemRule{

@@ -17,22 +17,30 @@ type kubectlControl struct {
 
 func (c *kubectlControl) Name() string { return "kubectl" }
 
+func kubectlCLI(exec Executor) string {
+	if exec != nil && exec.Type() == "local" {
+		return "kubectl"
+	}
+	return "sudo kubectl"
+}
+
 func (c *kubectlControl) bgName() string {
 	return strings.TrimPrefix(c.namespace, "funcom-seabass-")
 }
 
 func (c *kubectlControl) GetStatus(ctx context.Context, exec Executor) (*BattlegroupStatus, error) {
 	bgName := c.bgName()
+	kctl := kubectlCLI(exec)
 
 	bgOut, _ := exec.Exec(fmt.Sprintf(
-		`sudo kubectl get battlegroups -n %s -o jsonpath="{.items[0].spec.title}|{.items[0].status.phase}|{.items[0].status.database.phase}" 2>/dev/null`,
-		c.namespace))
+		`%s get battlegroups -n %s -o jsonpath="{.items[0].spec.title}|{.items[0].status.phase}|{.items[0].status.database.phase}" 2>/dev/null`,
+		kctl, c.namespace))
 
 	bgParts := strings.SplitN(strings.TrimSpace(bgOut), "|", 3)
 
 	ssOut, _ := exec.Exec(fmt.Sprintf(
-		"sudo kubectl get serverstats -n %s -o jsonpath='{range .items[*]}{.spec.area.map}|{.spec.area.sietch}|{.spec.area.dimension}|{.spec.area.partition}|{.status.runtime.gamePhase}|{.status.runtime.ready}|{.status.runtime.players}{\"\\n\"}{end}' 2>/dev/null",
-		c.namespace))
+		"%s get serverstats -n %s -o jsonpath='{range .items[*]}{.spec.area.map}|{.spec.area.sietch}|{.spec.area.dimension}|{.spec.area.partition}|{.status.runtime.gamePhase}|{.status.runtime.ready}|{.status.runtime.players}{\"\\n\"}{end}' 2>/dev/null",
+		kctl, c.namespace))
 
 	var servers []ServerRow
 	for _, line := range strings.Split(strings.TrimSpace(ssOut), "\n") {
@@ -73,20 +81,21 @@ func (c *kubectlControl) GetStatus(ctx context.Context, exec Executor) (*Battleg
 func (c *kubectlControl) ExecCommand(_ context.Context, exec Executor, cmd string) (string, error) {
 	bgName := c.bgName()
 	ns := c.namespace
+	kctl := kubectlCLI(exec)
 
 	switch cmd {
 	case "start":
 		return exec.Exec(fmt.Sprintf(
-			`sudo kubectl patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":false}}' 2>&1 && echo "Battlegroup starting"`,
-			bgName, ns))
+			`%s patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":false}}' 2>&1 && echo "Battlegroup starting"`,
+			kctl, bgName, ns))
 	case "stop":
 		return exec.Exec(fmt.Sprintf(
-			`sudo kubectl patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":true}}' 2>&1 && echo "Battlegroup stopping"`,
-			bgName, ns))
+			`%s patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":true}}' 2>&1 && echo "Battlegroup stopping"`,
+			kctl, bgName, ns))
 	case "restart":
 		return exec.Exec(fmt.Sprintf(
-			`sudo kubectl patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":true}}' 2>/dev/null && sleep 5 && sudo kubectl patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":false}}' 2>/dev/null && echo "Battlegroup restarting"`,
-			bgName, ns, bgName, ns))
+			`%s patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":true}}' 2>/dev/null && sleep 5 && %s patch battlegroup %s -n %s --type=merge -p '{"spec":{"stop":false}}' 2>/dev/null && echo "Battlegroup restarting"`,
+			kctl, bgName, ns, kctl, bgName, ns))
 	default:
 		// TODO: NEVER run battlegroup.sh with sudo. The script manages files under
 		// /home/dune/.dune/ and runs as the dune user. Using sudo corrupts ownership
@@ -98,7 +107,8 @@ func (c *kubectlControl) ExecCommand(_ context.Context, exec Executor, cmd strin
 }
 
 func (c *kubectlControl) ListProcesses(_ context.Context, exec Executor) ([]ProcessInfo, string, error) {
-	out, err := exec.Exec(fmt.Sprintf("sudo kubectl get pods -n %s --no-headers 2>&1", c.namespace))
+	kctl := kubectlCLI(exec)
+	out, err := exec.Exec(fmt.Sprintf("%s get pods -n %s --no-headers 2>&1", kctl, c.namespace))
 	if err != nil {
 		return nil, "", fmt.Errorf("kubectl: %w", err)
 	}
@@ -112,13 +122,14 @@ func (c *kubectlControl) ListProcesses(_ context.Context, exec Executor) ([]Proc
 }
 
 func (c *kubectlControl) ListLogSources(_ context.Context, exec Executor) ([]LogSource, error) {
+	kctl := kubectlCLI(exec)
 	out, err := exec.Exec(fmt.Sprintf(
-		"sudo kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>&1", c.namespace))
+		"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>&1", kctl, c.namespace))
 	if err != nil {
 		return nil, fmt.Errorf("kubectl: %w", err)
 	}
 	out2, _ := exec.Exec(
-		"sudo kubectl get pods -n funcom-operators --no-headers -o custom-columns=NAME:.metadata.name 2>&1")
+		fmt.Sprintf("%s get pods -n funcom-operators --no-headers -o custom-columns=NAME:.metadata.name 2>&1", kctl))
 
 	var sources []LogSource
 	for _, line := range splitLines(out) {
@@ -137,22 +148,24 @@ func (c *kubectlControl) ListLogSources(_ context.Context, exec Executor) ([]Log
 }
 
 func (c *kubectlControl) StreamLog(_ context.Context, exec Executor, ns, name string) (<-chan string, func(), error) {
-	cmd := fmt.Sprintf("sudo kubectl logs -f -n %s %s 2>&1", ns, name)
+	kctl := kubectlCLI(exec)
+	cmd := fmt.Sprintf("%s logs -f -n %s %s 2>&1", kctl, ns, name)
 	return exec.Stream(cmd)
 }
 
 func (c *kubectlControl) CaptureJWT(_ context.Context, exec Executor) (string, string, error) {
+	kctl := kubectlCLI(exec)
 	pod, err := exec.Exec(fmt.Sprintf(
-		"sudo kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep bgd | head -1",
-		c.namespace))
+		"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep bgd | head -1",
+		kctl, c.namespace))
 	if err != nil || strings.TrimSpace(pod) == "" {
 		return "", "", fmt.Errorf("find bgd pod: %w", err)
 	}
 	pod = strings.TrimSpace(pod)
 
 	existingToken, err := exec.Exec(fmt.Sprintf(
-		"sudo kubectl exec -n %s %s -- env 2>/dev/null | grep FuncomLiveServices__ServiceAuthToken | cut -d= -f2-",
-		c.namespace, pod))
+		"%s exec -n %s %s -- env 2>/dev/null | grep FuncomLiveServices__ServiceAuthToken | cut -d= -f2-",
+		kctl, c.namespace, pod))
 	if err != nil || strings.TrimSpace(existingToken) == "" {
 		return "", "", fmt.Errorf("read ServiceAuthToken: %w", err)
 	}
@@ -163,16 +176,17 @@ func (c *kubectlControl) EvalOnGameBroker(_ context.Context, exec Executor, expr
 	if c.namespace == "" {
 		return "", errNotSupported("kubectl", "EvalOnGameBroker (namespace not configured)")
 	}
+	kctl := kubectlCLI(exec)
 	pod, err := exec.Exec(fmt.Sprintf(
-		"sudo kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep mq-game | head -1",
-		c.namespace))
+		"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep mq-game | head -1",
+		kctl, c.namespace))
 	if err != nil || strings.TrimSpace(pod) == "" {
 		return "", fmt.Errorf("could not find mq-game pod in namespace %s", c.namespace)
 	}
 	pod = strings.TrimSpace(pod)
 	out, err := exec.Exec(fmt.Sprintf(
-		"sudo kubectl exec -n %s %s -- rabbitmqctl eval %s 2>&1",
-		c.namespace, pod, shellQuote(expr)))
+		"%s exec -n %s %s -- rabbitmqctl eval %s 2>&1",
+		kctl, c.namespace, pod, shellQuote(expr)))
 	if err != nil {
 		return "", fmt.Errorf("rabbitmqctl eval: %w (output: %s)", err, strings.TrimSpace(out))
 	}
@@ -183,8 +197,9 @@ func (c *kubectlControl) EvalOnGameBroker(_ context.Context, exec Executor, expr
 
 // discoverDBPod uses kubectl to find the DB pod, returning namespace, name, and pod IP.
 func discoverDBPod(exec Executor) (ns, pod, podIP string, err error) {
+	kctl := kubectlCLI(exec)
 	out, err := exec.Exec(
-		`sudo kubectl get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{" "}{.status.podIP}{"\n"}{end}' 2>/dev/null | grep db-dbdepl-sts | head -1`)
+		fmt.Sprintf(`%s get pods -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{" "}{.status.podIP}{"\n"}{end}' 2>/dev/null | grep db-dbdepl-sts | head -1`, kctl))
 	if err != nil {
 		return "", "", "", fmt.Errorf("kubectl: %w", err)
 	}
@@ -239,14 +254,37 @@ func (c *kubectlControl) ReadDefaultINI(_ context.Context, exec Executor, filena
 	if c.namespace == "" {
 		return ""
 	}
-	// Find the game daemon pod — same pattern used by CaptureJWT.
-	pod, err := exec.Exec(fmt.Sprintf(
-		"sudo kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep bgd | head -1",
-		c.namespace))
-	if err != nil || strings.TrimSpace(pod) == "" {
+	kctl := kubectlCLI(exec)
+
+	podOut, err := exec.Exec(fmt.Sprintf(
+		"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null",
+		kctl, c.namespace))
+	if err != nil {
 		return ""
 	}
-	pod = strings.TrimSpace(pod)
+
+	var sgPods, bgdPods, otherPods []string
+	for _, line := range strings.Split(podOut, "\n") {
+		name := strings.TrimSpace(line)
+		if name == "" {
+			continue
+		}
+		switch {
+		case strings.Contains(name, "-sg-"):
+			sgPods = append(sgPods, name)
+		case strings.Contains(name, "bgd"):
+			bgdPods = append(bgdPods, name)
+		default:
+			otherPods = append(otherPods, name)
+		}
+	}
+	sort.Strings(sgPods)
+	sort.Strings(bgdPods)
+	sort.Strings(otherPods)
+	pods := append(append(sgPods, bgdPods...), otherPods...)
+	if len(pods) == 0 {
+		return ""
+	}
 
 	// Try well-known Config directories directly. find / misses paths that are
 	// only accessible via bind-mount roots or require following symlinks.
@@ -256,31 +294,33 @@ func (c *kubectlControl) ReadDefaultINI(_ context.Context, exec Executor, filena
 		"/home/dune/DuneSandbox/Config/" + filename,
 		"/game/DuneSandbox/Config/" + filename,
 	}
-	for _, p := range candidates {
-		content, err := exec.Exec(fmt.Sprintf(
-			"sudo kubectl exec -n %s %s -- cat %s 2>/dev/null",
-			c.namespace, pod, shellQuote(p)))
-		if err == nil && len(strings.TrimSpace(content)) > 0 {
-			log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
-			return content
+	for _, pod := range pods {
+		for _, p := range candidates {
+			content, err := exec.Exec(fmt.Sprintf(
+				"%s exec -n %s %s -- cat %s 2>/dev/null",
+				kctl, c.namespace, pod, shellQuote(p)))
+			if err == nil && len(strings.TrimSpace(content)) > 0 {
+				log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
+				return content
+			}
+		}
+
+		// Fall back: find with symlink-following under game-relevant roots.
+		pathOut, _ := exec.Exec(fmt.Sprintf(
+			"%s exec -n %s %s -- find -L /DuneSandbox /home /app /game -name %s -not -path '*/Saved/*' 2>/dev/null | head -1",
+			kctl, c.namespace, pod, shellQuote(filename)))
+		if p := strings.TrimSpace(pathOut); p != "" {
+			content, err := exec.Exec(fmt.Sprintf(
+				"%s exec -n %s %s -- cat %s 2>/dev/null",
+				kctl, c.namespace, pod, shellQuote(p)))
+			if err == nil && len(strings.TrimSpace(content)) > 0 {
+				log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
+				return content
+			}
 		}
 	}
 
-	// Fall back: find with symlink-following under game-relevant roots.
-	pathOut, _ := exec.Exec(fmt.Sprintf(
-		"sudo kubectl exec -n %s %s -- find -L /DuneSandbox /home /app /game -name %s -not -path '*/Saved/*' 2>/dev/null | head -1",
-		c.namespace, pod, shellQuote(filename)))
-	if p := strings.TrimSpace(pathOut); p != "" {
-		content, err := exec.Exec(fmt.Sprintf(
-			"sudo kubectl exec -n %s %s -- cat %s 2>/dev/null",
-			c.namespace, pod, shellQuote(p)))
-		if err == nil && len(strings.TrimSpace(content)) > 0 {
-			log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
-			return content
-		}
-	}
-
-	log.Printf("[default-ini] kubectl: %s not found in pod %s", filename, pod)
+	log.Printf("[default-ini] kubectl: %s not found in namespace %s", filename, c.namespace)
 	return ""
 }
 

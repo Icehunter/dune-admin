@@ -14,13 +14,29 @@ type localControl struct {
 	cmdStop          string
 	cmdRestart       string
 	cmdStatus        string
+	controlNamespace string
 	brokerExecPrefix string // e.g. "podman exec AMP_MehDune01" — prepended to rabbitmqctl calls
 }
 
 func (c *localControl) Name() string { return "local" }
 
+func (c *localControl) kubectlEnabled(exec Executor) bool {
+	if c.controlNamespace == "" || exec == nil {
+		return false
+	}
+	_, err := exec.Exec("kubectl version --client >/dev/null 2>&1")
+	return err == nil
+}
+
+func (c *localControl) kubectlDelegate() *kubectlControl {
+	return &kubectlControl{namespace: c.controlNamespace}
+}
+
 func (c *localControl) GetStatus(_ context.Context, exec Executor) (*BattlegroupStatus, error) {
 	if c.cmdStatus == "" {
+		if c.kubectlEnabled(exec) {
+			return c.kubectlDelegate().GetStatus(context.Background(), exec)
+		}
 		return nil, errNotSupported("local", "GetStatus (cmd_status not configured)")
 	}
 	out, err := exec.Exec(c.cmdStatus)
@@ -48,6 +64,9 @@ func (c *localControl) ExecCommand(_ context.Context, exec Executor, cmd string)
 		return "", fmt.Errorf("local control does not support %q", cmd)
 	}
 	if shellCmd == "" {
+		if c.kubectlEnabled(exec) {
+			return c.kubectlDelegate().ExecCommand(context.Background(), exec, cmd)
+		}
 		return "", errNotSupported("local", fmt.Sprintf("ExecCommand %q (cmd_%s not configured)", cmd, cmd))
 	}
 	out, err := exec.Exec(shellCmd)
@@ -57,19 +76,31 @@ func (c *localControl) ExecCommand(_ context.Context, exec Executor, cmd string)
 	return out, nil
 }
 
-func (c *localControl) ListProcesses(_ context.Context, _ Executor) ([]ProcessInfo, string, error) {
+func (c *localControl) ListProcesses(_ context.Context, exec Executor) ([]ProcessInfo, string, error) {
+	if c.kubectlEnabled(exec) {
+		return c.kubectlDelegate().ListProcesses(context.Background(), exec)
+	}
 	return nil, "", errNotSupported("local", "ListProcesses")
 }
 
-func (c *localControl) ListLogSources(_ context.Context, _ Executor) ([]LogSource, error) {
+func (c *localControl) ListLogSources(_ context.Context, exec Executor) ([]LogSource, error) {
+	if c.kubectlEnabled(exec) {
+		return c.kubectlDelegate().ListLogSources(context.Background(), exec)
+	}
 	return nil, errNotSupported("local", "ListLogSources")
 }
 
-func (c *localControl) StreamLog(_ context.Context, _ Executor, _, _ string) (<-chan string, func(), error) {
+func (c *localControl) StreamLog(_ context.Context, exec Executor, ns, name string) (<-chan string, func(), error) {
+	if c.kubectlEnabled(exec) {
+		return c.kubectlDelegate().StreamLog(context.Background(), exec, ns, name)
+	}
 	return nil, func() {}, errNotSupported("local", "StreamLog")
 }
 
-func (c *localControl) CaptureJWT(_ context.Context, _ Executor) (string, string, error) {
+func (c *localControl) CaptureJWT(_ context.Context, exec Executor) (string, string, error) {
+	if c.kubectlEnabled(exec) {
+		return c.kubectlDelegate().CaptureJWT(context.Background(), exec)
+	}
 	return "", "", errNotSupported("local", "CaptureJWT")
 }
 
@@ -88,10 +119,41 @@ func (c *localControl) EvalOnGameBroker(_ context.Context, exec Executor, expr s
 	return strings.TrimSpace(out), nil
 }
 
-func (c *localControl) ReadDefaultINI(_ context.Context, _ Executor, _ string) string {
+func (c *localControl) ReadDefaultINI(ctx context.Context, exec Executor, filename string) string {
+	if c.kubectlEnabled(exec) {
+		return c.kubectlDelegate().ReadDefaultINI(ctx, exec, filename)
+	}
 	return "" // host-path traversal in readDefaultINIContent handles local/Hyper-V
 }
 
-func (c *localControl) DiscoverIniDir(_ context.Context, _ Executor) (string, error) {
+func (c *localControl) DiscoverIniDir(_ context.Context, exec Executor) (string, error) {
+	if c.kubectlEnabled(exec) {
+		ns := c.controlNamespace
+		// UserSettings live on game-server pods (-sg-), not the bgd deploy pod.
+		podOut, err := exec.Exec(fmt.Sprintf(
+			"kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep -- '-sg-' | head -1",
+			ns,
+		))
+		if err != nil || strings.TrimSpace(podOut) == "" {
+			podOut, err = exec.Exec(fmt.Sprintf(
+				"kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep bgd | head -1",
+				ns,
+			))
+		}
+		if err != nil || strings.TrimSpace(podOut) == "" {
+			return "", fmt.Errorf("could not find game or bgd pod in namespace %s", ns)
+		}
+		pod := strings.TrimSpace(podOut)
+		findCmd := `for d in /home/dune/server/DuneSandbox/Saved/UserSettings /DuneSandbox/Saved/UserSettings /game/DuneSandbox/Saved/UserSettings; do if [ -d "$d" ]; then echo "$d"; exit 0; fi; done; find / -type d -path "*/Saved/UserSettings" 2>/dev/null | head -1`
+		dirOut, err := exec.Exec(fmt.Sprintf(
+			"kubectl exec -n %s %s -- sh -lc %s 2>/dev/null",
+			ns, pod, shellQuote(findCmd),
+		))
+		if err != nil || strings.TrimSpace(dirOut) == "" {
+			return "", fmt.Errorf("could not auto-discover ini dir in pod %s", pod)
+		}
+		dir := strings.TrimSpace(dirOut)
+		return fmt.Sprintf("k8s://%s/%s%s", ns, pod, dir), nil
+	}
 	return "", fmt.Errorf("local control plane requires server_ini_dir to be set in config")
 }

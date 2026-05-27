@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -238,19 +236,6 @@ func startServer(addr string) {
 		}
 	}
 
-	// ── SPA frontend (universal, opt-in) ────────────────────────────────────
-	candidates := []string{"./dist", "./web/dist"}
-	if loadedConfig.FrontendDir != "" {
-		candidates = append([]string{loadedConfig.FrontendDir}, candidates...)
-	}
-	for _, dir := range candidates {
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			log.Printf("Serving frontend from %s", dir)
-			mux.Handle("/", spaHandler(dir))
-			break
-		}
-	}
-
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           corsMiddleware(mux),
@@ -261,26 +246,6 @@ func startServer(addr string) {
 	}
 	log.Printf("dune-admin listening on %s", addr)
 	log.Fatal(srv.ListenAndServe())
-}
-
-// spaHandler serves static files from distDir, falling back to index.html
-// for any path that doesn't match a real file (client-side routing).
-func spaHandler(distDir string) http.Handler {
-	fileServer := http.FileServer(http.Dir(distDir))
-	cleanDist := filepath.Clean(distDir)
-	sep := string(filepath.Separator)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p := filepath.Join(cleanDist, filepath.FromSlash(r.URL.Path))
-		if p != cleanDist && !strings.HasPrefix(p, cleanDist+sep) {
-			http.NotFound(w, r)
-			return
-		}
-		if _, err := os.Stat(p); err == nil { // #nosec G703 -- path validated against cleanDist prefix above
-			fileServer.ServeHTTP(w, r)
-			return
-		}
-		http.ServeFile(w, r, filepath.Join(cleanDist, "index.html"))
-	})
 }
 
 // ── JSON helpers ──────────────────────────────────────────────────────────────

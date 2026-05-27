@@ -125,6 +125,7 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 			cmdStop:          cfg.CmdStop,
 			cmdRestart:       cfg.CmdRestart,
 			cmdStatus:        cfg.CmdStatus,
+			controlNamespace: cfg.ControlNamespace,
 			brokerExecPrefix: cfg.BrokerExecPrefix,
 		}
 	}

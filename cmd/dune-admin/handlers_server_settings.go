@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -379,9 +380,10 @@ func readDefaultINIContent(iniDir, filename string) string {
 // discoverDefaultINI does the actual multi-strategy search for a Default INI
 // file. Search order:
 //  1. Configured default_ini_dir (local read or via executor)
-//  2. Common host paths — /home, /root, /dune first, then k3s containerd layers
-//  3. Relative path traversal from iniDir (Hyper-V / bare-metal layouts)
-//  4. kubectl/docker exec into the game container (requires pod running)
+//  2. If iniDir is k8s://..., derive nearby Config paths in the same pod
+//  3. Common host paths — /home, /root, /dune first, then k3s containerd layers
+//  4. Relative path traversal from iniDir (Hyper-V / bare-metal layouts)
+//  5. kubectl/docker exec into the game container (requires pod running)
 func discoverDefaultINI(iniDir, filename string) string {
 	// 1. Explicit config path.
 	if loadedConfig.DefaultIniDir != "" {
@@ -391,6 +393,25 @@ func discoverDefaultINI(iniDir, filename string) string {
 		}
 		if c := readINIContent(p); c != "" {
 			return c
+		}
+	}
+
+	// 1b. When INI dir points to a k8s pod path, derive nearby Config paths in
+	// the same pod first. This is the most reliable source in deployed mode.
+	if ns, pod, inPodDir, ok := parseK8sINIPath(iniDir); ok {
+		candidates := []string{
+			pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "..", "Config", filename)),
+			pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "Config", filename)),
+			pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "..", "..", "Config", filename)),
+			"/DuneSandbox/Config/" + filename,
+			"/home/dune/server/DuneSandbox/Config/" + filename,
+			"/home/dune/DuneSandbox/Config/" + filename,
+			"/game/DuneSandbox/Config/" + filename,
+		}
+		for _, inPodPath := range candidates {
+			if c := readINIContent(fmt.Sprintf("k8s://%s/%s%s", ns, pod, inPodPath)); c != "" {
+				return c
+			}
 		}
 	}
 
@@ -442,15 +463,59 @@ func discoverDefaultINI(iniDir, filename string) string {
 	return ""
 }
 
+func parseK8sINIPath(path string) (ns, pod, inPodPath string, ok bool) {
+	const prefix = "k8s://"
+	if !strings.HasPrefix(path, prefix) {
+		return "", "", "", false
+	}
+	rest := strings.TrimPrefix(path, prefix)
+	parts := strings.SplitN(rest, "/", 3)
+	if len(parts) < 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return "", "", "", false
+	}
+	ns, pod, inPodPath = parts[0], parts[1], "/"+strings.TrimLeft(parts[2], "/")
+	return ns, pod, inPodPath, true
+}
+
 func readINIContent(path string) string {
 	if globalExecutor == nil {
 		return ""
+	}
+	if ns, pod, inPodPath, ok := parseK8sINIPath(path); ok {
+		kctl := kubectlCLI(globalExecutor)
+		out, err := globalExecutor.Exec(fmt.Sprintf(
+			"%s exec -n %s %s -- cat %s 2>/dev/null",
+			kctl, ns, pod, shellQuote(inPodPath)))
+		if err != nil {
+			return ""
+		}
+		return out
 	}
 	out, err := globalExecutor.Exec(fmt.Sprintf("sudo cat %s 2>/dev/null", shellQuote(path)))
 	if err != nil {
 		return ""
 	}
 	return out
+}
+
+func writeINIContent(path, body string) error {
+	if globalExecutor == nil {
+		return fmt.Errorf("not connected")
+	}
+	if ns, pod, inPodPath, ok := parseK8sINIPath(path); ok {
+		kctl := kubectlCLI(globalExecutor)
+		payload := base64.StdEncoding.EncodeToString([]byte(body))
+		cmd := fmt.Sprintf(
+			"echo %s | base64 -d | %s exec -i -n %s %s -- sh -lc 'cat > %s' 2>/dev/null",
+			shellQuote(payload), kctl, ns, pod, shellQuote(inPodPath),
+		)
+		out, err := globalExecutor.Exec(cmd)
+		if err != nil {
+			return fmt.Errorf("write %s: %w — %s", inPodPath, err, strings.TrimSpace(out))
+		}
+		return nil
+	}
+	return globalExecutor.WriteFile(path, strings.NewReader(body))
 }
 
 func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
@@ -1031,7 +1096,7 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 			jsonErr(w, fmt.Errorf("UserGame.ini: %w", err), 409)
 			return
 		}
-		if err := globalExecutor.WriteFile(path, strings.NewReader(body)); err != nil {
+		if err := writeINIContent(path, body); err != nil {
 			jsonErr(w, fmt.Errorf("write UserGame.ini: %w", err), 500)
 			return
 		}
@@ -1043,7 +1108,7 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 			jsonErr(w, fmt.Errorf("UserEngine.ini: %w", err), 409)
 			return
 		}
-		if err := globalExecutor.WriteFile(path, strings.NewReader(body)); err != nil {
+		if err := writeINIContent(path, body); err != nil {
 			jsonErr(w, fmt.Errorf("write UserEngine.ini: %w", err), 500)
 			return
 		}
@@ -1094,9 +1159,7 @@ func handleUpdateRawSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var buf bytes.Buffer
-	buf.WriteString(updated)
-	if err := globalExecutor.WriteFile(filePath, &buf); err != nil {
+	if err := writeINIContent(filePath, updated); err != nil {
 		jsonErr(w, fmt.Errorf("write %s: %w", filePath, err), 500)
 		return
 	}

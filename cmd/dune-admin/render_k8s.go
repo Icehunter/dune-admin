@@ -1,0 +1,347 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	"gopkg.in/yaml.v3"
+)
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func durationOr(d, def time.Duration) time.Duration {
+	if d > 0 {
+		return d
+	}
+	return def
+}
+
+func yamlScalar(s string) string {
+	b, err := yaml.Marshal(s)
+	if err != nil {
+		return strconv.Quote(s)
+	}
+	return strings.TrimSpace(string(b))
+}
+
+func indentLines(s, prefix string) string {
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	for i, line := range lines {
+		lines[i] = prefix + line
+	}
+	return strings.Join(lines, "\n") + "\n"
+}
+
+func renderK8SManifest(outPath string) error {
+	control := firstNonEmpty(controlPlane, loadedConfig.Control)
+	if control == "" {
+		control = resolveControl()
+	}
+	listen := firstNonEmpty(listenAddr, loadedConfig.ListenAddr)
+	if listen == "" {
+		listen = ":8080"
+	}
+
+	dbHostVal := firstNonEmpty(dbHost, loadedConfig.DBHost, "postgres.default.svc.cluster.local")
+	dbPortVal := dbPort
+	if dbPortVal == 0 {
+		if loadedConfig.DBPort != 0 {
+			dbPortVal = loadedConfig.DBPort
+		} else {
+			dbPortVal = 15432
+		}
+	}
+	dbUserVal := firstNonEmpty(dbUser, loadedConfig.DBUser, "dune")
+	dbNameVal := firstNonEmpty(dbName, loadedConfig.DBName, "dune")
+	dbSchemaVal := firstNonEmpty(dbSchema, loadedConfig.DBSchema, "dune")
+	dbPassVal := firstNonEmpty(dbPass, loadedConfig.DBPass, "replace-me")
+
+	buyInt := durationOr(loadedConfig.MarketBotBuyInt, 5*time.Minute)
+	listInt := durationOr(loadedConfig.MarketBotListInt, 30*time.Minute)
+	cacheDB := firstNonEmpty(loadedConfig.MarketBotCacheDB, "/data/market-bot-cache.db")
+	itemData := firstNonEmpty(loadedConfig.MarketBotItemData, "/app/item-data.json")
+	buyThreshold := loadedConfig.MarketBotThresh
+	if buyThreshold == 0 {
+		buyThreshold = 1.05
+	}
+	maxBuys := loadedConfig.MarketBotMaxBuys
+	if maxBuys == 0 {
+		maxBuys = 50
+	}
+
+	manifestCfg := map[string]any{
+		"control":                  control,
+		"listen_addr":              listen,
+		"db_host":                  dbHostVal,
+		"db_port":                  dbPortVal,
+		"db_user":                  dbUserVal,
+		"db_name":                  dbNameVal,
+		"db_schema":                dbSchemaVal,
+		"market_bot_enabled":       loadedConfig.MarketBotEnabled,
+		"market_bot_cache_db":      cacheDB,
+		"market_bot_item_data":     itemData,
+		"market_bot_buy_interval":  buyInt.String(),
+		"market_bot_list_interval": listInt.String(),
+		"market_bot_buy_threshold": buyThreshold,
+		"market_bot_max_buys":      maxBuys,
+	}
+	if loadedConfig.SSHHost != "" {
+		manifestCfg["ssh_host"] = loadedConfig.SSHHost
+	}
+	if loadedConfig.SSHUser != "" {
+		manifestCfg["ssh_user"] = loadedConfig.SSHUser
+	}
+	if loadedConfig.SSHKey != "" {
+		manifestCfg["ssh_key"] = loadedConfig.SSHKey
+	}
+	if loadedConfig.ControlNamespace != "" {
+		manifestCfg["control_namespace"] = loadedConfig.ControlNamespace
+	}
+	if loadedConfig.BrokerGameAddr != "" {
+		manifestCfg["broker_game_addr"] = loadedConfig.BrokerGameAddr
+	}
+	if loadedConfig.BrokerAdminAddr != "" {
+		manifestCfg["broker_admin_addr"] = loadedConfig.BrokerAdminAddr
+	}
+	if loadedConfig.BrokerTLS {
+		manifestCfg["broker_tls"] = true
+	}
+	if loadedConfig.ServerIniDir != "" {
+		manifestCfg["server_ini_dir"] = loadedConfig.ServerIniDir
+	}
+	if loadedConfig.DefaultIniDir != "" {
+		manifestCfg["default_ini_dir"] = loadedConfig.DefaultIniDir
+	}
+	if loadedConfig.BackupDir != "" {
+		manifestCfg["backup_dir"] = loadedConfig.BackupDir
+	}
+	if loadedConfig.Control == "amp" || control == "amp" {
+		if loadedConfig.AmpInstance != "" {
+			manifestCfg["amp_instance"] = loadedConfig.AmpInstance
+		}
+		if loadedConfig.AmpContainer != "" {
+			manifestCfg["amp_container"] = loadedConfig.AmpContainer
+		}
+		if loadedConfig.AmpUser != "" {
+			manifestCfg["amp_user"] = loadedConfig.AmpUser
+		}
+		if loadedConfig.AmpLogPath != "" {
+			manifestCfg["amp_log_path"] = loadedConfig.AmpLogPath
+		}
+		if loadedConfig.AmpUseContainer != nil {
+			manifestCfg["amp_use_container"] = *loadedConfig.AmpUseContainer
+		}
+		if loadedConfig.AmpDataRoot != "" {
+			manifestCfg["amp_data_root"] = loadedConfig.AmpDataRoot
+		}
+		if loadedConfig.DirectorURL != "" {
+			manifestCfg["director_url"] = loadedConfig.DirectorURL
+		}
+	}
+
+	cfgYAMLBytes, err := yaml.Marshal(manifestCfg)
+	if err != nil {
+		return fmt.Errorf("marshal embedded config: %w", err)
+	}
+
+	brokerUserVal := firstNonEmpty(brokerUser, loadedConfig.BrokerUser)
+	brokerPassVal := firstNonEmpty(brokerPass, loadedConfig.BrokerPass)
+	brokerJWTVal := firstNonEmpty(os.Getenv("BROKER_JWT_SECRET"), loadedConfig.BrokerJWTSecret)
+
+	var out strings.Builder
+	out.WriteString("apiVersion: v1\nkind: Namespace\nmetadata:\n  name: dune-admin\n---\n")
+	out.WriteString("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: dune-admin-config\n  namespace: dune-admin\n")
+	out.WriteString("data:\n")
+	out.WriteString("  DB_HOST: " + yamlScalar(dbHostVal) + "\n")
+	out.WriteString("  DB_PORT: " + yamlScalar(strconv.Itoa(dbPortVal)) + "\n")
+	out.WriteString("  DB_USER: " + yamlScalar(dbUserVal) + "\n")
+	out.WriteString("  DB_NAME: " + yamlScalar(dbNameVal) + "\n")
+	out.WriteString("  DB_SCHEMA: " + yamlScalar(dbSchemaVal) + "\n")
+	out.WriteString("  LISTEN_ADDR: " + yamlScalar(listen) + "\n")
+	out.WriteString("  CONTROL: " + yamlScalar(control) + "\n")
+	out.WriteString("  MARKET_BOT_ENABLED: " + yamlScalar(strconv.FormatBool(loadedConfig.MarketBotEnabled)) + "\n")
+	out.WriteString("  MARKET_BOT_BUY_INTERVAL: " + yamlScalar(buyInt.String()) + "\n")
+	out.WriteString("  MARKET_BOT_LIST_INTERVAL: " + yamlScalar(listInt.String()) + "\n")
+	out.WriteString("  config.yaml: |\n")
+	out.WriteString(indentLines(string(cfgYAMLBytes), "    "))
+
+	out.WriteString("---\napiVersion: v1\nkind: Secret\nmetadata:\n  name: dune-admin-secrets\n  namespace: dune-admin\n")
+	out.WriteString("type: Opaque\nstringData:\n")
+	out.WriteString("  DB_PASS: " + yamlScalar(dbPassVal) + "\n")
+	out.WriteString("  BROKER_USER: " + yamlScalar(brokerUserVal) + "\n")
+	out.WriteString("  BROKER_PASS: " + yamlScalar(brokerPassVal) + "\n")
+	out.WriteString("  BROKER_JWT_SECRET: " + yamlScalar(brokerJWTVal) + "\n")
+
+	out.WriteString(`---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: market-bot-cache
+  namespace: dune-admin
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dune-admin
+  namespace: dune-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dune-admin
+  template:
+    metadata:
+      labels:
+        app: dune-admin
+    spec:
+      containers:
+        - name: dune-admin
+          image: ghcr.io/icehunter/dune-admin:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: dune-admin-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: dune-admin-config
+                  key: DB_PORT
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: dune-admin-config
+                  key: DB_USER
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: dune-admin-config
+                  key: DB_NAME
+            - name: DB_SCHEMA
+              valueFrom:
+                configMapKeyRef:
+                  name: dune-admin-config
+                  key: DB_SCHEMA
+            - name: LISTEN_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: dune-admin-config
+                  key: LISTEN_ADDR
+            - name: CONTROL
+              valueFrom:
+                configMapKeyRef:
+                  name: dune-admin-config
+                  key: CONTROL
+            - name: MARKET_BOT_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: dune-admin-config
+                  key: MARKET_BOT_ENABLED
+            - name: MARKET_BOT_BUY_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  name: dune-admin-config
+                  key: MARKET_BOT_BUY_INTERVAL
+            - name: MARKET_BOT_LIST_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  name: dune-admin-config
+                  key: MARKET_BOT_LIST_INTERVAL
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: dune-admin-secrets
+                  key: DB_PASS
+            - name: BROKER_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dune-admin-secrets
+                  key: BROKER_USER
+            - name: BROKER_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: dune-admin-secrets
+                  key: BROKER_PASS
+            - name: BROKER_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dune-admin-secrets
+                  key: BROKER_JWT_SECRET
+          volumeMounts:
+            - name: market-bot-cache
+              mountPath: /data
+            - name: config
+              mountPath: /root/.dune-admin/config.yaml
+              subPath: config.yaml
+          readinessProbe:
+            httpGet:
+              path: /api/v1/status
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/status
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      volumes:
+        - name: market-bot-cache
+          persistentVolumeClaim:
+            claimName: market-bot-cache
+        - name: config
+          configMap:
+            name: dune-admin-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dune-admin
+  namespace: dune-admin
+spec:
+  selector:
+    app: dune-admin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+  type: ClusterIP
+`)
+
+	if outPath == "-" {
+		fmt.Print(out.String())
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return fmt.Errorf("create output directory: %w", err)
+	}
+	if err := os.WriteFile(outPath, []byte(out.String()), 0o644); err != nil {
+		return fmt.Errorf("write manifest %s: %w", outPath, err)
+	}
+	return nil
+}

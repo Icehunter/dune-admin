@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type backupFile struct {
@@ -92,14 +93,199 @@ func handleBGPods(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]any{"pods": lines, "namespace": ns})
 }
 
-func bgName() string { return strings.TrimPrefix(globalPodNS, "funcom-seabass-") }
-
-func activeBackupDir() string {
+func activeBackupDir() (string, error) {
 	if backupDir != "" {
-		return backupDir
+		return backupDir, nil
 	}
-	// Legacy K8s default.
-	return fmt.Sprintf("/funcom/artifacts/database-dumps/%s", bgName())
+	if loadedConfig.BackupDir != "" {
+		return loadedConfig.BackupDir, nil
+	}
+	ns := firstNonEmpty(controlNS, loadedConfig.ControlNamespace, globalPodNS)
+	bg := strings.TrimPrefix(ns, "funcom-seabass-")
+	if globalControl != nil && globalControl.Name() == "local" && ns != "" && globalExecutor != nil {
+		pod, err := discoverK8sBackupPod(ns)
+		if err == nil && pod != "" && bg != "" {
+			return fmt.Sprintf("k8s://%s/%s/home/dune/artifacts/database-dumps/%s", ns, pod, bg), nil
+		}
+	}
+	if bg != "" {
+		// Legacy kubectl/host default.
+		return fmt.Sprintf("/funcom/artifacts/database-dumps/%s", bg), nil
+	}
+	return "", fmt.Errorf("backup_dir not configured and no battlegroup namespace discovered")
+}
+
+func parseK8sBackupDir(dir string) (ns, pod, inPodDir string, ok bool) {
+	const prefix = "k8s://"
+	if !strings.HasPrefix(dir, prefix) {
+		return "", "", "", false
+	}
+	rest := strings.TrimPrefix(dir, prefix)
+	parts := strings.SplitN(rest, "/", 3)
+	if len(parts) < 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return "", "", "", false
+	}
+	ns, pod, inPodDir = parts[0], parts[1], "/"+strings.TrimLeft(parts[2], "/")
+	return ns, pod, inPodDir, true
+}
+
+func discoverK8sBackupPod(ns string) (string, error) {
+	if globalExecutor == nil {
+		return "", fmt.Errorf("not connected")
+	}
+	kctl := kubectlCLI(globalExecutor)
+	out, err := globalExecutor.Exec(fmt.Sprintf(
+		"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep -- '-sg-' | head -1",
+		kctl, shellQuote(ns),
+	))
+	if err == nil && strings.TrimSpace(out) != "" {
+		return strings.TrimSpace(out), nil
+	}
+	out, err = globalExecutor.Exec(fmt.Sprintf(
+		"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep bgd | head -1",
+		kctl, shellQuote(ns),
+	))
+	if err == nil && strings.TrimSpace(out) != "" {
+		return strings.TrimSpace(out), nil
+	}
+	return "", fmt.Errorf("could not discover backup pod in namespace %s", ns)
+}
+
+func ensureBackupDir(dir string) error {
+	if globalExecutor == nil {
+		return fmt.Errorf("not connected")
+	}
+	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
+		kctl := kubectlCLI(globalExecutor)
+		out, err := globalExecutor.Exec(fmt.Sprintf(
+			"%s exec -n %s %s -- mkdir -p %s 2>&1",
+			kctl, shellQuote(ns), shellQuote(pod), shellQuote(inPodDir),
+		))
+		if err != nil {
+			return fmt.Errorf("ensure k8s backup dir: %w (%s)", err, strings.TrimSpace(out))
+		}
+		return nil
+	}
+	out, err := globalExecutor.Exec(fmt.Sprintf(
+		"mkdir -p %s 2>/dev/null || sudo mkdir -p %s 2>&1",
+		shellQuote(dir), shellQuote(dir),
+	))
+	if err != nil {
+		return fmt.Errorf("ensure backup dir: %w (%s)", err, strings.TrimSpace(out))
+	}
+	return nil
+}
+
+func listBackupDir(dir string) (string, string, error) {
+	if globalExecutor == nil {
+		return "", "", fmt.Errorf("not connected")
+	}
+	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
+		kctl := kubectlCLI(globalExecutor)
+		listCmd := fmt.Sprintf(`ls -lt %s/ 2>/dev/null | awk '/\.backup$/{print $NF"|"$5"|"$6" "$7" "$8}'`, inPodDir)
+		out, err := globalExecutor.Exec(fmt.Sprintf(
+			"%s exec -n %s %s -- sh -lc %s 2>&1",
+			kctl, shellQuote(ns), shellQuote(pod), shellQuote(listCmd),
+		))
+		if err != nil {
+			return "", "", fmt.Errorf("list backups: %w (%s)", err, strings.TrimSpace(out))
+		}
+		yamlCmd := fmt.Sprintf(`ls %s/*.backup.yaml 2>/dev/null | xargs -r -I{} basename {} .yaml`, inPodDir)
+		yamlOut, err := globalExecutor.Exec(fmt.Sprintf(
+			"%s exec -n %s %s -- sh -lc %s 2>&1",
+			kctl, shellQuote(ns), shellQuote(pod), shellQuote(yamlCmd),
+		))
+		if err != nil {
+			return "", "", fmt.Errorf("list backup metadata: %w (%s)", err, strings.TrimSpace(yamlOut))
+		}
+		return out, yamlOut, nil
+	}
+	out, err := globalExecutor.Exec(fmt.Sprintf(
+		`ls -lt %s/ 2>/dev/null | awk '/\.backup$/{print $NF"|"$5"|"$6" "$7" "$8}'`,
+		dir))
+	if err != nil {
+		out, err = globalExecutor.Exec(fmt.Sprintf(
+			`sudo ls -lt %s/ 2>/dev/null | awk '/\.backup$/{print $NF"|"$5"|"$6" "$7" "$8}'`,
+			dir))
+		if err != nil {
+			return "", "", fmt.Errorf("list backups: %w (%s)", err, strings.TrimSpace(out))
+		}
+	}
+	yamlOut, err := globalExecutor.Exec(fmt.Sprintf(
+		`ls %s/*.backup.yaml 2>/dev/null | xargs -r -I{} basename {} .yaml`,
+		dir))
+	if err != nil {
+		yamlOut, err = globalExecutor.Exec(fmt.Sprintf(
+			`sudo ls %s/*.backup.yaml 2>/dev/null | xargs -r -I{} basename {} .yaml`,
+			dir))
+		if err != nil {
+			return "", "", fmt.Errorf("list backup metadata: %w (%s)", err, strings.TrimSpace(yamlOut))
+		}
+	}
+	return out, yamlOut, nil
+}
+
+func backupFileExists(dir, name string) bool {
+	if globalExecutor == nil {
+		return false
+	}
+	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
+		kctl := kubectlCLI(globalExecutor)
+		remotePath := strings.TrimRight(inPodDir, "/") + "/" + name
+		out, _ := globalExecutor.Exec(fmt.Sprintf(
+			"%s exec -n %s %s -- sh -lc %s 2>/dev/null",
+			kctl, shellQuote(ns), shellQuote(pod),
+			shellQuote(fmt.Sprintf("test -f %s && echo yes || echo no", shellQuote(remotePath))),
+		))
+		return strings.TrimSpace(out) == "yes"
+	}
+	path := strings.TrimRight(dir, "/") + "/" + name
+	out, _ := globalExecutor.Exec(fmt.Sprintf("test -f %s && echo yes || echo no", shellQuote(path)))
+	if strings.TrimSpace(out) == "yes" {
+		return true
+	}
+	out, _ = globalExecutor.Exec(fmt.Sprintf("sudo test -f %s && echo yes || echo no", shellQuote(path)))
+	return strings.TrimSpace(out) == "yes"
+}
+
+func backupReadCmd(dir, name string) string {
+	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
+		kctl := kubectlCLI(globalExecutor)
+		remotePath := strings.TrimRight(inPodDir, "/") + "/" + name
+		return fmt.Sprintf("%s exec -n %s %s -- cat %s", kctl, shellQuote(ns), shellQuote(pod), shellQuote(remotePath))
+	}
+	path := strings.TrimRight(dir, "/") + "/" + name
+	return fmt.Sprintf("cat %s 2>/dev/null || sudo cat %s", shellQuote(path), shellQuote(path))
+}
+
+func writeBackupFile(dir, name string, src io.Reader) error {
+	if globalExecutor == nil {
+		return fmt.Errorf("not connected")
+	}
+	if err := ensureBackupDir(dir); err != nil {
+		return err
+	}
+	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
+		tmp := fmt.Sprintf("/tmp/dune-admin-backup-%d.tmp", time.Now().UnixNano())
+		if err := globalExecutor.WriteFile(tmp, src); err != nil {
+			return fmt.Errorf("stage upload: %w", err)
+		}
+		defer func() {
+			_, _ = globalExecutor.Exec(fmt.Sprintf("rm -f %s 2>/dev/null || sudo rm -f %s 2>/dev/null || true",
+				shellQuote(tmp), shellQuote(tmp)))
+		}()
+		kctl := kubectlCLI(globalExecutor)
+		remotePath := strings.TrimRight(inPodDir, "/") + "/" + name
+		out, err := globalExecutor.Exec(fmt.Sprintf(
+			"%s cp %s %s/%s:%s 2>&1",
+			kctl, shellQuote(tmp), shellQuote(ns), shellQuote(pod), shellQuote(remotePath),
+		))
+		if err != nil {
+			return fmt.Errorf("copy to k8s pod: %w (%s)", err, strings.TrimSpace(out))
+		}
+		return nil
+	}
+	return globalExecutor.WriteFile(strings.TrimRight(dir, "/")+"/"+name, src)
 }
 
 func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
@@ -107,13 +293,20 @@ func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
-	dir := activeBackupDir()
-	out, _ := globalExecutor.Exec(fmt.Sprintf(
-		`sudo ls -lt %s/ 2>/dev/null | awk '/\.backup$/{print $NF"|"$5"|"$6" "$7" "$8}'`,
-		dir))
-	yamlOut, _ := globalExecutor.Exec(fmt.Sprintf(
-		`sudo ls %s/*.backup.yaml 2>/dev/null | xargs -r -I{} basename {} .yaml`,
-		dir))
+	dir, err := activeBackupDir()
+	if err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
+	if err := ensureBackupDir(dir); err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
+	out, yamlOut, err := listBackupDir(dir)
+	if err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
 	hasYAML := make(map[string]bool)
 	for _, n := range strings.Split(strings.TrimSpace(yamlOut), "\n") {
 		if n != "" {
@@ -150,7 +343,11 @@ func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	baseName := strings.TrimSuffix(filename, ".backup")
-	dir := activeBackupDir()
+	dir, err := activeBackupDir()
+	if err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
 
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.zip"`, baseName))
 	w.Header().Set("Content-Type", "application/zip")
@@ -158,16 +355,14 @@ func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 	zw := zip.NewWriter(w)
 	for _, ext := range []string{".backup", ".backup.yaml"} {
 		name := baseName + ext
-		remotePath := dir + "/" + name
-		exists, _ := globalExecutor.Exec(fmt.Sprintf("sudo test -f %s && echo yes || echo no", shellQuote(remotePath)))
-		if strings.TrimSpace(exists) != "yes" {
+		if !backupFileExists(dir, name) {
 			continue
 		}
 		fw, err := zw.Create(name)
 		if err != nil {
 			continue
 		}
-		if err := globalExecutor.PipeToWriter(fmt.Sprintf("sudo cat %s", shellQuote(remotePath)), fw); err != nil {
+		if err := globalExecutor.PipeToWriter(backupReadCmd(dir, name), fw); err != nil {
 			fmt.Printf("zip entry %s: %v\n", name, err)
 		}
 	}
@@ -218,7 +413,15 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = file.Close() }()
 
 	filename := header.Filename
-	dir := activeBackupDir()
+	dir, err := activeBackupDir()
+	if err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
+	if err := ensureBackupDir(dir); err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
 
 	if strings.HasSuffix(filename, ".zip") {
 		data, err := io.ReadAll(file)
@@ -244,9 +447,10 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			if err := globalExecutor.WriteFile(dir+"/"+name, rc); err != nil {
+			if err := writeBackupFile(dir, name, rc); err != nil {
 				_ = rc.Close()
-				continue
+				jsonErr(w, fmt.Errorf("upload failed for %s: %w", name, err), 500)
+				return
 			}
 			if err := rc.Close(); err != nil {
 				continue
@@ -261,7 +465,7 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 		}
 		jsonOK(w, map[string]string{"name": backupName})
 	} else if strings.HasSuffix(filename, ".backup") && !strings.ContainsAny(filename, "/\\") {
-		if err := globalExecutor.WriteFile(dir+"/"+filename, file); err != nil {
+		if err := writeBackupFile(dir, filename, file); err != nil {
 			jsonErr(w, fmt.Errorf("upload failed: %w", err), 500)
 			return
 		}
@@ -283,9 +487,29 @@ func restoreViaControl(ctx context.Context, filename string) (string, error) {
 			shellQuote(filename)))
 	}
 	// docker / local: pg_restore from the backup directory.
-	dir := activeBackupDir()
-	path := dir + "/" + filename
+	dir, err := activeBackupDir()
+	if err != nil {
+		return "", err
+	}
+	path := strings.TrimRight(dir, "/") + "/" + filename
+	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
+		kctl := kubectlCLI(globalExecutor)
+		tmp := fmt.Sprintf("/tmp/dune-admin-restore-%d.backup", time.Now().UnixNano())
+		remotePath := strings.TrimRight(inPodDir, "/") + "/" + filename
+		copyOut, copyErr := globalExecutor.Exec(fmt.Sprintf(
+			"%s cp %s/%s:%s %s 2>&1",
+			kctl, shellQuote(ns), shellQuote(pod), shellQuote(remotePath), shellQuote(tmp),
+		))
+		if copyErr != nil {
+			return copyOut, fmt.Errorf("copy backup to local restore path: %w", copyErr)
+		}
+		defer func() {
+			_, _ = globalExecutor.Exec(fmt.Sprintf("rm -f %s 2>/dev/null || sudo rm -f %s 2>/dev/null || true",
+				shellQuote(tmp), shellQuote(tmp)))
+		}()
+		path = tmp
+	}
 	return globalExecutor.Exec(fmt.Sprintf(
-		`pg_restore --clean --if-exists -h %s -p %d -U %s -d %s %s 2>&1`,
-		dbHost, dbPort, dbUser, dbName, shellQuote(path)))
+		`PGPASSWORD=%s pg_restore --no-password --clean --if-exists -h %s -p %d -U %s -d %s %s 2>&1`,
+		shellQuote(dbPass), dbHost, dbPort, dbUser, dbName, shellQuote(path)))
 }

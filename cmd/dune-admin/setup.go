@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -74,14 +76,19 @@ func runSetup() {
 		runAmpSetup(ask, ok, fail, &cfg)
 	}
 
-	// ── Market bot (optional) ──────────────────────────────────────────────────
+	// ── Embedded market bot ────────────────────────────────────────────────────
 
-	runMarketBotSetup(ask, ok, ctrl, &cfg)
+	runMarketBotSetup(ask, ok, &cfg)
 
 	// ── Common: listen address ─────────────────────────────────────────────────
 
 	fmt.Println("Server config:")
-	cfg.ListenAddr = ask("HTTP listen address", listenAddr)
+	defaultListenAddr := listenAddr
+	if ctrl == "amp" && (defaultListenAddr == "" || defaultListenAddr == ":8080") {
+		// AMP web panel commonly binds :8080 on host installs.
+		defaultListenAddr = ":18080"
+	}
+	cfg.ListenAddr = ask("HTTP listen address", defaultListenAddr)
 	fmt.Println()
 
 	// ── Write config ───────────────────────────────────────────────────────────
@@ -442,50 +449,49 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 	cfg.ScripCurrency = scripCurrencyID
 }
 
-// ── Market bot setup (optional) ───────────────────────────────────────────────
+// ── Market bot setup ───────────────────────────────────────────────────────────
 
-// runMarketBotSetup asks optional market-bot connection details.
-// Defaults: container/deployment = "market-bot"; addr derived from SSH host
-// (kubectl) or localhost (docker/local). Blank responses skip the section.
-func runMarketBotSetup(ask func(string, string) string, ok func(string), ctrl string, cfg *appConfig) {
-	fmt.Println("Market bot (optional — press Enter to skip each field):")
-
-	// Compute a sensible default address.
-	defaultAddr := "http://localhost:8081"
-	if ctrl == "kubectl" && sshHost != "" {
-		host := sshHost
-		if h, _, err := splitHostPort(host); err == nil {
-			host = h
-		}
-		defaultAddr = "http://" + host + ":8081"
+func runMarketBotSetup(ask func(string, string) string, ok func(string), cfg *appConfig) {
+	fmt.Println("Embedded market bot:")
+	enabled := strings.ToLower(strings.TrimSpace(ask("Enable embedded market bot [yes/no]", "yes")))
+	cfg.MarketBotEnabled = enabled != "n" && enabled != "no" && enabled != "false" && enabled != "0"
+	if !cfg.MarketBotEnabled {
+		ok("Embedded market bot disabled")
+		fmt.Println()
+		return
 	}
 
-	cfg.MarketBotAddr = ask("Bot API address", defaultAddr)
+	cfg.MarketBotCacheDB = ask("Bot cache database path", filepath.Join(configDir(), "market-bot-cache.db"))
+	cfg.MarketBotItemData = ask("Bot item-data.json path (optional)", "")
 
-	// Only ask for the rest if an address was supplied.
-	if cfg.MarketBotAddr != "" {
-		cfg.MarketBotToken = ask("Bot API token (optional)", "")
-		cfg.MarketBotContainer = ask("Bot deployment/container name", "market-bot")
-		if ctrl == "kubectl" {
-			cfg.MarketBotNamespace = ask("Bot k8s namespace", "dune-market-bot")
+	parseDur := func(input string, fallback time.Duration) time.Duration {
+		d, err := time.ParseDuration(strings.TrimSpace(input))
+		if err != nil || d <= 0 {
+			return fallback
 		}
-		marketBotAddr = cfg.MarketBotAddr
-		marketBotToken = cfg.MarketBotToken
-		marketBotContainer = cfg.MarketBotContainer
-		marketBotNamespace = cfg.MarketBotNamespace
-		ok("Market bot configured at " + cfg.MarketBotAddr)
+		return d
 	}
+	parseFloat := func(input string, fallback float64) float64 {
+		v, err := strconv.ParseFloat(strings.TrimSpace(input), 64)
+		if err != nil || v <= 0 {
+			return fallback
+		}
+		return v
+	}
+	parseInt := func(input string, fallback int) int {
+		v, err := strconv.Atoi(strings.TrimSpace(input))
+		if err != nil || v <= 0 {
+			return fallback
+		}
+		return v
+	}
+
+	cfg.MarketBotBuyInt = parseDur(ask("Buy tick interval", "5m"), 5*time.Minute)
+	cfg.MarketBotListInt = parseDur(ask("List tick interval", "30m"), 30*time.Minute)
+	cfg.MarketBotThresh = parseFloat(ask("Buy threshold multiplier", "1.05"), 1.05)
+	cfg.MarketBotMaxBuys = parseInt(ask("Max buys per tick", "50"), 50)
+	ok("Embedded market bot configured")
 	fmt.Println()
-}
-
-// splitHostPort splits host:port. Returns an error if no port is present.
-func splitHostPort(hostport string) (host, port string, err error) {
-	for i := len(hostport) - 1; i >= 0; i-- {
-		if hostport[i] == ':' {
-			return hostport[:i], hostport[i+1:], nil
-		}
-	}
-	return "", "", fmt.Errorf("no port")
 }
 
 // ── Write config ──────────────────────────────────────────────────────────────

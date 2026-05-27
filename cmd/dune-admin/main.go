@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -10,8 +11,11 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"dune-admin/internal/marketbot"
 )
 
 // AppVersion is the conduit release version shown to users.
@@ -27,33 +31,30 @@ var BuildTime = "unknown"
 // ── config ────────────────────────────────────────────────────────────────────
 
 var (
-	setupMode          bool
-	sqlQuery           string
-	sshHost            string
-	sshUser            string
-	sshKeyPath         string
-	itemDataPath       string
-	scripCurrencyID    int
-	dbHost             string
-	dbPort             int
-	dbUser             string
-	dbPass             string
-	dbName             string
-	dbSchema           string
-	listenAddr         string
-	controlPlane       string
-	controlNS          string
-	brokerGameAddr     string
-	brokerAdminAddr    string
-	brokerTLS          bool
-	brokerUser         string
-	brokerPass         string
-	backupDir          string
-	serverIniDir       string
-	marketBotAddr      string
-	marketBotToken     string
-	marketBotContainer string
-	marketBotNamespace string
+	setupMode       bool
+	sqlQuery        string
+	renderK8SOut    string
+	sshHost         string
+	sshUser         string
+	sshKeyPath      string
+	itemDataPath    string
+	scripCurrencyID int
+	dbHost          string
+	dbPort          int
+	dbUser          string
+	dbPass          string
+	dbName          string
+	dbSchema        string
+	listenAddr      string
+	controlPlane    string
+	controlNS       string
+	brokerGameAddr  string
+	brokerAdminAddr string
+	brokerTLS       bool
+	brokerUser      string
+	brokerPass      string
+	backupDir       string
+	serverIniDir    string
 )
 
 // appConfig mirrors the fields written to ~/.dune-admin/config.yaml.
@@ -122,15 +123,6 @@ type appConfig struct {
 	ScripCurrency int    `yaml:"scrip_currency"`
 	ListenAddr    string `yaml:"listen_addr"`
 
-	// Market bot — optional; enables bot control panel.
-	// MarketBotAddr is the bot's HTTP API address (e.g. "http://market-bot.svc:8081").
-	// MarketBotContainer is the deployment name (kubectl) or container name (docker).
-	// MarketBotNamespace is only used by the kubectl control plane.
-	MarketBotAddr      string `yaml:"market_bot_addr"`
-	MarketBotToken     string `yaml:"market_bot_token"`
-	MarketBotContainer string `yaml:"market_bot_container"`
-	MarketBotNamespace string `yaml:"market_bot_namespace"`
-
 	// AMP-specific — used when Control == "amp" (CubeCoders AMP w/ podman).
 	// AmpInstance is the ampinstmgr instance name (e.g. "MehDune01").
 	// AmpContainer is the podman container name (default "AMP_<instance>").
@@ -156,9 +148,15 @@ type appConfig struct {
 	AmpDataRoot string `yaml:"amp_data_root"`
 	DirectorURL string `yaml:"director_url"`
 
-	// FrontendDir overrides the auto-detected SPA directory. When unset the
-	// server looks in ./dist then ./web/dist and serves the first match.
-	FrontendDir string `yaml:"frontend_dir"`
+	// ── Embedded market bot ────────────────────────────────────────────────
+	// MarketBotEnabled starts the market bot as an in-process goroutine.
+	MarketBotEnabled  bool          `yaml:"market_bot_enabled"`
+	MarketBotCacheDB  string        `yaml:"market_bot_cache_db"`
+	MarketBotItemData string        `yaml:"market_bot_item_data"`
+	MarketBotBuyInt   time.Duration `yaml:"market_bot_buy_interval"`
+	MarketBotListInt  time.Duration `yaml:"market_bot_list_interval"`
+	MarketBotThresh   float64       `yaml:"market_bot_buy_threshold"`
+	MarketBotMaxBuys  int           `yaml:"market_bot_max_buys"`
 }
 
 func configDir() string {
@@ -217,10 +215,6 @@ func loadConfig() {
 			setEnvIfMissing("BROKER_JWT_SECRET", cfg.BrokerJWTSecret)
 			setEnvIfMissing("BACKUP_DIR", cfg.BackupDir)
 			setEnvIfMissing("SERVER_INI_DIR", cfg.ServerIniDir)
-			setEnvIfMissing("MARKET_BOT_ADDR", cfg.MarketBotAddr)
-			setEnvIfMissing("MARKET_BOT_TOKEN", cfg.MarketBotToken)
-			setEnvIfMissing("MARKET_BOT_CONTAINER", cfg.MarketBotContainer)
-			setEnvIfMissing("MARKET_BOT_NAMESPACE", cfg.MarketBotNamespace)
 			return
 		}
 	}
@@ -290,12 +284,9 @@ func init() {
 	flag.StringVar(&brokerPass, "broker-pass", envOr("BROKER_PASS", ""), "AMQP broker password (required for broker features)")
 	flag.StringVar(&backupDir, "backup-dir", envOr("BACKUP_DIR", ""), "Backup directory path")
 	flag.StringVar(&serverIniDir, "ini-dir", envOr("SERVER_INI_DIR", ""), "Directory containing UserGame.ini / UserOverrides.ini")
-	flag.StringVar(&marketBotAddr, "market-bot-addr", envOr("MARKET_BOT_ADDR", ""), "Market bot HTTP API address (e.g. http://host:8081)")
-	flag.StringVar(&marketBotToken, "market-bot-token", envOr("MARKET_BOT_TOKEN", ""), "Market bot bearer token")
-	flag.StringVar(&marketBotContainer, "market-bot-container", envOr("MARKET_BOT_CONTAINER", "market-bot"), "Market bot container/deployment name")
-	flag.StringVar(&marketBotNamespace, "market-bot-namespace", envOr("MARKET_BOT_NAMESPACE", ""), "Market bot k8s namespace")
 	flag.BoolVar(&setupMode, "setup", false, "Interactive setup wizard — writes ~/.dune-admin/config.yaml")
 	flag.StringVar(&sqlQuery, "sql", "", "Run a SQL query and print results to stdout, then exit")
+	flag.StringVar(&renderK8SOut, "render-k8s", "", "Render k8s manifest with values from loaded config (path or '-' for stdout)")
 }
 
 func resolveKeyPath() string {
@@ -444,6 +435,13 @@ func main() {
 		}
 		return
 	}
+	if renderK8SOut != "" {
+		if err := renderK8SManifest(renderK8SOut); err != nil {
+			fmt.Fprintln(os.Stderr, "render-k8s:", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	if err := loadItemData(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -490,5 +488,49 @@ func main() {
 		}
 	}
 
+	// Start embedded market bot when enabled in config.
+	if loadedConfig.MarketBotEnabled {
+		botCtx, botCancel := context.WithCancel(context.Background())
+		cacheDB := loadedConfig.MarketBotCacheDB
+		if cacheDB == "" {
+			cacheDB = filepath.Join(configDir(), "market-bot-cache.db")
+		}
+		itemDataForBot := loadedConfig.MarketBotItemData
+		if itemDataForBot == "" {
+			if itemDataPath != "" {
+				itemDataForBot = itemDataPath
+			} else {
+				itemDataForBot = resolveItemDataPath()
+			}
+		}
+		inst, err := marketbot.Run(botCtx, marketbot.BotConfig{
+			DBPool:       globalDB,
+			DBHost:       dbHost,
+			DBPort:       dbPort,
+			DBUser:       dbUser,
+			DBPass:       dbPass,
+			DBName:       dbName,
+			DBSchema:     dbSchema,
+			CacheDB:      cacheDB,
+			ItemDataPath: itemDataForBot,
+			BuyInterval:  loadedConfig.MarketBotBuyInt,
+			ListInterval: loadedConfig.MarketBotListInt,
+			BuyThreshold: loadedConfig.MarketBotThresh,
+			MaxBuys:      loadedConfig.MarketBotMaxBuys,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "market-bot: startup failed: %v\n", err)
+			botCancel()
+		} else {
+			embeddedBot = inst
+			// Ensure the bot is stopped on process exit.
+			defer botCancel()
+		}
+	}
+
 	startServer(listenAddr)
 }
+
+// embeddedBot holds the live market bot instance when market_bot_enabled=true.
+// Nil when bot is disabled.
+var embeddedBot *marketbot.Instance

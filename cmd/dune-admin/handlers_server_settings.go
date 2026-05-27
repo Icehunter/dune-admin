@@ -498,6 +498,145 @@ func readINIContent(path string) string {
 	return out
 }
 
+type layerSource struct {
+	name string
+	ini  map[string]map[string]string
+}
+
+type discoveredKey struct {
+	section string
+	key     string
+}
+
+func serverSettingsSchemaKeys() map[string]bool {
+	schemaKeys := make(map[string]bool, len(serverSettingsSchema))
+	for _, def := range serverSettingsSchema {
+		schemaKeys[def.Section+"|"+def.Key] = true
+	}
+	return schemaKeys
+}
+
+func buildLayerSources(
+	defaultEngineIni,
+	defaultGameIni,
+	engineIni,
+	gameIni map[string]map[string]string,
+) []layerSource {
+	return []layerSource{
+		{name: "defaultEngine", ini: defaultEngineIni},
+		{name: "defaultGame", ini: defaultGameIni},
+		{name: "userEngine", ini: engineIni},
+		{name: "userGame", ini: gameIni},
+	}
+}
+
+func applySettingLayers(s *ServerSetting, layerSources []layerSource) {
+	for _, src := range layerSources {
+		if v, ok := src.ini[s.Section][s.Key]; ok {
+			if s.Type == "" {
+				s.Type = string(inferType(v))
+			}
+			s.Layers = append(s.Layers, SettingLayer{Source: src.name, Value: v})
+			s.Current = v
+			s.Source = src.name
+		}
+	}
+	s.IsOverride = strings.HasPrefix(s.Source, "user")
+	if s.Layers == nil {
+		s.Layers = []SettingLayer{}
+	}
+}
+
+func buildSchemaSettings(layerSources []layerSource) []ServerSetting {
+	settings := make([]ServerSetting, 0, len(serverSettingsSchema))
+	for _, def := range serverSettingsSchema {
+		s := ServerSetting{
+			Section:     def.Section,
+			Key:         def.Key,
+			Type:        string(def.Type),
+			Default:     def.Default,
+			Label:       def.Label,
+			Description: def.Description,
+			Category:    def.Category,
+			Current:     def.Default,
+		}
+		applySettingLayers(&s, layerSources)
+		settings = append(settings, s)
+	}
+	return settings
+}
+
+func discoverUnknownSettings(layerSources []layerSource, schemaKeys map[string]bool) []discoveredKey {
+	seenKeys := make(map[string]bool, len(schemaKeys))
+	for k := range schemaKeys {
+		seenKeys[k] = true
+	}
+
+	discovered := make([]discoveredKey, 0, 32)
+	for _, src := range layerSources {
+		for section, keys := range src.ini {
+			for key := range keys {
+				// Skip array-prefix lines (+/-); they belong in raw sections.
+				if strings.HasPrefix(key, "+") || strings.HasPrefix(key, "-") {
+					continue
+				}
+				composite := section + "|" + key
+				if seenKeys[composite] {
+					continue
+				}
+				seenKeys[composite] = true
+				discovered = append(discovered, discoveredKey{section: section, key: key})
+			}
+		}
+	}
+	sort.Slice(discovered, func(i, j int) bool {
+		if discovered[i].section != discovered[j].section {
+			return discovered[i].section < discovered[j].section
+		}
+		return discovered[i].key < discovered[j].key
+	})
+	return discovered
+}
+
+func buildDiscoveredSettings(
+	discovered []discoveredKey,
+	layerSources []layerSource,
+	schemaKeys map[string]bool,
+) []ServerSetting {
+	settings := make([]ServerSetting, 0, len(discovered))
+	for _, dk := range discovered {
+		s := ServerSetting{
+			Section:  dk.section,
+			Key:      dk.key,
+			Label:    dk.key,
+			Category: shortSectionName(dk.section),
+			Layers:   []SettingLayer{},
+		}
+		applySettingLayers(&s, layerSources)
+		if s.Type == "" {
+			s.Type = string(settingString)
+		}
+		settings = append(settings, s)
+		schemaKeys[dk.section+"|"+dk.key] = true
+	}
+	return settings
+}
+
+func buildServerSettingsRawSections(
+	defaultGameContent,
+	defaultEngineContent,
+	gameContent,
+	engineContent string,
+	schemaKeys map[string]bool,
+) []RawSection {
+	raw := make([]RawSection, 0, 16)
+	raw = append(raw, parseINILines(defaultGameContent, "defaultGame", schemaKeys)...)
+	raw = append(raw, parseINILines(defaultEngineContent, "defaultEngine", schemaKeys)...)
+	raw = append(raw, parseINILines(gameContent, "userGame", schemaKeys)...)
+	raw = append(raw, parseINILines(engineContent, "userEngine", schemaKeys)...)
+	return raw
+}
+
 func writeINIContent(path, body string) error {
 	if globalExecutor == nil {
 		return fmt.Errorf("not connected")
@@ -539,113 +678,12 @@ func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
 	defaultGameIni := parseINI(defaultGameContent)
 	defaultEngineIni := parseINI(defaultEngineContent)
 
-	// Build schema key set for raw-line filtering.
-	schemaKeys := map[string]bool{}
-	for _, def := range serverSettingsSchema {
-		schemaKeys[def.Section+"|"+def.Key] = true
-	}
-
-	// Schema settings — build layers from all INI sources and always include all entries.
-	type layerSource struct {
-		name string
-		ini  map[string]map[string]string
-	}
-	layerSources := []layerSource{
-		{"defaultEngine", defaultEngineIni},
-		{"defaultGame", defaultGameIni},
-		{"userEngine", engineIni},
-		{"userGame", gameIni},
-	}
-
-	var settings []ServerSetting
-	for _, def := range serverSettingsSchema {
-		s := ServerSetting{
-			Section:     def.Section,
-			Key:         def.Key,
-			Type:        string(def.Type),
-			Default:     def.Default,
-			Label:       def.Label,
-			Description: def.Description,
-			Category:    def.Category,
-			Current:     def.Default,
-		}
-		for _, src := range layerSources {
-			if v, ok := src.ini[def.Section][def.Key]; ok {
-				s.Layers = append(s.Layers, SettingLayer{Source: src.name, Value: v})
-				s.Current = v
-				s.Source = src.name
-			}
-		}
-		s.IsOverride = strings.HasPrefix(s.Source, "user")
-		if s.Layers == nil {
-			s.Layers = []SettingLayer{}
-		}
-		settings = append(settings, s)
-	}
-
-	// Discover all keys present in any INI file that aren't in the hardcoded schema.
-	// These get typed settings with inferred types so they participate in the layer UI.
-	type discoveredKey struct{ section, key string }
-	seenKeys := make(map[string]bool, len(schemaKeys))
-	for k := range schemaKeys {
-		seenKeys[k] = true
-	}
-	var discovered []discoveredKey
-	for _, src := range layerSources {
-		for section, keys := range src.ini {
-			for key := range keys {
-				// Skip array-prefix lines (+/-); they belong in raw sections.
-				if strings.HasPrefix(key, "+") || strings.HasPrefix(key, "-") {
-					continue
-				}
-				k := section + "|" + key
-				if !seenKeys[k] {
-					seenKeys[k] = true
-					discovered = append(discovered, discoveredKey{section, key})
-				}
-			}
-		}
-	}
-	sort.Slice(discovered, func(i, j int) bool {
-		if discovered[i].section != discovered[j].section {
-			return discovered[i].section < discovered[j].section
-		}
-		return discovered[i].key < discovered[j].key
-	})
-	for _, dk := range discovered {
-		s := ServerSetting{
-			Section:  dk.section,
-			Key:      dk.key,
-			Label:    dk.key,
-			Category: shortSectionName(dk.section),
-			Layers:   []SettingLayer{},
-		}
-		for _, src := range layerSources {
-			if v, ok := src.ini[dk.section][dk.key]; ok {
-				if s.Type == "" {
-					s.Type = string(inferType(v))
-				}
-				s.Layers = append(s.Layers, SettingLayer{Source: src.name, Value: v})
-				s.Current = v
-				s.Source = src.name
-			}
-		}
-		if s.Type == "" {
-			s.Type = string(settingString)
-		}
-		s.IsOverride = strings.HasPrefix(s.Source, "user")
-		settings = append(settings, s)
-		schemaKeys[dk.section+"|"+dk.key] = true
-	}
-
-	// Raw lines — array entries and anything not promoted to a typed setting.
-	// All four files use the same schemaKeys (which now includes discovered keys)
-	// so nothing appears in both the typed panel and the raw panel.
-	var raw []RawSection
-	raw = append(raw, parseINILines(defaultGameContent, "defaultGame", schemaKeys)...)
-	raw = append(raw, parseINILines(defaultEngineContent, "defaultEngine", schemaKeys)...)
-	raw = append(raw, parseINILines(gameContent, "userGame", schemaKeys)...)
-	raw = append(raw, parseINILines(engineContent, "userEngine", schemaKeys)...)
+	layerSources := buildLayerSources(defaultEngineIni, defaultGameIni, engineIni, gameIni)
+	schemaKeys := serverSettingsSchemaKeys()
+	settings := buildSchemaSettings(layerSources)
+	discovered := discoverUnknownSettings(layerSources, schemaKeys)
+	settings = append(settings, buildDiscoveredSettings(discovered, layerSources, schemaKeys)...)
+	raw := buildServerSettingsRawSections(defaultGameContent, defaultEngineContent, gameContent, engineContent, schemaKeys)
 
 	jsonOK(w, map[string]any{
 		"settings": settings,

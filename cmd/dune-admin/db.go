@@ -2868,6 +2868,15 @@ type msgCharXP struct {
 	err   error
 }
 
+type charXPOutcome struct {
+	newXP        int64
+	newLevel     int64
+	newTotalSP   int64
+	newUnspentSP int64
+	newIntel     int64
+	capped       bool
+}
+
 func cmdFetchCharXP(playerID int64) Cmd {
 	return func() Msg {
 		if globalDB == nil {
@@ -2886,6 +2895,143 @@ func cmdFetchCharXP(playerID int64) Cmd {
 	}
 }
 
+func readCharXPState(ctx context.Context, playerID int64) (currentXP, spentSP int64, err error) {
+	err = globalDB.QueryRow(ctx, `
+		SELECT
+			(fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint,
+			COALESCE((
+				SELECT SUM((v->>'SkillPointsSpent')::int)
+				FROM jsonb_each(fe.components->'FLevelComponent'->1->'ModuleData') AS kv(k, v)
+				WHERE k != format('(TagName="%s")',
+					fe.components->'FLevelComponent'->1->'StarterSkillTreeTag'->>'TagName')
+			), 0)
+		FROM dune.fgl_entities fe
+		JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
+		WHERE afe.actor_id = $1 AND afe.slot_name = 'DuneCharacter'`, playerID).Scan(&currentXP, &spentSP)
+	if err != nil {
+		return 0, 0, fmt.Errorf("read current state: %w", err)
+	}
+	return currentXP, spentSP, nil
+}
+
+func resolveControllerIDForPawn(ctx context.Context, playerID int64) (int64, error) {
+	var controllerID int64
+	err := globalDB.QueryRow(ctx, `
+		SELECT player_controller_id FROM dune.player_state
+		WHERE player_pawn_id = $1 LIMIT 1`, playerID).Scan(&controllerID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("resolve controller id: %w", err)
+	}
+	return controllerID, nil
+}
+
+func loadControllerKeystoneIDs(ctx context.Context, controllerID int64) ([]int16, error) {
+	if controllerID == 0 {
+		return nil, nil
+	}
+	rows, err := globalDB.Query(ctx, `
+		SELECT keystone_id FROM dune.purchased_specialization_keystones
+		WHERE player_id = $1::bigint`, controllerID)
+	if err != nil {
+		return nil, fmt.Errorf("read keystones: %w", err)
+	}
+	defer rows.Close()
+
+	ids := make([]int16, 0, 8)
+	for rows.Next() {
+		var id int16
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan keystone: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scan keystone: %w", err)
+	}
+	return ids, nil
+}
+
+func fetchKeystoneBonusForPawn(ctx context.Context, playerID int64) (int64, error) {
+	controllerID, err := resolveControllerIDForPawn(ctx, playerID)
+	if err != nil {
+		return 0, err
+	}
+	ids, err := loadControllerKeystoneIDs(ctx, controllerID)
+	if err != nil {
+		return 0, err
+	}
+	return keystoneSPBonus(ids), nil
+}
+
+func computeAwardCharXPOutcome(currentXP, spentSP, keystoneBonus, amount int64) charXPOutcome {
+	newXP := currentXP + amount
+	if newXP > maxCharXP {
+		newXP = maxCharXP
+	}
+	newLevel := int64(xpToLevel(newXP))
+	newTotalSP := newLevel + keystoneBonus
+	// Starter job always occupies 1 SP that is excluded from spentSP.
+	newUnspentSP := newTotalSP - spentSP - 1
+	if newUnspentSP < 0 {
+		newUnspentSP = 0
+	}
+	newIntel := intelAtLevel(int(newLevel))
+	return charXPOutcome{
+		newXP:        newXP,
+		newLevel:     newLevel,
+		newTotalSP:   newTotalSP,
+		newUnspentSP: newUnspentSP,
+		newIntel:     newIntel,
+		capped:       newXP == maxCharXP,
+	}
+}
+
+func applyAwardCharXPFLevelUpdate(ctx context.Context, playerID int64, outcome charXPOutcome) error {
+	_, err := globalDB.Exec(ctx, `
+		UPDATE dune.fgl_entities
+		SET components = jsonb_set(jsonb_set(jsonb_set(
+			components,
+			'{FLevelComponent,1,TotalXPEarned}',    to_jsonb($2::bigint)),
+			'{FLevelComponent,1,TotalSkillPoints}',  to_jsonb($3::bigint)),
+			'{FLevelComponent,1,UnspentSkillPoints}', to_jsonb($4::bigint))
+		WHERE entity_id = (
+			SELECT entity_id FROM dune.actor_fgl_entities
+			WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
+		)`, playerID, outcome.newXP, outcome.newTotalSP, outcome.newUnspentSP)
+	if err != nil {
+		return fmt.Errorf("update fgl xp/sp: %w", err)
+	}
+	return nil
+}
+
+func applyAwardCharXPIntelUpdate(ctx context.Context, playerID int64, newIntel int64) error {
+	_, err := globalDB.Exec(ctx, `
+		UPDATE dune.actors
+		SET properties = jsonb_set(
+			properties,
+			'{TechKnowledgePlayerComponent,m_TechKnowledgePoints}',
+			to_jsonb($2::bigint))
+		WHERE id = $1 AND properties ? 'TechKnowledgePlayerComponent'`,
+		playerID, newIntel)
+	if err != nil {
+		return fmt.Errorf("update intel: %w", err)
+	}
+	return nil
+}
+
+func formatAwardCharXPSuccess(playerID int64, outcome charXPOutcome, spentSP int64) string {
+	capped := ""
+	if outcome.capped {
+		capped = " (capped at level 200)"
+	}
+	return fmt.Sprintf(
+		"Player %d → level %d%s | XP %d | SP %d unspent (%d spent) | Intel %d",
+		playerID, outcome.newLevel, capped, outcome.newXP, outcome.newUnspentSP, spentSP, outcome.newIntel)
+}
+
 func cmdAwardCharXP(playerID int64, amount int64) Cmd {
 	return func() Msg {
 		if globalDB == nil {
@@ -2899,104 +3045,29 @@ func cmdAwardCharXP(playerID int64, amount int64) Cmd {
 			return msgMutate{err: err}
 		}
 
-		// Read current XP and count of skill points already spent in the tree.
-		var currentXP, spentSP int64
-		err := globalDB.QueryRow(ctx, `
-			SELECT
-				(fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint,
-				COALESCE((
-					SELECT SUM((v->>'SkillPointsSpent')::int)
-					FROM jsonb_each(fe.components->'FLevelComponent'->1->'ModuleData') AS kv(k, v)
-					WHERE k != format('(TagName="%s")',
-						fe.components->'FLevelComponent'->1->'StarterSkillTreeTag'->>'TagName')
-				), 0)
-			FROM dune.fgl_entities fe
-			JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
-			WHERE afe.actor_id = $1 AND afe.slot_name = 'DuneCharacter'`, playerID).Scan(&currentXP, &spentSP)
+		currentXP, spentSP, err := readCharXPState(ctx, playerID)
 		if err != nil {
-			return msgMutate{err: fmt.Errorf("read current state: %w", err)}
+			return msgMutate{err: err}
 		}
 
-		// Resolve controller id from the pawn id so we can read purchased
-		// keystones (which are keyed by controller id). A missing player_state
-		// row means no keystones could have been purchased — treat bonus as 0.
-		var keystoneBonus int64
-		var controllerID int64
-		err = globalDB.QueryRow(ctx, `
-			SELECT player_controller_id FROM dune.player_state
-			WHERE player_pawn_id = $1 LIMIT 1`, playerID).Scan(&controllerID)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return msgMutate{err: fmt.Errorf("resolve controller id: %w", err)}
-		}
-		if controllerID != 0 {
-			rows, err := globalDB.Query(ctx, `
-				SELECT keystone_id FROM dune.purchased_specialization_keystones
-				WHERE player_id = $1::bigint`, controllerID)
-			if err != nil {
-				return msgMutate{err: fmt.Errorf("read keystones: %w", err)}
-			}
-			var ids []int16
-			for rows.Next() {
-				var id int16
-				if err := rows.Scan(&id); err != nil {
-					rows.Close()
-					return msgMutate{err: fmt.Errorf("scan keystone: %w", err)}
-				}
-				ids = append(ids, id)
-			}
-			rows.Close()
-			keystoneBonus = keystoneSPBonus(ids)
+		keystoneBonus, err := fetchKeystoneBonusForPawn(ctx, playerID)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
-		newXP := currentXP + amount
-		if newXP > maxCharXP {
-			newXP = maxCharXP
-		}
-		newLevel := int64(xpToLevel(newXP))
-		newTotalSP := newLevel + keystoneBonus
-		// Starter job always occupies 1 SP that is excluded from spentSP.
-		newUnspentSP := newTotalSP - spentSP - 1
-		if newUnspentSP < 0 {
-			newUnspentSP = 0
-		}
-		newIntel := intelAtLevel(int(newLevel))
+		outcome := computeAwardCharXPOutcome(currentXP, spentSP, keystoneBonus, amount)
 
 		// Update FLevelComponent: XP + both skill point fields.
-		_, err = globalDB.Exec(ctx, `
-			UPDATE dune.fgl_entities
-			SET components = jsonb_set(jsonb_set(jsonb_set(
-				components,
-				'{FLevelComponent,1,TotalXPEarned}',    to_jsonb($2::bigint)),
-				'{FLevelComponent,1,TotalSkillPoints}',  to_jsonb($3::bigint)),
-				'{FLevelComponent,1,UnspentSkillPoints}', to_jsonb($4::bigint))
-			WHERE entity_id = (
-				SELECT entity_id FROM dune.actor_fgl_entities
-				WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
-			)`, playerID, newXP, newTotalSP, newUnspentSP)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("update fgl xp/sp: %w", err)}
+		if err := applyAwardCharXPFLevelUpdate(ctx, playerID, outcome); err != nil {
+			return msgMutate{err: err}
 		}
 
 		// Update intel points on the PlayerCharacter actor.
-		_, err = globalDB.Exec(ctx, `
-			UPDATE dune.actors
-			SET properties = jsonb_set(
-				properties,
-				'{TechKnowledgePlayerComponent,m_TechKnowledgePoints}',
-				to_jsonb($2::bigint))
-			WHERE id = $1 AND properties ? 'TechKnowledgePlayerComponent'`,
-			playerID, newIntel)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("update intel: %w", err)}
+		if err := applyAwardCharXPIntelUpdate(ctx, playerID, outcome.newIntel); err != nil {
+			return msgMutate{err: err}
 		}
 
-		capped := ""
-		if newXP == maxCharXP {
-			capped = " (capped at level 200)"
-		}
-		return msgMutate{ok: fmt.Sprintf(
-			"Player %d → level %d%s | XP %d | SP %d unspent (%d spent) | Intel %d",
-			playerID, newLevel, capped, newXP, newUnspentSP, spentSP, newIntel)}
+		return msgMutate{ok: formatAwardCharXPSuccess(playerID, outcome, spentSP)}
 	}
 }
 

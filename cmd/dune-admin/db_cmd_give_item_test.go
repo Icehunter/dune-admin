@@ -153,3 +153,25 @@ func TestEnsureGiveItemVolumeCapacity(t *testing.T) {
 		t.Fatalf("expected volume-capacity error")
 	}
 }
+
+func TestMaxItemsByVolume(t *testing.T) {
+	t.Parallel()
+
+	if got := maxItemsByVolume(100, 40, 15); got != 4 {
+		t.Fatalf("expected 4 items by volume, got %d", got)
+	}
+	if got := maxItemsByVolume(100, 140, 10); got != 0 {
+		t.Fatalf("expected clamped 0 items by volume, got %d", got)
+	}
+}
+
+func TestRequiredStackCount(t *testing.T) {
+	t.Parallel()
+
+	if got := requiredStackCount(10, 3); got != 4 {
+		t.Fatalf("expected 4 required stacks, got %d", got)
+	}
+	if got := requiredStackCount(1, 1); got != 1 {
+		t.Fatalf("expected 1 required stack, got %d", got)
+	}
+}

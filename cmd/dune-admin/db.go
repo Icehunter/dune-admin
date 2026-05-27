@@ -557,6 +557,114 @@ func formatGiveItemResult(playerID int64, template string, qty int64, toppedUp, 
 	return msg
 }
 
+type inventoryCapacityProfile struct {
+	id           int64
+	maxSlots     int
+	maxVolume    float64
+	hasSlotCap   bool
+	hasVolumeCap bool
+}
+
+type inventoryUsage struct {
+	usedSlots  int
+	usedVolume float64
+}
+
+func loadBackpackCapacity(ctx context.Context, playerID int64) (inventoryCapacityProfile, bool) {
+	var profile inventoryCapacityProfile
+	err := globalDB.QueryRow(ctx, `
+		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
+		FROM dune.inventories
+		WHERE actor_id = $1::bigint AND inventory_type = 0
+		LIMIT 1`, playerID).Scan(&profile.id, &profile.maxSlots, &profile.maxVolume)
+	if err != nil {
+		// No inventory found — cannot validate; let the game server decide.
+		return inventoryCapacityProfile{}, false
+	}
+	profile.hasSlotCap = profile.maxSlots > 0
+	profile.hasVolumeCap = profile.maxVolume > 0
+	return profile, true
+}
+
+func loadInventoryUsage(ctx context.Context, inventoryID int64, includeVolume bool) (inventoryUsage, error) {
+	rows, err := globalDB.Query(ctx, `
+		SELECT template_id, stack_size, volume_override
+		FROM dune.items
+		WHERE inventory_id = $1::bigint`, inventoryID)
+	if err != nil {
+		return inventoryUsage{}, err
+	}
+	defer rows.Close()
+
+	usage := inventoryUsage{}
+	for rows.Next() {
+		var templateID string
+		var stackSize int64
+		var volumeOverride pgtype.Float8
+		if err := rows.Scan(&templateID, &stackSize, &volumeOverride); err != nil {
+			continue
+		}
+		usage.usedSlots++
+		if includeVolume {
+			usage.usedVolume += inventoryItemVolume(templateID, volumeOverride) * float64(stackSize)
+		}
+	}
+	return usage, nil
+}
+
+func maxItemsByVolume(maxVolume, usedVolume, perItemVol float64) int64 {
+	availableVolume := maxVolume - usedVolume
+	if availableVolume < 0 {
+		availableVolume = 0
+	}
+	return int64(math.Floor(availableVolume / perItemVol))
+}
+
+func requiredStackCount(qty, stackMax int64) int {
+	return int((qty + stackMax - 1) / stackMax)
+}
+
+func checkInventoryVolumeLimit(
+	ctx context.Context,
+	profile inventoryCapacityProfile,
+	usage inventoryUsage,
+	template string,
+	qty int64,
+) error {
+	if !profile.hasVolumeCap {
+		return nil
+	}
+	perItemVol, err := resolveItemVolume(ctx, template)
+	if err != nil || perItemVol <= 0 {
+		return nil
+	}
+	maxByVolume := maxItemsByVolume(profile.maxVolume, usage.usedVolume, perItemVol)
+	if maxByVolume < qty {
+		return fmt.Errorf(
+			"over weight limit: room for %d more %s (%.2f/%.2f volume used)",
+			maxByVolume, template, usage.usedVolume, profile.maxVolume)
+	}
+	return nil
+}
+
+func checkInventorySlotLimit(ctx context.Context, profile inventoryCapacityProfile, usage inventoryUsage, template string, qty int64) error {
+	if !profile.hasSlotCap {
+		return nil
+	}
+	stackMax, err := resolveStackMax(ctx, template, 0)
+	if err != nil || stackMax < 1 {
+		stackMax = 1
+	}
+	freeSlots := profile.maxSlots - usage.usedSlots
+	newStacks := requiredStackCount(qty, stackMax)
+	if freeSlots < newStacks {
+		return fmt.Errorf(
+			"inventory full: need %d free slots, have %d",
+			newStacks, freeSlots)
+	}
+	return nil
+}
+
 // checkInventoryCapacity verifies that qty items of template fit in the player's
 // backpack (inventory_type=0). Returns an error if the inventory is over volume
 // or slot limits. Used to pre-validate RMQ give-item commands since the game
@@ -565,88 +673,22 @@ func checkInventoryCapacity(ctx context.Context, playerID int64, template string
 	if globalDB == nil {
 		return fmt.Errorf("not connected")
 	}
-	var invID int64
-	var maxSlots int
-	var maxVolume float64
-	err := globalDB.QueryRow(ctx, `
-		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
-		FROM dune.inventories
-		WHERE actor_id = $1::bigint AND inventory_type = 0
-		LIMIT 1`, playerID).Scan(&invID, &maxSlots, &maxVolume)
-	if err != nil {
-		// No inventory found — cannot validate; let the game server decide.
+	profile, ok := loadBackpackCapacity(ctx, playerID)
+	if !ok {
 		return nil
 	}
-
-	hasSlotCap := maxSlots > 0
-	hasVolumeCap := maxVolume > 0
-	if !hasSlotCap && !hasVolumeCap {
+	if !profile.hasSlotCap && !profile.hasVolumeCap {
 		return nil
 	}
-
-	usedSlots := 0
-	usedVolume := 0.0
-	rows, err := globalDB.Query(ctx, `
-		SELECT template_id, stack_size, volume_override
-		FROM dune.items
-		WHERE inventory_id = $1::bigint`, invID)
+	usage, err := loadInventoryUsage(ctx, profile.id, profile.hasVolumeCap)
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var tmpl string
-		var stackSize int64
-		var vol pgtype.Float8
-		if err := rows.Scan(&tmpl, &stackSize, &vol); err != nil {
-			continue
-		}
-		usedSlots++
-		if hasVolumeCap {
-			itemVol := 0.0
-			if vol.Valid && vol.Float64 > 0 {
-				itemVol = vol.Float64
-			} else if itemData.Items != nil {
-				if rule, ok := itemData.Items[strings.ToLower(tmpl)]; ok {
-					itemVol = rule.Volume
-				} else if itemData.DefaultVolume > 0 {
-					itemVol = itemData.DefaultVolume
-				}
-			} else if itemData.DefaultVolume > 0 {
-				itemVol = itemData.DefaultVolume
-			}
-			usedVolume += itemVol * float64(stackSize)
-		}
+	if err := checkInventoryVolumeLimit(ctx, profile, usage, template, qty); err != nil {
+		return err
 	}
-
-	if hasVolumeCap {
-		perItemVol, err := resolveItemVolume(ctx, template)
-		if err == nil && perItemVol > 0 {
-			availableVol := maxVolume - usedVolume
-			if availableVol < 0 {
-				availableVol = 0
-			}
-			maxByVolume := int64(math.Floor(availableVol / perItemVol))
-			if maxByVolume < qty {
-				return fmt.Errorf(
-					"over weight limit: room for %d more %s (%.2f/%.2f volume used)",
-					maxByVolume, template, usedVolume, maxVolume)
-			}
-		}
-	}
-
-	if hasSlotCap {
-		stackMax, err := resolveStackMax(ctx, template, 0)
-		if err != nil || stackMax < 1 {
-			stackMax = 1
-		}
-		newStacks := int((qty + stackMax - 1) / stackMax)
-		freeSlots := maxSlots - usedSlots
-		if freeSlots < newStacks {
-			return fmt.Errorf(
-				"inventory full: need %d free slots, have %d",
-				newStacks, freeSlots)
-		}
+	if err := checkInventorySlotLimit(ctx, profile, usage, template, qty); err != nil {
+		return err
 	}
 	return nil
 }

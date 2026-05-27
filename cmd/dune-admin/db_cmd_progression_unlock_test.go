@@ -75,6 +75,32 @@ func TestFormatProgressionUnlockSuccess(t *testing.T) {
 	}
 }
 
+func TestProgressionReverseTags(t *testing.T) {
+	t.Parallel()
+
+	base := []string{"A", "B"}
+	got := progressionReverseTags(base, []string{"unknown.node"})
+	if len(got) != 2 || got[0] != "A" || got[1] != "B" {
+		t.Fatalf("expected base tags unchanged for unknown node, got %#v", got)
+	}
+}
+
+func TestFormatProgressionReverseSuccess(t *testing.T) {
+	t.Parallel()
+
+	msg := formatProgressionReverseSuccess("rank19_eligible", "harkonnen", 7, 19)
+	expectParts := []string{
+		"Reversed progression unlock (rank19_eligible/harkonnen)",
+		"reset 7 node(s)",
+		"removed 19 tag(s)",
+	}
+	for _, part := range expectParts {
+		if !strings.Contains(msg, part) {
+			t.Fatalf("expected message to contain %q, got %q", part, msg)
+		}
+	}
+}
+
 func containsString(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {

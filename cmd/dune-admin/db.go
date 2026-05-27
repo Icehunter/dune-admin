@@ -2632,6 +2632,70 @@ func formatProgressionUnlockSuccess(
 		preset, faction, journeyNodeCount, factionName, progressionUnlockMaxTier, targetTier, controllerID)
 }
 
+func resolveProgressionAccountID(ctx context.Context, actorID int64) (int64, error) {
+	var accountID int64
+	if err := globalDB.QueryRow(ctx,
+		`SELECT COALESCE(owner_account_id, 0) FROM dune.actors WHERE id = $1`,
+		actorID).Scan(&accountID); err != nil || accountID == 0 {
+		return 0, fmt.Errorf("player %d not found or has no account", actorID)
+	}
+	return accountID, nil
+}
+
+func progressionReverseTags(baseTags, nodes []string) []string {
+	allTags := append([]string{}, baseTags...)
+	seen := make(map[string]bool, len(allTags))
+	for _, tag := range allTags {
+		seen[tag] = true
+	}
+	for _, node := range nodes {
+		for _, tag := range tagsForJourneyNodeSubtree(node) {
+			if seen[tag] {
+				continue
+			}
+			seen[tag] = true
+			allTags = append(allTags, tag)
+		}
+	}
+	return allTags
+}
+
+func applyProgressionReverse(ctx context.Context, accountID int64, allTags, nodes []string) (int64, error) {
+	tx, err := globalDB.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err = tx.Exec(ctx,
+		`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
+		accountID, allTags); err != nil {
+		return 0, fmt.Errorf("remove tags: %w", err)
+	}
+
+	result, err := tx.Exec(ctx, `
+		UPDATE dune.journey_story_node
+		SET complete_condition_state = 'false'::jsonb,
+		    has_pending_reward       = false
+		WHERE account_id = $1
+		  AND story_node_id = ANY($2::text[])`,
+		accountID, nodes)
+	if err != nil {
+		return 0, fmt.Errorf("reset journey nodes: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+func formatProgressionReverseSuccess(preset, faction string, resetNodes int64, removedTags int) string {
+	return fmt.Sprintf(
+		"Reversed progression unlock (%s/%s): reset %d node(s), removed %d tag(s) — takes effect on next login",
+		preset, faction, resetNodes, removedTags)
+}
+
 // cmdProgressionUnlock completes all prerequisite faction story journey nodes,
 // writes the corresponding gameplay tags, and sets reputation to the preset's
 // target tier.
@@ -2698,111 +2762,36 @@ func cmdReverseProgressionUnlock(actorID int64, faction, preset string) Cmd {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 
-		var factionID int16
-		var dialogueFlag, alignedFlag, metRecruiterFlag, factionUnlocked, recruitmentDone string
-		switch faction {
-		case "atreides":
-			factionID = 1
-			dialogueFlag = "DialogueFlags.Factions.SentToMeetHawat"
-			alignedFlag = "DialogueFlags.Factions.AlignedAtreides"
-			metRecruiterFlag = "DialogueFlags.Factions.MetHawat"
-			factionUnlocked = "Contract.Tracking.AtreidesFactionUnlocked"
-			recruitmentDone = "Contract.Tracking.AtreidesRecruitmentCompleted"
-		case "harkonnen":
-			factionID = 2
-			dialogueFlag = "DialogueFlags.Factions.SentToPiterDeVries"
-			alignedFlag = "DialogueFlags.Factions.AlignedHarkonnen"
-			metRecruiterFlag = "DialogueFlags.Factions.MetPiterDeVries"
-			factionUnlocked = "Contract.Tracking.HarkonnenFactionUnlocked"
-			recruitmentDone = "Contract.Tracking.HarkonnenRecruitmentCompleted"
-		default:
-			return msgMutate{err: fmt.Errorf("faction must be atreides or harkonnen")}
+		cfg, err := progressionFactionConfigFor(faction)
+		if err != nil {
+			return msgMutate{err: err}
 		}
-
-		var targetTier int
-		switch preset {
-		case "ch3_start":
-			targetTier = 5
-		case "rank19_eligible":
-			targetTier = 19
-		default:
-			return msgMutate{err: fmt.Errorf("preset must be ch3_start or rank19_eligible")}
+		targetTier, err := progressionTargetTierForPreset(preset)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
 		ctx := context.Background()
-
-		var accountID int64
-		if err := globalDB.QueryRow(ctx,
-			`SELECT COALESCE(owner_account_id, 0) FROM dune.actors WHERE id = $1`,
-			actorID).Scan(&accountID); err != nil || accountID == 0 {
-			return msgMutate{err: fmt.Errorf("player %d not found or has no account", actorID)}
+		accountID, err := resolveProgressionAccountID(ctx, actorID)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
-		// Build the exact same tag set the forward function writes so we can remove it.
-		factionName := factionDisplayName(factionID)
-		const maxTier = 5
-		allTags := []string{
-			dialogueFlag, alignedFlag, metRecruiterFlag,
-			factionUnlocked, recruitmentDone,
-			"DialogueFlags.Factions.FactionIntro",
-			"DialogueFlags.Factions.FactionRank1",
-			"DialogueFlags.Factions.FactionRank3",
-			"DialogueFlags.Factions.MetARecruiter",
-			"DialogueFlags.Factions.PlayedAllegianceCinematic",
-			"DialogueFlags.Factions.SeenAnvilCinematic",
-		}
-		if targetTier >= 19 {
-			allTags = append(allTags, "Journey.LandsraadContractsUnlocked")
-		}
-		for t := 0; t <= maxTier; t++ {
-			allTags = append(allTags, fmt.Sprintf("Faction.%s.Tier%d", factionName, t))
-		}
-
-		// Also collect any tags the journey nodes themselves emit on completion.
 		nodes := nodesForPreset(faction, preset)
-		seen := map[string]bool{}
-		for _, t := range allTags {
-			seen[t] = true
-		}
-		for _, node := range nodes {
-			for _, t := range tagsForJourneyNodeSubtree(node) {
-				if !seen[t] {
-					seen[t] = true
-					allTags = append(allTags, t)
-				}
-			}
-		}
+		baseTags := progressionUnlockTags(cfg, targetTier)
+		allTags := progressionReverseTags(baseTags, nodes)
 
-		tx, err := globalDB.Begin(ctx)
+		resetNodes, err := applyProgressionReverse(ctx, accountID, allTags, nodes)
 		if err != nil {
 			return msgMutate{err: err}
 		}
-		defer func() { _ = tx.Rollback(ctx) }()
 
-		if _, err = tx.Exec(ctx,
-			`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
-			accountID, allTags); err != nil {
-			return msgMutate{err: fmt.Errorf("remove tags: %w", err)}
-		}
-
-		result, err := tx.Exec(ctx, `
-			UPDATE dune.journey_story_node
-			SET complete_condition_state = 'false'::jsonb,
-			    has_pending_reward       = false
-			WHERE account_id = $1
-			  AND story_node_id = ANY($2::text[])`,
-			accountID, nodes)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("reset journey nodes: %w", err)}
-		}
-
-		if err := tx.Commit(ctx); err != nil {
-			return msgMutate{err: err}
-		}
-
-		return msgMutate{ok: fmt.Sprintf(
-			"Reversed progression unlock (%s/%s): reset %d node(s), removed %d tag(s) — takes effect on next login",
-			preset, faction, result.RowsAffected(), len(allTags))}
+		return msgMutate{ok: formatProgressionReverseSuccess(
+			preset,
+			faction,
+			resetNodes,
+			len(allTags),
+		)}
 	}
 }
 

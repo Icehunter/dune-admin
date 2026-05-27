@@ -1,4 +1,3 @@
 # Functions excluded from the gocognit complexity gate.
 # Each entry has a GitHub issue tracking the refactor work.
 # Format: FuncName  file:line  score  issue-url
-cmdGrantAllKeystones           db.go:3015:1                        16   https://github.com/Icehunter/dune-admin/issues/51

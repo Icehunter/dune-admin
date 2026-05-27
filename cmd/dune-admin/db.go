@@ -3398,37 +3398,25 @@ func keystoneSPBonus(ids []int16) int64 {
 	return total
 }
 
-func cmdGrantAllKeystones(playerID int64) Cmd {
-	return func() Msg {
-		if globalDB == nil {
-			return msgMutate{err: fmt.Errorf("not connected")}
-		}
-		ctx := context.Background()
-
-		if err := checkPlayerOffline(ctx, playerID); err != nil {
-			return msgMutate{err: err}
-		}
-
-		var err error
-		_, err = globalDB.Exec(ctx, `
+func insertAllPurchasedKeystones(ctx context.Context, playerID int64) error {
+	_, err := globalDB.Exec(ctx, `
 			INSERT INTO dune.purchased_specialization_keystones (player_id, keystone_id)
 			SELECT $1::bigint, generate_series(1, 205)
 			ON CONFLICT DO NOTHING`, playerID)
-		if err != nil {
-			return msgMutate{err: err}
-		}
+	return err
+}
 
-		// Compute the SP bonus all 205 purchased keystones should give.
-		allIDs := make([]int16, 205)
-		for i := range allIDs {
-			allIDs[i] = int16(i + 1)
-		}
-		keystoneBonus := keystoneSPBonus(allIDs)
+func allKeystoneIDs() []int16 {
+	ids := make([]int16, 205)
+	for i := range ids {
+		ids[i] = int16(i + 1)
+	}
+	return ids
+}
 
-		// Read XP, current TotalSkillPoints, and SP spent in non-starter modules.
-		// Uses pawn actor id (purchased_specialization_keystones uses controller id).
-		var xp, currentTotal, spentSP int64
-		err = globalDB.QueryRow(ctx, `
+func readLevelComponentSkillState(ctx context.Context, playerID int64) (int64, int64, int64, error) {
+	var xp, currentTotal, spentSP int64
+	err := globalDB.QueryRow(ctx, `
 			SELECT
 				(fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint,
 				(fe.components->'FLevelComponent'->1->>'TotalSkillPoints')::bigint,
@@ -3445,25 +3433,26 @@ func cmdGrantAllKeystones(playerID int64) Cmd {
 				SELECT player_pawn_id FROM dune.player_state
 				WHERE player_controller_id = $1 LIMIT 1
 			  )`, playerID).Scan(&xp, &currentTotal, &spentSP)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("read FLevelComponent: %w", err)}
-		}
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("read FLevelComponent: %w", err)
+	}
+	return xp, currentTotal, spentSP, nil
+}
 
-		level := int64(xpToLevel(xp))
-		expectedTotal := level + keystoneBonus
-		// UnspentSkillPoints = total - non-starter spent - 1 (starter job always occupies 1 SP).
-		expectedUnspent := expectedTotal - spentSP - 1
-		if expectedUnspent < 0 {
-			expectedUnspent = 0
-		}
+func grantAllKeystoneTargets(xp, spentSP int64) (int64, int64, int64) {
+	keystoneBonus := keystoneSPBonus(allKeystoneIDs())
+	level := int64(xpToLevel(xp))
+	expectedTotal := level + keystoneBonus
+	// UnspentSkillPoints = total - non-starter spent - 1 (starter job always occupies 1 SP).
+	expectedUnspent := expectedTotal - spentSP - 1
+	if expectedUnspent < 0 {
+		expectedUnspent = 0
+	}
+	return expectedTotal, expectedUnspent, keystoneBonus
+}
 
-		if currentTotal >= expectedTotal {
-			return msgMutate{ok: fmt.Sprintf(
-				"Granted all keystones to player %d — SP already correct (%d total, %d unspent)",
-				playerID, currentTotal, expectedUnspent)}
-		}
-
-		_, err = globalDB.Exec(ctx, `
+func updateLevelComponentSkillPoints(ctx context.Context, playerID, expectedTotal, expectedUnspent int64) error {
+	_, err := globalDB.Exec(ctx, `
 			UPDATE dune.fgl_entities
 			SET components = jsonb_set(jsonb_set(
 				components,
@@ -3479,8 +3468,44 @@ func cmdGrantAllKeystones(playerID int64) Cmd {
 					WHERE player_controller_id = $1 LIMIT 1
 				  )
 			)`, playerID, expectedTotal, expectedUnspent)
+	if err != nil {
+		return fmt.Errorf("update skill points: %w", err)
+	}
+	return nil
+}
+
+func cmdGrantAllKeystones(playerID int64) Cmd {
+	return func() Msg {
+		if globalDB == nil {
+			return msgMutate{err: fmt.Errorf("not connected")}
+		}
+		ctx := context.Background()
+
+		if err := checkPlayerOffline(ctx, playerID); err != nil {
+			return msgMutate{err: err}
+		}
+
+		if err := insertAllPurchasedKeystones(ctx, playerID); err != nil {
+			return msgMutate{err: err}
+		}
+
+		// Read XP, current TotalSkillPoints, and SP spent in non-starter modules.
+		// Uses pawn actor id (purchased_specialization_keystones uses controller id).
+		xp, currentTotal, spentSP, err := readLevelComponentSkillState(ctx, playerID)
 		if err != nil {
-			return msgMutate{err: fmt.Errorf("update skill points: %w", err)}
+			return msgMutate{err: err}
+		}
+
+		expectedTotal, expectedUnspent, keystoneBonus := grantAllKeystoneTargets(xp, spentSP)
+
+		if currentTotal >= expectedTotal {
+			return msgMutate{ok: fmt.Sprintf(
+				"Granted all keystones to player %d — SP already correct (%d total, %d unspent)",
+				playerID, currentTotal, expectedUnspent)}
+		}
+
+		if err := updateLevelComponentSkillPoints(ctx, playerID, expectedTotal, expectedUnspent); err != nil {
+			return msgMutate{err: err}
 		}
 
 		return msgMutate{ok: fmt.Sprintf(

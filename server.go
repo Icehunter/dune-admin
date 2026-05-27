@@ -7,6 +7,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -258,13 +259,19 @@ func startServer(addr string) {
 // for any path that doesn't match a real file (client-side routing).
 func spaHandler(distDir string) http.Handler {
 	fileServer := http.FileServer(http.Dir(distDir))
+	cleanDist := filepath.Clean(distDir)
+	sep := string(filepath.Separator)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p := distDir + "/" + strings.TrimLeft(r.URL.Path, "/")
+		p := filepath.Join(cleanDist, filepath.FromSlash(r.URL.Path))
+		if p != cleanDist && !strings.HasPrefix(p, cleanDist+sep) {
+			http.NotFound(w, r)
+			return
+		}
 		if _, err := os.Stat(p); err == nil {
 			fileServer.ServeHTTP(w, r)
 			return
 		}
-		http.ServeFile(w, r, distDir+"/index.html")
+		http.ServeFile(w, r, filepath.Join(cleanDist, "index.html"))
 	})
 }
 

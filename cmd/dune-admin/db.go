@@ -216,6 +216,51 @@ func cmdFetchSpecs() Msg {
 	return msgSpecs{rows: out}
 }
 
+func sqlHeaderNames(rows pgx.Rows) []string {
+	descs := rows.FieldDescriptions()
+	headers := make([]string, len(descs))
+	for i, desc := range descs {
+		headers[i] = string(desc.Name)
+	}
+	return headers
+}
+
+func collectSQLRows(rows pgx.Rows, limit int) ([][]any, bool) {
+	collected := make([][]any, 0, limit)
+	for rows.Next() && len(collected) < limit {
+		values, err := rows.Values()
+		if err != nil {
+			continue
+		}
+		collected = append(collected, values)
+	}
+	return collected, len(collected) == limit
+}
+
+func formatSQLRow(values []any) string {
+	parts := make([]string, len(values))
+	for i, value := range values {
+		parts[i] = fmt.Sprintf("%v", value)
+	}
+	return strings.Join(parts, " │ ")
+}
+
+func buildSQLResult(headers []string, rows [][]any, truncated bool) string {
+	var sb strings.Builder
+	sb.WriteString(strings.Join(headers, " │ "))
+	sb.WriteString("\n")
+	sb.WriteString(strings.Repeat("─", 80))
+	sb.WriteString("\n")
+	for _, row := range rows {
+		sb.WriteString(formatSQLRow(row))
+		sb.WriteString("\n")
+	}
+	if truncated {
+		sb.WriteString("… (limited to 200 rows)\n")
+	}
+	return sb.String()
+}
+
 func cmdRunSQL(sql string) Cmd {
 	return func() Msg {
 		if globalDB == nil {
@@ -227,35 +272,9 @@ func cmdRunSQL(sql string) Cmd {
 		}
 		defer rows.Close()
 
-		var sb strings.Builder
-		descs := rows.FieldDescriptions()
-		headers := make([]string, len(descs))
-		for i, d := range descs {
-			headers[i] = string(d.Name)
-		}
-		sb.WriteString(strings.Join(headers, " │ "))
-		sb.WriteString("\n")
-		sb.WriteString(strings.Repeat("─", 80))
-		sb.WriteString("\n")
-
-		count := 0
-		for rows.Next() && count < 200 {
-			vals, err := rows.Values()
-			if err != nil {
-				continue
-			}
-			parts := make([]string, len(vals))
-			for i, v := range vals {
-				parts[i] = fmt.Sprintf("%v", v)
-			}
-			sb.WriteString(strings.Join(parts, " │ "))
-			sb.WriteString("\n")
-			count++
-		}
-		if count == 200 {
-			sb.WriteString("… (limited to 200 rows)\n")
-		}
-		return msgSQL{result: sb.String()}
+		headers := sqlHeaderNames(rows)
+		resultRows, truncated := collectSQLRows(rows, 200)
+		return msgSQL{result: buildSQLResult(headers, resultRows, truncated)}
 	}
 }
 

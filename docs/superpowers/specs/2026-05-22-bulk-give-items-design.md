@@ -64,15 +64,18 @@ POST /api/v1/storage/{id}/give-items
 ## Backend
 
 **handlers_players.go** — new `handleGiveItems()` handler:
+
 - Decodes `{ player_id, items: [{template, qty, quality}] }`
 - Loops `cmdGiveItem(playerID, item.Template, item.Qty, item.Quality)` for each item
 - Collects successes into `given []string` and errors into `skipped []{ Template, Reason }`
 - Returns the combined result — never returns an HTTP error for per-item failures
 
 **handlers_storage.go** — new `handleGiveItemsToStorage()` handler:
+
 - Same pattern using `cmdGiveItemToContainer`
 
 **server.go** — register two new routes:
+
 ```
 POST /api/v1/players/give-items
 POST /api/v1/storage/{id}/give-items
@@ -90,6 +93,7 @@ const [result, setResult] = useState<{ given: string[]; skipped: { template: str
 ```
 
 Operations:
+
 - **Add:** append to `stagedItems`
 - **Remove:** filter by index
 - **Edit qty/quality:** replace by index

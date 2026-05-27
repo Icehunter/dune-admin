@@ -15,7 +15,7 @@ your machine
 
 | Requirement | Notes |
 |-------------|-------|
-| **Go 1.21+** | `brew install go` or https://go.dev/dl/ |
+| **Go 1.21+** | `brew install go` or <https://go.dev/dl/> |
 | **SSH key** | Private key authorised on the VM |
 | **VM access** | Port 22 reachable; SSH user needs passwordless `sudo kubectl` |
 
@@ -32,6 +32,7 @@ make build
 ```
 
 The wizard:
+
 1. Locates your SSH key
 2. SSHes into the VM
 3. Runs `kubectl get pods -A` to find the database pod and namespace

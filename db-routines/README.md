@@ -841,6 +841,7 @@ Concrete, high-confidence gaps where the DB already provides the right primitive
 Admin has zero coverage of vehicle backup/recovery. Add a `handlers_vehicles.go` mirroring the base backup pattern. The DB primitives lock `backup_vehicles` exclusively so concurrent-safe; admin just needs the UI + RPC wiring.
 
 Routines:
+
 - `dune.store_backup_vehicle(in_vehicle_id bigint, in_account_id bigint, in_customization_id text)` — Move a vehicle into the backup slot.
 - `dune.restore_backup_vehicle(in_account_id bigint, in_server_info dune.serverinfo, in_transform dune.transform)` — Spawn a backed-up vehicle for an account; returns vehicle id.
 - `dune.load_backup_vehicle(in_account_id bigint)` — Read backed-up vehicle metadata for an account.
@@ -854,6 +855,7 @@ Routines:
 `handlers_players.go:522` calls `character_transfer_export` directly. The v1.40.1 safety helpers above exist specifically to gate this. Call `character_transfer_get_unsaved_counts(fls_id)` before export and either refuse or surface a confirmation listing the unsaved totem and vehicle IDs.
 
 Routines:
+
 - `dune.character_transfer_get_unsaved_counts(in_fls_id text)` — Pre-transfer counts of unsaved bases/vehicles.
 - `dune.get_unsaved_base_totem_ids_for_account(in_account_id bigint)` — Bases not yet backed up (pre-transfer check).
 - `dune.get_unbacked_up_vehicle_ids_for_account(in_account_id bigint)` — Vehicles not yet backed up (pre-transfer check).
@@ -863,6 +865,7 @@ Routines:
 `handlers_bases.go` currently walks raw actor/building tables. Wrap the dedicated procs above for save / list / restore / delete / recycle so behavior matches the in-game flow (and audit trail).
 
 Routines:
+
 - `dune.base_backup_save_from_totem(in_player_id bigint, totem_id bigint)` — Snapshot a single base keyed by totem id; returns backup id.
 - `dune.base_backup_save_all_totems_from_player_owner(in_player_id bigint)` — Snapshot every base a player owns; returns set of backup ids.
 - `dune.base_backup_find_totems_from_player_owner(in_player_id bigint)` — List totem ids owned by a player (read-only).
@@ -879,6 +882,7 @@ Routines:
 Replaces hand-rolled `LIKE` queries with the indexed admin function so dune-admin agrees with other internal tools on what counts as a match.
 
 Routines:
+
 - `dune.admin_get_character_ids(in_search_term text)` — Admin player search by partial name/id.
 
 ### Replace raw returning-player UPDATE with procs
@@ -886,6 +890,7 @@ Routines:
 Currently the admin issues raw `UPDATE encrypted_player_state SET last_returning_player_*` (see memory note about the "sticky welcome-back modal" footgun). Route through these two functions to keep the timestamp pair coherent with the login flow.
 
 Routines:
+
 - `dune.update_returning_player_status(in_user_id text, in_minimum_returning_player_time_seconds integer)` — Recalculate returning-player eligibility on login.
 - `dune.returning_player_award_given(in_account_id bigint)` — Stamp last_returning_player_awarded_time = now() for an account.
 
@@ -894,6 +899,7 @@ Routines:
 Admin grants keystones with raw inserts; the proc returns bool after running game-side validation. Route through it so granting from dune-admin behaves identically to in-game purchase.
 
 Routines:
+
 - `dune.purchase_specialization_keystone(in_player_id bigint, in_keystone text)` — Validate-then-record a keystone purchase. Returns bool.
 
 ### Bulk inventory edits via update_inventory
@@ -901,6 +907,7 @@ Routines:
 Replace N-round-trip CRUD with the single bulk mutator. Reduces lock churn and matches the game-side write pattern.
 
 Routines:
+
 - `dune.update_inventory(in_delete_list bigint[], in_stack_update dune.itemstackupdate[], in_quality_update dune.itemqualityupdate[], in_stat_update dune.itemstatupdate[], in_item_locations dune.inventoryitemlocation[])` — Bulk inventory mutator (delete, stack, quality, stats, location lists).
 - `dune.update_inventories_data(in_inventory_data_list dune.inventorydata[])` — Update inventory metadata for a list.
 - `dune.merge_or_move_inventory_item(in_item_id bigint, in_dst_inventory_id bigint, in_dst_index bigint, in_count bigint)` — Merge if possible, otherwise move.
@@ -910,6 +917,7 @@ Routines:
 No admin UI for marking a flagged player or browsing the cheat log. Add a read view over `log_cheating` results and an admin-action to flag.
 
 Routines:
+
 - `dune.flag_player_as_cheater(in_account_id bigint, in_cheat_type dune.cheat_type_enum)` — Mark account as a cheater of given type.
 - `dune.log_cheating(in_fls_id text, in_cheat_type dune.cheat_type_enum, in_event_time timestamp with time zone)` — Append cheating event.
 - `dune.verify_item_dup_backup_tool(in_account_id bigint, in_vehicle_id bigint, in_cheat_type dune.cheat_type_enum)` — Anti-dup check around backup tool flow.
@@ -919,6 +927,7 @@ Routines:
 The takeover and deletion-cleanup helpers are not exposed. Worth a dedicated admin screen, especially `cleanup_accounts_marked_for_deletion_in_fls` for periodic operator maintenance.
 
 Routines:
+
 - `dune.can_takeover_account(in_user_id text)` — Can takeover account.
 - `dune.set_account_as_takeoverable(in_user_id text, in_new_user_id text)` — Set account as takeoverable.
 - `dune.load_takeoverable_user_ids()` — Load takeoverable user ids.
@@ -931,6 +940,7 @@ Routines:
 Surface the schema version in the dune-admin status bar so operators know which DB rev they're looking at without exec-ing into the pod.
 
 Routines:
+
 - `dune.get_applied_patches()` — Get applied patches.
 - `dune.get_schema_version()` — Get schema version.
 
@@ -939,6 +949,7 @@ Routines:
 Spice-field manipulation is a known operator chore; the DB exposes prime/restart/spawn primitives that an admin "spice fields" tab could wrap.
 
 Routines:
+
 - `dune.try_prime_spicefield(in_source_server_id text, in_spicefield_id integer)` — Try prime spicefield.
 - `dune.try_restart_spicefield(in_server_id text, in_spicefield_type_id integer)` — Try restart spicefield.
 - `dune.try_spawn_spicefield(in_source_server_id text, in_spicefield_id integer)` — Try spawn spicefield.
@@ -952,6 +963,7 @@ Routines:
 Five Landsraad PROCEDUREs (insert tasks, nominate decrees, update decrees, update factions, create_event_log_partition_table). The 35 functions are mostly read-side. An admin tab that shows the current term and lets ops force-advance/update decrees would be high-value during live ops.
 
 Routines:
+
 - `dune.landsraad_insert_tasks(IN in_term_id bigint, IN in_tasks dune.landsraadtask[], IN in_task_rewards dune.landsraadtaskreward[])` — Landsraad insert tasks.
 - `dune.landsraad_nominate_decrees_for_voting(IN last_active_decree_id bigint, IN num_decrees integer)` — Landsraad nominate decrees for voting.
 - `dune.landsraad_update_decrees(IN in_decrees dune.landsraaddecree[])` — Landsraad update decrees.

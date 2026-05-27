@@ -6,7 +6,7 @@ import { api } from '../api/client'
 import type { InventoryItem } from '../api/client'
 import { DataTable, Icon, PageHeader, SideNav, type Column } from '../dune-ui'
 
-type ItemKey = 'id' | 'template' | 'stack_size' | 'quality' | 'durability'
+type ItemKey = 'id' | 'template' | 'stack_size' | 'quality' | 'durability' | 'actions'
 
 const ITEM_COLUMNS: Column<ItemKey>[] = [
   { key: 'id',         label: 'ID',         width: 100 },
@@ -14,6 +14,7 @@ const ITEM_COLUMNS: Column<ItemKey>[] = [
   { key: 'stack_size', label: 'Stack',      width: 100 },
   { key: 'quality',    label: 'Quality',    width: 100 },
   { key: 'durability', label: 'Durability', width: 130 },
+  { key: 'actions',    label: '',           width: 120, sortable: false },
 ]
 
 type Container = {
@@ -66,6 +67,17 @@ export default function StorageTab() {
     }
   }
 
+  const handleDeleteItem = async (itemId: number) => {
+    try {
+      await api.players.deleteItem(itemId)
+      setItems(prev => prev.filter(i => i.id !== itemId))
+      if (selected) setContainers(prev => prev.map(c => c.id === selected.id ? { ...c, item_count: c.item_count - 1 } : c))
+      toast.success('Item removed')
+    } catch (e: unknown) {
+      toast.danger(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   const filtered = useMemo(() => {
     if (!search) return containers
     const q = search.toLowerCase()
@@ -94,6 +106,12 @@ export default function StorageTab() {
 
   return (
     <div className="flex flex-col gap-3 h-full min-h-0">
+      {/* Warning banner */}
+      <div className="shrink-0 rounded-[var(--radius)] px-4 py-2 text-xs font-medium bg-danger/10 border border-danger/40 text-danger flex items-center gap-2">
+        <Icon name="triangle-alert" />
+        <span>Items added to or removed from storage containers require a <strong>server zone restart</strong> to become visible to other players.</span>
+      </div>
+
       <div className="flex gap-3 flex-1 min-h-0">
         <SideNav
           items={navItems}
@@ -138,6 +156,9 @@ export default function StorageTab() {
                 <Button size="sm" variant="ghost" onPress={() => selectContainer(selected)} isDisabled={itemsLoading}>
                   {itemsLoading ? <Spinner size="sm" color="current" /> : <><Icon name="refresh-cw" /> Refresh</>}
                 </Button>
+                <Button size="sm" onPress={() => setShowAdd(true)}>
+                  <Icon name="plus" /> Add Items
+                </Button>
               </PageHeader>
 
               {itemsLoading ? (
@@ -152,6 +173,7 @@ export default function StorageTab() {
                   initialSort={{ column: 'id', direction: 'ascending' }}
                   sortValue={(i, k) => {
                     if (k === 'template') return i.name || i.template_id
+                    if (k === 'actions')  return ''
                     return (i as unknown as Record<string, string | number>)[k]
                   }}
                   emptyState={<div className="py-8 text-center text-muted">Container is empty</div>}
@@ -168,6 +190,13 @@ export default function StorageTab() {
                       case 'stack_size': return <span>{i.stack_size}</span>
                       case 'quality':    return <span>{i.quality}</span>
                       case 'durability': return <span className="text-muted">{i.durability}</span>
+                      case 'actions':
+                        return (
+                          <Button size="sm" variant="danger-soft" className="w-full"
+                            onPress={() => handleDeleteItem(i.id)}>
+                            <Icon name="x" /> Remove
+                          </Button>
+                        )
                     }
                   }}
                 />

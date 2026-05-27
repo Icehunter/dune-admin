@@ -37,7 +37,7 @@ func handleDBTables(w http.ResponseWriter, r *http.Request) {
 	}
 	rows := make([]tableOut, 0, len(msg.rows))
 	for _, r := range msg.rows {
-		rows = append(rows, tableOut{Name: r.Name, RowCount: r.RowCount})
+		rows = append(rows, tableOut(r))
 	}
 	jsonOK(w, rows)
 }
@@ -64,7 +64,7 @@ func handleDBDescribe(w http.ResponseWriter, r *http.Request) {
 	}
 	cols := make([]colOut, 0, len(msg.cols))
 	for _, c := range msg.cols {
-		cols = append(cols, colOut{Name: c.Name, DataType: c.DataType, Nullable: c.Nullable})
+		cols = append(cols, colOut(c))
 	}
 	jsonOK(w, map[string]any{"table": msg.table, "columns": cols})
 }

@@ -661,7 +661,7 @@ func stripLegacyHeader(content string) string {
 		return content
 	}
 	lines := strings.Split(content, "\n")
-	start, end := -1, -1
+	start := -1
 	for i, l := range lines {
 		trim := strings.TrimSpace(l)
 		if !strings.HasPrefix(trim, "; ====") {
@@ -671,22 +671,28 @@ func stripLegacyHeader(content string) string {
 			start = i
 			continue
 		}
-		end = i
-		// Confirm the sentinel falls inside [start..end] before stripping.
-		for j := start; j <= end; j++ {
-			if strings.Contains(lines[j], legacyHeaderSentinel) {
-				// Also consume one trailing blank line if present.
-				stripEnd := end + 1
-				if stripEnd < len(lines) && strings.TrimSpace(lines[stripEnd]) == "" {
-					stripEnd++
-				}
-				return strings.Join(append(append([]string{}, lines[:start]...), lines[stripEnd:]...), "\n")
-			}
+		if stripped, ok := tryStripBlock(lines, start, i); ok {
+			return stripped
 		}
 		// Not our block — keep scanning. Reset to look for a fresh opening "; ====".
-		start, end = i, -1
+		start = i
 	}
 	return content
+}
+
+// tryStripBlock checks whether lines[start..end] contains legacyHeaderSentinel
+// and, if so, returns the content with that block removed.
+func tryStripBlock(lines []string, start, end int) (string, bool) {
+	for j := start; j <= end; j++ {
+		if strings.Contains(lines[j], legacyHeaderSentinel) {
+			stripEnd := end + 1
+			if stripEnd < len(lines) && strings.TrimSpace(lines[stripEnd]) == "" {
+				stripEnd++
+			}
+			return strings.Join(append(append([]string{}, lines[:start]...), lines[stripEnd:]...), "\n"), true
+		}
+	}
+	return "", false
 }
 
 // stripEmptySections removes `[section]` headers whose bodies are entirely
@@ -853,145 +859,6 @@ func applyDuneAdminRawSection(content, section, rawLines string) string {
 	return strings.TrimRight(preMarker, "\n") + "\n\n" + block
 }
 
-func patchINI(content string, updates map[string]map[string]string) string {
-	if len(updates) == 0 {
-		return content
-	}
-
-	applied := map[string]map[string]bool{}
-	for sec := range updates {
-		applied[sec] = map[string]bool{}
-	}
-	seenSection := map[string]bool{}
-
-	rawLines := strings.Split(strings.TrimRight(content, "\r\n"), "\n")
-	curSec := ""
-	var out []string
-	sectionBodyEnd := map[string]int{} // section → index of last substantive line in out
-
-	for _, line := range rawLines {
-		trimmed := strings.TrimSpace(line)
-
-		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
-			curSec = trimmed[1 : len(trimmed)-1]
-			seenSection[curSec] = true
-			out = append(out, line)
-			sectionBodyEnd[curSec] = len(out) - 1
-			continue
-		}
-		if trimmed == "" || strings.HasPrefix(trimmed, ";") || strings.HasPrefix(trimmed, "#") {
-			out = append(out, line)
-			continue
-		}
-		// Array line — always preserve unchanged.
-		if trimmed[0] == '+' || trimmed[0] == '-' {
-			out = append(out, line)
-			if curSec != "" {
-				sectionBodyEnd[curSec] = len(out) - 1
-			}
-			continue
-		}
-		// Plain k=v.
-		eq := strings.Index(trimmed, "=")
-		if eq <= 0 {
-			out = append(out, line)
-			if curSec != "" {
-				sectionBodyEnd[curSec] = len(out) - 1
-			}
-			continue
-		}
-		key := strings.TrimSpace(trimmed[:eq])
-		if kvs, inUpdate := updates[curSec]; inUpdate {
-			if newVal, ok := kvs[key]; ok {
-				applied[curSec][key] = true
-				if newVal != "" {
-					out = append(out, key+"="+newVal)
-					sectionBodyEnd[curSec] = len(out) - 1
-				}
-				continue // "" = delete: skip line
-			}
-		}
-		out = append(out, line)
-		if curSec != "" {
-			sectionBodyEnd[curSec] = len(out) - 1
-		}
-	}
-
-	// Collect unapplied new keys, grouped by insertion point.
-	type ins struct {
-		afterIdx int
-		lines    []string
-	}
-	insMap := map[int]*ins{}
-	var newSections []string
-	seenNewSec := map[string]bool{}
-
-	for sec, kvs := range updates {
-		var toAdd []string
-		for k, v := range kvs {
-			if v != "" && !applied[sec][k] {
-				toAdd = append(toAdd, k+"="+v)
-			}
-		}
-		if len(toAdd) == 0 {
-			continue
-		}
-		sort.Strings(toAdd)
-		if seenSection[sec] {
-			idx := sectionBodyEnd[sec]
-			i := insMap[idx]
-			if i == nil {
-				i = &ins{afterIdx: idx}
-				insMap[idx] = i
-			}
-			i.lines = append(i.lines, toAdd...)
-		} else if !seenNewSec[sec] {
-			seenNewSec[sec] = true
-			newSections = append(newSections, sec)
-		}
-	}
-
-	// Insert new keys into existing sections (reverse order to maintain indices).
-	if len(insMap) > 0 {
-		type idxLines struct {
-			idx   int
-			lines []string
-		}
-		var sorted []idxLines
-		for idx, i := range insMap {
-			sorted = append(sorted, idxLines{idx, i.lines})
-		}
-		sort.Slice(sorted, func(i, j int) bool { return sorted[i].idx > sorted[j].idx })
-		for _, il := range sorted {
-			tail := make([]string, len(out[il.idx+1:]))
-			copy(tail, out[il.idx+1:])
-			out = out[:il.idx+1]
-			out = append(out, il.lines...)
-			out = append(out, tail...)
-		}
-	}
-
-	// Append new sections at end.
-	sort.Strings(newSections)
-	for _, sec := range newSections {
-		out = append(out, "")
-		out = append(out, "["+sec+"]")
-		kvs := updates[sec]
-		var keys []string
-		for k, v := range kvs {
-			if v != "" {
-				keys = append(keys, k)
-			}
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			out = append(out, k+"="+kvs[k])
-		}
-	}
-
-	return strings.Join(out, "\n") + "\n"
-}
-
 func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 	if globalExecutor == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
@@ -1120,79 +987,4 @@ func handleUpdateRawSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonOK(w, map[string]string{"ok": "Saved. Restart the game server to apply."})
-}
-
-// replaceSectionContent replaces or appends a section's array lines in raw INI
-// content, preserving plain k=v lines in the same section (those are managed by
-// the typed-settings panel). Other sections are preserved exactly.
-// When newLines is empty the entire section is removed.
-func replaceSectionContent(content, section, newLines string) string {
-	header := "[" + section + "]"
-	remove := newLines == ""
-	var out []string
-	var existingKV []string // plain k=v lines from the target section
-	inTarget := false
-	sectionFound := false
-
-	flushTarget := func() {
-		if remove {
-			return
-		}
-		// Emit preserved k=v lines before the new array content.
-		out = append(out, existingKV...)
-		if newLines != "" {
-			out = append(out, newLines)
-		}
-		out = append(out, "")
-	}
-
-	for _, line := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(line)
-		isHeader := strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")
-
-		if isHeader {
-			if inTarget {
-				flushTarget()
-				inTarget = false
-				existingKV = nil
-			}
-			if trimmed == header {
-				inTarget = true
-				sectionFound = true
-				if !remove {
-					out = append(out, line)
-				}
-				continue
-			}
-		}
-
-		if inTarget {
-			// Collect plain k=v lines to re-emit; skip array lines (+/-).
-			if trimmed != "" && !strings.HasPrefix(trimmed, ";") && !strings.HasPrefix(trimmed, "#") &&
-				len(trimmed) > 0 && trimmed[0] != '+' && trimmed[0] != '-' {
-				if strings.Index(trimmed, "=") > 0 {
-					existingKV = append(existingKV, line)
-				}
-			}
-			continue
-		}
-
-		out = append(out, line)
-	}
-
-	if inTarget {
-		flushTarget()
-	} else if !sectionFound && !remove {
-		// Section doesn't exist yet — append it.
-		if len(out) > 0 && out[len(out)-1] != "" {
-			out = append(out, "")
-		}
-		out = append(out, header)
-		if newLines != "" {
-			out = append(out, newLines)
-		}
-		out = append(out, "")
-	}
-
-	return strings.Join(out, "\n")
 }

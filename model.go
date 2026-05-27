@@ -181,10 +181,6 @@ type msgBaseList struct {
 	rows []baseRow
 	err  error
 }
-type msgBlueprintExport struct {
-	path string
-	err  error
-}
 type msgItemTemplates struct {
 	templates []string
 }

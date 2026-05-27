@@ -69,27 +69,48 @@ fmt-check:
 vulncheck:
 	go tool golang.org/x/vuln/cmd/govulncheck ./...
 
+gocognit:
+	@echo "Running code complexity analysis with gocognit..."
+	@$(GO) tool github.com/uudashr/gocognit/cmd/gocognit -over 15 -ignore "_test|node_modules" . \
+		> /tmp/gocognit-out.txt 2>&1 || true; \
+	grep -v '^#' .gocognit-ignore | awk '{print $$1}' > /tmp/gocognit-ignore.txt; \
+	grep -v -F -f /tmp/gocognit-ignore.txt /tmp/gocognit-out.txt > /tmp/gocognit-new.txt || true; \
+	if [ -s /tmp/gocognit-new.txt ]; then cat /tmp/gocognit-new.txt; exit 1; fi
+
 gosec:
 	go tool github.com/securego/gosec/v2/cmd/gosec -severity high -confidence high ./...
 
 pnpm-audit:
 	cd web && pnpm audit --audit-level=high
 
+lint:
+	@$(MAKE) lint-go
+	@$(MAKE) lint-md
+
+lint-go:
+	@$(GO) tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run
+
+lint-md:
+	@npx -y markdownlint-cli2 --fix "**/*.md"
+
 verify:
 	@$(MAKE) fmt-check && \
 	$(MAKE) vet && \
 	$(MAKE) test-race && \
 	$(MAKE) vulncheck && \
-	$(MAKE) gosec && \
-	echo "All checks passed!"
+	$(MAKE) lint && \
+	$(MAKE) gocognit && \
+	echo "All verification checks passed!"
 
 # ── Tools ─────────────────────────────────────────────────────────────────────
 
 tools:
 	@echo "Caching dev tools (versions pinned in go.mod)..."
-	@go tool golang.org/x/vuln/cmd/govulncheck -version || true
-	@go tool github.com/securego/gosec/v2/cmd/gosec --version || true
-	@go tool github.com/air-verse/air -v || true
+	@$(GO) tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint --version || true
+	@$(GO) tool github.com/air-verse/air -v || true
+	@$(GO) tool golang.org/x/vuln/cmd/govulncheck -version || true
+	@$(GO) tool github.com/uudashr/gocognit/cmd/gocognit -version || true
+	@$(GO) tool github.com/securego/gosec/v2/cmd/gosec --version || true
 	@echo "Done!"
 
 # Print current version.

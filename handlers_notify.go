@@ -25,7 +25,7 @@ func mqGameChannel() (*amqp.Channel, error) {
 		return mqGameCh, nil
 	}
 	if mqGameConn != nil && !mqGameConn.IsClosed() {
-		mqGameConn.Close()
+		_ = mqGameConn.Close()
 	}
 
 	addr := brokerGameAddr
@@ -40,7 +40,7 @@ func mqGameChannel() (*amqp.Channel, error) {
 	}
 	ch, err := conn.Channel()
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("mq-game channel: %w", err)
 	}
 	mqGameConn = conn

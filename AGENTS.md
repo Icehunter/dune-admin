@@ -35,6 +35,7 @@ pnpm preview        # preview production build
 ```
 
 The root `Makefile` also exposes:
+
 ```bash
 make web            # cd web && npm ci && npm run build
 make deploy-web     # build + wrangler pages deploy
@@ -153,12 +154,14 @@ Vite dev server proxies `/api` → `:8080` and `/api/v1/logs/stream` (WebSocket)
 ### Tab components
 
 Each tab is either:
+
 - A single `.tsx` file (e.g. `BasesTab.tsx`) for simpler tabs
 - A directory with `index.tsx`, `types.ts`, `modals/`, `components/`, and sometimes `views/` for complex tabs (e.g. `PlayersTab/`, `BattlegroupTab/`)
 
 **`BasesTab.tsx` is the canonical reference pattern** for new simple tabs.
 
 Minimal tab structure:
+
 ```tsx
 export default function FooTab() {
   const [data, setData] = useState<FooRow[]>([])
@@ -211,6 +214,7 @@ Clerk is optional. `hasClerk = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY`. Wh
 ## Configuration
 
 Config is loaded in order (first match wins per field):
+
 1. `~/.dune-admin/config.yaml` — written by `make setup`
 2. `.env` in working directory — legacy fallback
 3. Environment variables

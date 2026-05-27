@@ -175,7 +175,7 @@ func configPath() string {
 
 func setEnvIfMissing(key, val string) {
 	if os.Getenv(key) == "" && val != "" {
-		os.Setenv(key, val)
+		_ = os.Setenv(key, val)
 	}
 }
 
@@ -229,7 +229,7 @@ func loadDotEnv() {
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -474,7 +474,7 @@ func main() {
 			globalDB.Close()
 		}
 		if globalSSH != nil {
-			globalSSH.Close()
+			_ = globalSSH.Close()
 		}
 	}()
 

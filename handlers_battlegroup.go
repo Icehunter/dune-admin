@@ -171,7 +171,9 @@ func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("zip entry %s: %v\n", name, err)
 		}
 	}
-	zw.Close()
+	if err := zw.Close(); err != nil {
+		fmt.Printf("zip close: %v\n", err)
+	}
 }
 
 func handleBGRestore(w http.ResponseWriter, r *http.Request) {
@@ -213,7 +215,7 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("no file: %w", err), 400)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	filename := header.Filename
 	dir := activeBackupDir()
@@ -242,8 +244,13 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			globalExecutor.WriteFile(dir+"/"+name, rc) //nolint:errcheck
-			rc.Close()
+			if err := globalExecutor.WriteFile(dir+"/"+name, rc); err != nil {
+				_ = rc.Close()
+				continue
+			}
+			if err := rc.Close(); err != nil {
+				continue
+			}
 			if strings.HasSuffix(name, ".backup") && !strings.HasSuffix(name, ".yaml") {
 				backupName = name
 			}

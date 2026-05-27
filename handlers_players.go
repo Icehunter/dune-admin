@@ -47,13 +47,7 @@ func handleGetOnlineState(w http.ResponseWriter, r *http.Request) {
 	}
 	rows := make([]onlineRow, 0, len(msg.rows))
 	for _, r := range msg.rows {
-		rows = append(rows, onlineRow{
-			PlayerID: r.PlayerID,
-			Name:     r.Name,
-			Map:      r.Map,
-			Status:   r.Status,
-			LastSeen: r.LastSeen,
-		})
+		rows = append(rows, onlineRow(r))
 	}
 	jsonOK(w, rows)
 }
@@ -175,15 +169,10 @@ func handleGetJourney(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]jNode, 0, len(rows))
 	for _, n := range rows {
-		out = append(out, jNode{
-			NodeID:           n.NodeID,
-			IsComplete:       n.IsComplete,
-			IsRevealed:       n.IsRevealed,
-			HasPendingReward: n.HasPendingReward,
-		})
+		out = append(out, jNode(n))
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(out)
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 func handleGiveItem(w http.ResponseWriter, r *http.Request) {
@@ -602,7 +591,7 @@ func handleCharacterExport(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="character-%d.json"`, accountID))
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(w, result)
+	_, _ = fmt.Fprint(w, result)
 }
 
 func handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
@@ -1369,7 +1358,7 @@ func handleTeleportToPlayer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		jsonOK(w, map[string]any{
-			"ok":   fmt.Sprintf("teleported to target (live, exact)"),
+			"ok":   "teleported to target (live, exact)",
 			"path": "rmq",
 			"x":    target.X, "y": target.Y, "z": target.Z,
 		})

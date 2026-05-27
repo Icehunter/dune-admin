@@ -26,6 +26,7 @@
 ## Task 1: Backend — `handleGiveItems` in `handlers_players.go`
 
 **Files:**
+
 - Modify: `handlers_players.go` (append after `handleGiveItem`, around line 208)
 
 - [ ] **Step 1: Add the handler**
@@ -34,46 +35,48 @@
 
   ```go
   func handleGiveItems(w http.ResponseWriter, r *http.Request) {
-  	var req struct {
-  		PlayerID int64 `json:"player_id"`
-  		Items    []struct {
-  			Template string `json:"template"`
-  			Qty      int64  `json:"qty"`
-  			Quality  int64  `json:"quality"`
-  		} `json:"items"`
-  	}
-  	if err := decode(r, &req); err != nil {
-  		jsonErr(w, err, 400)
-  		return
-  	}
-  	type skippedItem struct {
-  		Template string `json:"template"`
-  		Reason   string `json:"reason"`
-  	}
-  	given := []string{}
-  	skipped := []skippedItem{}
-  	for _, item := range req.Items {
-  		msg, ok := cmdGiveItem(req.PlayerID, item.Template, item.Qty, item.Quality)().(msgMutate)
-  		if !ok || msg.err != nil {
-  			reason := "internal error"
-  			if ok && msg.err != nil {
-  				reason = msg.err.Error()
-  			}
-  			skipped = append(skipped, skippedItem{Template: item.Template, Reason: reason})
-  			continue
-  		}
-  		given = append(given, item.Template)
-  	}
-  	jsonOK(w, map[string]interface{}{"given": given, "skipped": skipped})
+   var req struct {
+    PlayerID int64 `json:"player_id"`
+    Items    []struct {
+     Template string `json:"template"`
+     Qty      int64  `json:"qty"`
+     Quality  int64  `json:"quality"`
+    } `json:"items"`
+   }
+   if err := decode(r, &req); err != nil {
+    jsonErr(w, err, 400)
+    return
+   }
+   type skippedItem struct {
+    Template string `json:"template"`
+    Reason   string `json:"reason"`
+   }
+   given := []string{}
+   skipped := []skippedItem{}
+   for _, item := range req.Items {
+    msg, ok := cmdGiveItem(req.PlayerID, item.Template, item.Qty, item.Quality)().(msgMutate)
+    if !ok || msg.err != nil {
+     reason := "internal error"
+     if ok && msg.err != nil {
+      reason = msg.err.Error()
+     }
+     skipped = append(skipped, skippedItem{Template: item.Template, Reason: reason})
+     continue
+    }
+    given = append(given, item.Template)
+   }
+   jsonOK(w, map[string]interface{}{"given": given, "skipped": skipped})
   }
   ```
 
 - [ ] **Step 2: Verify it compiles**
 
   Run from the project root:
+
   ```bash
   go build ./...
   ```
+
   Expected: no output, exit code 0.
 
 - [ ] **Step 3: Run existing tests**
@@ -81,7 +84,8 @@
   ```bash
   go test ./...
   ```
-  Expected: `ok  	dune-admin` (all pass, no new failures).
+
+  Expected: `ok   dune-admin` (all pass, no new failures).
 
 - [ ] **Step 4: Commit**
 
@@ -95,6 +99,7 @@
 ## Task 2: Backend — `handleGiveItemsToStorage` in `handlers_storage.go`
 
 **Files:**
+
 - Modify: `handlers_storage.go` (append after `handleGiveItemToStorage`, around line 73)
 
 - [ ] **Step 1: Add the handler**
@@ -103,42 +108,42 @@
 
   ```go
   func handleGiveItemsToStorage(w http.ResponseWriter, r *http.Request) {
-  	idStr := r.PathValue("id")
-  	id, err := strconv.ParseInt(idStr, 10, 64)
-  	if err != nil {
-  		jsonErr(w, fmt.Errorf("invalid id"), 400)
-  		return
-  	}
-  	var req struct {
-  		Items []struct {
-  			Template string `json:"template"`
-  			Qty      int64  `json:"qty"`
-  			Quality  int64  `json:"quality"`
-  		} `json:"items"`
-  	}
-  	if err := decode(r, &req); err != nil {
-  		jsonErr(w, err, 400)
-  		return
-  	}
-  	type skippedItem struct {
-  		Template string `json:"template"`
-  		Reason   string `json:"reason"`
-  	}
-  	given := []string{}
-  	skipped := []skippedItem{}
-  	for _, item := range req.Items {
-  		msg, ok := cmdGiveItemToContainer(id, item.Template, item.Qty, item.Quality)().(msgMutate)
-  		if !ok || msg.err != nil {
-  			reason := "internal error"
-  			if ok && msg.err != nil {
-  				reason = msg.err.Error()
-  			}
-  			skipped = append(skipped, skippedItem{Template: item.Template, Reason: reason})
-  			continue
-  		}
-  		given = append(given, item.Template)
-  	}
-  	jsonOK(w, map[string]interface{}{"given": given, "skipped": skipped})
+   idStr := r.PathValue("id")
+   id, err := strconv.ParseInt(idStr, 10, 64)
+   if err != nil {
+    jsonErr(w, fmt.Errorf("invalid id"), 400)
+    return
+   }
+   var req struct {
+    Items []struct {
+     Template string `json:"template"`
+     Qty      int64  `json:"qty"`
+     Quality  int64  `json:"quality"`
+    } `json:"items"`
+   }
+   if err := decode(r, &req); err != nil {
+    jsonErr(w, err, 400)
+    return
+   }
+   type skippedItem struct {
+    Template string `json:"template"`
+    Reason   string `json:"reason"`
+   }
+   given := []string{}
+   skipped := []skippedItem{}
+   for _, item := range req.Items {
+    msg, ok := cmdGiveItemToContainer(id, item.Template, item.Qty, item.Quality)().(msgMutate)
+    if !ok || msg.err != nil {
+     reason := "internal error"
+     if ok && msg.err != nil {
+      reason = msg.err.Error()
+     }
+     skipped = append(skipped, skippedItem{Template: item.Template, Reason: reason})
+     continue
+    }
+    given = append(given, item.Template)
+   }
+   jsonOK(w, map[string]interface{}{"given": given, "skipped": skipped})
   }
   ```
 
@@ -147,6 +152,7 @@
   ```bash
   go build ./...
   ```
+
   Expected: no output, exit code 0.
 
 - [ ] **Step 3: Commit**
@@ -161,24 +167,31 @@
 ## Task 3: Backend — Register routes in `server.go`
 
 **Files:**
+
 - Modify: `server.go`
 
 - [ ] **Step 1: Add the two new routes**
 
   In `server.go`, find the players block (around line 74):
+
   ```go
   mux.HandleFunc("POST /api/v1/players/give-item", handleGiveItem)
   ```
+
   Add directly after it:
+
   ```go
   mux.HandleFunc("POST /api/v1/players/give-items", handleGiveItems)
   ```
 
   Find the storage block (around line 128):
+
   ```go
   mux.HandleFunc("POST /api/v1/storage/{id}/give-item", handleGiveItemToStorage)
   ```
+
   Add directly after it:
+
   ```go
   mux.HandleFunc("POST /api/v1/storage/{id}/give-items", handleGiveItemsToStorage)
   ```
@@ -188,7 +201,8 @@
   ```bash
   go build ./... && go test ./...
   ```
-  Expected: no output from build, `ok  	dune-admin` from tests.
+
+  Expected: no output from build, `ok   dune-admin` from tests.
 
 - [ ] **Step 3: Commit**
 
@@ -202,15 +216,19 @@
 ## Task 4: API Client — `giveItems` methods in `client.ts`
 
 **Files:**
+
 - Modify: `web/src/api/client.ts`
 
 - [ ] **Step 1: Add `BulkGiveResult` type**
 
   In `web/src/api/client.ts`, find line 56:
+
   ```typescript
   export type MutateResult = { ok: string }
   ```
+
   Add directly after it:
+
   ```typescript
   export type BulkGiveResult = { given: string[]; skipped: { template: string; reason: string }[] }
   ```
@@ -218,11 +236,14 @@
 - [ ] **Step 2: Add `giveItems` to the `players` object**
 
   Find (line 98):
+
   ```typescript
       giveItem: (player_id: number, template: string, qty: number, quality: number) =>
         req<MutateResult>('POST', '/players/give-item', { player_id, template, qty, quality }),
   ```
+
   Add directly after it:
+
   ```typescript
       giveItems: (player_id: number, items: { template: string; qty: number; quality: number }[]) =>
         req<BulkGiveResult>('POST', '/players/give-items', { player_id, items }),
@@ -231,11 +252,14 @@
 - [ ] **Step 3: Add `giveItems` to the `storage` object**
 
   Find (line 170):
+
   ```typescript
       giveItem: (id: number, template: string, qty: number, quality: number) =>
         req<MutateResult>('POST', `/storage/${id}/give-item`, { template, qty, quality }),
   ```
+
   Add directly after it:
+
   ```typescript
       giveItems: (id: number, items: { template: string; qty: number; quality: number }[]) =>
         req<BulkGiveResult>('POST', `/storage/${id}/give-items`, { items }),
@@ -246,6 +270,7 @@
   ```bash
   cd web && npx tsc --noEmit
   ```
+
   Expected: no errors.
 
 - [ ] **Step 5: Commit**
@@ -260,15 +285,19 @@
 ## Task 5: Frontend — `GiveItemsModal` in `PlayersTab.tsx`
 
 **Files:**
+
 - Modify: `web/src/tabs/PlayersTab.tsx`
 
 - [ ] **Step 1: Add `showGiveItems` state**
 
   Find (line 69):
+
   ```typescript
     const [showGiveItem, setShowGiveItem] = useState(false)
   ```
+
   Add directly after it:
+
   ```typescript
     const [showGiveItems, setShowGiveItems] = useState(false)
   ```
@@ -276,10 +305,13 @@
 - [ ] **Step 2: Add the "Give Items" button**
 
   Find (line 244):
+
   ```tsx
                             <Button size="sm" variant="ghost" onPress={() => { setSelectedPlayer(player); setShowGiveItem(true) }}>Give Item</Button>
   ```
+
   Add directly after it:
+
   ```tsx
                             <Button size="sm" variant="ghost" onPress={() => { setSelectedPlayer(player); setShowGiveItems(true) }}>Give Items</Button>
   ```
@@ -287,10 +319,13 @@
 - [ ] **Step 3: Mount the modal**
 
   Find (line 421):
+
   ```tsx
           <GiveItemModal player={selectedPlayer} open={showGiveItem} onClose={() => setShowGiveItem(false)} />
   ```
+
   Add directly after it:
+
   ```tsx
           <GiveItemsModal player={selectedPlayer} open={showGiveItems} onClose={() => setShowGiveItems(false)} />
   ```
@@ -444,6 +479,7 @@
   ```bash
   cd web && npx tsc --noEmit
   ```
+
   Expected: no errors.
 
 - [ ] **Step 6: Commit**
@@ -458,15 +494,19 @@
 ## Task 6: Frontend — Bulk `AddItemsModal` in `StorageTab.tsx`
 
 **Files:**
+
 - Modify: `web/src/tabs/StorageTab.tsx`
 
 - [ ] **Step 1: Add `showGiveItems` state**
 
   Find (line 19):
+
   ```typescript
     const [showGive, setShowGive] = useState(false)
   ```
+
   Add directly after it:
+
   ```typescript
     const [showGiveItems, setShowGiveItems] = useState(false)
   ```
@@ -474,12 +514,15 @@
 - [ ] **Step 2: Add the "Add Items" button**
 
   Find (line 141):
+
   ```tsx
                 <Button size="sm" onPress={() => setShowGive(true)}>
                   + Add Item
                 </Button>
   ```
+
   Add directly after it:
+
   ```tsx
                 <Button size="sm" onPress={() => setShowGiveItems(true)}>
                   + Add Items
@@ -489,6 +532,7 @@
 - [ ] **Step 3: Mount the bulk modal**
 
   Find (around line 188):
+
   ```tsx
         {selected && (
           <AddItemModal
@@ -499,7 +543,9 @@
           />
         )}
   ```
+
   Replace it with:
+
   ```tsx
         {selected && (
           <>
@@ -673,6 +719,7 @@
   ```bash
   cd web && npx tsc --noEmit
   ```
+
   Expected: no errors.
 
 - [ ] **Step 6: Commit**

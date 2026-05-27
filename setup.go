@@ -17,7 +17,7 @@ func exitSetup(code int) {
 	if runtime.GOOS == "windows" {
 		fmt.Println()
 		fmt.Println("Press Enter to close...")
-		bufio.NewReader(os.Stdin).ReadString('\n')
+		_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 	}
 	os.Exit(code)
 }
@@ -185,7 +185,7 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 			fmt.Println()
 			idxStr := ask(fmt.Sprintf("Which battlegroup? [1-%d]", len(battlegroups)), "1")
 			idx := 1
-			fmt.Sscanf(idxStr, "%d", &idx)
+			_, _ = fmt.Sscanf(idxStr, "%d", &idx)
 			if idx >= 1 && idx <= len(battlegroups) {
 				chosen = battlegroups[idx-1]
 			}
@@ -271,7 +271,7 @@ func runDockerSetup(ask func(string, string) string, ok, fail func(string), cfg 
 	cfg.DBHost = ask("DB host (Docker DNS or IP)", "database")
 	cfg.DBPort = dbPort
 	portStr := ask(fmt.Sprintf("DB port [%d]", dbPort), fmt.Sprintf("%d", dbPort))
-	fmt.Sscanf(portStr, "%d", &cfg.DBPort)
+	_, _ = fmt.Sscanf(portStr, "%d", &cfg.DBPort)
 	cfg.DBUser = ask("DB user", envOr("DB_USER", "dune"))
 	cfg.DBPass = ask("DB password", "")
 	if cfg.DBPass == "" {
@@ -310,7 +310,7 @@ func runLocalSetup(ask func(string, string) string, ok, fail func(string), cfg *
 	cfg.DBHost = ask("DB host", "127.0.0.1")
 	cfg.DBPort = dbPort
 	portStr := ask(fmt.Sprintf("DB port [%d]", dbPort), fmt.Sprintf("%d", dbPort))
-	fmt.Sscanf(portStr, "%d", &cfg.DBPort)
+	_, _ = fmt.Sscanf(portStr, "%d", &cfg.DBPort)
 	cfg.DBUser = ask("DB user", envOr("DB_USER", "dune"))
 	cfg.DBPass = ask("DB password", "")
 	if cfg.DBPass == "" {
@@ -408,7 +408,7 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 	cfg.DBHost = ask("DB host", "127.0.0.1")
 	cfg.DBPort = dbPort
 	portStr := ask(fmt.Sprintf("DB port [%d]", dbPort), fmt.Sprintf("%d", dbPort))
-	fmt.Sscanf(portStr, "%d", &cfg.DBPort)
+	_, _ = fmt.Sscanf(portStr, "%d", &cfg.DBPort)
 	cfg.DBUser = ask("DB user", envOr("DB_USER", "dune"))
 	cfg.DBPass = ask("DB password", "")
 	if cfg.DBPass == "" {
@@ -465,10 +465,6 @@ func runMarketBotSetup(ask func(string, string) string, ok func(string), ctrl st
 	}
 
 	cfg.MarketBotAddr = ask("Bot API address", defaultAddr)
-	if cfg.MarketBotAddr == defaultAddr && defaultAddr == "http://localhost:8081" {
-		// Treat unchanged localhost default as "not configured" on docker/local only
-		// when user didn't explicitly confirm it.
-	}
 
 	// Only ask for the rest if an address was supplied.
 	if cfg.MarketBotAddr != "" {

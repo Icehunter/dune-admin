@@ -47,6 +47,7 @@ IdleTimeout:       60s
 Applied to `handleDBSQL` only — the raw SQL console in the DB tab. All other API handlers (give-item, award-xp, etc.) are unaffected.
 
 Logic:
+
 1. Strip SQL line comments (`-- …`) and block comments (`/* … */`) from the query before validation
 2. Check the stripped statement begins with an allowed prefix: `SELECT`, `EXPLAIN`, `SHOW`
 3. Reject everything else with `400 Bad Request`

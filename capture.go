@@ -211,14 +211,14 @@ func captureBroker(name, addr string, useTLS bool, user, pass string, bindings [
 		}
 
 		func() {
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 
 			ch, err := conn.Channel()
 			if err != nil {
 				fmt.Printf("[%s] channel error: %v — reconnecting\n", name, err)
 				return
 			}
-			defer ch.Close()
+			defer func() { _ = ch.Close() }()
 
 			q, err := ch.QueueDeclare("admin_capture_"+name, false, true, false, false, nil)
 			if err != nil {

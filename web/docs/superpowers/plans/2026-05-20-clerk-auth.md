@@ -24,11 +24,13 @@
 ## Task 1: Install @clerk/react
 
 **Files:**
+
 - Modify: `package.json`, `package-lock.json` (via npm)
 
 - [ ] **Step 1: Install the SDK**
 
 Run from `web/`:
+
 ```bash
 npm install @clerk/react@latest
 ```
@@ -36,11 +38,13 @@ npm install @clerk/react@latest
 - [ ] **Step 2: Verify the dependency was added**
 
 Run:
+
 ```bash
 grep '"@clerk/react"' package.json
 ```
 
 Expected output (version may differ):
+
 ```
 "@clerk/react": "^5.x.x",
 ```
@@ -50,6 +54,7 @@ Expected output (version may differ):
 ## Task 2: Create .env.local
 
 **Files:**
+
 - Create: `web/.env.local`
 
 - [ ] **Step 1: Get your Publishable Key**
@@ -59,6 +64,7 @@ Open the Clerk Dashboard → API Keys → choose **React** → copy the Publisha
 - [ ] **Step 2: Create the file**
 
 Create `web/.env.local` with this content (replace the value):
+
 ```
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_YOUR_KEY_HERE
 ```
@@ -66,13 +72,15 @@ VITE_CLERK_PUBLISHABLE_KEY=pk_test_YOUR_KEY_HERE
 - [ ] **Step 3: Confirm .gitignore covers it**
 
 Run:
+
 ```bash
 git check-ignore -v .env.local
 ```
 
 Expected output (the `*.local` rule should match):
+
 ```
-../.gitignore:X:*.local	.env.local
+../.gitignore:X:*.local .env.local
 ```
 
 ---
@@ -80,6 +88,7 @@ Expected output (the `*.local` rule should match):
 ## Task 3: Wrap app in ClerkProvider
 
 **Files:**
+
 - Modify: `src/main.tsx`
 
 - [ ] **Step 1: Replace the contents of `src/main.tsx`**
@@ -103,6 +112,7 @@ createRoot(document.getElementById('root')!).render(
 - [ ] **Step 2: Verify dev server starts without errors**
 
 Run:
+
 ```bash
 npm run dev
 ```
@@ -114,6 +124,7 @@ Expected: Vite starts, browser opens, app renders. No console errors about Clerk
 ## Task 4: Forward JWT in api/client.ts
 
 **Files:**
+
 - Modify: `src/api/client.ts` (lines 1–19)
 
 - [ ] **Step 1: Add the `window.Clerk` type declaration at the top of the file**
@@ -154,6 +165,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 - [ ] **Step 3: Verify TypeScript compiles**
 
 Run:
+
 ```bash
 npm run build 2>&1 | head -20
 ```
@@ -165,6 +177,7 @@ Expected: Build succeeds with no type errors. If you see `Property 'Clerk' does 
 ## Task 5: Add auth controls to the header in App.tsx
 
 **Files:**
+
 - Modify: `src/App.tsx`
 
 - [ ] **Step 1: Add Clerk imports**
@@ -211,16 +224,19 @@ With `npm run dev` running, open the app. The header should show a "Sign in" but
 ## Task 6: Gate the Blueprints tab and panel
 
 **Files:**
+
 - Modify: `src/App.tsx`
 
 - [ ] **Step 1: Wrap the Blueprints `<Tabs.Tab>` in `<Show when="signed-in">`**
 
 Find:
+
 ```tsx
               <Tabs.Tab id="blueprints">Blueprints<Tabs.Indicator /></Tabs.Tab>
 ```
 
 Replace with:
+
 ```tsx
               <Show when="signed-in">
                 <Tabs.Tab id="blueprints">Blueprints<Tabs.Indicator /></Tabs.Tab>
@@ -230,6 +246,7 @@ Replace with:
 - [ ] **Step 2: Wrap the Blueprints `<Tabs.Panel>` in `<Show when="signed-in">`**
 
 Find:
+
 ```tsx
           <Tabs.Panel id="blueprints" className="flex-1 overflow-hidden flex flex-col p-4">
             <BlueprintsTab />
@@ -237,6 +254,7 @@ Find:
 ```
 
 Replace with:
+
 ```tsx
           <Show when="signed-in">
             <Tabs.Panel id="blueprints" className="flex-1 overflow-hidden flex flex-col p-4">
@@ -248,6 +266,7 @@ Replace with:
 - [ ] **Step 3: Verify TypeScript compiles**
 
 Run:
+
 ```bash
 npm run build 2>&1 | head -20
 ```
@@ -267,12 +286,14 @@ npm run dev
 - [ ] **Step 2: Verify signed-out state**
 
 Open the app in your browser while not signed in. Confirm:
+
 - Header shows a "Sign in" button on the right
 - Tab list shows: Battlegroup, Players, Database, Logs, Storage — but **not** Blueprints
 
 - [ ] **Step 3: Sign in**
 
 Click the Sign In button, complete the Clerk sign-in flow. Confirm:
+
 - Header shows your user avatar (`<UserButton>`)
 - Blueprints tab appears in the tab list
 - Clicking Blueprints tab renders the Blueprints content
@@ -280,6 +301,7 @@ Click the Sign In button, complete the Clerk sign-in flow. Confirm:
 - [ ] **Step 4: Verify JWT on API requests**
 
 While signed in, open browser DevTools → Network tab. Trigger any API call (e.g., switch to the Battlegroup tab). Find a request to `/api/v1/...` and inspect its headers. Confirm:
+
 ```
 Authorization: Bearer eyJ...
 ```
@@ -287,6 +309,7 @@ Authorization: Bearer eyJ...
 - [ ] **Step 5: Sign out and verify Blueprints disappears**
 
 Click your avatar → Sign Out. Confirm:
+
 - Blueprints tab is gone from the nav
 - Sign In button is back in the header
 - API requests to `/api/v1/...` no longer carry an `Authorization` header

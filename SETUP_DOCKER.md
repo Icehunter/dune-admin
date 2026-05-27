@@ -13,7 +13,7 @@ dune-admin
 
 | Requirement | Notes |
 |-------------|-------|
-| **Go 1.21+** | `brew install go` or https://go.dev/dl/ |
+| **Go 1.21+** | `brew install go` or <https://go.dev/dl/> |
 | **Docker CLI** | Must be in `$PATH` |
 | **Docker access** | The user running dune-admin must be able to run `docker` (i.e. in the `docker` group or running as root) |
 

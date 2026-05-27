@@ -33,6 +33,7 @@ No new files. No tab components touched other than how they are conditionally re
 ### Environment
 
 `.env.local` (not committed):
+
 ```
 VITE_CLERK_PUBLISHABLE_KEY=pk_...
 ```

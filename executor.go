@@ -51,7 +51,7 @@ func (e *sshExecutor) Type() string { return "ssh" }
 
 func (e *sshExecutor) Close() {
 	if e.client != nil {
-		e.client.Close()
+		_ = e.client.Close()
 	}
 }
 
@@ -60,7 +60,7 @@ func (e *sshExecutor) Exec(cmd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer sess.Close()
+	defer func() { _ = sess.Close() }()
 	out, err := sess.CombinedOutput(cmd)
 	return strings.TrimSpace(string(out)), err
 }
@@ -72,11 +72,11 @@ func (e *sshExecutor) Stream(cmd string) (<-chan string, func(), error) {
 	}
 	pipe, err := sess.StdoutPipe()
 	if err != nil {
-		sess.Close()
+		_ = sess.Close()
 		return nil, func() {}, err
 	}
 	if err := sess.Start(cmd); err != nil {
-		sess.Close()
+		_ = sess.Close()
 		return nil, func() {}, err
 	}
 	ch := make(chan string, 256)
@@ -86,9 +86,9 @@ func (e *sshExecutor) Stream(cmd string) (<-chan string, func(), error) {
 		for sc.Scan() {
 			ch <- sc.Text()
 		}
-		sess.Wait()
+		_ = sess.Wait()
 	}()
-	return ch, func() { sess.Close() }, nil
+	return ch, func() { _ = sess.Close() }, nil
 }
 
 func (e *sshExecutor) PipeToWriter(cmd string, w io.Writer) error {
@@ -96,7 +96,7 @@ func (e *sshExecutor) PipeToWriter(cmd string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	defer sess.Close()
+	defer func() { _ = sess.Close() }()
 	sess.Stdout = w
 	return sess.Run(cmd)
 }
@@ -106,7 +106,7 @@ func (e *sshExecutor) WriteFile(path string, data io.Reader) error {
 	if err != nil {
 		return err
 	}
-	defer sess.Close()
+	defer func() { _ = sess.Close() }()
 	stdin, err := sess.StdinPipe()
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (e *sshExecutor) WriteFile(path string, data io.Reader) error {
 	if _, err := io.Copy(stdin, data); err != nil {
 		return err
 	}
-	stdin.Close()
+	_ = stdin.Close()
 	return sess.Wait()
 }
 
@@ -158,11 +158,11 @@ func (e *localExecutor) Stream(cmd string) (<-chan string, func(), error) {
 		for sc.Scan() {
 			ch <- sc.Text()
 		}
-		c.Wait()
+		_ = c.Wait()
 	}()
 	cancel := func() {
 		if c.Process != nil {
-			c.Process.Kill()
+			_ = c.Process.Kill()
 		}
 	}
 	return ch, cancel, nil
@@ -181,7 +181,7 @@ func (e *localExecutor) WriteFile(path string, data io.Reader) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, err = io.Copy(f, data)
 	return err
 }

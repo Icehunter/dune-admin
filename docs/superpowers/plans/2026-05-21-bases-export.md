@@ -32,17 +32,17 @@
 
 ```go
 type baseRow struct {
-	ID         int64  `json:"id"`
-	Name       string `json:"name"`
-	Pieces     int64  `json:"pieces"`
-	Placeables int64  `json:"placeables"`
+ ID         int64  `json:"id"`
+ Name       string `json:"name"`
+ Pieces     int64  `json:"pieces"`
+ Placeables int64  `json:"placeables"`
 }
 ```
 
 ```go
 type msgBaseList struct {
-	rows []baseRow
-	err  error
+ rows []baseRow
+ err  error
 }
 ```
 
@@ -71,38 +71,38 @@ git commit -m "feat: add baseRow and msgBaseList model types"
 
 ```go
 func cmdListBases() Msg {
-	if globalDB == nil {
-		return msgBaseList{err: fmt.Errorf("not connected")}
-	}
-	rows, err := globalDB.Query(context.Background(), `
-		SELECT b.id,
-		       COALESCE(pa.actor_name, '') AS name,
-		       COUNT(DISTINCT bi.instance_id) AS pieces,
-		       COUNT(DISTINCT p.id) AS placeables
-		FROM dune.buildings b
-		LEFT JOIN dune.building_instances bi ON bi.building_id = b.id
-		LEFT JOIN dune.actor_fgl_entities afe ON afe.entity_id = bi.owner_entity_id
-		LEFT JOIN dune.actors t ON t.id = afe.actor_id AND t.class ILIKE '%Totem%'
-		LEFT JOIN dune.permission_actor pa ON pa.actor_id = t.id
-		LEFT JOIN dune.placeables p ON p.owner_entity_id = bi.owner_entity_id
-		GROUP BY b.id, pa.actor_name
-		ORDER BY b.id`)
-	if err != nil {
-		return msgBaseList{err: err}
-	}
-	defer rows.Close()
-	var out []baseRow
-	for rows.Next() {
-		var r baseRow
-		if err := rows.Scan(&r.ID, &r.Name, &r.Pieces, &r.Placeables); err != nil {
-			continue
-		}
-		out = append(out, r)
-	}
-	if err := rows.Err(); err != nil {
-		return msgBaseList{err: err}
-	}
-	return msgBaseList{rows: out}
+ if globalDB == nil {
+  return msgBaseList{err: fmt.Errorf("not connected")}
+ }
+ rows, err := globalDB.Query(context.Background(), `
+  SELECT b.id,
+         COALESCE(pa.actor_name, '') AS name,
+         COUNT(DISTINCT bi.instance_id) AS pieces,
+         COUNT(DISTINCT p.id) AS placeables
+  FROM dune.buildings b
+  LEFT JOIN dune.building_instances bi ON bi.building_id = b.id
+  LEFT JOIN dune.actor_fgl_entities afe ON afe.entity_id = bi.owner_entity_id
+  LEFT JOIN dune.actors t ON t.id = afe.actor_id AND t.class ILIKE '%Totem%'
+  LEFT JOIN dune.permission_actor pa ON pa.actor_id = t.id
+  LEFT JOIN dune.placeables p ON p.owner_entity_id = bi.owner_entity_id
+  GROUP BY b.id, pa.actor_name
+  ORDER BY b.id`)
+ if err != nil {
+  return msgBaseList{err: err}
+ }
+ defer rows.Close()
+ var out []baseRow
+ for rows.Next() {
+  var r baseRow
+  if err := rows.Scan(&r.ID, &r.Name, &r.Pieces, &r.Placeables); err != nil {
+   continue
+  }
+  out = append(out, r)
+ }
+ if err := rows.Err(); err != nil {
+  return msgBaseList{err: err}
+ }
+ return msgBaseList{rows: out}
 }
 ```
 
@@ -133,12 +133,12 @@ git commit -m "feat: add cmdListBases DB query"
 package main
 
 import (
-	"context"
-	"fmt"
-	"math"
-	"net/http"
-	"strconv"
-	"strings"
+ "context"
+ "fmt"
+ "math"
+ "net/http"
+ "strconv"
+ "strings"
 )
 
 // ── transform helpers ─────────────────────────────────────────────────────────
@@ -146,227 +146,227 @@ import (
 // quatToYaw converts a quaternion to a yaw angle in degrees.
 // Buildings only rotate around Z so QX and QY are always ~0.
 func quatToYaw(qx, qy, qz, qw float64) float64 {
-	return math.Atan2(2*(qw*qz+qx*qy), 1-2*(qy*qy+qz*qz)) * 180 / math.Pi
+ return math.Atan2(2*(qw*qz+qx*qy), 1-2*(qy*qy+qz*qz)) * 180 / math.Pi
 }
 
 // quatToEuler converts a quaternion to Euler angles (roll, pitch, yaw) in degrees.
 func quatToEuler(qx, qy, qz, qw float64) (rx, ry, rz float64) {
-	rx = math.Atan2(2*(qw*qx+qy*qz), 1-2*(qx*qx+qy*qy)) * 180 / math.Pi
-	sinp := 2 * (qw*qy - qz*qx)
-	if sinp >= 1 {
-		ry = 90
-	} else if sinp <= -1 {
-		ry = -90
-	} else {
-		ry = math.Asin(sinp) * 180 / math.Pi
-	}
-	rz = math.Atan2(2*(qw*qz+qx*qy), 1-2*(qy*qy+qz*qz)) * 180 / math.Pi
-	return
+ rx = math.Atan2(2*(qw*qx+qy*qz), 1-2*(qx*qx+qy*qy)) * 180 / math.Pi
+ sinp := 2 * (qw*qy - qz*qx)
+ if sinp >= 1 {
+  ry = 90
+ } else if sinp <= -1 {
+  ry = -90
+ } else {
+  ry = math.Asin(sinp) * 180 / math.Pi
+ }
+ rz = math.Atan2(2*(qw*qz+qx*qy), 1-2*(qy*qy+qz*qz)) * 180 / math.Pi
+ return
 }
 
 // parseVec3 parses the PostgreSQL composite text format "(x,y,z)".
 func parseVec3(s string) (x, y, z float64, err error) {
-	s = strings.Trim(strings.TrimSpace(s), "()")
-	parts := strings.SplitN(s, ",", 3)
-	if len(parts) != 3 {
-		return 0, 0, 0, fmt.Errorf("expected 3 components in %q", s)
-	}
-	if x, err = strconv.ParseFloat(strings.TrimSpace(parts[0]), 64); err != nil {
-		return
-	}
-	if y, err = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err != nil {
-		return
-	}
-	z, err = strconv.ParseFloat(strings.TrimSpace(parts[2]), 64)
-	return
+ s = strings.Trim(strings.TrimSpace(s), "()")
+ parts := strings.SplitN(s, ",", 3)
+ if len(parts) != 3 {
+  return 0, 0, 0, fmt.Errorf("expected 3 components in %q", s)
+ }
+ if x, err = strconv.ParseFloat(strings.TrimSpace(parts[0]), 64); err != nil {
+  return
+ }
+ if y, err = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err != nil {
+  return
+ }
+ z, err = strconv.ParseFloat(strings.TrimSpace(parts[2]), 64)
+ return
 }
 
 // parseVec4 parses the PostgreSQL composite text format "(x,y,z,w)".
 func parseVec4(s string) (x, y, z, w float64, err error) {
-	s = strings.Trim(strings.TrimSpace(s), "()")
-	parts := strings.SplitN(s, ",", 4)
-	if len(parts) != 4 {
-		return 0, 0, 0, 0, fmt.Errorf("expected 4 components in %q", s)
-	}
-	if x, err = strconv.ParseFloat(strings.TrimSpace(parts[0]), 64); err != nil {
-		return
-	}
-	if y, err = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err != nil {
-		return
-	}
-	if z, err = strconv.ParseFloat(strings.TrimSpace(parts[2]), 64); err != nil {
-		return
-	}
-	w, err = strconv.ParseFloat(strings.TrimSpace(parts[3]), 64)
-	return
+ s = strings.Trim(strings.TrimSpace(s), "()")
+ parts := strings.SplitN(s, ",", 4)
+ if len(parts) != 4 {
+  return 0, 0, 0, 0, fmt.Errorf("expected 4 components in %q", s)
+ }
+ if x, err = strconv.ParseFloat(strings.TrimSpace(parts[0]), 64); err != nil {
+  return
+ }
+ if y, err = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err != nil {
+  return
+ }
+ if z, err = strconv.ParseFloat(strings.TrimSpace(parts[2]), 64); err != nil {
+  return
+ }
+ w, err = strconv.ParseFloat(strings.TrimSpace(parts[3]), 64)
+ return
 }
 
 // ── handlers ──────────────────────────────────────────────────────────────────
 
 func handleListBases(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdListBases().(msgBaseList)
-	if !ok {
-		jsonErr(w, fmt.Errorf("internal error"), 500)
-		return
-	}
-	if msg.err != nil {
-		jsonErr(w, msg.err, 500)
-		return
-	}
-	rows := msg.rows
-	if rows == nil {
-		rows = []baseRow{}
-	}
-	jsonOK(w, rows)
+ msg, ok := cmdListBases().(msgBaseList)
+ if !ok {
+  jsonErr(w, fmt.Errorf("internal error"), 500)
+  return
+ }
+ if msg.err != nil {
+  jsonErr(w, msg.err, 500)
+  return
+ }
+ rows := msg.rows
+ if rows == nil {
+  rows = []baseRow{}
+ }
+ jsonOK(w, rows)
 }
 
 func handleExportBase(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
-		jsonErr(w, fmt.Errorf("invalid id"), 400)
-		return
-	}
-	if globalDB == nil {
-		jsonErr(w, fmt.Errorf("not connected"), 500)
-		return
-	}
-	ctx := context.Background()
+ id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+ if err != nil {
+  jsonErr(w, fmt.Errorf("invalid id"), 400)
+  return
+ }
+ if globalDB == nil {
+  jsonErr(w, fmt.Errorf("not connected"), 500)
+  return
+ }
+ ctx := context.Background()
 
-	// 1. Fetch instances, collect owner_entity_id from the first row.
-	iRows, err := globalDB.Query(ctx, `
-		SELECT building_type, transform, owner_entity_id
-		FROM dune.building_instances
-		WHERE building_id = $1`, id)
-	if err != nil {
-		jsonErr(w, fmt.Errorf("query instances: %w", err), 500)
-		return
-	}
-	defer iRows.Close()
+ // 1. Fetch instances, collect owner_entity_id from the first row.
+ iRows, err := globalDB.Query(ctx, `
+  SELECT building_type, transform, owner_entity_id
+  FROM dune.building_instances
+  WHERE building_id = $1`, id)
+ if err != nil {
+  jsonErr(w, fmt.Errorf("query instances: %w", err), 500)
+  return
+ }
+ defer iRows.Close()
 
-	type rawInstance struct {
-		btype          string
-		t              []float32
-		ownerEntityID  int64
-	}
-	var raws []rawInstance
-	for iRows.Next() {
-		var ri rawInstance
-		if err := iRows.Scan(&ri.btype, &ri.t, &ri.ownerEntityID); err != nil {
-			continue
-		}
-		if len(ri.t) < 7 {
-			continue
-		}
-		raws = append(raws, ri)
-	}
-	if err := iRows.Err(); err != nil {
-		jsonErr(w, fmt.Errorf("read instances: %w", err), 500)
-		return
-	}
-	if len(raws) == 0 {
-		jsonErr(w, fmt.Errorf("building %d not found or empty", id), 404)
-		return
-	}
+ type rawInstance struct {
+  btype          string
+  t              []float32
+  ownerEntityID  int64
+ }
+ var raws []rawInstance
+ for iRows.Next() {
+  var ri rawInstance
+  if err := iRows.Scan(&ri.btype, &ri.t, &ri.ownerEntityID); err != nil {
+   continue
+  }
+  if len(ri.t) < 7 {
+   continue
+  }
+  raws = append(raws, ri)
+ }
+ if err := iRows.Err(); err != nil {
+  jsonErr(w, fmt.Errorf("read instances: %w", err), 500)
+  return
+ }
+ if len(raws) == 0 {
+  jsonErr(w, fmt.Errorf("building %d not found or empty", id), 404)
+  return
+ }
 
-	ownerEntityID := raws[0].ownerEntityID
+ ownerEntityID := raws[0].ownerEntityID
 
-	// 2. Compute centroid.
-	var sumX, sumY, sumZ float64
-	for _, ri := range raws {
-		sumX += float64(ri.t[0])
-		sumY += float64(ri.t[1])
-		sumZ += float64(ri.t[2])
-	}
-	n := float64(len(raws))
-	cx, cy, cz := sumX/n, sumY/n, sumZ/n
+ // 2. Compute centroid.
+ var sumX, sumY, sumZ float64
+ for _, ri := range raws {
+  sumX += float64(ri.t[0])
+  sumY += float64(ri.t[1])
+  sumZ += float64(ri.t[2])
+ }
+ n := float64(len(raws))
+ cx, cy, cz := sumX/n, sumY/n, sumZ/n
 
-	// 3. Convert instances to relative blueprint format.
-	instances := make([]blueprintInstance, 0, len(raws))
-	for _, ri := range raws {
-		qx, qy, qz, qw := float64(ri.t[3]), float64(ri.t[4]), float64(ri.t[5]), float64(ri.t[6])
-		instances = append(instances, blueprintInstance{
-			BuildingType: ri.btype,
-			X:            float64(ri.t[0]) - cx,
-			Y:            float64(ri.t[1]) - cy,
-			Z:            float64(ri.t[2]) - cz,
-			Rotation:     quatToYaw(qx, qy, qz, qw),
-		})
-	}
+ // 3. Convert instances to relative blueprint format.
+ instances := make([]blueprintInstance, 0, len(raws))
+ for _, ri := range raws {
+  qx, qy, qz, qw := float64(ri.t[3]), float64(ri.t[4]), float64(ri.t[5]), float64(ri.t[6])
+  instances = append(instances, blueprintInstance{
+   BuildingType: ri.btype,
+   X:            float64(ri.t[0]) - cx,
+   Y:            float64(ri.t[1]) - cy,
+   Z:            float64(ri.t[2]) - cz,
+   Rotation:     quatToYaw(qx, qy, qz, qw),
+  })
+ }
 
-	// 4. Fetch placeables via shared owner_entity_id.
-	pRows, err := globalDB.Query(ctx, `
-		SELECT p.building_type,
-		       (a.transform).location::text,
-		       (a.transform).rotation::text,
-		       a.properties
-		FROM dune.placeables p
-		JOIN dune.actors a ON a.id = p.id
-		WHERE p.owner_entity_id = $1`, ownerEntityID)
-	if err != nil {
-		jsonErr(w, fmt.Errorf("query placeables: %w", err), 500)
-		return
-	}
-	defer pRows.Close()
+ // 4. Fetch placeables via shared owner_entity_id.
+ pRows, err := globalDB.Query(ctx, `
+  SELECT p.building_type,
+         (a.transform).location::text,
+         (a.transform).rotation::text,
+         a.properties
+  FROM dune.placeables p
+  JOIN dune.actors a ON a.id = p.id
+  WHERE p.owner_entity_id = $1`, ownerEntityID)
+ if err != nil {
+  jsonErr(w, fmt.Errorf("query placeables: %w", err), 500)
+  return
+ }
+ defer pRows.Close()
 
-	var placeables []blueprintPlaceable
-	var pentashields []blueprintPentashield
+ var placeables []blueprintPlaceable
+ var pentashields []blueprintPentashield
 
-	for pRows.Next() {
-		var btype, locStr, rotStr string
-		var props map[string]any
-		if err := pRows.Scan(&btype, &locStr, &rotStr, &props); err != nil {
-			continue
-		}
-		lx, ly, lz, locErr := parseVec3(locStr)
-		qx, qy, qz, qw, rotErr := parseVec4(rotStr)
-		if locErr != nil || rotErr != nil {
-			continue
-		}
-		rx, ry, rz := quatToEuler(qx, qy, qz, qw)
-		idx := len(placeables)
-		placeables = append(placeables, blueprintPlaceable{
-			BuildingType: btype,
-			X:            lx - cx,
-			Y:            ly - cy,
-			Z:            lz - cz,
-			RX:           rx,
-			RY:           ry,
-			RZ:           rz,
-		})
+ for pRows.Next() {
+  var btype, locStr, rotStr string
+  var props map[string]any
+  if err := pRows.Scan(&btype, &locStr, &rotStr, &props); err != nil {
+   continue
+  }
+  lx, ly, lz, locErr := parseVec3(locStr)
+  qx, qy, qz, qw, rotErr := parseVec4(rotStr)
+  if locErr != nil || rotErr != nil {
+   continue
+  }
+  rx, ry, rz := quatToEuler(qx, qy, qz, qw)
+  idx := len(placeables)
+  placeables = append(placeables, blueprintPlaceable{
+   BuildingType: btype,
+   X:            lx - cx,
+   Y:            ly - cy,
+   Z:            lz - cz,
+   RX:           rx,
+   RY:           ry,
+   RZ:           rz,
+  })
 
-		// 5. Detect pentashield placeables and extract scale.
-		if strings.Contains(btype, "PentashieldSurface") {
-			scale := [3]int{0, 0, 0}
-			if props != nil {
-				if inner, ok := props[strings.TrimSuffix(
-					btype, "_Placeable")+"_C"].(map[string]any); ok {
-					if sv, ok := inner["m_Scale"].([]any); ok && len(sv) >= 3 {
-						for i := 0; i < 3; i++ {
-							if f, ok := sv[i].(float64); ok {
-								scale[i] = int(f)
-							}
-						}
-					}
-				}
-			}
-			pentashields = append(pentashields, blueprintPentashield{
-				PlaceableID: idx,
-				Scale:       scale,
-			})
-		}
-	}
-	if err := pRows.Err(); err != nil {
-		jsonErr(w, fmt.Errorf("read placeables: %w", err), 500)
-		return
-	}
+  // 5. Detect pentashield placeables and extract scale.
+  if strings.Contains(btype, "PentashieldSurface") {
+   scale := [3]int{0, 0, 0}
+   if props != nil {
+    if inner, ok := props[strings.TrimSuffix(
+     btype, "_Placeable")+"_C"].(map[string]any); ok {
+     if sv, ok := inner["m_Scale"].([]any); ok && len(sv) >= 3 {
+      for i := 0; i < 3; i++ {
+       if f, ok := sv[i].(float64); ok {
+        scale[i] = int(f)
+       }
+      }
+     }
+    }
+   }
+   pentashields = append(pentashields, blueprintPentashield{
+    PlaceableID: idx,
+    Scale:       scale,
+   })
+  }
+ }
+ if err := pRows.Err(); err != nil {
+  jsonErr(w, fmt.Errorf("read placeables: %w", err), 500)
+  return
+ }
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="base_%d.json"`, id))
-	jsonOK(w, blueprintFile{
-		Instances:    instances,
-		Placeables:   placeables,
-		Pentashields: pentashields,
-	})
+ w.Header().Set("Content-Type", "application/json")
+ w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="base_%d.json"`, id))
+ jsonOK(w, blueprintFile{
+  Instances:    instances,
+  Placeables:   placeables,
+  Pentashields: pentashields,
+ })
 }
 ```
 
@@ -394,9 +394,9 @@ git commit -m "feat: add base list and export handlers with transform math"
 - [ ] **Add two lines in the bases section, after the blueprints block (after line 94)**
 
 ```go
-	// ── bases ─────────────────────────────────────────────────────────────────
-	mux.HandleFunc("GET /api/v1/bases", handleListBases)
-	mux.HandleFunc("GET /api/v1/bases/{id}/export", handleExportBase)
+ // ── bases ─────────────────────────────────────────────────────────────────
+ mux.HandleFunc("GET /api/v1/bases", handleListBases)
+ mux.HandleFunc("GET /api/v1/bases/{id}/export", handleExportBase)
 ```
 
 - [ ] **Build and smoke-test**
@@ -412,6 +412,7 @@ curl -s http://localhost:8080/api/v1/bases | python3 -m json.tool
 ```
 
 Expected: JSON array of base objects, e.g.:
+
 ```json
 [{"id": 335, "name": "Air Crossroads PWR-SAVE", "pieces": 3554, "placeables": 308}]
 ```
@@ -427,6 +428,7 @@ print('pentashields:', len(d.get('pentashields',[])))
 ```
 
 Expected:
+
 ```
 instances: 3554
 placeables: 308
@@ -673,6 +675,7 @@ print(f'  pentashields: {len(d[\"pentashields\"])}')
 ```
 
 Expected:
+
 ```
 export structure ok
   instances:    3554

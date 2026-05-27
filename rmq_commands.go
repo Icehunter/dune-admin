@@ -331,54 +331,6 @@ func flsIDFromActorID(ctx context.Context, actorID int64) (string, error) {
 	return flsID, nil
 }
 
-// containerOwnerInfo holds the resolved owner details for a storage container.
-type containerOwnerInfo struct {
-	FlsID     string // accounts."user" hex Funcom UUID — used as PlayerId in RMQ commands
-	AccountID int64  // accounts.id — used to check online status
-}
-
-// ownerFromContainerID resolves the FLS hex ID and account ID for the player
-// who owns a storage container actor. Chain: placeables.owner_entity_id →
-// actor_fgl_entities → actors.owner_account_id → accounts.
-func ownerFromContainerID(ctx context.Context, containerID int64) (containerOwnerInfo, error) {
-	if globalDB == nil {
-		return containerOwnerInfo{}, fmt.Errorf("not connected")
-	}
-	var info containerOwnerInfo
-	err := globalDB.QueryRow(ctx, `
-		SELECT ac."user", ac.id
-		FROM dune.placeables p
-		JOIN dune.actor_fgl_entities afe  ON afe.entity_id = p.owner_entity_id
-		JOIN dune.permission_actor_rank par ON par.permission_actor_id = afe.actor_id
-		JOIN dune.actors player_a           ON player_a.id = par.player_id
-		JOIN dune.accounts ac               ON ac.id = player_a.owner_account_id
-		WHERE p.id = $1
-		LIMIT 1`, containerID).Scan(&info.FlsID, &info.AccountID)
-	if err != nil {
-		return containerOwnerInfo{}, fmt.Errorf("resolve container owner %d: %w", containerID, err)
-	}
-	return info, nil
-}
-
-// isAccountOnline returns true if the account currently has a non-Offline
-// player_state row. Uses account_id directly, suitable for storage container
-// owner checks where the pawn actor ID is not readily available.
-func isAccountOnline(ctx context.Context, accountID int64) bool {
-	if globalDB == nil {
-		return false
-	}
-	var status string
-	err := globalDB.QueryRow(ctx, `
-		SELECT COALESCE(online_status::text, 'Offline')
-		FROM dune.player_state
-		WHERE account_id = $1
-		LIMIT 1`, accountID).Scan(&status)
-	if err != nil {
-		return false
-	}
-	return status != "Offline"
-}
-
 // playerIDDebug returns all relevant player ID forms for a given actor ID.
 // Used by the debug endpoint to verify which ID format the game server expects.
 func playerIDDebug(ctx context.Context, actorID int64) (map[string]string, error) {

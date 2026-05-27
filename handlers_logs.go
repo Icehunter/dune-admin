@@ -41,7 +41,7 @@ func handleLogPods(w http.ResponseWriter, r *http.Request) {
 	// Convert to logPod for frontend compat.
 	var pods []logPod
 	for _, s := range sources {
-		pods = append(pods, logPod{Namespace: s.Namespace, Name: s.Name})
+		pods = append(pods, logPod(s))
 	}
 	if pods == nil {
 		pods = []logPod{}
@@ -64,7 +64,7 @@ func handleLogStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if globalControl == nil {
-		http.Error(w, "not connected", 503)
+		http.Error(w, "not connected", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -72,8 +72,8 @@ func handleLogStream(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
-	conn.SetWriteDeadline(time.Time{})
+	defer func() { _ = conn.Close() }()
+	_ = conn.SetWriteDeadline(time.Time{})
 
 	ch, cancel, err := globalControl.StreamLog(r.Context(), globalExecutor, ns, pod)
 	if err != nil {

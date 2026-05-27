@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -433,7 +431,7 @@ func cmdGiveItem(playerID int64, template string, qty, quality int64) Cmd {
 		if err != nil {
 			return msgMutate{err: err}
 		}
-		defer tx.Rollback(ctx)
+		defer func() { _ = tx.Rollback(ctx) }()
 
 		for _, u := range updates {
 			_, err = tx.Exec(ctx, `
@@ -930,51 +928,6 @@ func cmdFetchOnlineState() Msg {
 	return msgOnlineState{rows: out}
 }
 
-// structureCount holds building + totem counts for a player.
-type structureCount struct {
-	PlayerAccountID int64
-	Buildings       int64
-	Totems          int64
-}
-
-type msgStructures struct {
-	counts map[int64]structureCount
-	err    error
-}
-
-func cmdFetchStructureCounts() Msg {
-	if globalDB == nil {
-		return msgStructures{err: fmt.Errorf("not connected")}
-	}
-	rows, err := globalDB.Query(context.Background(), `
-		SELECT a.owner_account_id,
-		       SUM(CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END) AS buildings,
-		       SUM(CASE WHEN t.id IS NOT NULL THEN 1 ELSE 0 END) AS totems
-		FROM dune.actors a
-		LEFT JOIN dune.buildings b ON b.id = a.id
-		LEFT JOIN dune.totems t ON t.id = a.id
-		WHERE a.owner_account_id IS NOT NULL
-		  AND (b.id IS NOT NULL OR t.id IS NOT NULL)
-		GROUP BY a.owner_account_id`)
-	if err != nil {
-		return msgStructures{err: err}
-	}
-	defer rows.Close()
-
-	counts := make(map[int64]structureCount)
-	for rows.Next() {
-		var accountID, bld, tot int64
-		if err := rows.Scan(&accountID, &bld, &tot); err != nil {
-			continue
-		}
-		counts[accountID] = structureCount{accountID, bld, tot}
-	}
-	if err := rows.Err(); err != nil {
-		return msgStructures{err: err}
-	}
-	return msgStructures{counts: counts}
-}
-
 // ── private helpers ───────────────────────────────────────────────────────────
 
 func resolveStackMax(ctx context.Context, template string, quality int64) (int64, error) {
@@ -1022,21 +975,6 @@ func resolveItemVolume(ctx context.Context, template string) (float64, error) {
 		return itemData.DefaultVolume, nil
 	}
 	return 0, nil // unknown volume — treat as zero (no space consumed)
-}
-
-func describeMissingTemplates(m map[string]struct{}) string {
-	if len(m) == 0 {
-		return ""
-	}
-	names := make([]string, 0, len(m))
-	for k := range m {
-		names = append(names, k)
-	}
-	sort.Strings(names)
-	if len(names) > 5 {
-		return strings.Join(names[:5], ", ") + ", …"
-	}
-	return strings.Join(names, ", ")
 }
 
 func formatCurrencyIDs(ids []int16) string {
@@ -2466,7 +2404,7 @@ func cmdProgressionUnlock(actorID int64, faction, preset string) Cmd {
 		if err != nil {
 			return msgMutate{err: err}
 		}
-		defer tx.Rollback(ctx)
+		defer func() { _ = tx.Rollback(ctx) }()
 
 		if _, err = tx.Exec(ctx,
 			`SELECT dune.complete_journey_story_nodes_for_player($1, $2::text[])`,
@@ -2601,7 +2539,7 @@ func cmdReverseProgressionUnlock(actorID int64, faction, preset string) Cmd {
 		if err != nil {
 			return msgMutate{err: err}
 		}
-		defer tx.Rollback(ctx)
+		defer func() { _ = tx.Rollback(ctx) }()
 
 		if _, err = tx.Exec(ctx,
 			`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
@@ -3007,282 +2945,6 @@ func cmdListBlueprints() Msg {
 		return msgBlueprintList{err: err}
 	}
 	return msgBlueprintList{rows: out}
-}
-
-func cmdExportBlueprint(blueprintID int64, outputPath string) Cmd {
-	return func() Msg {
-		if globalDB == nil {
-			return msgBlueprintExport{err: fmt.Errorf("not connected")}
-		}
-		ctx := context.Background()
-
-		// Fetch instances.
-		iRows, err := globalDB.Query(ctx, `
-			SELECT building_type, transform
-			FROM dune.building_blueprint_instances
-			WHERE building_blueprint_id = $1
-			ORDER BY instance_id`, blueprintID)
-		if err != nil {
-			return msgBlueprintExport{err: fmt.Errorf("query instances: %w", err)}
-		}
-		defer iRows.Close()
-
-		var instances []blueprintInstance
-		for iRows.Next() {
-			var btype string
-			var t []float32
-			if err := iRows.Scan(&btype, &t); err != nil {
-				continue
-			}
-			if len(t) < 4 {
-				continue
-			}
-			instances = append(instances, blueprintInstance{
-				BuildingType: btype,
-				X:            float64(t[0]),
-				Y:            float64(t[1]),
-				Z:            float64(t[2]),
-				Rotation:     float64(t[3]),
-			})
-		}
-		if err := iRows.Err(); err != nil {
-			return msgBlueprintExport{err: fmt.Errorf("read instances: %w", err)}
-		}
-
-		// Fetch placeables.
-		pRows, err := globalDB.Query(ctx, `
-			SELECT building_type, transform
-			FROM dune.building_blueprint_placeables
-			WHERE building_blueprint_id = $1
-			ORDER BY placeable_id`, blueprintID)
-		if err != nil {
-			return msgBlueprintExport{err: fmt.Errorf("query placeables: %w", err)}
-		}
-		defer pRows.Close()
-
-		var placeables []blueprintPlaceable
-		for pRows.Next() {
-			var btype string
-			var t []float32
-			if err := pRows.Scan(&btype, &t); err != nil {
-				continue
-			}
-			if len(t) < 6 {
-				continue
-			}
-			placeables = append(placeables, blueprintPlaceable{
-				BuildingType: btype,
-				X:            float64(t[0]),
-				Y:            float64(t[1]),
-				Z:            float64(t[2]),
-				RX:           float64(t[3]),
-				RY:           float64(t[4]),
-				RZ:           float64(t[5]),
-			})
-		}
-		if err := pRows.Err(); err != nil {
-			return msgBlueprintExport{err: fmt.Errorf("read placeables: %w", err)}
-		}
-
-		// Fetch pentashield scale data.
-		psRows, err := globalDB.Query(ctx, `
-			SELECT placeable_id, scale
-			FROM dune.building_blueprint_pentashields
-			WHERE building_blueprint_id = $1
-			ORDER BY placeable_id`, blueprintID)
-		if err != nil {
-			return msgBlueprintExport{err: fmt.Errorf("query pentashields: %w", err)}
-		}
-		defer psRows.Close()
-
-		var pentashields []blueprintPentashield
-		for psRows.Next() {
-			var pid int
-			var scale []int16
-			if err := psRows.Scan(&pid, &scale); err != nil {
-				continue
-			}
-			if len(scale) < 3 {
-				continue
-			}
-			pentashields = append(pentashields, blueprintPentashield{
-				PlaceableID: pid,
-				Scale:       [3]int{int(scale[0]), int(scale[1]), int(scale[2])},
-			})
-		}
-		if err := psRows.Err(); err != nil {
-			return msgBlueprintExport{err: fmt.Errorf("read pentashields: %w", err)}
-		}
-
-		bf := blueprintFile{Instances: instances, Placeables: placeables, Pentashields: pentashields}
-		data, err := json.MarshalIndent(bf, "", "  ")
-		if err != nil {
-			return msgBlueprintExport{err: fmt.Errorf("marshal json: %w", err)}
-		}
-		if err := os.WriteFile(outputPath, data, 0644); err != nil {
-			return msgBlueprintExport{err: fmt.Errorf("write file: %w", err)}
-		}
-		return msgBlueprintExport{path: outputPath}
-	}
-}
-
-func cmdImportBlueprint(playerPawnID int64, filename string) Cmd {
-	return func() Msg {
-		if globalDB == nil {
-			return msgMutate{err: fmt.Errorf("not connected")}
-		}
-
-		// Read and parse JSON.
-		data, err := os.ReadFile(filename)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("read %s: %w", filename, err)}
-		}
-		var bf blueprintFile
-		if err := json.Unmarshal(data, &bf); err != nil {
-			return msgMutate{err: fmt.Errorf("parse json: %w", err)}
-		}
-		if len(bf.Instances) == 0 && len(bf.Placeables) == 0 {
-			return msgMutate{err: fmt.Errorf("blueprint file has no instances or placeables")}
-		}
-
-		ctx := context.Background()
-
-		// Player must be offline.
-		if err := checkPlayerOffline(ctx, playerPawnID); err != nil {
-			return msgMutate{err: err}
-		}
-
-		tx, err := globalDB.Begin(ctx)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("begin tx: %w", err)}
-		}
-		defer tx.Rollback(ctx)
-
-		// Get backpack inventory.
-		var invID int64
-		err = tx.QueryRow(ctx, `
-			SELECT id FROM dune.inventories
-			WHERE actor_id = $1 AND inventory_type = 0
-			LIMIT 1`, playerPawnID).Scan(&invID)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("find inventory: %w", err)}
-		}
-
-		// Next free position index.
-		var nextPos int64
-		_ = tx.QueryRow(ctx, `
-			SELECT COALESCE(MAX(position_index), -1) + 1
-			FROM dune.items WHERE inventory_id = $1`, invID).Scan(&nextPos)
-
-		// Placeholder stats — will be updated with blueprint ID after insert.
-		placeholderStats := `{"FCustomizationStats":[[], {}],"FBuildingBlueprintItemStats":[[], {"PlayerBlueprintId":"!!bbp#0","PlayerBaseBackupId":{}}],"FItemStackAndDurabilityStats":[[], {"DecayedMaxDurability":0.0}]}`
-
-		var itemID int64
-		err = tx.QueryRow(ctx, `
-			INSERT INTO dune.items
-				(inventory_id, stack_size, position_index, template_id, quality_level, stats)
-			VALUES ($1, 1, $2, 'BuildingBlueprint_CopyDevice', 0, $3::jsonb)
-			RETURNING id`,
-			invID, nextPos, placeholderStats).Scan(&itemID)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("create item: %w", err)}
-		}
-
-		// Insert blueprint master record.
-		var blueprintID int64
-		err = tx.QueryRow(ctx, `
-			INSERT INTO dune.building_blueprints (item_id, player_id, building_blueprint_map)
-			VALUES ($1, null, '')
-			RETURNING id`, itemID).Scan(&blueprintID)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("create blueprint: %w", err)}
-		}
-
-		// Update item stats with real blueprint ID.
-		fullStats := fmt.Sprintf(
-			`{"FCustomizationStats":[[], {}],"FBuildingBlueprintItemStats":[[], {"PlayerBlueprintId":"!!bbp#%d","PlayerBaseBackupId":{}}],"FItemStackAndDurabilityStats":[[], {"DecayedMaxDurability":0.0}]}`,
-			blueprintID)
-		if _, err = tx.Exec(ctx, `UPDATE dune.items SET stats = $1::jsonb WHERE id = $2`,
-			fullStats, itemID); err != nil {
-			return msgMutate{err: fmt.Errorf("update item stats: %w", err)}
-		}
-
-		// Insert instances in batches of 50.
-		// Arrays use explicit [0:3] bounds to match UE's 0-indexed storage convention.
-		const batchSize = 50
-		for start := 0; start < len(bf.Instances); start += batchSize {
-			end := start + batchSize
-			if end > len(bf.Instances) {
-				end = len(bf.Instances)
-			}
-			batch := &pgx.Batch{}
-			for i, inst := range bf.Instances[start:end] {
-				transform := fmt.Sprintf("[0:3]={%g,%g,%g,%g}",
-					float32(inst.X), float32(inst.Y), float32(inst.Z), float32(inst.Rotation))
-				batch.Queue(`
-					INSERT INTO dune.building_blueprint_instances
-						(building_blueprint_id, instance_id, building_type, transform, hologram, provides_stability, health)
-					VALUES ($1, $2, $3, $4::real[], true, false, 1.0)`,
-					blueprintID, start+i, inst.BuildingType, transform)
-			}
-			br := tx.SendBatch(ctx, batch)
-			for i := start; i < end; i++ {
-				if _, err := br.Exec(); err != nil {
-					br.Close()
-					return msgMutate{err: fmt.Errorf("insert instance %d: %w", i, err)}
-				}
-			}
-			br.Close()
-		}
-
-		// Insert placeables in batches of 50.
-		// Arrays use explicit [0:5] bounds to match UE's 0-indexed storage convention.
-		for start := 0; start < len(bf.Placeables); start += batchSize {
-			end := start + batchSize
-			if end > len(bf.Placeables) {
-				end = len(bf.Placeables)
-			}
-			batch := &pgx.Batch{}
-			for i, pl := range bf.Placeables[start:end] {
-				transform := fmt.Sprintf("[0:5]={%g,%g,%g,%g,%g,%g}",
-					float32(pl.X), float32(pl.Y), float32(pl.Z),
-					float32(pl.RX), float32(pl.RY), float32(pl.RZ))
-				batch.Queue(`
-					INSERT INTO dune.building_blueprint_placeables
-						(building_blueprint_id, placeable_id, building_type, transform, hologram)
-					VALUES ($1, $2, $3, $4::real[], true)`,
-					blueprintID, start+i, pl.BuildingType, transform)
-			}
-			br := tx.SendBatch(ctx, batch)
-			for i := start; i < end; i++ {
-				if _, err := br.Exec(); err != nil {
-					br.Close()
-					return msgMutate{err: fmt.Errorf("insert placeable %d: %w", i, err)}
-				}
-			}
-			br.Close()
-		}
-
-		// Insert pentashield scale data (1-indexed array, standard PostgreSQL default).
-		for _, ps := range bf.Pentashields {
-			if _, err = tx.Exec(ctx, `
-				INSERT INTO dune.building_blueprint_pentashields
-					(building_blueprint_id, placeable_id, scale)
-				VALUES ($1, $2, ARRAY[$3,$4,$5]::smallint[])`,
-				blueprintID, ps.PlaceableID,
-				int16(ps.Scale[0]), int16(ps.Scale[1]), int16(ps.Scale[2])); err != nil {
-				return msgMutate{err: fmt.Errorf("insert pentashield %d: %w", ps.PlaceableID, err)}
-			}
-		}
-
-		if err := tx.Commit(ctx); err != nil {
-			return msgMutate{err: fmt.Errorf("commit: %w", err)}
-		}
-
-		return msgMutate{ok: fmt.Sprintf(
-			"Imported %d pieces + %d placeables + %d pentashields → blueprint #%d (item %d) in player inventory",
-			len(bf.Instances), len(bf.Placeables), len(bf.Pentashields), blueprintID, itemID)}
-	}
 }
 
 func cmdGrantMaxSpec(playerID int64, trackType string) Cmd {
@@ -3750,7 +3412,7 @@ func cmdRepairPlayerGear(playerID int64) Cmd {
 		if err != nil {
 			return msgRepairGear{scanned: scanned, err: fmt.Errorf("begin tx: %w", err)}
 		}
-		defer tx.Rollback(ctx)
+		defer func() { _ = tx.Rollback(ctx) }()
 
 		repaired := 0
 		for _, rc := range toRepair {
@@ -4252,7 +3914,9 @@ func cmdGiveItemToContainer(actorID int64, templateID string, qty, quality int64
 
 		// Count current items.
 		var currentCount int64
-		globalDB.QueryRow(ctx, `SELECT COUNT(*) FROM dune.items WHERE inventory_id = $1`, invID).Scan(&currentCount)
+		if err := globalDB.QueryRow(ctx, `SELECT COUNT(*) FROM dune.items WHERE inventory_id = $1`, invID).Scan(&currentCount); err != nil {
+			return msgMutate{err: fmt.Errorf("count items: %w", err)}
+		}
 		if maxCount > 0 && currentCount >= int64(maxCount) {
 			return msgMutate{err: fmt.Errorf("container inventory full (%d/%d)", currentCount, maxCount)}
 		}

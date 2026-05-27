@@ -42,7 +42,7 @@ func handleExportBlueprint(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, blueprintFilename(bf.Name, id)))
-	json.NewEncoder(w).Encode(bf)
+	_ = json.NewEncoder(w).Encode(bf)
 }
 
 // blueprintFilename returns the suggested download filename: the in-game name
@@ -88,7 +88,7 @@ func handleImportBlueprint(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("file required"), 400)
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var bf blueprintFile
 	if err := json.NewDecoder(f).Decode(&bf); err != nil {
@@ -285,7 +285,7 @@ func importBlueprintData(ctx context.Context, playerPawnID int64, bf blueprintFi
 	if err != nil {
 		return msgMutate{err: fmt.Errorf("begin tx: %w", err)}
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Get backpack inventory.
 	var invID int64
@@ -373,11 +373,11 @@ func importBlueprintData(ctx context.Context, playerPawnID int64, bf blueprintFi
 		br := tx.SendBatch(ctx, batch)
 		for i := start; i < end; i++ {
 			if _, err := br.Exec(); err != nil {
-				br.Close()
+				_ = br.Close()
 				return msgMutate{err: fmt.Errorf("insert instance %d: %w", i, err)}
 			}
 		}
-		br.Close()
+		_ = br.Close()
 	}
 
 	// Insert placeables in batches of 50.
@@ -404,11 +404,11 @@ func importBlueprintData(ctx context.Context, playerPawnID int64, bf blueprintFi
 		br := tx.SendBatch(ctx, batch)
 		for i := start; i < end; i++ {
 			if _, err := br.Exec(); err != nil {
-				br.Close()
+				_ = br.Close()
 				return msgMutate{err: fmt.Errorf("insert placeable %d: %w", i, err)}
 			}
 		}
-		br.Close()
+		_ = br.Close()
 	}
 
 	// Insert pentashield scale data.

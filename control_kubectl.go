@@ -7,8 +7,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"golang.org/x/crypto/ssh"
 )
 
 // kubectlControl implements ControlPlane using kubectl commands.
@@ -361,13 +359,4 @@ func parseExchanges(raw string) []binding {
 		bindings = append(bindings, binding{exchange: name, key: "#"})
 	}
 	return bindings
-}
-
-// sshClientFromExecutor extracts the underlying *ssh.Client if exec is an
-// sshExecutor. Used by the legacy cmdConnect path during transition.
-func sshClientFromExecutor(exec Executor) *ssh.Client {
-	if s, ok := exec.(*sshExecutor); ok {
-		return s.client
-	}
-	return nil
 }

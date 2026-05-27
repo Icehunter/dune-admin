@@ -33,7 +33,7 @@ func botProxy(method, path string, body io.Reader) ([]byte, int, error) {
 	if err != nil {
 		return nil, 503, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	data, err := io.ReadAll(resp.Body)
 	return data, resp.StatusCode, err
 }
@@ -168,17 +168,17 @@ func handleMarketBotLogsReady(w http.ResponseWriter, r *http.Request) {
 // It discovers the bot pod (kubectl) or uses the container name directly (docker).
 func handleMarketBotLogs(w http.ResponseWriter, r *http.Request) {
 	if globalControl == nil || globalExecutor == nil {
-		http.Error(w, "not connected", 503)
+		http.Error(w, "not connected", http.StatusServiceUnavailable)
 		return
 	}
 	if marketBotContainer == "" {
-		http.Error(w, "market_bot_container not configured", 503)
+		http.Error(w, "market_bot_container not configured", http.StatusServiceUnavailable)
 		return
 	}
 
 	ns, name, err := botLogSource(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), 503)
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
 
@@ -186,8 +186,8 @@ func handleMarketBotLogs(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
-	conn.SetWriteDeadline(time.Time{})
+	defer func() { _ = conn.Close() }()
+	_ = conn.SetWriteDeadline(time.Time{})
 
 	ch, cancel, err := globalControl.StreamLog(r.Context(), globalExecutor, ns, name)
 	if err != nil {

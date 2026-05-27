@@ -398,10 +398,6 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 		defaultBrokerPrefix = fmt.Sprintf("sudo -i -u %s", cfg.AmpUser)
 	}
 	cfg.BrokerExecPrefix = ask("Broker exec prefix", defaultBrokerPrefix)
-	// AMP bundles its own rabbitmqctl and doesn't put it on $PATH. The Dune
-	// Awakening module ships it at the path below; other AMP game modules use
-	// the same /AMP/<game>/extracted/mq/opt/rabbitmq/sbin/ layout.
-	cfg.AmpRabbitmqctlPath = ask("rabbitmqctl absolute path", defaultDuneRabbitmqctl)
 	fmt.Println()
 
 	fmt.Println("Database connection:")
@@ -427,7 +423,7 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 	dbName = cfg.DBName
 	dbSchema = cfg.DBSchema
 	exec := &localExecutor{}
-	globalExecutor = &ampExecutor{localExecutor: exec, ampUser: cfg.AmpUser}
+	globalExecutor = &ampExecutor{Executor: exec, ampUser: cfg.AmpUser}
 	pool, err := connectDBDirect(context.Background(), *cfg)
 	if err != nil {
 		fail("DB connect failed: " + err.Error())

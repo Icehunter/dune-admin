@@ -159,28 +159,6 @@ func (c *kubectlControl) CaptureJWT(_ context.Context, exec Executor) (string, s
 	return buildCaptureJWT(strings.TrimSpace(existingToken))
 }
 
-func (c *kubectlControl) ListExchanges(_ context.Context, exec Executor, podPattern string) ([]binding, error) {
-	out, err := exec.Exec(fmt.Sprintf(
-		"sudo kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep %s | head -1",
-		c.namespace, podPattern))
-	if err != nil || strings.TrimSpace(out) == "" {
-		return nil, nil
-	}
-	pod := strings.TrimSpace(out)
-	raw, err := exec.Exec(fmt.Sprintf(
-		"sudo kubectl exec -n %s %s -- rabbitmqctl list_exchanges name 2>/dev/null",
-		c.namespace, pod))
-	if err != nil {
-		return nil, err
-	}
-	return parseExchanges(raw), nil
-}
-
-func (c *kubectlControl) EnsureCaptureUser(_ context.Context, exec Executor) {
-	ensureBrokerViaExec(exec, c.namespace, "mq-admin", "mq-admin")
-	ensureBrokerViaExec(exec, c.namespace, "mq-game", "mq-game")
-}
-
 func (c *kubectlControl) EvalOnGameBroker(_ context.Context, exec Executor, expr string) (string, error) {
 	if c.namespace == "" {
 		return "", errNotSupported("kubectl", "EvalOnGameBroker (namespace not configured)")
@@ -257,33 +235,6 @@ func extractPasswordFromYAML(exec Executor, filePath string) (user, pass string)
 	return parseDeploymentCredentials([]byte(out))
 }
 
-// ── Shared broker helpers ─────────────────────────────────────────────────────
-
-func ensureBrokerViaExec(exec Executor, namespace, podPattern, label string) {
-	pod, err := exec.Exec(fmt.Sprintf(
-		"sudo kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep %s | head -1",
-		namespace, podPattern))
-	if err != nil || strings.TrimSpace(pod) == "" {
-		fmt.Printf("[capture] could not find %s pod\n", label)
-		return
-	}
-	pod = strings.TrimSpace(pod)
-	base := fmt.Sprintf("sudo kubectl exec -n %s %s --", namespace, pod)
-
-	out, _ := exec.Exec(fmt.Sprintf("%s rabbitmqctl add_user %s %s 2>&1", base, capUser, capPass))
-	if !strings.Contains(out, "already exists") {
-		fmt.Printf("[capture] [%s] created user %s\n", label, capUser)
-	}
-	exec.Exec(fmt.Sprintf("%s rabbitmqctl set_permissions -p / %s '.*' '.*' '.*' 2>&1", base, capUser)) //nolint:errcheck
-	exec.Exec(fmt.Sprintf(                                                                              //nolint:errcheck
-		"%s rabbitmqctl eval 'application:set_env(rabbit, auth_backends, [{rabbit_auth_backend_cache, rabbit_auth_backend_http}, rabbit_auth_backend_internal]).' 2>&1",
-		base))
-	exec.Exec(fmt.Sprintf( //nolint:errcheck
-		"%s rabbitmqctl eval 'application:set_env(rabbitmq_auth_backend_cache, cache_ttl, 86400000).' 2>&1",
-		base))
-	fmt.Printf("[capture] [%s] auth backends updated\n", label)
-}
-
 func (c *kubectlControl) ReadDefaultINI(_ context.Context, exec Executor, filename string) string {
 	if c.namespace == "" {
 		return ""
@@ -346,17 +297,4 @@ func (c *kubectlControl) DiscoverIniDir(_ context.Context, exec Executor) (strin
 	}
 	dir := "/var/lib/rancher/k3s/storage/" + strings.TrimSpace(out) + "/Saved/UserSettings"
 	return dir, nil
-}
-
-func parseExchanges(raw string) []binding {
-	var bindings []binding
-	for _, line := range strings.Split(raw, "\n") {
-		name := strings.TrimSpace(line)
-		if name == "" || name == "name" || name == "Listing exchanges for vhost / ..." ||
-			strings.HasPrefix(name, "amq.") {
-			continue
-		}
-		bindings = append(bindings, binding{exchange: name, key: "#"})
-	}
-	return bindings
 }

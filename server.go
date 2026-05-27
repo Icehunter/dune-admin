@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -35,14 +36,21 @@ func originAllowed(origin string) bool {
 // originAllowedForRequest applies the explicit allowlist AND a same-host
 // exception: a browser requesting from `http://172.16.12.59:9090/` against the
 // dune-admin server running on the same host should not be considered cross-
-// origin and never needs to be added to ALLOWED_ORIGINS. allowEmpty controls
-// the no-Origin-header case: true for WebSocket upgrades (non-browser clients
-// don't send Origin and shouldn't be blocked), false for CORS (don't echo back
-// an empty Access-Control-Allow-Origin header).
-func originAllowedForRequest(r *http.Request, allowEmpty bool) bool {
+// origin and never needs to be added to ALLOWED_ORIGINS.
+//
+// When Origin is absent (non-browser WebSocket clients), the request is allowed
+// only if the TCP connection originates from a loopback address. r.RemoteAddr
+// is used — not r.Host, which is a client-controlled header and can be spoofed.
+func originAllowedForRequest(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
-		return allowEmpty
+		// No Origin header: allow only actual loopback TCP connections.
+		remoteHost, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			return false
+		}
+		ip := net.ParseIP(remoteHost)
+		return ip != nil && ip.IsLoopback()
 	}
 	if u, err := url.Parse(origin); err == nil && u.Host == r.Host {
 		return true
@@ -54,7 +62,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Vary", "Origin")
-		if originAllowedForRequest(r, false) {
+		if origin != "" && originAllowedForRequest(r) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")

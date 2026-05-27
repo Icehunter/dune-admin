@@ -109,28 +109,6 @@ func (c *dockerControl) CaptureJWT(_ context.Context, exec Executor) (string, st
 	return buildCaptureJWT(strings.TrimSpace(existingToken))
 }
 
-func (c *dockerControl) ListExchanges(_ context.Context, exec Executor, brokerLabel string) ([]binding, error) {
-	container := c.brokerForLabel(brokerLabel)
-	if container == "" {
-		return nil, errNotSupported("docker", fmt.Sprintf("ListExchanges (%s not configured)", brokerLabel))
-	}
-	raw, err := exec.Exec(fmt.Sprintf(
-		"docker exec %s rabbitmqctl list_exchanges name 2>/dev/null", container))
-	if err != nil {
-		return nil, err
-	}
-	return parseExchanges(raw), nil
-}
-
-func (c *dockerControl) EnsureCaptureUser(_ context.Context, exec Executor) {
-	for _, container := range []string{c.brokerAdmin, c.brokerGame} {
-		if container == "" {
-			continue
-		}
-		ensureBrokerViaDockerExec(exec, container)
-	}
-}
-
 func (c *dockerControl) EvalOnGameBroker(_ context.Context, exec Executor, expr string) (string, error) {
 	if c.brokerGame == "" {
 		return "", errNotSupported("docker", "EvalOnGameBroker (docker_broker_game not configured)")
@@ -167,31 +145,4 @@ func (c *dockerControl) ReadDefaultINI(_ context.Context, exec Executor, filenam
 
 func (c *dockerControl) DiscoverIniDir(_ context.Context, _ Executor) (string, error) {
 	return "", fmt.Errorf("docker control plane requires server_ini_dir to be set in config")
-}
-
-func (c *dockerControl) brokerForLabel(label string) string {
-	switch label {
-	case "mq-game":
-		return c.brokerGame
-	case "mq-admin":
-		return c.brokerAdmin
-	}
-	return ""
-}
-
-func ensureBrokerViaDockerExec(exec Executor, container string) {
-	base := fmt.Sprintf("docker exec %s", container)
-
-	out, _ := exec.Exec(fmt.Sprintf("%s rabbitmqctl add_user %s %s 2>&1", base, capUser, capPass))
-	if !strings.Contains(out, "already exists") {
-		fmt.Printf("[capture] [%s] created user %s\n", container, capUser)
-	}
-	exec.Exec(fmt.Sprintf("%s rabbitmqctl set_permissions -p / %s '.*' '.*' '.*' 2>&1", base, capUser)) //nolint:errcheck
-	exec.Exec(fmt.Sprintf(                                                                              //nolint:errcheck
-		"%s rabbitmqctl eval 'application:set_env(rabbit, auth_backends, [{rabbit_auth_backend_cache, rabbit_auth_backend_http}, rabbit_auth_backend_internal]).' 2>&1",
-		base))
-	exec.Exec(fmt.Sprintf( //nolint:errcheck
-		"%s rabbitmqctl eval 'application:set_env(rabbitmq_auth_backend_cache, cache_ttl, 86400000).' 2>&1",
-		base))
-	fmt.Printf("[capture] [%s] auth backends updated\n", container)
 }

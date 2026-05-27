@@ -64,15 +64,14 @@ func connectAll() error {
 	if err != nil {
 		return fmt.Errorf("executor: %w", err)
 	}
-	// AMP mode wraps localExecutor to elevate WriteFile through sudo.
+	// AMP mode wraps the executor to elevate WriteFile through sudo.
+	// Applies regardless of whether the inner executor is local or SSH.
 	if ctrl == "amp" {
-		if local, ok := exec.(*localExecutor); ok {
-			user := cfg.AmpUser
-			if user == "" {
-				user = "amp"
-			}
-			exec = &ampExecutor{localExecutor: local, ampUser: user}
+		user := cfg.AmpUser
+		if user == "" {
+			user = "amp"
 		}
+		exec = &ampExecutor{Executor: exec, ampUser: user}
 	}
 	globalExecutor = exec
 

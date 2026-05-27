@@ -80,30 +80,6 @@ func (c *localControl) brokerBase() string {
 	return "rabbitmqctl"
 }
 
-func (c *localControl) ListExchanges(_ context.Context, exec Executor, _ string) ([]binding, error) {
-	raw, err := exec.Exec(c.brokerBase() + " list_exchanges name 2>/dev/null")
-	if err != nil {
-		return nil, errNotSupported("local", "ListExchanges (rabbitmqctl not available)")
-	}
-	return parseExchanges(raw), nil
-}
-
-func (c *localControl) EnsureCaptureUser(_ context.Context, exec Executor) {
-	base := c.brokerBase()
-	out, _ := exec.Exec(fmt.Sprintf("%s add_user %s %s 2>&1", base, capUser, capPass))
-	if !strings.Contains(out, "already exists") {
-		fmt.Printf("[capture] [local] created user %s\n", capUser)
-	}
-	exec.Exec(fmt.Sprintf("%s set_permissions -p / %s '.*' '.*' '.*' 2>&1", base, capUser)) //nolint:errcheck
-	exec.Exec(fmt.Sprintf(                                                                  //nolint:errcheck
-		"%s eval 'application:set_env(rabbit, auth_backends, [{rabbit_auth_backend_cache, rabbit_auth_backend_http}, rabbit_auth_backend_internal]).' 2>&1",
-		base))
-	exec.Exec(fmt.Sprintf( //nolint:errcheck
-		"%s eval 'application:set_env(rabbitmq_auth_backend_cache, cache_ttl, 86400000).' 2>&1",
-		base))
-	fmt.Println("[capture] [local] auth backends updated")
-}
-
 func (c *localControl) EvalOnGameBroker(_ context.Context, exec Executor, expr string) (string, error) {
 	out, err := exec.Exec(fmt.Sprintf("%s eval %s 2>&1", c.brokerBase(), shellQuote(expr)))
 	if err != nil {

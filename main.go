@@ -27,7 +27,6 @@ var BuildTime = "unknown"
 // ── config ────────────────────────────────────────────────────────────────────
 
 var (
-	captureMode        bool
 	setupMode          bool
 	sqlQuery           string
 	sshHost            string
@@ -47,6 +46,8 @@ var (
 	brokerGameAddr     string
 	brokerAdminAddr    string
 	brokerTLS          bool
+	brokerUser         string
+	brokerPass         string
 	backupDir          string
 	serverIniDir       string
 	marketBotAddr      string
@@ -96,6 +97,10 @@ type appConfig struct {
 	BrokerTLS       bool   `yaml:"broker_tls"`
 	BrokerUser      string `yaml:"broker_user"`
 	BrokerPass      string `yaml:"broker_pass"`
+	// BrokerJWTSecret is the base64-encoded HMAC key used to re-sign
+	// ServiceAuthTokens for CaptureJWT. Optional override for the baked-in
+	// default signing key (captureJWTSecretB64).
+	BrokerJWTSecret string `yaml:"broker_jwt_secret"`
 	// BrokerExecPrefix is prepended to all rabbitmqctl calls. Use when the
 	// broker runs inside a container that isn't managed by the docker control
 	// plane — e.g. "podman exec AMP_MehDune01" or "docker exec my-broker".
@@ -143,11 +148,6 @@ type appConfig struct {
 	// `podman exec`. When false, AMP runs the game server natively on the host
 	// as the AMP user; the same operations run directly via sudo.
 	AmpUseContainer *bool `yaml:"amp_use_container"`
-	// AmpRabbitmqctlPath is the absolute path to rabbitmqctl. AMP bundles its
-	// own rabbitmq under <amp_data>/<game>/extracted/mq/opt/rabbitmq/sbin and
-	// it's not in $PATH inside the container. The setup wizard prefills the
-	// Dune Awakening default; override here for other AMP game modules.
-	AmpRabbitmqctlPath string `yaml:"amp_rabbitmqctl_path"`
 	// AmpDataRoot is the per-game data root inside the AMP container (or on
 	// the host in native mode). Defaults to /AMP/duneawakening — the
 	// CubeCoders Dune Awakening module convention. The rabbitmqctl wrapper
@@ -212,6 +212,9 @@ func loadConfig() {
 			setEnvIfMissing("CONTROL_NAMESPACE", cfg.ControlNamespace)
 			setEnvIfMissing("BROKER_GAME_ADDR", cfg.BrokerGameAddr)
 			setEnvIfMissing("BROKER_ADMIN_ADDR", cfg.BrokerAdminAddr)
+			setEnvIfMissing("BROKER_USER", cfg.BrokerUser)
+			setEnvIfMissing("BROKER_PASS", cfg.BrokerPass)
+			setEnvIfMissing("BROKER_JWT_SECRET", cfg.BrokerJWTSecret)
 			setEnvIfMissing("BACKUP_DIR", cfg.BackupDir)
 			setEnvIfMissing("SERVER_INI_DIR", cfg.ServerIniDir)
 			setEnvIfMissing("MARKET_BOT_ADDR", cfg.MarketBotAddr)
@@ -283,13 +286,14 @@ func init() {
 	flag.StringVar(&controlNS, "control-ns", envOr("CONTROL_NAMESPACE", ""), "Kubernetes namespace (kubectl control plane)")
 	flag.StringVar(&brokerGameAddr, "broker-game", envOr("BROKER_GAME_ADDR", ""), "mq-game broker address host:port")
 	flag.StringVar(&brokerAdminAddr, "broker-admin", envOr("BROKER_ADMIN_ADDR", ""), "mq-admin broker address host:port")
+	flag.StringVar(&brokerUser, "broker-user", envOr("BROKER_USER", ""), "AMQP broker username (required for broker features)")
+	flag.StringVar(&brokerPass, "broker-pass", envOr("BROKER_PASS", ""), "AMQP broker password (required for broker features)")
 	flag.StringVar(&backupDir, "backup-dir", envOr("BACKUP_DIR", ""), "Backup directory path")
 	flag.StringVar(&serverIniDir, "ini-dir", envOr("SERVER_INI_DIR", ""), "Directory containing UserGame.ini / UserOverrides.ini")
 	flag.StringVar(&marketBotAddr, "market-bot-addr", envOr("MARKET_BOT_ADDR", ""), "Market bot HTTP API address (e.g. http://host:8081)")
 	flag.StringVar(&marketBotToken, "market-bot-token", envOr("MARKET_BOT_TOKEN", ""), "Market bot bearer token")
 	flag.StringVar(&marketBotContainer, "market-bot-container", envOr("MARKET_BOT_CONTAINER", "market-bot"), "Market bot container/deployment name")
 	flag.StringVar(&marketBotNamespace, "market-bot-namespace", envOr("MARKET_BOT_NAMESPACE", ""), "Market bot k8s namespace")
-	flag.BoolVar(&captureMode, "capture", false, "Capture RabbitMQ messages (grant + notifications) and print to stdout")
 	flag.BoolVar(&setupMode, "setup", false, "Interactive setup wizard — writes ~/.dune-admin/config.yaml")
 	flag.StringVar(&sqlQuery, "sql", "", "Run a SQL query and print results to stdout, then exit")
 }
@@ -423,15 +427,6 @@ func main() {
 	// Explicit -setup flag: reconfigure and exit (don't start server).
 	if setupMode {
 		runSetup()
-		return
-	}
-
-	if captureMode {
-		if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
-			fmt.Fprintln(os.Stderr, "SSH connect:", msg.err)
-			os.Exit(1)
-		}
-		runCapture()
 		return
 	}
 

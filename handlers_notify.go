@@ -34,7 +34,11 @@ func mqGameChannel() (*amqp.Channel, error) {
 		addr = "10.43.48.246:5672"
 	}
 
-	conn, err := dialAMQP(addr, capUser, capPass, brokerTLS || addr == "10.43.48.246:5672")
+	user, pass, err := brokerCredentials()
+	if err != nil {
+		return nil, err
+	}
+	conn, err := dialAMQP(addr, user, pass, brokerTLS || addr == "10.43.48.246:5672")
 	if err != nil {
 		return nil, fmt.Errorf("mq-game connect: %w", err)
 	}

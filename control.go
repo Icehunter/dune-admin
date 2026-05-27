@@ -32,13 +32,6 @@ type ControlPlane interface {
 	// a HostId and freshly-signed JWT for broker authentication.
 	CaptureJWT(ctx context.Context, exec Executor) (hostID, token string, err error)
 
-	// ListExchanges returns non-default AMQP exchange names for the named broker.
-	ListExchanges(ctx context.Context, exec Executor, brokerLabel string) ([]binding, error)
-
-	// EnsureCaptureUser creates the capture user on all brokers and sets
-	// the necessary permissions + auth backends.
-	EnsureCaptureUser(ctx context.Context, exec Executor)
-
 	// EvalOnGameBroker runs an Erlang expression via rabbitmqctl eval inside the
 	// mq-game broker. Used for publishing server commands with user_id="fls",
 	// which AMQP connections cannot set (broker validates UserId against auth'd user).
@@ -117,15 +110,14 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 			useContainer = *cfg.AmpUseContainer
 		}
 		return &ampControl{
-			instance:        cfg.AmpInstance,
-			container:       container,
-			ampUser:         user,
-			logPath:         cfg.AmpLogPath,
-			directorURL:     cfg.DirectorURL,
-			iniDir:          cfg.ServerIniDir,
-			useContainer:    useContainer,
-			rabbitmqctlPath: cfg.AmpRabbitmqctlPath,
-			dataRoot:        cfg.AmpDataRoot,
+			instance:     cfg.AmpInstance,
+			container:    container,
+			ampUser:      user,
+			logPath:      cfg.AmpLogPath,
+			directorURL:  cfg.DirectorURL,
+			iniDir:       cfg.ServerIniDir,
+			useContainer: useContainer,
+			dataRoot:     cfg.AmpDataRoot,
 		}
 	default:
 		return &localControl{

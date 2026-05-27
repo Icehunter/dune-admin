@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // ampControl implements ControlPlane for CubeCoders AMP installations. AMP can
@@ -27,15 +26,14 @@ import (
 // All instance- and container-specific names come from config; this provider
 // is not specialised to any particular AMP install.
 type ampControl struct {
-	instance        string // ampinstmgr instance name (e.g. "MehDune01")
-	container       string // podman container name (only used when useContainer=true)
-	ampUser         string // OS user that owns the AMP instance (default "amp")
-	logPath         string // log directory — in-container path if containerised, host path if native
-	directorURL     string // optional Battlegroup Director URL for status/exchange discovery
-	iniDir          string // host path to UserGame.ini directory (configured)
-	useContainer    bool   // true: wrap in-container ops in `podman exec`; false: run on host directly
-	rabbitmqctlPath string // absolute path to rabbitmqctl (AMP bundles its own, not on $PATH)
-	dataRoot        string // per-game data root (default /AMP/duneawakening)
+	instance     string // ampinstmgr instance name (e.g. "MehDune01")
+	container    string // podman container name (only used when useContainer=true)
+	ampUser      string // OS user that owns the AMP instance (default "amp")
+	logPath      string // log directory — in-container path if containerised, host path if native
+	directorURL  string // optional Battlegroup Director URL for status/exchange discovery
+	iniDir       string // host path to UserGame.ini directory (configured)
+	useContainer bool   // true: wrap in-container ops in `podman exec`; false: run on host directly
+	dataRoot     string // per-game data root (default /AMP/duneawakening)
 }
 
 func (c *ampControl) Name() string { return "amp" }
@@ -237,24 +235,9 @@ func (c *ampControl) CaptureJWT(_ context.Context, exec Executor) (string, strin
 
 // ── RabbitMQ admin (exchange listing + capture user provisioning) ─────────────
 
-// defaultDuneRabbitmqctl is the AMP-bundled rabbitmqctl path for the Dune
-// Awakening module. AMP does not put this on $PATH inside the container, so
-// commands must use the absolute path. Other game modules use a similar
-// layout under /AMP/<game>/extracted/mq/opt/rabbitmq/sbin/.
-const defaultDuneRabbitmqctl = "/AMP/duneawakening/extracted/mq/opt/rabbitmq/sbin/rabbitmqctl"
-
 // defaultAmpDataRoot is the in-container per-game data root that AMP creates
-// for the Dune Awakening module. Other modules use the same /AMP/<game>/
-// pattern with a different game slug.
+// for the Dune Awakening module.
 const defaultAmpDataRoot = "/AMP/duneawakening"
-
-// rabbitmqctl returns the absolute path to the rabbitmqctl binary.
-func (c *ampControl) rabbitmqctl() string {
-	if c.rabbitmqctlPath != "" {
-		return c.rabbitmqctlPath
-	}
-	return defaultDuneRabbitmqctl
-}
 
 // ampDataRoot returns the AMP per-game data root (defaults to Dune Awakening).
 func (c *ampControl) ampDataRoot() string {
@@ -303,26 +286,6 @@ func (c *ampControl) buildRabbitmqctl(broker, args string) string {
 	return fmt.Sprintf("sudo -i -u %s sh -c %s", c.ampUser, shellQuote(inner))
 }
 
-// rabbitmqctlPrefix is retained as a legacy convenience for callers that want
-// a single-token prefix (broker_exec_prefix override path). When no override
-// is set it returns a buildRabbitmqctl wrapper targeting the admin broker;
-// callers needing the game broker must use buildRabbitmqctl directly.
-func (c *ampControl) rabbitmqctlPrefix(prefix string) string {
-	if prefix != "" {
-		return prefix + " " + c.rabbitmqctl()
-	}
-	return c.buildRabbitmqctl("mq-admin", "")
-}
-
-func (c *ampControl) ListExchanges(_ context.Context, exec Executor, _ string) ([]binding, error) {
-	base := c.rabbitmqctlPrefix(loadedConfig.BrokerExecPrefix)
-	raw, err := exec.Exec(base + " list_exchanges name 2>/dev/null")
-	if err != nil {
-		return nil, fmt.Errorf("rabbitmqctl: %w", err)
-	}
-	return parseExchanges(raw), nil
-}
-
 // EvalOnGameBroker runs an Erlang expression via rabbitmqctl eval against the
 // game broker. The RMQ server-commands publisher (rmq_commands.go) uses this to
 // fetch broker-side data — e.g. the ServerCommandsAuthToken — that must be
@@ -334,38 +297,6 @@ func (c *ampControl) EvalOnGameBroker(_ context.Context, exec Executor, expr str
 		return "", fmt.Errorf("rabbitmqctl eval: %w (output: %s)", err, strings.TrimSpace(out))
 	}
 	return strings.TrimSpace(out), nil
-}
-
-func (c *ampControl) EnsureCaptureUser(_ context.Context, exec Executor) {
-	base := c.rabbitmqctlPrefix(loadedConfig.BrokerExecPrefix)
-	out, _ := exec.Exec(fmt.Sprintf("%s add_user %s %s 2>&1", base, capUser, capPass))
-	if !strings.Contains(out, "already exists") {
-		fmt.Printf("[capture] [amp] created user %s\n", capUser)
-	}
-	_, _ = exec.Exec(fmt.Sprintf("%s change_password %s %s 2>&1", base, capUser, capPass))
-	_, _ = exec.Exec(fmt.Sprintf("%s set_permissions -p / %s '.*' '.*' '.*' 2>&1", base, capUser))
-	_, _ = exec.Exec(fmt.Sprintf(
-		"%s eval 'application:set_env(rabbit, auth_backends, [{rabbit_auth_backend_cache, rabbit_auth_backend_http}, rabbit_auth_backend_internal]).' 2>&1",
-		base))
-	_, _ = exec.Exec(fmt.Sprintf(
-		"%s eval 'application:set_env(rabbitmq_auth_backend_cache, cache_ttl, 86400000).' 2>&1",
-		base))
-	fmt.Println("[capture] [amp] auth backends updated")
-}
-
-// startEnsureCaptureUserLoop reapplies the dune_cap user every 15s. AMP can
-// restart the broker container without notice, which resets the in-memory user
-// list; this loop self-heals capture-mode after such restarts.
-//
-// Call once from runCapture for the amp provider; the goroutine runs until
-// process exit.
-func (c *ampControl) startEnsureCaptureUserLoop(exec Executor) {
-	go func() {
-		for {
-			time.Sleep(15 * time.Second)
-			c.EnsureCaptureUser(context.Background(), exec)
-		}
-	}()
 }
 
 // ── INI discovery ─────────────────────────────────────────────────────────────

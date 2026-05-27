@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"net/http/httptest"
+	"testing"
+)
 
 func TestIsReadOnlySQL(t *testing.T) {
 	tests := []struct {
@@ -87,6 +90,55 @@ func TestOriginAllowed(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := originAllowed(tt.origin); got != tt.want {
 				t.Errorf("originAllowed(%q) = %v, want %v", tt.origin, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestOriginAllowedForRequest(t *testing.T) {
+	orig := allowedOrigins
+	allowedOrigins = []string{"https://dune-admin.layout.tools", "http://localhost:5173"}
+	t.Cleanup(func() { allowedOrigins = orig })
+
+	tests := []struct {
+		name       string
+		origin     string
+		host       string
+		remoteAddr string
+		want       bool
+	}{
+		{
+			name:       "allowlisted origin",
+			origin:     "https://dune-admin.layout.tools",
+			host:       "localhost:8080",
+			remoteAddr: "203.0.113.10:12345",
+			want:       true,
+		},
+		{
+			name:       "origin missing loopback remote",
+			origin:     "",
+			host:       "example.com:8080",
+			remoteAddr: "127.0.0.1:42211",
+			want:       true,
+		},
+		{
+			name:       "origin missing non-loopback remote",
+			origin:     "",
+			host:       "127.0.0.1:8080",
+			remoteAddr: "203.0.113.10:42211",
+			want:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := httptest.NewRequest("GET", "http://"+tt.host+"/api/v1/logs/stream", nil)
+			r.Host = tt.host
+			r.RemoteAddr = tt.remoteAddr
+			if tt.origin != "" {
+				r.Header.Set("Origin", tt.origin)
+			}
+			if got := originAllowedForRequest(r); got != tt.want {
+				t.Fatalf("originAllowedForRequest() = %v, want %v", got, tt.want)
 			}
 		})
 	}

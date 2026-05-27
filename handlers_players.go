@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -196,6 +197,35 @@ func handleGiveItem(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
+
+	// Route online + quality-0 items through RMQ (instant, no relog needed).
+	// RMQ AddItemToInventory has no Quality field so the DB path is required for quality > 0.
+	if req.Quality == 0 {
+		ctx := context.Background()
+		if checkPlayerOffline(ctx, req.PlayerID) != nil {
+			// Player is online — use RMQ path.
+			if err := checkInventoryCapacity(ctx, req.PlayerID, req.Template, req.Qty); err != nil {
+				jsonErr(w, err, 400)
+				return
+			}
+			flsID, err := flsIDFromActorID(ctx, req.PlayerID)
+			if err != nil {
+				jsonErr(w, fmt.Errorf("resolve player: %w", err), 404)
+				return
+			}
+			if err := rmqAddItemToInventory(flsID, req.Template, int(req.Qty), 1.0); err != nil {
+				jsonErr(w, err, 500)
+				return
+			}
+			jsonOK(w, map[string]any{
+				"ok":   fmt.Sprintf("sent %d × %s to online player %d via server command (instant)", req.Qty, req.Template, req.PlayerID),
+				"path": "rmq",
+			})
+			return
+		}
+	}
+
+	// DB path: offline player or quality > 0.
 	msg, ok := cmdGiveItem(req.PlayerID, req.Template, req.Qty, req.Quality)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
@@ -205,7 +235,7 @@ func handleGiveItem(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, msg.err, 500)
 		return
 	}
-	jsonOK(w, map[string]string{"ok": msg.ok})
+	jsonOK(w, map[string]any{"ok": msg.ok, "path": "db"})
 }
 
 func handleGiveItems(w http.ResponseWriter, r *http.Request) {
@@ -227,7 +257,32 @@ func handleGiveItems(w http.ResponseWriter, r *http.Request) {
 	}
 	given := []string{}
 	skipped := []skippedItem{}
+
+	ctx := context.Background()
+	// Determine path once for all items in the batch.
+	online := req.PlayerID != 0 && checkPlayerOffline(ctx, req.PlayerID) != nil
+	var flsID string
+	if online {
+		var err error
+		flsID, err = flsIDFromActorID(ctx, req.PlayerID)
+		if err != nil {
+			online = false // fall back to DB path if FLS ID resolution fails
+		}
+	}
+
 	for _, item := range req.Items {
+		if online && item.Quality == 0 {
+			if err := checkInventoryCapacity(ctx, req.PlayerID, item.Template, item.Qty); err != nil {
+				skipped = append(skipped, skippedItem{Template: item.Template, Reason: err.Error()})
+				continue
+			}
+			if err := rmqAddItemToInventory(flsID, item.Template, int(item.Qty), 1.0); err != nil {
+				skipped = append(skipped, skippedItem{Template: item.Template, Reason: err.Error()})
+				continue
+			}
+			given = append(given, item.Template)
+			continue
+		}
 		msg, ok := cmdGiveItem(req.PlayerID, item.Template, item.Qty, item.Quality)().(msgMutate)
 		if !ok || msg.err != nil {
 			reason := "internal error"
@@ -345,6 +400,10 @@ func handleAwardXP(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
+	if req.PlayerID == 0 {
+		jsonErr(w, fmt.Errorf("player_id required"), 400)
+		return
+	}
 	msg, ok := cmdAwardXP(req.PlayerID, req.TrackType, req.Delta)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
@@ -359,11 +418,28 @@ func handleAwardXP(w http.ResponseWriter, r *http.Request) {
 
 func handleAwardCharXP(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		PlayerID int64 `json:"player_id"`
-		Amount   int64 `json:"amount"`
+		FlsID    string `json:"fls_id"`    // optional; triggers live online check
+		PlayerID int64  `json:"player_id"` // required for DB path
+		Amount   int64  `json:"amount"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
+		return
+	}
+	ctx := context.Background()
+	if req.FlsID != "" && isHexIDOnline(ctx, req.FlsID) {
+		if err := rmqAwardXP(req.FlsID, "Combat", int(req.Amount)); err != nil {
+			jsonErr(w, err, 500)
+			return
+		}
+		jsonOK(w, map[string]any{
+			"ok":   fmt.Sprintf("live award %d char XP sent", req.Amount),
+			"path": "rmq",
+		})
+		return
+	}
+	if req.PlayerID == 0 {
+		jsonErr(w, fmt.Errorf("player_id required"), 400)
 		return
 	}
 	msg, ok := cmdAwardCharXP(req.PlayerID, req.Amount)().(msgMutate)
@@ -375,7 +451,7 @@ func handleAwardCharXP(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, msg.err, 500)
 		return
 	}
-	jsonOK(w, map[string]string{"ok": msg.ok})
+	jsonOK(w, map[string]any{"ok": msg.ok, "path": "db"})
 }
 
 func handleAwardIntel(w http.ResponseWriter, r *http.Request) {
@@ -1193,7 +1269,38 @@ func handleTeleportPlayer(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("fls_id and partition_label required"), 400)
 		return
 	}
-	msg, ok := cmdTeleportPlayer(req.FLSID, req.Location)().(msgMutate)
+
+	var loc teleportLocation
+	for _, l := range cheatLocations {
+		if l.Name == req.Location {
+			loc = l
+			break
+		}
+	}
+	if loc.Name == "" {
+		jsonErr(w, fmt.Errorf("unknown location: %s", req.Location), 400)
+		return
+	}
+
+	ctx := context.Background()
+
+	// Online players: send via RMQ for immediate effect.
+	if isHexIDOnline(ctx, req.FLSID) {
+		if err := rmqTeleportTo(req.FLSID, loc.X, loc.Y, loc.Z); err != nil {
+			jsonErr(w, err, 500)
+			return
+		}
+		jsonOK(w, map[string]any{"ok": fmt.Sprintf("teleported to %s (live)", loc.Name), "path": "rmq"})
+		return
+	}
+
+	// Offline players: write via DB (takes effect on next login).
+	displayName, err := displayNameFromHexID(ctx, req.FLSID)
+	if err != nil {
+		jsonErr(w, fmt.Errorf("resolve player: %w", err), 404)
+		return
+	}
+	msg, ok := cmdTeleportPlayer(displayName, req.Location)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1202,7 +1309,7 @@ func handleTeleportPlayer(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, msg.err, 500)
 		return
 	}
-	jsonOK(w, map[string]string{"ok": msg.ok})
+	jsonOK(w, map[string]any{"ok": msg.ok, "path": "db"})
 }
 
 func handleGetPlayerEvents(w http.ResponseWriter, r *http.Request) {

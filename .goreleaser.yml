@@ -66,6 +66,7 @@ archives:
     name_template: "dune-admin_{{ .Os }}_{{ .Arch }}"
     files:
       - item-data.json
+      - quality-data.json
       - tags-data.json
       - README.md
       - .env.example
@@ -144,6 +145,7 @@ brews:
     install: |
       bin.install "dune-admin"
       pkgshare.install "item-data.json"
+      pkgshare.install "quality-data.json"
       pkgshare.install "tags-data.json"
 
 # Scoop bucket. Requires RELEASE_TOKEN secret (PAT with `repo` scope on

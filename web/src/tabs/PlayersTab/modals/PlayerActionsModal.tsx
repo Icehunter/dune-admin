@@ -3,8 +3,10 @@ import {
   Button, Chip, Input, ListBox, ListLayout, Modal, Select,
   Spinner, Virtualizer, toast,
 } from '@heroui/react'
-import { DataTable, Panel } from '../../../dune-ui'
+import { ConfirmDialog, DataTable, Panel, SectionLabel } from '../../../dune-ui'
 import allGameplayTags from '../../../data/gameplayTags.json'
+import allSkillModules from '../../../data/skillModules.json'
+import allVehicles from '../../../data/vehicles.json'
 import { api } from '../../../api/client'
 import type {
   Player, JourneyNode, SpecTrack, KeystoneRow,
@@ -74,6 +76,11 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
   const [unlockFaction, setUnlockFaction] = useState('atreides')
   const [unlockPreset, setUnlockPreset] = useState('ch3_start')
 
+  // Live journey
+
+  // Experimental
+  const [customScriptName, setCustomScriptName] = useState('')
+
   // Trainer / MQ selectors
   const [selectedTrainer, setSelectedTrainer] = useState<TrainerKey>('BeneGesserit')
   const [selectedMQ, setSelectedMQ] = useState<string>('DA_MQ_ANewBeginning')
@@ -91,9 +98,26 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
   const [tagsLoading, setTagsLoading] = useState(false)
   const [pendingTags, setPendingTags] = useState<string[]>([])
 
+  // Confirm gate + live inputs
+  const [skillPointsAmount, setSkillPointsAmount] = useState(10)
+  const [skillModule, setSkillModule] = useState('')
+  const [skillModuleLevel, setSkillModuleLevel] = useState(1)
+  const [confirmPending, setConfirmPending] = useState<{
+    title: string
+    description: string
+    confirmLabel: string
+    onConfirm: () => void
+  } | null>(null)
+
   // Admin / Teleport
   const [partitions, setPartitions] = useState<TeleportLocation[]>([])
   const [selectedPartition, setSelectedPartition] = useState('')
+
+  // Spawn vehicle
+  const [spawnVehicleId, setSpawnVehicleId] = useState('')
+  const [spawnVehicleTemplate, setSpawnVehicleTemplate] = useState('')
+  const [spawnVehiclePartition, setSpawnVehiclePartition] = useState('')
+  const [spawnVehiclePersistent, setSpawnVehiclePersistent] = useState(true)
 
   // History
   const [events, setEvents] = useState<GameEvent[]>([])
@@ -109,6 +133,7 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
       setHistoryLoaded(false); setEvents([]); setDungeons([])
       setCharXPCurrent(null)
       setTagsLoaded(false); setTags([]); setPendingTags([])
+      setConfirmPending(null)
     } else {
       setFactionId(player.faction_id > 0 ? player.faction_id : 1)
       api.players.partitions().then(setPartitions).catch(() => {})
@@ -180,6 +205,10 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
     }
   }
 
+  const gate = (title: string, description: string, confirmLabel: string, action: () => void) => {
+    setConfirmPending({ title, description, confirmLabel, onConfirm: action })
+  }
+
   const filteredNodes = useMemo(() => {
     if (!debouncedNodeSearch) return nodes
     const q = debouncedNodeSearch.toLowerCase()
@@ -195,11 +224,14 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
     />
   )
 
-  const actionRow = (label: string, inputs: ReactNode, btnLabel: string, onAction: () => void, danger = false) => (
-    <div className="flex items-end gap-3 py-3 border-b border-border/40">
+  const actionRow = (label: string, inputs: ReactNode, btnLabel: string, onAction: () => void, danger = false, confirmGate?: { title: string; description: string }) => (
+    <div className="flex items-end gap-3 py-3 border-b border-border/40 last:border-b-0">
       <div className="w-36 shrink-0 text-sm text-muted">{label}</div>
       <div className="flex items-end gap-2 flex-1 flex-wrap">{inputs}</div>
-      <Button size="sm" variant={danger ? 'danger-soft' : 'ghost'} onPress={onAction} isDisabled={busy}>{btnLabel}</Button>
+      <Button
+        size="sm" variant={danger ? 'danger-soft' : 'ghost'} isDisabled={busy}
+        onPress={confirmGate ? () => gate(confirmGate.title, confirmGate.description, btnLabel, onAction) : onAction}
+      >{btnLabel}</Button>
     </div>
   )
 
@@ -217,6 +249,7 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
   }
 
   return (
+    <>
     <Modal>
       <Modal.Backdrop isOpen={open} onOpenChange={v => !v && onClose()}>
         <Modal.Container size="cover">
@@ -254,83 +287,142 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
               </div>
 
               {/* Section content */}
-              <div className="flex-1 overflow-hidden flex flex-col p-4">
+              <div className="flex-1 overflow-hidden flex flex-col p-4 pt-3">
 
                 {section === 'resources' && (
-                  <div className="overflow-y-auto flex-1 flex flex-col">
+                  <div className="overflow-y-auto flex-1 flex flex-col gap-3 pr-1">
 
-                    <SectionHeader>Currency &amp; Resources</SectionHeader>
-                    {actionRow('Give Currency', numInput(currency, setCurrency, 1, 9999999), 'Give',
-                      () => run(() => api.players.giveCurrency(player.controller_id, currency), `Gave ${currency} Solari to ${player.name}`))}
-                    {actionRow('Give Scrip', numInput(scrip, setScrip, 1, 9999999), 'Give',
-                      () => run(() => api.players.giveScrip(player.controller_id, scrip), `Gave ${scrip} scrip to ${player.name}`))}
-                    {actionRow('Award Intel', numInput(intel, setIntel, 1, 9999999), 'Award',
-                      () => run(() => api.players.awardIntel(player.id, intel), `Awarded ${intel} intel to ${player.name}`))}
+                    <Panel>
+                      <SectionLabel>Currency &amp; Resources</SectionLabel>
+                      {actionRow('Give Currency', numInput(currency, setCurrency, 1, 9999999), 'Give',
+                        () => run(() => api.players.giveCurrency(player.controller_id, currency), `Gave ${currency} Solari to ${player.name}`))}
+                      {actionRow('Give Scrip', numInput(scrip, setScrip, 1, 9999999), 'Give',
+                        () => run(() => api.players.giveScrip(player.controller_id, scrip), `Gave ${scrip} scrip to ${player.name}`))}
+                      {actionRow('Award Intel', numInput(intel, setIntel, 1, 9999999), 'Award',
+                        () => run(() => api.players.awardIntel(player.id, intel), `Awarded ${intel} intel to ${player.name}`))}
+                    </Panel>
 
-                    <SectionHeader className="mt-4">Character XP</SectionHeader>
-                    {player.online_status === 'Online' && onlineWarning}
-                    {charXPCurrent && (
-                      <div className="px-1 py-2 text-xs text-muted">
-                        Current: <span className="text-foreground">{charXPCurrent.xp.toLocaleString()} XP</span>
-                        {' '}— Level <span className="text-foreground">{charXPCurrent.level}</span>
-                        <span className="text-muted/60"> / 200</span>
+                    <Panel>
+                      <SectionLabel>Character XP</SectionLabel>
+                      {charXPCurrent && (
+                        <div className="text-xs text-muted mb-2">
+                          Current: <span className="text-foreground">{charXPCurrent.xp.toLocaleString()} XP</span>
+                          {' '}— Level <span className="text-foreground">{charXPCurrent.level}</span>
+                          <span className="text-muted/60"> / 200</span>
+                        </div>
+                      )}
+                      {actionRow('Award Char XP',
+                        <div className="flex flex-col gap-0.5">
+                          {numInput(charXP, setCharXP, 0, 344440)}
+                          <span className="text-xs text-muted">Max 344,440 (level 200) · live if online, DB if offline</span>
+                        </div>,
+                        'Award',
+                        () => run(
+                          () => api.players.awardCharXP(player.id, charXP, player.fls_id),
+                          `Awarded ${charXP} char XP to ${player.name}`,
+                        ).then(() => api.players.charXPCurrent(player.id).then(setCharXPCurrent).catch(() => {})))}
+                    </Panel>
+
+                    <Panel>
+                      <SectionLabel>Live Actions</SectionLabel>
+                      <div className="text-xs text-muted mb-2">Player must be online.</div>
+                      {actionRow('Skill Points',
+                        <div className="flex flex-col gap-0.5">
+                          {numInput(skillPointsAmount, setSkillPointsAmount, 0, 9999)}
+                          <span className="text-xs text-muted">Sets unspent points</span>
+                        </div>,
+                        'Set',
+                        () => run(() => api.players.setSkillPoints(player.fls_id, skillPointsAmount), `Set skill points for ${player.name}`),
+                      )}
+                      {actionRow('Fill Water',
+                        <span className="text-xs text-muted">Fills all water containers to max</span>,
+                        'Fill',
+                        () => run(() => api.players.fillWater(player.fls_id), `Fill water command sent for ${player.name}`),
+                      )}
+                      {actionRow('Set Skill Module',
+                        <div className="flex items-center gap-2">
+                          <Select
+                            aria-label="Skill module"
+                            placeholder="Select module…"
+                            selectedKey={skillModule || null}
+                            onSelectionChange={k => setSkillModule(k ? String(k) : '')}
+                            className="w-52"
+                          >
+                            <Select.Trigger className="overflow-hidden"><Select.Value className="truncate" /><Select.Indicator /></Select.Trigger>
+                            <Select.Popover className="!w-[380px]">
+                              <Virtualizer layout={ListLayout} layoutOptions={{ rowHeight: 32 }}>
+                                <ListBox
+                                  aria-label="Skill modules"
+                                  className="h-[300px] overflow-y-auto"
+                                  items={(allSkillModules as { id: string; label: string }[]).map(m => ({ id: m.id, label: m.label }))}
+                                >
+                                  {(item: { id: string; label: string }) => (
+                                    <ListBox.Item key={item.id} id={item.id} textValue={item.label}>
+                                      {item.label}<ListBox.ItemIndicator />
+                                    </ListBox.Item>
+                                  )}
+                                </ListBox>
+                              </Virtualizer>
+                            </Select.Popover>
+                          </Select>
+                          {numInput(skillModuleLevel, setSkillModuleLevel, 0, 5)}
+                        </div>,
+                        'Set',
+                        () => run(() => api.players.setSkillModule(player.fls_id, skillModule, skillModuleLevel), `Set ${skillModule} level ${skillModuleLevel} for ${player.name}`),
+                      )}
+                    </Panel>
+
+                    <Panel>
+                      <SectionLabel>Faction Reputation</SectionLabel>
+                      <div className="flex items-center gap-2 py-3 border-b border-border/40">
+                        <div className="w-36 shrink-0 text-sm text-muted">Faction</div>
+                        <Select selectedKey={String(factionId)} onSelectionChange={k => setFactionId(Number(k))} className="w-40">
+                          <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              {FACTIONS.map(f => (
+                                <ListBox.Item key={String(f.id)} id={String(f.id)} textValue={f.name}>
+                                  {f.name}<ListBox.ItemIndicator />
+                                </ListBox.Item>
+                              ))}
+                            </ListBox>
+                          </Select.Popover>
+                        </Select>
                       </div>
-                    )}
-                    {actionRow('Award Char XP',
-                      <div className="flex flex-col gap-0.5">
-                        {numInput(charXP, setCharXP, 0, 344440)}
-                        <span className="text-xs text-muted">Max 344,440 (level 200)</span>
-                      </div>,
-                      'Award',
-                      () => run(() => api.players.awardCharXP(player.id, charXP), `Awarded ${charXP} char XP to ${player.name}`)
-                        .then(() => api.players.charXPCurrent(player.id).then(setCharXPCurrent).catch(() => {})))}
+                      {actionRow('Reputation',
+                        <div className="flex flex-col gap-0.5">
+                          {numInput(repDelta, setRepDelta, 0, 12474)}
+                          <span className="text-xs text-muted">Adds to current, max 12,474</span>
+                        </div>,
+                        'Give',
+                        () => run(() => api.players.giveFactionRep(player.controller_id, factionId, repDelta), `Gave ${repDelta} rep (faction ${factionId}) to ${player.name}`))}
+                    </Panel>
 
-                    <SectionHeader className="mt-4">Faction Reputation</SectionHeader>
-                    <div className="flex items-center gap-2 py-3 border-b border-border/40">
-                      <div className="w-36 shrink-0 text-sm text-muted">Faction</div>
-                      <Select selectedKey={String(factionId)} onSelectionChange={k => setFactionId(Number(k))} className="w-40">
-                        <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
-                        <Select.Popover>
-                          <ListBox>
-                            {FACTIONS.map(f => (
-                              <ListBox.Item key={String(f.id)} id={String(f.id)} textValue={f.name}>
-                                {f.name}<ListBox.ItemIndicator />
-                              </ListBox.Item>
-                            ))}
-                          </ListBox>
-                        </Select.Popover>
-                      </Select>
-                    </div>
-                    {actionRow('Reputation',
-                      <div className="flex flex-col gap-0.5">
-                        {numInput(repDelta, setRepDelta, 0, 12474)}
-                        <span className="text-xs text-muted">Adds to current, max 12,474</span>
-                      </div>,
-                      'Give',
-                      () => run(() => api.players.giveFactionRep(player.controller_id, factionId, repDelta), `Gave ${repDelta} rep (faction ${factionId}) to ${player.name}`))}
                   </div>
                 )}
 
                 {section === 'specs' && (
-                  <div className="flex flex-col gap-3 flex-1 min-h-0">
+                  <div className="flex flex-col gap-3 flex-1 min-h-0 pr-1">
                     <div className="flex items-center gap-3 shrink-0">
                       <h3 className="text-base font-semibold text-accent flex-1">Specializations</h3>
                       <Button size="sm" variant="ghost" isDisabled={specsLoading}
                         onPress={() => setSpecsLoaded(false)}>
                         {specsLoading ? <Spinner size="sm" color="current" /> : '↻ Refresh'}
                       </Button>
-                      <Button size="sm" variant="outline" isDisabled={busy}
+                      <Button size="sm" variant="outline" isDisabled={busy || player.online_status === 'Online'}
                         onPress={() => run(
                           () => api.players.grantAllKeystones(player.controller_id),
                           `Grant all keystones to ${player.name}`,
                         ).then(() => setSpecsLoaded(false))}>
                         Grant Max Keystones
                       </Button>
-                      <Button size="sm" variant="danger-soft" isDisabled={busy}
-                        onPress={() => run(
-                          () => api.players.resetAllKeystones(player.controller_id),
-                          `Reset all keystones for ${player.name}`,
-                        ).then(() => setSpecsLoaded(false))}>
+                      <Button size="sm" variant="danger-soft" isDisabled={busy || player.online_status === 'Online'}
+                        onPress={() => gate(
+                          'Reset all keystones?',
+                          `This will remove all granted keystones for ${player.name}. This action cannot be undone.`,
+                          'Reset All Keystones',
+                          () => run(() => api.players.resetAllKeystones(player.controller_id), `Reset all keystones for ${player.name}`).then(() => setSpecsLoaded(false)),
+                        )}>
                         Reset All Keystones
                       </Button>
                     </div>
@@ -382,7 +474,7 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                             case 'level': return <span className="font-mono text-muted">{found?.level ?? 0}</span>
                             case 'grant':
                               return (
-                                <Button size="sm" variant="ghost" isDisabled={busy}
+                                <Button size="sm" variant="ghost" isDisabled={busy || player.online_status === 'Online'}
                                   onPress={() => run(
                                     () => api.players.grantMaxSpec(player.controller_id, track),
                                     `Grant max ${track} spec to ${player.name}`,
@@ -399,12 +491,13 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                             case 'reset':
                               return (
                                 <Button size="sm" variant="danger-soft" isDisabled={busy}
-                                  onPress={() => run(
-                                    () => api.players.resetSpec(player.controller_id, track),
-                                    `Reset ${track} spec for ${player.name}`,
-                                  ).then(() => {
-                                    setPlayerSpecs(prev => prev.filter(s => s.track_type !== track))
-                                  })}>
+                                  onPress={() => gate(
+                                    `Reset ${track} spec?`,
+                                    `This will wipe all XP and levels for the ${track} specialization track.`,
+                                    'Reset Spec',
+                                    () => run(() => api.players.resetSpec(player.controller_id, track), `Reset ${track} spec for ${player.name}`)
+                                      .then(() => setPlayerSpecs(prev => prev.filter(s => s.track_type !== track))),
+                                  )}>
                                   Reset
                                 </Button>
                               )
@@ -422,7 +515,7 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                   })()
                   const selectedMQDef = MAIN_QUESTS.find(m => m.id === selectedMQ)
                   return (
-                  <div className="flex flex-col gap-3 flex-1 min-h-0">
+                  <div className="flex flex-col gap-3 flex-1 min-h-0 pr-1">
                     {/* Progression Unlock */}
                     <Panel>
                       <SectionLabel>Progression Unlock</SectionLabel>
@@ -454,10 +547,12 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                           Apply Unlock
                         </Button>
                         <Button size="sm" variant="danger-soft" isDisabled={busy}
-                          onPress={() => run(
-                            () => api.players.progressionReverse(player.id, unlockFaction, unlockPreset),
-                            `Reversed ${unlockPreset} (${unlockFaction}) for ${player.name}`,
-                          ).then(() => setNodesLoaded(false))}>
+                          onPress={() => gate(
+                            'Reverse progression unlock?',
+                            `This will undo the ${unlockPreset} preset for ${unlockFaction} and remove associated tags from ${player.name}.`,
+                            'Reverse Unlock',
+                            () => run(() => api.players.progressionReverse(player.id, unlockFaction, unlockPreset), `Reversed ${unlockPreset} (${unlockFaction}) for ${player.name}`).then(() => setNodesLoaded(false)),
+                          )}>
                           Reverse Unlock
                         </Button>
                       </div>
@@ -499,9 +594,11 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                               Apply <span className="text-muted ml-1">({trainerMatches.length})</span>
                             </Button>
                             <Button size="sm" variant="danger-soft" isDisabled={busy}
-                              onPress={() => run(
-                                () => api.players.resetJobSkills(player.account_id, selectedTrainer),
-                                `Reset ${selectedTrainer} skill tree for ${player.name}`,
+                              onPress={() => gate(
+                                `Reset ${selectedTrainer} skill tree?`,
+                                `This will wipe the full ${selectedTrainer} job skill tree for ${player.name}.`,
+                                'Reset Skill Tree',
+                                () => run(() => api.players.resetJobSkills(player.account_id, selectedTrainer), `Reset ${selectedTrainer} skill tree for ${player.name}`),
                               )}>
                               Reset
                             </Button>
@@ -638,7 +735,7 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                 })()}
 
                 {section === 'journey' && (
-                  <div className="flex flex-col gap-3 flex-1 min-h-0">
+                  <div className="flex flex-col gap-3 flex-1 min-h-0 pr-1">
                     <Panel className="flex-1 min-h-0">
                       <div className="flex items-center gap-2 shrink-0">
                         <SectionLabel>Journey Nodes</SectionLabel>
@@ -647,8 +744,12 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                           {nodesLoading ? <Spinner size="sm" color="current" /> : '↻'}
                         </Button>
                         <Button size="sm" variant="danger-soft" isDisabled={busy}
-                          onPress={() => run(() => api.players.journeyWipe(player.account_id), `Wiped all journey nodes for ${player.name}`)
-                            .then(() => setNodes([]))}>
+                          onPress={() => gate(
+                            'Wipe all journey nodes?',
+                            `This will delete all journey progress for ${player.name}. This action cannot be undone.`,
+                            'Wipe All',
+                            () => run(() => api.players.journeyWipe(player.account_id), `Wiped all journey nodes for ${player.name}`).then(() => setNodes([])),
+                          )}>
                           Wipe All
                         </Button>
                       </div>
@@ -734,18 +835,116 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                   </div>
                 )}
 
+                {section === 'experimental' && (
+                  <div className="overflow-y-auto flex-1 flex flex-col gap-3 pr-1">
+                    <div className="text-xs px-3 py-2 rounded bg-danger/10 border border-danger/40 text-danger shrink-0">
+                      ⚠ Experimental — these commands are sent via RabbitMQ but their effects are unverified. Use on test characters only.
+                    </div>
+
+                    <Panel>
+                      <SectionLabel>CheatScript — Known Scripts</SectionLabel>
+                      <div className="text-xs text-muted mb-2">Named scripts defined in DefaultGame.ini. Fire-and-forget.</div>
+                      {([
+                        { name: 'LeaveMeAlone',       label: 'Leave Me Alone',         desc: 'Destroys all NPCs, clears encounters + sandstorms, disables sandworm (server-wide)',     danger: false },
+                        { name: 'AwardPlayerXP',      label: 'Award Player XP',        desc: 'Awards 10,000 Combat + 10,000 Exploration + 10,000 Science XP',                          danger: false },
+                        { name: 'UnlockAllSkills',    label: 'Unlock All Skills',      desc: 'Sets all skill tree modules to level 1 (Trooper, Swordmaster, Mentat, etc.)',             danger: false },
+                        { name: 'UnlockAllAbilities', label: 'Unlock All Abilities',   desc: 'Sets all ability modules to level 1 (Grenade, HunterSeeker, Hypersprint, etc.)',          danger: false },
+                        { name: 'PlaytestSetup',      label: 'Playtest Setup',         desc: '⚠ DESTRUCTIVE — ResetProgression + CleanInventory, then full gear kit, 104 skill points, completes ANewBeginning quest', danger: true },
+                        { name: 'PlaytestSetupAdmin', label: 'Playtest Setup (Admin)', desc: '⚠ DESTRUCTIVE — same as Playtest Setup but uses raw template names instead of display names', danger: true },
+                      ] as { name: string; label: string; desc: string; danger: boolean }[]).map(({ name, label, desc, danger }) => (
+                        <div key={name} className="flex items-center gap-3 py-3 border-b border-border/40 last:border-b-0">
+                          <div className="flex-1">
+                            <div className="text-sm">{label}</div>
+                            <div className="text-xs text-muted">{desc}</div>
+                          </div>
+                          <Button size="sm" variant={danger ? 'danger-soft' : 'ghost'} isDisabled={busy}
+                            onPress={danger
+                              ? () => gate(
+                                  `Run ${label}?`,
+                                  desc.replace(/^⚠ DESTRUCTIVE — /, ''),
+                                  'Confirm Run',
+                                  () => run(() => api.players.cheatScript(player.fls_id, name), `CheatScript ${name} sent for ${player.name}`),
+                                )
+                              : () => run(() => api.players.cheatScript(player.fls_id, name), `CheatScript ${name} sent for ${player.name}`)
+                            }>
+                            Run
+                          </Button>
+                        </div>
+                      ))}
+                    </Panel>
+
+                    <Panel>
+                      <SectionLabel>CheatScript — Custom</SectionLabel>
+                      <div className="text-xs text-muted mb-2">Try any script name or console command. Falls back to direct execution on some server builds.</div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          placeholder="Script / command name…"
+                          value={customScriptName}
+                          onChange={e => setCustomScriptName(e.target.value)}
+                          className="flex-1"
+                          aria-label="Custom script name"
+                        />
+                        <Button size="sm" variant="ghost" isDisabled={busy || !customScriptName}
+                          onPress={() => run(() => api.players.cheatScript(player.fls_id, customScriptName), `CheatScript "${customScriptName}" sent for ${player.name}`)}>
+                          Try
+                        </Button>
+                      </div>
+                    </Panel>
+
+                  </div>
+                )}
+
                 {section === 'admin' && (
                   <div className="overflow-y-auto flex-1 flex flex-col gap-3 pr-1">
+                    <Panel>
+                      <SectionLabel>Live Actions</SectionLabel>
+                      <div className="text-xs text-muted mb-2">RabbitMQ commands — player must be online.</div>
+                      {actionRow('Kick Player',
+                        <span className="text-xs text-muted">Disconnects the player from the server</span>,
+                        'Kick',
+                        () => run(() => api.players.kick(player.fls_id), `Kick command sent for ${player.name}`),
+                      )}
+                    </Panel>
+
+                    <Panel>
+                      <SectionLabel>Destructive Live Actions</SectionLabel>
+                      <div className="text-xs text-muted mb-2">Irreversible — player must be online. Confirm before sending.</div>
+                      <div className="flex items-end gap-3 py-3 border-b border-border/40">
+                        <div className="w-36 shrink-0 text-sm text-muted">Wipe Inventory</div>
+                        <div className="flex-1 text-xs text-muted">Destroys all items in the player's inventory</div>
+                        <Button size="sm" variant="danger-soft" isDisabled={busy} onPress={() => gate(
+                          'Wipe inventory permanently?',
+                          `This will destroy all items in ${player.name}'s inventory. This action cannot be undone.`,
+                          'Confirm Wipe',
+                          () => run(() => api.players.cleanInventory(player.fls_id), `Inventory wiped for ${player.name}`),
+                        )}>Wipe</Button>
+                      </div>
+                      <div className="flex items-end gap-3 py-3">
+                        <div className="w-36 shrink-0 text-sm text-muted">Reset Progression</div>
+                        <div className="flex-1 text-xs text-muted">Wipes XP, skills and journey for the player</div>
+                        <Button size="sm" variant="danger-soft" isDisabled={busy} onPress={() => gate(
+                          'Reset progression permanently?',
+                          `This will wipe XP, skills, and journey progress for ${player.name}. This action cannot be undone.`,
+                          'Confirm Reset',
+                          () => run(() => api.players.resetProgression(player.fls_id), `Progression reset for ${player.name}`),
+                        )}>Reset</Button>
+                      </div>
+                    </Panel>
+
                     <Panel>
                       <SectionLabel>Reset Actions</SectionLabel>
                       {actionRow('Delete Tutorials',
                         <span className="text-xs text-muted">Removes all tutorial completion records</span>,
                         'Delete',
-                        () => run(() => api.players.deleteTutorials(player.id), `Deleted tutorials for ${player.name}`), true)}
+                        () => run(() => api.players.deleteTutorials(player.id), `Deleted tutorials for ${player.name}`),
+                        true,
+                        { title: 'Delete tutorials?', description: `This will remove all tutorial completion records for ${player.name}.` })}
                       {actionRow('Wipe Codex',
                         <span className="text-xs text-muted">Clears all codex discoveries</span>,
                         'Wipe',
-                        () => run(() => api.players.wipeCodex(player.account_id), `Wiped codex for ${player.name}`), true)}
+                        () => run(() => api.players.wipeCodex(player.account_id), `Wiped codex for ${player.name}`),
+                        true,
+                        { title: 'Wipe codex?', description: `This will clear all codex discoveries for ${player.name}.` })}
                       <div className="hidden">
                         {actionRow('Returning Player Award',
                           <span className="text-xs text-muted">Reset returning player status — triggers award on next login</span>,
@@ -762,9 +961,10 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                       <SectionLabel>Character Export</SectionLabel>
                       <div className="flex items-end gap-3 py-1">
                         <div className="flex-1 text-xs text-muted">Download character data as JSON</div>
-                        <a href={api.players.exportUrl(player.account_id)} download>
-                          <Button size="sm" variant="ghost" isDisabled={busy}>Download</Button>
-                        </a>
+                        <Button size="sm" variant="ghost" isDisabled={busy}
+                          onPress={() => run(() => api.players.exportPlayer(player.account_id), 'Export downloaded')}>
+                          Download
+                        </Button>
                       </div>
                     </Panel>
 
@@ -789,14 +989,110 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                             </ListBox>
                           </Select.Popover>
                         </Select>
-                        <Button size="sm" variant="ghost" isDisabled={busy || !selectedPartition || player.online_status === 'Online'}
+                        <Button size="sm" variant="ghost" isDisabled={busy || !selectedPartition}
                           onPress={() => run(() => api.players.teleport(player.fls_id, selectedPartition), `Teleported ${player.name} to ${selectedPartition}`)}>
                           Move
                         </Button>
                       </div>
-                      {player.online_status === 'Online' && (
-                        <span className="text-xs text-muted">Player must be offline</span>
-                      )}
+                      <span className="text-xs text-muted">Live if online · written to DB if offline</span>
+                    </Panel>
+
+                    <Panel>
+                      <SectionLabel>Spawn Vehicle</SectionLabel>
+                      <div className="text-xs text-muted mb-2">Player must be online. Spawns at the chosen partition location.</div>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <Select
+                            aria-label="Vehicle type"
+                            placeholder="Select vehicle…"
+                            selectedKey={spawnVehicleId || null}
+                            onSelectionChange={k => {
+                              const id = k ? String(k) : ''
+                              setSpawnVehicleId(id)
+                              const v = (allVehicles as { id: string; templates: string[] }[]).find(x => x.id === id)
+                              setSpawnVehicleTemplate(v?.templates[0] ?? '')
+                            }}
+                            className="flex-1"
+                          >
+                            <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                            <Select.Popover>
+                              <ListBox>
+                                {(allVehicles as { id: string; label: string }[]).map(v => (
+                                  <ListBox.Item key={v.id} id={v.id} textValue={v.label}>
+                                    {v.label}<ListBox.ItemIndicator />
+                                  </ListBox.Item>
+                                ))}
+                              </ListBox>
+                            </Select.Popover>
+                          </Select>
+                          {spawnVehicleId && (() => {
+                            const templates = (allVehicles as { id: string; templates: string[] }[]).find(v => v.id === spawnVehicleId)?.templates ?? []
+                            return templates.length > 1 ? (
+                              <Select
+                                aria-label="Template"
+                                selectedKey={spawnVehicleTemplate || null}
+                                onSelectionChange={k => setSpawnVehicleTemplate(k ? String(k) : '')}
+                                className="w-44"
+                              >
+                                <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                                <Select.Popover>
+                                  <ListBox>
+                                    {templates.map(t => (
+                                      <ListBox.Item key={t} id={t} textValue={t}>
+                                        {t}<ListBox.ItemIndicator />
+                                      </ListBox.Item>
+                                    ))}
+                                  </ListBox>
+                                </Select.Popover>
+                              </Select>
+                            ) : null
+                          })()}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            aria-label="Spawn location"
+                            placeholder="Select spawn location…"
+                            selectedKey={spawnVehiclePartition || null}
+                            onSelectionChange={k => setSpawnVehiclePartition(k ? String(k) : '')}
+                            className="flex-1"
+                          >
+                            <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                            <Select.Popover>
+                              <ListBox>
+                                {partitions.map(p => (
+                                  <ListBox.Item key={p.name} id={p.name} textValue={p.name}>
+                                    {p.name}<ListBox.ItemIndicator />
+                                  </ListBox.Item>
+                                ))}
+                              </ListBox>
+                            </Select.Popover>
+                          </Select>
+                          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={spawnVehiclePersistent}
+                              onChange={e => setSpawnVehiclePersistent(e.target.checked)}
+                            />
+                            <span className="text-xs">Persistent</span>
+                          </label>
+                          <Button size="sm" variant="ghost"
+                            isDisabled={busy || !spawnVehicleId || !spawnVehiclePartition}
+                            onPress={() => {
+                              const v = (allVehicles as { id: string; actor_class: string }[]).find(x => x.id === spawnVehicleId)
+                              const p = partitions.find(x => x.name === spawnVehiclePartition)
+                              if (!v || !p) return
+                              run(
+                                () => api.players.spawnVehicle(player.fls_id, v.actor_class, p.x, p.y, p.z, {
+                                  template_name: spawnVehicleTemplate || undefined,
+                                  persistent: spawnVehiclePersistent,
+                                }),
+                                `Spawn ${spawnVehicleId} command sent for ${player.name}`,
+                              )
+                            }}>
+                            Spawn
+                          </Button>
+                        </div>
+                      </div>
                     </Panel>
                   </div>
                 )}
@@ -975,6 +1271,15 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
         </Modal.Container>
       </Modal.Backdrop>
     </Modal>
+    <ConfirmDialog
+      open={confirmPending !== null}
+      title={confirmPending?.title ?? ''}
+      description={confirmPending?.description ?? ''}
+      confirmLabel={confirmPending?.confirmLabel}
+      onConfirm={() => { const action = confirmPending?.onConfirm; setConfirmPending(null); action?.() }}
+      onCancel={() => setConfirmPending(null)}
+    />
+    </>
   )
 }
 
@@ -994,15 +1299,4 @@ function difficultyColor(difficulty: string): ChipColor {
   return 'accent'
 }
 
-function SectionHeader({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return (
-    <h3 className={'text-xs font-semibold uppercase tracking-widest text-accent pb-2 mb-2 border-b border-border ' + className}>
-      {children}
-    </h3>
-  )
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return <h4 className="text-xs font-semibold uppercase tracking-widest text-accent">{children}</h4>
-}
 

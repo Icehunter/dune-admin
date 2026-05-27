@@ -39,6 +39,11 @@ type ControlPlane interface {
 	// the necessary permissions + auth backends.
 	EnsureCaptureUser(ctx context.Context, exec Executor)
 
+	// EvalOnGameBroker runs an Erlang expression via rabbitmqctl eval inside the
+	// mq-game broker. Used for publishing server commands with user_id="fls",
+	// which AMQP connections cannot set (broker validates UserId against auth'd user).
+	EvalOnGameBroker(ctx context.Context, exec Executor, expr string) (string, error)
+
 	// DiscoverIniDir returns the directory containing UserGame.ini and
 	// UserOverrides.ini. kubectl auto-discovers this from k3s storage;
 	// docker and local require server_ini_dir to be set in config.

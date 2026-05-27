@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Button, Spinner, toast } from '@heroui/react'
+import { Button, Input, Select, ListBox, Spinner, toast, TextField } from '@heroui/react'
 import { api } from '../../api/client'
 import type { BackupFile } from '../../api/client'
 import { PageHeader, InfoCard, SectionDivider, Icon } from '../../dune-ui'
@@ -22,6 +22,15 @@ export default function BattlegroupTab() {
   const [confirmCmd, setConfirmCmd] = useState<ActionDef | null>(null)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [lastBackupFile, setLastBackupFile] = useState<string | null>(null)
+
+  // Broadcasts
+  const [broadcastTitle, setBroadcastTitle] = useState('')
+  const [broadcastBody, setBroadcastBody] = useState('')
+  const [broadcastDuration, setBroadcastDuration] = useState(30)
+  const [broadcastBusy, setBroadcastBusy] = useState(false)
+  const [shutdownType, setShutdownType] = useState('Restart')
+  const [shutdownDelay, setShutdownDelay] = useState(10)
+  const [shutdownBusy, setShutdownBusy] = useState(false)
 
   // Restore modal
   const [showRestore, setShowRestore] = useState(false)
@@ -149,6 +158,97 @@ export default function BattlegroupTab() {
         <Button variant="danger-soft" size="sm" isDisabled={runningCmd !== null} onPress={openRestore}>
           Restore
         </Button>
+      </div>
+
+      {/* ── Broadcasts ──────────────────────────────────────────────── */}
+      <SectionDivider title="Broadcasts" />
+      <div className="flex flex-wrap gap-3 shrink-0">
+
+        {/* Generic broadcast */}
+        <div className="flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-3">
+          <div className="text-xs font-semibold uppercase tracking-widest text-accent">Generic Message</div>
+          <TextField aria-label="Title">
+            <Input placeholder="Title" value={broadcastTitle} onChange={e => setBroadcastTitle(e.target.value)} />
+          </TextField>
+          <TextField aria-label="Body">
+            <Input placeholder="Body" value={broadcastBody} onChange={e => setBroadcastBody(e.target.value)} />
+          </TextField>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted shrink-0">Duration (s)</label>
+            <Input
+              type="number" min={5} max={300} value={broadcastDuration}
+              onChange={e => setBroadcastDuration(Math.max(5, parseInt(e.target.value) || 30))}
+              className="w-20" aria-label="Duration"
+            />
+            <div className="flex-1" />
+            <Button size="sm" isDisabled={broadcastBusy || !broadcastTitle}
+              onPress={async () => {
+                setBroadcastBusy(true)
+                try {
+                  await api.broadcast.send([{ Key: 'en', Title: broadcastTitle, Body: broadcastBody }], broadcastDuration)
+                  toast.success('Broadcast sent')
+                  setBroadcastTitle(''); setBroadcastBody('')
+                } catch (e: unknown) {
+                  toast.danger(e instanceof Error ? e.message : String(e))
+                } finally { setBroadcastBusy(false) }
+              }}>
+              {broadcastBusy ? <Spinner size="sm" color="current" /> : <><Icon name="megaphone" /> Send</>}
+            </Button>
+          </div>
+        </div>
+
+        {/* Shutdown broadcast */}
+        <div className="flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-3">
+          <div className="text-xs font-semibold uppercase tracking-widest text-accent">Shutdown Broadcast</div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted shrink-0">Type</label>
+            <Select selectedKey={shutdownType} onSelectionChange={k => setShutdownType(String(k))} className="flex-1" aria-label="Shutdown type">
+              <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+              <Select.Popover>
+                <ListBox>
+                  {['Restart', 'Maintenance', 'Update'].map(t => (
+                    <ListBox.Item key={t} id={t} textValue={t}>{t}<ListBox.ItemIndicator /></ListBox.Item>
+                  ))}
+                </ListBox>
+              </Select.Popover>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted shrink-0">Delay (min)</label>
+            <Input
+              type="number" min={1} max={120} value={shutdownDelay}
+              onChange={e => setShutdownDelay(Math.max(1, parseInt(e.target.value) || 10))}
+              className="w-20" aria-label="Delay minutes"
+            />
+          </div>
+          <div className="flex gap-2 mt-auto">
+            <Button size="sm" variant="danger-soft" isDisabled={shutdownBusy}
+              onPress={async () => {
+                setShutdownBusy(true)
+                try {
+                  await api.broadcast.shutdown(shutdownType, shutdownDelay)
+                  toast.success(`Shutdown broadcast sent (${shutdownDelay} min)`)
+                } catch (e: unknown) {
+                  toast.danger(e instanceof Error ? e.message : String(e))
+                } finally { setShutdownBusy(false) }
+              }}>
+              {shutdownBusy ? <Spinner size="sm" color="current" /> : <><Icon name="triangle-alert" /> Broadcast</>}
+            </Button>
+            <Button size="sm" variant="ghost" isDisabled={shutdownBusy}
+              onPress={async () => {
+                setShutdownBusy(true)
+                try {
+                  await api.broadcast.shutdown(shutdownType, 0, true)
+                  toast.success('Shutdown broadcast cancelled')
+                } catch (e: unknown) {
+                  toast.danger(e instanceof Error ? e.message : String(e))
+                } finally { setShutdownBusy(false) }
+              }}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+
       </div>
 
       {/* ── Modals ───────────────────────────────────────────────────── */}

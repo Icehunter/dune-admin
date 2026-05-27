@@ -1,7 +1,7 @@
 export type Sidebar = 'players' | 'currency' | 'factions' | 'specs' | 'online'
 
 export type ActionSection =
-  | 'resources' | 'specs' | 'progression' | 'journey' | 'admin' | 'tags' | 'history'
+  | 'resources' | 'specs' | 'progression' | 'journey' | 'admin' | 'tags' | 'history' | 'experimental'
 
 export type PlayerSortKey = 'id' | 'name' | 'class' | 'map' | 'faction_id'
 
@@ -23,13 +23,14 @@ export const SIDEBAR_ITEMS: { key: Sidebar; label: string }[] = [
 ]
 
 export const ACTION_SECTIONS: { key: ActionSection; label: string }[] = [
-  { key: 'resources',   label: 'Stats' },
-  { key: 'specs',       label: 'Specs' },
-  { key: 'progression', label: 'Progression' },
-  { key: 'journey',     label: 'Journey' },
-  { key: 'admin',       label: 'Admin' },
-  { key: 'tags',        label: 'Tags' },
-  { key: 'history',     label: 'History' },
+  { key: 'resources',    label: 'Stats' },
+  { key: 'specs',        label: 'Specs' },
+  { key: 'progression',  label: 'Progression' },
+  { key: 'journey',      label: 'Journey' },
+  { key: 'admin',        label: 'Admin' },
+  { key: 'tags',         label: 'Tags' },
+  { key: 'history',      label: 'History' },
+  { key: 'experimental', label: 'Experimental' },
 ]
 
 export const PLAYER_COLUMNS: { key: PlayerSortKey; label: string }[] = [

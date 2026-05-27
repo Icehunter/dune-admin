@@ -524,7 +524,7 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                   })()
                   const selectedMQDef = MAIN_QUESTS.find(m => m.id === selectedMQ)
                   return (
-                  <div className="flex flex-col gap-3 flex-1 min-h-0 pr-1">
+                  <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto pr-1">
                     {/* Quick Presets — curated journey-completion bundles */}
                     <Panel>
                       <SectionLabel>Quick Presets</SectionLabel>

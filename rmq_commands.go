@@ -124,12 +124,12 @@ func rmqSendWhisper(targetFlsID, targetName, senderName, message, impersonatedFl
 	// member names with the m_ prefix stripped (broadcast struct uses the same
 	// convention).
 	chatMsg := map[string]any{
-		"Id":              fmt.Sprintf("%d", time.Now().UnixNano()),
-		"ChannelType":     "ETextChatChannelType::Whispers",
-		"FuncomIdFrom":    impersonatedFlsID,
-		"UserNameTo":      targetName,
-		"Message":         map[string]any{"Body": message},
-		"TimeStamp":       time.Now().UTC().Format(time.RFC3339),
+		"Id":                  fmt.Sprintf("%d", time.Now().UnixNano()),
+		"ChannelType":         "ETextChatChannelType::Whispers",
+		"FuncomIdFrom":        impersonatedFlsID,
+		"UserNameTo":          targetName,
+		"Message":             map[string]any{"Body": message},
+		"TimeStamp":           time.Now().UTC().Format(time.RFC3339),
 		"bUseSpoofedUserName": senderName != "",
 		"SpoofedUserNameFrom": map[string]any{"AuthorName": senderName},
 	}
@@ -216,12 +216,12 @@ func rmqServiceBroadcastGeneric(durationSec int, texts []localizedText) error {
 
 func rmqServiceBroadcastShutdown(shutdownType string, timestamp int64, frequency, duration int, shouldCancel bool) error {
 	payload := map[string]any{
-		"ShutdownType":      shutdownType,
-		"ShouldCancel":      shouldCancel,
-		"ShutdownTimestamp": timestamp,
+		"ShutdownType":       shutdownType,
+		"ShouldCancel":       shouldCancel,
+		"ShutdownTimestamp":  timestamp,
 		"BroadcastFrequency": frequency,
-		"ShutdownDuration":  duration,
-		"DateTimestamp":     timestamp,
+		"ShutdownDuration":   duration,
+		"DateTimestamp":      timestamp,
 	}
 	return publishServerCommand(map[string]any{
 		"ServerCommand":    "ServiceBroadcast",
@@ -311,7 +311,6 @@ func rmqSpawnVehicleAt(flsID, className string, x, y, z, rotation float64, templ
 	return publishServerCommand(fields)
 }
 
-
 // ── player ID resolution ──────────────────────────────────────────────────────
 
 // flsIDFromActorID resolves the accounts."user" hex Funcom UUID for an actor
@@ -331,7 +330,6 @@ func flsIDFromActorID(ctx context.Context, actorID int64) (string, error) {
 	}
 	return flsID, nil
 }
-
 
 // containerOwnerInfo holds the resolved owner details for a storage container.
 type containerOwnerInfo struct {

@@ -162,16 +162,16 @@ func handleStorageOwnerDebug(w http.ResponseWriter, r *http.Request) {
 	_ = globalDB.QueryRow(ctx, `SELECT COALESCE("user",'') FROM dune.accounts WHERE id = $1`, accountID).Scan(&hexID)
 
 	jsonOK(w, map[string]any{
-		"container_id":      id,
-		"owner_entity_id":   ownerEntityID,
-		"afe_entity_id":     afeEntityID,
-		"afe_actor_id":      afeActorID,
-		"owner_account_id":  ownerAccountID,
-		"par_player_id":     parPlayerID,
-		"par_account_id":    parAccountID,
-		"resolved_account":  accountID,
-		"character_name":    characterName,
-		"funcom_id":         funcomID,
-		"hex_id":            hexID,
+		"container_id":     id,
+		"owner_entity_id":  ownerEntityID,
+		"afe_entity_id":    afeEntityID,
+		"afe_actor_id":     afeActorID,
+		"owner_account_id": ownerAccountID,
+		"par_player_id":    parPlayerID,
+		"par_account_id":   parAccountID,
+		"resolved_account": accountID,
+		"character_name":   characterName,
+		"funcom_id":        funcomID,
+		"hex_id":           hexID,
 	})
 }

@@ -10,10 +10,10 @@ import (
 // Intended for AMP, LGSM, bare-metal, or any environment where the user
 // manages the game server through their own tooling.
 type localControl struct {
-	cmdStart        string // e.g. "amp start dune"
-	cmdStop         string
-	cmdRestart      string
-	cmdStatus       string
+	cmdStart         string // e.g. "amp start dune"
+	cmdStop          string
+	cmdRestart       string
+	cmdStatus        string
 	brokerExecPrefix string // e.g. "podman exec AMP_MehDune01" — prepended to rabbitmqctl calls
 }
 
@@ -95,7 +95,7 @@ func (c *localControl) EnsureCaptureUser(_ context.Context, exec Executor) {
 		fmt.Printf("[capture] [local] created user %s\n", capUser)
 	}
 	exec.Exec(fmt.Sprintf("%s set_permissions -p / %s '.*' '.*' '.*' 2>&1", base, capUser)) //nolint:errcheck
-	exec.Exec(fmt.Sprintf(                                                                    //nolint:errcheck
+	exec.Exec(fmt.Sprintf(                                                                  //nolint:errcheck
 		"%s eval 'application:set_env(rabbit, auth_backends, [{rabbit_auth_backend_cache, rabbit_auth_backend_http}, rabbit_auth_backend_internal]).' 2>&1",
 		base))
 	exec.Exec(fmt.Sprintf( //nolint:errcheck

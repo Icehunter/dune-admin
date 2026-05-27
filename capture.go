@@ -289,4 +289,3 @@ func printMessage(broker string, msg amqp.Delivery) {
 func isJSON(b []byte) bool {
 	return len(b) > 0 && (b[0] == '{' || b[0] == '[')
 }
-

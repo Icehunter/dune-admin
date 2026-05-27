@@ -418,14 +418,14 @@ func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gameContent          := readINIContent(dir + "/UserGame.ini")
-	engineContent        := readINIContent(dir + "/UserEngine.ini")
-	defaultGameContent   := readDefaultINIContent(dir, "DefaultGame.ini")
+	gameContent := readINIContent(dir + "/UserGame.ini")
+	engineContent := readINIContent(dir + "/UserEngine.ini")
+	defaultGameContent := readDefaultINIContent(dir, "DefaultGame.ini")
 	defaultEngineContent := readDefaultINIContent(dir, "DefaultEngine.ini")
 
-	gameIni          := parseINI(gameContent)
-	engineIni        := parseINI(engineContent)
-	defaultGameIni   := parseINI(defaultGameContent)
+	gameIni := parseINI(gameContent)
+	engineIni := parseINI(engineContent)
+	defaultGameIni := parseINI(defaultGameContent)
 	defaultEngineIni := parseINI(defaultEngineContent)
 
 	// Build schema key set for raw-line filtering.

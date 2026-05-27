@@ -157,9 +157,9 @@ func handleRMQCheatScript(w http.ResponseWriter, r *http.Request) {
 // Accepts actor_id (player pawn ID), resolves to FLS ID automatically.
 func handleRMQGiveItem(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		PlayerID int64   `json:"player_id"` // actor (pawn) ID
-		Template string  `json:"template"`
-		Qty      int     `json:"qty"`
+		PlayerID   int64   `json:"player_id"` // actor (pawn) ID
+		Template   string  `json:"template"`
+		Qty        int     `json:"qty"`
 		Durability float64 `json:"durability"`
 	}
 	if err := decode(r, &req); err != nil {

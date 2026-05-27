@@ -187,7 +187,7 @@ func ensureBrokerViaDockerExec(exec Executor, container string) {
 		fmt.Printf("[capture] [%s] created user %s\n", container, capUser)
 	}
 	exec.Exec(fmt.Sprintf("%s rabbitmqctl set_permissions -p / %s '.*' '.*' '.*' 2>&1", base, capUser)) //nolint:errcheck
-	exec.Exec(fmt.Sprintf(                                                                               //nolint:errcheck
+	exec.Exec(fmt.Sprintf(                                                                              //nolint:errcheck
 		"%s rabbitmqctl eval 'application:set_env(rabbit, auth_backends, [{rabbit_auth_backend_cache, rabbit_auth_backend_http}, rabbit_auth_backend_internal]).' 2>&1",
 		base))
 	exec.Exec(fmt.Sprintf( //nolint:errcheck

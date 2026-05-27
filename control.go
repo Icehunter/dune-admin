@@ -129,10 +129,10 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 		}
 	default:
 		return &localControl{
-			cmdStart:        cfg.CmdStart,
-			cmdStop:         cfg.CmdStop,
-			cmdRestart:      cfg.CmdRestart,
-			cmdStatus:       cfg.CmdStatus,
+			cmdStart:         cfg.CmdStart,
+			cmdStop:          cfg.CmdStop,
+			cmdRestart:       cfg.CmdRestart,
+			cmdStatus:        cfg.CmdStatus,
 			brokerExecPrefix: cfg.BrokerExecPrefix,
 		}
 	}

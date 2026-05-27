@@ -2471,6 +2471,167 @@ func nodesForPreset(faction, preset string) []string {
 	return nodes
 }
 
+const progressionUnlockMaxTier = 5
+
+type progressionFactionConfig struct {
+	factionID        int16
+	dialogueFlag     string
+	alignedFlag      string
+	metRecruiterFlag string
+	factionUnlocked  string
+	recruitmentDone  string
+}
+
+func progressionFactionConfigFor(faction string) (progressionFactionConfig, error) {
+	switch faction {
+	case "atreides":
+		return progressionFactionConfig{
+			factionID:        1,
+			dialogueFlag:     "DialogueFlags.Factions.SentToMeetHawat",
+			alignedFlag:      "DialogueFlags.Factions.AlignedAtreides",
+			metRecruiterFlag: "DialogueFlags.Factions.MetHawat",
+			factionUnlocked:  "Contract.Tracking.AtreidesFactionUnlocked",
+			recruitmentDone:  "Contract.Tracking.AtreidesRecruitmentCompleted",
+		}, nil
+	case "harkonnen":
+		return progressionFactionConfig{
+			factionID:        2,
+			dialogueFlag:     "DialogueFlags.Factions.SentToPiterDeVries",
+			alignedFlag:      "DialogueFlags.Factions.AlignedHarkonnen",
+			metRecruiterFlag: "DialogueFlags.Factions.MetPiterDeVries",
+			factionUnlocked:  "Contract.Tracking.HarkonnenFactionUnlocked",
+			recruitmentDone:  "Contract.Tracking.HarkonnenRecruitmentCompleted",
+		}, nil
+	default:
+		return progressionFactionConfig{}, fmt.Errorf("faction must be atreides or harkonnen")
+	}
+}
+
+func progressionTargetTierForPreset(preset string) (int, error) {
+	switch preset {
+	case "ch3_start":
+		return 5, nil
+	case "rank19_eligible":
+		return 19, nil
+	default:
+		return 0, fmt.Errorf("preset must be ch3_start or rank19_eligible")
+	}
+}
+
+func progressionUnlockTags(cfg progressionFactionConfig, targetTier int) []string {
+	factionName := factionDisplayName(cfg.factionID)
+	// Faction.<X>.TierN is only a real gameplay tag for N ∈ [0,5] — see
+	// DA_Atreides.json / DA_Harkonnen.json m_FactionTiers, where Tier 6+
+	// all have m_FactionTierTag.TagName == "None". Tier 5 flips
+	// m_bAllowPromotionThroughReputation to true, after which rep alone
+	// advances the displayed rank. So Tier0–5 + a rep >= threshold[19] is
+	// enough to display rank 19 — no need to write phantom Tier6..19 tags.
+	allTags := []string{
+		cfg.dialogueFlag, cfg.alignedFlag, cfg.metRecruiterFlag,
+		cfg.factionUnlocked, cfg.recruitmentDone,
+		"DialogueFlags.Factions.FactionIntro",
+		"DialogueFlags.Factions.FactionRank1",
+		"DialogueFlags.Factions.FactionRank3",
+		"DialogueFlags.Factions.MetARecruiter",
+		"DialogueFlags.Factions.PlayedAllegianceCinematic",
+		"DialogueFlags.Factions.SeenAnvilCinematic",
+	}
+	if targetTier >= 19 {
+		allTags = append(allTags, "Journey.LandsraadContractsUnlocked")
+	}
+	for tier := 0; tier <= progressionUnlockMaxTier; tier++ {
+		allTags = append(allTags, fmt.Sprintf("Faction.%s.Tier%d", factionName, tier))
+	}
+	return allTags
+}
+
+func resolveProgressionUnlockPlayer(ctx context.Context, actorID int64) (accountID, controllerID int64, flsID string, err error) {
+	if err = globalDB.QueryRow(ctx, `
+		SELECT COALESCE(a.owner_account_id, 0),
+		       COALESCE(ps.player_controller_id, 0)
+		FROM dune.actors a
+		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
+		WHERE a.id = $1`, actorID,
+	).Scan(&accountID, &controllerID); err != nil || accountID == 0 {
+		return 0, 0, "", fmt.Errorf("player %d not found or has no account", actorID)
+	}
+	if controllerID == 0 {
+		return 0, 0, "", fmt.Errorf("player %d has no controller actor", actorID)
+	}
+	flsID, err = rawFuncomID(ctx, accountID)
+	if err != nil || flsID == "" {
+		return 0, 0, "", fmt.Errorf("player %d has no FLS ID", actorID)
+	}
+	return accountID, controllerID, flsID, nil
+}
+
+func applyProgressionUnlock(
+	ctx context.Context,
+	accountID, controllerID int64,
+	flsID string,
+	factionID int16,
+	factionName string,
+	targetTier int,
+	journeyNodes, allTags []string,
+) error {
+	tx, err := globalDB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err = tx.Exec(ctx,
+		`SELECT dune.complete_journey_story_nodes_for_player($1, $2::text[])`,
+		flsID, journeyNodes); err != nil {
+		return fmt.Errorf("complete journey nodes: %w", err)
+	}
+
+	// Align the player with the chosen faction. Required for fresh / unaligned
+	// characters (no player_faction row) — without this the rank UI doesn't
+	// reflect tier changes because the game treats the player as unaligned.
+	// neutral_faction_id = 3 ("None") so this proc takes the upsert branch.
+	if _, err = tx.Exec(ctx,
+		`SELECT dune.change_player_faction($1::bigint, $2::smallint, 3::smallint, NOW()::timestamp)`,
+		controllerID, factionID); err != nil {
+		return fmt.Errorf("change_player_faction: %w", err)
+	}
+
+	if _, err = tx.Exec(ctx,
+		`SELECT dune.update_player_tags($1, $2::text[], '{}'::text[])`, accountID, allTags); err != nil {
+		return fmt.Errorf("update player tags: %w", err)
+	}
+
+	// +1 over the tier threshold: the game UI floors at the threshold
+	// (rep == threshold shows the tier below), so we nudge just over.
+	targetRep := factionTierThresholds[targetTier] + 1
+	if _, err = tx.Exec(ctx,
+		`SELECT dune.set_player_faction_reputation($1, $2, $3)`,
+		controllerID, factionID, targetRep); err != nil {
+		return fmt.Errorf("set faction rep: %w", err)
+	}
+	if _, err = tx.Exec(ctx, factionPlayerComponentRepSQL,
+		controllerID, factionName, targetRep); err != nil {
+		return fmt.Errorf("update FactionPlayerComponent rep: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func formatProgressionUnlockSuccess(
+	preset, faction string,
+	journeyNodeCount int,
+	factionName string,
+	targetTier int,
+	controllerID int64,
+) string {
+	return fmt.Sprintf(
+		"Progression unlock (%s/%s): %d journey nodes completed + %s tier tags 0–%d + rep tier %d on controller %d — takes effect on next login",
+		preset, faction, journeyNodeCount, factionName, progressionUnlockMaxTier, targetTier, controllerID)
+}
+
 // cmdProgressionUnlock completes all prerequisite faction story journey nodes,
 // writes the corresponding gameplay tags, and sets reputation to the preset's
 // target tier.
@@ -2483,136 +2644,47 @@ func cmdProgressionUnlock(actorID int64, faction, preset string) Cmd {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 
-		var factionID int16
-		var dialogueFlag, alignedFlag, metRecruiterFlag, factionUnlocked, recruitmentDone string
-		switch faction {
-		case "atreides":
-			factionID = 1
-			dialogueFlag = "DialogueFlags.Factions.SentToMeetHawat"
-			alignedFlag = "DialogueFlags.Factions.AlignedAtreides"
-			metRecruiterFlag = "DialogueFlags.Factions.MetHawat"
-			factionUnlocked = "Contract.Tracking.AtreidesFactionUnlocked"
-			recruitmentDone = "Contract.Tracking.AtreidesRecruitmentCompleted"
-		case "harkonnen":
-			factionID = 2
-			dialogueFlag = "DialogueFlags.Factions.SentToPiterDeVries"
-			alignedFlag = "DialogueFlags.Factions.AlignedHarkonnen"
-			metRecruiterFlag = "DialogueFlags.Factions.MetPiterDeVries"
-			factionUnlocked = "Contract.Tracking.HarkonnenFactionUnlocked"
-			recruitmentDone = "Contract.Tracking.HarkonnenRecruitmentCompleted"
-		default:
-			return msgMutate{err: fmt.Errorf("faction must be atreides or harkonnen")}
-		}
-
-		var targetTier int
-		switch preset {
-		case "ch3_start":
-			targetTier = 5
-		case "rank19_eligible":
-			targetTier = 19
-		default:
-			return msgMutate{err: fmt.Errorf("preset must be ch3_start or rank19_eligible")}
-		}
-
-		ctx := context.Background()
-
-		var accountID, controllerID int64
-		err := globalDB.QueryRow(ctx, `
-			SELECT COALESCE(a.owner_account_id, 0),
-			       COALESCE(ps.player_controller_id, 0)
-			FROM dune.actors a
-			LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
-			WHERE a.id = $1`, actorID,
-		).Scan(&accountID, &controllerID)
-		if err != nil || accountID == 0 {
-			return msgMutate{err: fmt.Errorf("player %d not found or has no account", actorID)}
-		}
-		if controllerID == 0 {
-			return msgMutate{err: fmt.Errorf("player %d has no controller actor", actorID)}
-		}
-		flsID, err := rawFuncomID(ctx, accountID)
-		if err != nil || flsID == "" {
-			return msgMutate{err: fmt.Errorf("player %d has no FLS ID", actorID)}
-		}
-
-		journeyNodes := nodesForPreset(faction, preset)
-
-		factionName := factionDisplayName(factionID)
-		// Faction.<X>.TierN is only a real gameplay tag for N ∈ [0,5] — see
-		// DA_Atreides.json / DA_Harkonnen.json m_FactionTiers, where Tier 6+
-		// all have m_FactionTierTag.TagName == "None". Tier 5 flips
-		// m_bAllowPromotionThroughReputation to true, after which rep alone
-		// advances the displayed rank. So Tier0–5 + a rep >= threshold[19] is
-		// enough to display rank 19 — no need to write phantom Tier6..19 tags.
-		const maxTier = 5
-		// Baseline faction-progression tags observed on both rank-up reference
-		// characters (rank 19 Atreides + rank 8 Harkonnen). MetARecruiter,
-		// PlayedAllegianceCinematic, SeenAnvilCinematic, FactionRank1/3 are
-		// faction-neutral; the faction-specific flags are picked above.
-		allTags := []string{
-			dialogueFlag, alignedFlag, metRecruiterFlag,
-			factionUnlocked, recruitmentDone,
-			"DialogueFlags.Factions.FactionIntro",
-			"DialogueFlags.Factions.FactionRank1",
-			"DialogueFlags.Factions.FactionRank3",
-			"DialogueFlags.Factions.MetARecruiter",
-			"DialogueFlags.Factions.PlayedAllegianceCinematic",
-			"DialogueFlags.Factions.SeenAnvilCinematic",
-		}
-		if targetTier >= 19 {
-			allTags = append(allTags, "Journey.LandsraadContractsUnlocked")
-		}
-		for t := 0; t <= maxTier; t++ {
-			allTags = append(allTags, fmt.Sprintf("Faction.%s.Tier%d", factionName, t))
-		}
-
-		tx, err := globalDB.Begin(ctx)
+		cfg, err := progressionFactionConfigFor(faction)
 		if err != nil {
 			return msgMutate{err: err}
 		}
-		defer func() { _ = tx.Rollback(ctx) }()
-
-		if _, err = tx.Exec(ctx,
-			`SELECT dune.complete_journey_story_nodes_for_player($1, $2::text[])`,
-			flsID, journeyNodes); err != nil {
-			return msgMutate{err: fmt.Errorf("complete journey nodes: %w", err)}
-		}
-
-		// Align the player with the chosen faction. Required for fresh / unaligned
-		// characters (no player_faction row) — without this the rank UI doesn't
-		// reflect tier changes because the game treats the player as unaligned.
-		// neutral_faction_id = 3 ("None") so this proc takes the upsert branch.
-		if _, err = tx.Exec(ctx,
-			`SELECT dune.change_player_faction($1::bigint, $2::smallint, 3::smallint, NOW()::timestamp)`,
-			controllerID, factionID); err != nil {
-			return msgMutate{err: fmt.Errorf("change_player_faction: %w", err)}
-		}
-
-		if _, err = tx.Exec(ctx,
-			`SELECT dune.update_player_tags($1, $2::text[], '{}'::text[])`, accountID, allTags); err != nil {
-			return msgMutate{err: fmt.Errorf("update player tags: %w", err)}
-		}
-
-		// +1 over the tier threshold: the game UI floors at the threshold
-		// (rep == threshold shows the tier below), so we nudge just over.
-		targetRep := factionTierThresholds[targetTier] + 1
-		if _, err = tx.Exec(ctx,
-			`SELECT dune.set_player_faction_reputation($1, $2, $3)`,
-			controllerID, factionID, targetRep); err != nil {
-			return msgMutate{err: fmt.Errorf("set faction rep: %w", err)}
-		}
-		if _, err = tx.Exec(ctx, factionPlayerComponentRepSQL,
-			controllerID, factionName, targetRep); err != nil {
-			return msgMutate{err: fmt.Errorf("update FactionPlayerComponent rep: %w", err)}
-		}
-
-		if err := tx.Commit(ctx); err != nil {
+		targetTier, err := progressionTargetTierForPreset(preset)
+		if err != nil {
 			return msgMutate{err: err}
 		}
 
-		return msgMutate{ok: fmt.Sprintf(
-			"Progression unlock (%s/%s): %d journey nodes completed + %s tier tags 0–%d + rep tier %d on controller %d — takes effect on next login",
-			preset, faction, len(journeyNodes), factionName, maxTier, targetTier, controllerID)}
+		journeyNodes := nodesForPreset(faction, preset)
+		factionName := factionDisplayName(cfg.factionID)
+		allTags := progressionUnlockTags(cfg, targetTier)
+
+		ctx := context.Background()
+		accountID, controllerID, flsID, err := resolveProgressionUnlockPlayer(ctx, actorID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+
+		if err := applyProgressionUnlock(
+			ctx,
+			accountID,
+			controllerID,
+			flsID,
+			cfg.factionID,
+			factionName,
+			targetTier,
+			journeyNodes,
+			allTags,
+		); err != nil {
+			return msgMutate{err: err}
+		}
+
+		return msgMutate{ok: formatProgressionUnlockSuccess(
+			preset,
+			faction,
+			len(journeyNodes),
+			factionName,
+			targetTier,
+			controllerID,
+		)}
 	}
 }
 

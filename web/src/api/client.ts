@@ -305,10 +305,10 @@ export const api = {
       req<MutateResult>('POST', '/players/give-faction-rep', { actor_id, faction_id, delta }),
     giveScrip: (actor_id: number, delta: number) =>
       req<MutateResult>('POST', '/players/give-scrip', { actor_id, delta }),
-    awardXP: (player_id: number, track_type: string, delta: number) =>
-      req<MutateResult>('POST', '/players/award-xp', { player_id, track_type, delta }),
-    awardCharXP: (player_id: number, amount: number) =>
-      req<MutateResult>('POST', '/players/award-char-xp', { player_id, amount }),
+    awardXP: (player_id: number, track_type: string, delta: number, fls_id?: string) =>
+      req<MutateResult>('POST', '/players/award-xp', { player_id, track_type, delta, fls_id }),
+    awardCharXP: (player_id: number, amount: number, fls_id?: string) =>
+      req<MutateResult>('POST', '/players/award-char-xp', { player_id, amount, fls_id }),
     awardIntel: (player_id: number, amount: number) =>
       req<MutateResult>('POST', '/players/award-intel', { player_id, amount }),
     rename: (account_id: number, name: string) => req<MutateResult>('POST', '/players/rename', { account_id, name }),
@@ -317,6 +317,25 @@ export const api = {
     returningPlayerAward: (account_id: number) => req<MutateResult>('POST', '/players/returning-player-award', { account_id }),
     dismissReturningPlayerAward: (account_id: number) => req<MutateResult>('POST', '/players/dismiss-returning-player-award', { account_id }),
     exportUrl: (account_id: number) => `${BASE}/players/${account_id}/export`,
+    exportPlayer: async (account_id: number): Promise<void> => {
+      const token = await window.Clerk?.session?.getToken()
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch(`${BASE}/players/${account_id}/export`, { headers })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }))
+        throw new ApiError(res.status, err.error ?? res.statusText)
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `player_${account_id}_export.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
     deleteAccount: (account_id: number, reason: string) => req<MutateResult>('POST', '/players/delete-account', { account_id, reason }),
     deleteItem: (id: number) => req<MutateResult>('DELETE', `/players/item/${id}`),
     resetSpec: (player_id: number, track_type: string) =>
@@ -371,6 +390,29 @@ export const api = {
       req<MutateResult>('POST', '/players/teleport', { fls_id, partition_label }),
     events: (id: number) => req<GameEvent[]>('GET', `/players/${id}/events`),
     dungeons: (id: number) => req<DungeonRecord[]>('GET', `/players/${id}/dungeons`),
+    kick: (fls_id: string) =>
+      req<MutateResult>('POST', '/players/kick', { fls_id }),
+    fillWater: (fls_id: string, water_amount = 1000000) =>
+      req<MutateResult>('POST', '/players/fill-water', { fls_id, water_amount }),
+    setSkillPoints: (fls_id: string, skill_points: number) =>
+      req<MutateResult>('POST', '/players/set-skill-points', { fls_id, skill_points }),
+    cheatScript: (fls_id: string, script_name: string) =>
+      req<MutateResult>('POST', '/players/cheat-script', { fls_id, script_name }),
+    cleanInventory: (fls_id: string) =>
+      req<MutateResult>('POST', '/players/clean-inventory', { fls_id }),
+    resetProgression: (fls_id: string) =>
+      req<MutateResult>('POST', '/players/reset-progression', { fls_id }),
+    setSkillModule: (fls_id: string, module: string, level: number) =>
+      req<MutateResult>('POST', '/players/set-skill-module', { fls_id, module, level }),
+    spawnVehicle: (fls_id: string, class_name: string, x: number, y: number, z: number, options?: { rotation?: number; template_name?: string; persistent?: boolean; faction?: string }) =>
+      req<MutateResult>('POST', '/vehicles/spawn', { fls_id, class_name, x, y, z, ...options }),
+  },
+
+  broadcast: {
+    send: (texts: { Key: string; Title: string; Body: string }[], duration_sec = 30) =>
+      req<MutateResult>('POST', '/broadcast', { texts, duration_sec }),
+    shutdown: (shutdown_type: string, delay_minutes: number, cancel = false) =>
+      req<MutateResult>('POST', '/broadcast/shutdown', { shutdown_type, delay_minutes, cancel }),
   },
 
   contracts: {
@@ -391,7 +433,7 @@ export const api = {
   },
 
   storage: {
-    list: () => req<{id: number; name: string; class: string; map: string; item_count: number}[]>('GET', '/storage'),
+    list: () => req<{id: number; name: string; class: string; map: string; item_count: number; item_templates: string[]; item_names: string[]; owner_name: string}[]>('GET', '/storage'),
     items: (id: number) => req<InventoryItem[]>('GET', `/storage/${id}/items`),
     giveItem: (id: number, template: string, qty: number, quality: number) =>
       req<MutateResult>('POST', `/storage/${id}/give-item`, { template, qty, quality }),

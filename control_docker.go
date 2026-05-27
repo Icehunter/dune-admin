@@ -131,6 +131,19 @@ func (c *dockerControl) EnsureCaptureUser(_ context.Context, exec Executor) {
 	}
 }
 
+func (c *dockerControl) EvalOnGameBroker(_ context.Context, exec Executor, expr string) (string, error) {
+	if c.brokerGame == "" {
+		return "", errNotSupported("docker", "EvalOnGameBroker (docker_broker_game not configured)")
+	}
+	out, err := exec.Exec(fmt.Sprintf(
+		"docker exec %s rabbitmqctl eval %s 2>&1",
+		c.brokerGame, shellQuote(expr)))
+	if err != nil {
+		return "", fmt.Errorf("rabbitmqctl eval: %w (output: %s)", err, strings.TrimSpace(out))
+	}
+	return strings.TrimSpace(out), nil
+}
+
 func (c *dockerControl) ReadDefaultINI(_ context.Context, exec Executor, filename string) string {
 	if c.gameserver == "" {
 		return ""

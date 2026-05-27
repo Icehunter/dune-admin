@@ -61,7 +61,7 @@ func cmdFetchPlayers() Msg {
 		       COALESCE(a.owner_account_id, 0),
 		       COALESCE(ps.character_name, convert_from(e.encrypted_funcom_id, 'UTF8'), ''),
 		       COALESCE(ps.player_controller_id, 0),
-		       COALESCE(convert_from(e.encrypted_funcom_id, 'UTF8'), ''),
+		       COALESCE(ac."user", ''),
 		       a.class,
 		       COALESCE(a.map, ''),
 		       COALESCE(pf.faction_id, 0),
@@ -69,6 +69,7 @@ func cmdFetchPlayers() Msg {
 		FROM dune.actors a
 		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
 		LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
+		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id
 		LEFT JOIN dune.player_faction pf ON pf.actor_id = a.id
 		WHERE a.class ILIKE '%PlayerCharacter%'
 		ORDER BY a.id`)
@@ -470,6 +471,100 @@ func cmdGiveItem(playerID int64, template string, qty, quality int64) Cmd {
 	}
 }
 
+// checkInventoryCapacity verifies that qty items of template fit in the player's
+// backpack (inventory_type=0). Returns an error if the inventory is over volume
+// or slot limits. Used to pre-validate RMQ give-item commands since the game
+// server's cheat function bypasses these checks.
+func checkInventoryCapacity(ctx context.Context, playerID int64, template string, qty int64) error {
+	if globalDB == nil {
+		return fmt.Errorf("not connected")
+	}
+	var invID int64
+	var maxSlots int
+	var maxVolume float64
+	err := globalDB.QueryRow(ctx, `
+		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
+		FROM dune.inventories
+		WHERE actor_id = $1::bigint AND inventory_type = 0
+		LIMIT 1`, playerID).Scan(&invID, &maxSlots, &maxVolume)
+	if err != nil {
+		// No inventory found — cannot validate; let the game server decide.
+		return nil
+	}
+
+	hasSlotCap := maxSlots > 0
+	hasVolumeCap := maxVolume > 0
+	if !hasSlotCap && !hasVolumeCap {
+		return nil
+	}
+
+	usedSlots := 0
+	usedVolume := 0.0
+	rows, err := globalDB.Query(ctx, `
+		SELECT template_id, stack_size, volume_override
+		FROM dune.items
+		WHERE inventory_id = $1::bigint`, invID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var tmpl string
+		var stackSize int64
+		var vol pgtype.Float8
+		if err := rows.Scan(&tmpl, &stackSize, &vol); err != nil {
+			continue
+		}
+		usedSlots++
+		if hasVolumeCap {
+			itemVol := 0.0
+			if vol.Valid && vol.Float64 > 0 {
+				itemVol = vol.Float64
+			} else if itemData.Items != nil {
+				if rule, ok := itemData.Items[strings.ToLower(tmpl)]; ok {
+					itemVol = rule.Volume
+				} else if itemData.DefaultVolume > 0 {
+					itemVol = itemData.DefaultVolume
+				}
+			} else if itemData.DefaultVolume > 0 {
+				itemVol = itemData.DefaultVolume
+			}
+			usedVolume += itemVol * float64(stackSize)
+		}
+	}
+
+	if hasVolumeCap {
+		perItemVol, err := resolveItemVolume(ctx, template)
+		if err == nil && perItemVol > 0 {
+			availableVol := maxVolume - usedVolume
+			if availableVol < 0 {
+				availableVol = 0
+			}
+			maxByVolume := int64(math.Floor(availableVol / perItemVol))
+			if maxByVolume < qty {
+				return fmt.Errorf(
+					"over weight limit: room for %d more %s (%.2f/%.2f volume used)",
+					maxByVolume, template, usedVolume, maxVolume)
+			}
+		}
+	}
+
+	if hasSlotCap {
+		stackMax, err := resolveStackMax(ctx, template, 0)
+		if err != nil || stackMax < 1 {
+			stackMax = 1
+		}
+		newStacks := int((qty + stackMax - 1) / stackMax)
+		freeSlots := maxSlots - usedSlots
+		if freeSlots < newStacks {
+			return fmt.Errorf(
+				"inventory full: need %d free slots, have %d",
+				newStacks, freeSlots)
+		}
+	}
+	return nil
+}
+
 // cmdGrantLive inserts into landsraad_house_rewards which fires a pg_notify trigger.
 // The game server receives the notification immediately and shows "Claim Rewards" to the player.
 func cmdGrantLive(controllerID int64, templateID string, amount int64) Cmd {
@@ -578,7 +673,7 @@ func cmdAwardXP(playerID int64, trackType string, delta int32) Cmd {
 		}
 		res, err := globalDB.Exec(context.Background(), `
 			UPDATE dune.specialization_tracks
-			SET xp_amount = LEAST(xp_amount + $1::integer, $4::integer)
+			SET xp_amount = GREATEST(LEAST(xp_amount + $1::integer, $4::integer), 0)
 			WHERE player_id = $2::bigint AND track_type::text = $3::text`,
 			delta, playerID, trackType, maxXP)
 		if err != nil {
@@ -3949,11 +4044,14 @@ func cmdTeleportPlayer(flsID string, locationName string) Cmd {
 // ── storage container commands ────────────────────────────────────────────────
 
 type storageContainerRow struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	Class     string `json:"class"`
-	Map       string `json:"map"`
-	ItemCount int64  `json:"item_count"`
+	ID            int64    `json:"id"`
+	Name          string   `json:"name"`
+	Class         string   `json:"class"`
+	Map           string   `json:"map"`
+	ItemCount     int64    `json:"item_count"`
+	ItemTemplates []string `json:"item_templates"`
+	ItemNames     []string `json:"item_names"`
+	OwnerName     string   `json:"owner_name"`
 }
 
 type msgStorageContainers struct {
@@ -3983,12 +4081,19 @@ func cmdListStorageContainers() Msg {
 		       END), '') AS name,
 		       p.building_type AS class,
 		       COALESCE(a.map, '') AS map,
-		       COUNT(i.id) AS item_count
+		       COUNT(i.id) AS item_count,
+		       COALESCE(array_agg(DISTINCT i.template_id) FILTER (WHERE i.template_id IS NOT NULL), '{}') AS item_templates,
+		       COALESCE(MAX(ps.character_name), MAX(convert_from(e.encrypted_funcom_id, 'UTF8')), '') AS owner_name
 		FROM dune.placeables p
 		LEFT JOIN dune.actors a            ON a.id = p.id
 		LEFT JOIN dune.permission_actor pa ON pa.actor_id = p.id
 		LEFT JOIN dune.inventories inv     ON inv.actor_id = p.id
 		LEFT JOIN dune.items i             ON i.inventory_id = inv.id
+		LEFT JOIN dune.actor_fgl_entities afe  ON afe.entity_id = p.owner_entity_id
+		LEFT JOIN dune.permission_actor_rank par ON par.permission_actor_id = afe.actor_id
+		LEFT JOIN dune.actors player_a          ON player_a.id = par.player_id
+		LEFT JOIN dune.encrypted_accounts e     ON e.id = player_a.owner_account_id
+		LEFT JOIN dune.player_state ps          ON ps.account_id = player_a.owner_account_id
 		WHERE p.building_type IN (
 		    'SpiceSilo_Placeable',
 		    'GenericContainer_Placeable',
@@ -4007,8 +4112,20 @@ func cmdListStorageContainers() Msg {
 	var out []storageContainerRow
 	for rows.Next() {
 		var r storageContainerRow
-		if err := rows.Scan(&r.ID, &r.Name, &r.Class, &r.Map, &r.ItemCount); err != nil {
+		var templates []string
+		if err := rows.Scan(&r.ID, &r.Name, &r.Class, &r.Map, &r.ItemCount, &templates, &r.OwnerName); err != nil {
 			continue
+		}
+		if templates != nil {
+			r.ItemTemplates = templates
+		} else {
+			r.ItemTemplates = []string{}
+		}
+		r.ItemNames = []string{}
+		for _, t := range templates {
+			if name := itemData.Names[strings.ToLower(t)]; name != "" {
+				r.ItemNames = append(r.ItemNames, name)
+			}
 		}
 		out = append(out, r)
 	}

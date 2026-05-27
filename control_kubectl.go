@@ -183,6 +183,26 @@ func (c *kubectlControl) EnsureCaptureUser(_ context.Context, exec Executor) {
 	ensureBrokerViaExec(exec, c.namespace, "mq-game", "mq-game")
 }
 
+func (c *kubectlControl) EvalOnGameBroker(_ context.Context, exec Executor, expr string) (string, error) {
+	if c.namespace == "" {
+		return "", errNotSupported("kubectl", "EvalOnGameBroker (namespace not configured)")
+	}
+	pod, err := exec.Exec(fmt.Sprintf(
+		"sudo kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep mq-game | head -1",
+		c.namespace))
+	if err != nil || strings.TrimSpace(pod) == "" {
+		return "", fmt.Errorf("could not find mq-game pod in namespace %s", c.namespace)
+	}
+	pod = strings.TrimSpace(pod)
+	out, err := exec.Exec(fmt.Sprintf(
+		"sudo kubectl exec -n %s %s -- rabbitmqctl eval %s 2>&1",
+		c.namespace, pod, shellQuote(expr)))
+	if err != nil {
+		return "", fmt.Errorf("rabbitmqctl eval: %w (output: %s)", err, strings.TrimSpace(out))
+	}
+	return strings.TrimSpace(out), nil
+}
+
 // ── kubectl-specific discovery helpers (used by setup wizard) ─────────────────
 
 // discoverDBPod uses kubectl to find the DB pod, returning namespace, name, and pod IP.

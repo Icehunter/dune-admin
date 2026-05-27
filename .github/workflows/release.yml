@@ -9,9 +9,43 @@ permissions:
   contents: write
 
 jobs:
+  sast:
+    name: SAST (gosec)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run gosec
+        run: make gosec
+
+  sca:
+    name: SCA (govulncheck + pnpm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Run govulncheck
+        run: make vulncheck
+
+      - name: Run pnpm audit
+        run: make pnpm-audit
+
   release:
     name: Release
     runs-on: macos-latest # macOS so codesign is available for ad-hoc signing
+    needs: [sast, sca]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -66,6 +100,7 @@ jobs:
         working-directory: web
         env:
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_CDN_BASE_URL: ${{ vars.VITE_CDN_BASE_URL }}
 
       - uses: cloudflare/wrangler-action@v3
         with:

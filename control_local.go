@@ -104,6 +104,14 @@ func (c *localControl) EnsureCaptureUser(_ context.Context, exec Executor) {
 	fmt.Println("[capture] [local] auth backends updated")
 }
 
+func (c *localControl) EvalOnGameBroker(_ context.Context, exec Executor, expr string) (string, error) {
+	out, err := exec.Exec(fmt.Sprintf("%s eval %s 2>&1", c.brokerBase(), shellQuote(expr)))
+	if err != nil {
+		return "", fmt.Errorf("rabbitmqctl eval: %w (output: %s)", err, strings.TrimSpace(out))
+	}
+	return strings.TrimSpace(out), nil
+}
+
 func (c *localControl) ReadDefaultINI(_ context.Context, _ Executor, _ string) string {
 	return "" // host-path traversal in readDefaultINIContent handles local/Hyper-V
 }

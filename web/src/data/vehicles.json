@@ -1,0 +1,56 @@
+[
+  {
+    "id": "Sandbike",
+    "label": "Sandbike",
+    "actor_class": "/Game/Dune/Systems/Vehicles/Blueprints/GroundVehicles/BP_Sandbike_CHOAM.BP_Sandbike_CHOAM_C",
+    "templates": ["T1_ExtraSeat", "T2_Inventory", "T3_Boost", "T4_Scanner", "T5", "T6"]
+  },
+  {
+    "id": "Buggy",
+    "label": "Buggy",
+    "actor_class": "/Game/Dune/Systems/Vehicles/Blueprints/GroundVehicles/BP_Buggy_CHOAM.BP_Buggy_CHOAM_C",
+    "templates": ["T3_Inventory", "T4_Boost", "T5_Mining", "T6_Combat"]
+  },
+  {
+    "id": "Tank",
+    "label": "Tank",
+    "actor_class": "/Game/Dune/Systems/Vehicles/Blueprints/GroundVehicles/BP_Tank_CHOAM.BP_Tank_CHOAM_C",
+    "templates": ["T6_CombatFire", "T6_CombatDart"]
+  },
+  {
+    "id": "Sandcrawler",
+    "label": "Sandcrawler",
+    "actor_class": "/Game/Dune/Systems/Vehicles/Blueprints/GroundVehicles/BP_SandCrawler_CHOAM.BP_SandCrawler_CHOAM_C",
+    "templates": ["T6_Harvesting"]
+  },
+  {
+    "id": "TreadWheel",
+    "label": "TreadWheel",
+    "actor_class": "/Game/Dune/Systems/Vehicles/Blueprints/GroundVehicles/BP_TreadWheel.BP_TreadWheel_C",
+    "templates": ["T4_Passenger", "T5_Inventory", "T6_Boost"]
+  },
+  {
+    "id": "ContainerVehicle",
+    "label": "Container Vehicle",
+    "actor_class": "/Game/Dune/Systems/Vehicles/Blueprints/GroundVehicles/BP_ContainerVehicle.BP_ContainerVehicle_C",
+    "templates": ["Container"]
+  },
+  {
+    "id": "OrnithopterLight",
+    "label": "Ornithopter (Light)",
+    "actor_class": "/Game/Dune/Systems/Vehicles/Blueprints/FlyingVehicles/BP_LightOrnithopter_Choam.BP_LightOrnithopter_Choam_C",
+    "templates": ["T4_Inventory", "T5_Boost", "T6_Combat"]
+  },
+  {
+    "id": "OrnithopterMedium",
+    "label": "Ornithopter (Medium)",
+    "actor_class": "/Game/Dune/Systems/Vehicles/Blueprints/FlyingVehicles/BP_MediumOrnithopter_CHOAM.BP_MediumOrnithopter_CHOAM_C",
+    "templates": ["T5_Inventory", "T6_Combat"]
+  },
+  {
+    "id": "OrnithopterTransport",
+    "label": "Ornithopter (Transport)",
+    "actor_class": "/Game/Dune/Systems/Vehicles/Blueprints/FlyingVehicles/BP_TransportOrnithopter_CHOAM.BP_TransportOrnithopter_CHOAM_C",
+    "templates": ["T6_Boost"]
+  }
+]

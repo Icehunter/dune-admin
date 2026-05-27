@@ -164,11 +164,26 @@ func startServer(addr string) {
 	// ── notifications ────────────────────────────────────────────────────────
 	mux.HandleFunc("POST /api/v1/notify", handleNotify)
 
+	// ── server commands (RabbitMQ, fire-and-forget) ───────────────────────────
+	mux.HandleFunc("POST /api/v1/players/kick", handleRMQKickPlayer)
+	mux.HandleFunc("POST /api/v1/players/fill-water", handleRMQFillWater)
+	mux.HandleFunc("POST /api/v1/players/set-skill-points", handleRMQSetSkillPoints)
+	mux.HandleFunc("POST /api/v1/players/clean-inventory", handleRMQCleanInventory)
+	mux.HandleFunc("POST /api/v1/players/reset-progression", handleRMQResetProgression)
+	mux.HandleFunc("POST /api/v1/players/set-skill-module", handleRMQSetSkillModule)
+	mux.HandleFunc("POST /api/v1/players/give-item-live", handleRMQGiveItem)
+	mux.HandleFunc("POST /api/v1/players/cheat-script", handleRMQCheatScript)
+	mux.HandleFunc("POST /api/v1/vehicles/spawn", handleRMQSpawnVehicle)
+	mux.HandleFunc("POST /api/v1/broadcast", handleRMQBroadcast)
+	mux.HandleFunc("POST /api/v1/broadcast/shutdown", handleRMQBroadcastShutdown)
+	mux.HandleFunc("GET /api/v1/players/{id}/player-ids", handlePlayerIDDebug)
+
 	// ── storage ───────────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/v1/storage", handleListStorage)
 	mux.HandleFunc("GET /api/v1/storage/{id}/items", handleGetStorageItems)
 	mux.HandleFunc("POST /api/v1/storage/{id}/give-item", handleGiveItemToStorage)
 	mux.HandleFunc("POST /api/v1/storage/{id}/give-items", handleGiveItemsToStorage)
+	mux.HandleFunc("GET /api/v1/storage/{id}/owner-debug", handleStorageOwnerDebug)
 
 	// ── blueprints ────────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/v1/blueprints", handleListBlueprints)

@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  send-dune-broadcast --title TITLE --message MESSAGE [--duration SECONDS]
+  send-dune-broadcast TITLE MESSAGE [SECONDS]
+
+Options:
+  --namespace NAME   Override auto-detected Kubernetes namespace
+  --mq-pod NAME      Override auto-detected Game RabbitMQ pod
+USAGE
+}
+
+namespace=""
+mq_pod=""
+title=""
+message=""
+duration="30"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --title|-t)
+      [[ $# -ge 2 ]] || { echo "missing value for $1" >&2; exit 2; }
+      title="$2"
+      shift 2
+      ;;
+    --message|-m|--body|-b)
+      [[ $# -ge 2 ]] || { echo "missing value for $1" >&2; exit 2; }
+      message="$2"
+      shift 2
+      ;;
+    --duration|-d|--duration-seconds)
+      [[ $# -ge 2 ]] || { echo "missing value for $1" >&2; exit 2; }
+      duration="$2"
+      shift 2
+      ;;
+    --namespace|-n)
+      [[ $# -ge 2 ]] || { echo "missing value for $1" >&2; exit 2; }
+      namespace="$2"
+      shift 2
+      ;;
+    --mq-pod)
+      [[ $# -ge 2 ]] || { echo "missing value for $1" >&2; exit 2; }
+      mq_pod="$2"
+      shift 2
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    --*)
+      echo "unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      if [[ -z "$title" ]]; then
+        title="$1"
+      elif [[ -z "$message" ]]; then
+        message="$1"
+      elif [[ "$duration" == "30" ]]; then
+        duration="$1"
+      else
+        echo "unexpected argument: $1" >&2
+        usage >&2
+        exit 2
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "$title" || -z "$message" ]]; then
+  usage >&2
+  exit 2
+fi
+
+if ! [[ "$duration" =~ ^[0-9]+$ ]]; then
+  echo "duration must be an integer number of seconds" >&2
+  exit 2
+fi
+
+if command -v kubectl >/dev/null 2>&1 && kubectl version --client >/dev/null 2>&1; then
+  kubectl_cmd=(kubectl)
+elif command -v sudo >/dev/null 2>&1; then
+  kubectl_cmd=(sudo kubectl)
+else
+  echo "kubectl not found, and sudo is unavailable" >&2
+  exit 1
+fi
+
+if [[ -z "$namespace" ]]; then
+  mapfile -t namespace_candidates < <("${kubectl_cmd[@]}" get pods -A --no-headers -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name 2>/dev/null \
+    | awk '$1 ~ /^funcom-seabass-/ && $2 ~ /-mq-game-sts-0$/ { print $1 }' \
+    | sort -u)
+
+  if [[ ${#namespace_candidates[@]} -eq 0 ]]; then
+    echo "could not auto-detect a funcom-seabass namespace with a Game RMQ pod" >&2
+    exit 1
+  fi
+
+  if [[ ${#namespace_candidates[@]} -gt 1 ]]; then
+    echo "multiple candidate namespaces found; pass --namespace NAME" >&2
+    printf '  %s\n' "${namespace_candidates[@]}" >&2
+    exit 1
+  fi
+
+  namespace="${namespace_candidates[0]}"
+fi
+
+if [[ -z "$mq_pod" ]]; then
+  mq_pod=$("${kubectl_cmd[@]}" get pods -n "$namespace" --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null \
+    | awk '/-mq-game-sts-0$/ { print; exit }')
+
+  if [[ -z "$mq_pod" ]]; then
+    echo "could not auto-detect Game RMQ pod in namespace: $namespace" >&2
+    exit 1
+  fi
+fi
+
+json_escape() {
+  python3 -c 'import json,sys; print(json.dumps(sys.argv[1])[1:-1])' "$1"
+}
+
+title_json=$(json_escape "$title")
+message_json=$(json_escape "$message")
+
+eval_file=$(mktemp)
+cleanup() {
+  rm -f "$eval_file"
+}
+trap cleanup EXIT
+
+cat > "$eval_file" <<EOF
+Title = unicode:characters_to_binary(<<"$title_json">>, utf8),
+Body = unicode:characters_to_binary(<<"$message_json">>, utf8),
+Duration = $duration,
+EntryEn = #{<<"Key">> => <<"en">>, <<"Title">> => Title, <<"Body">> => Body},
+EntryEnUs = #{<<"Key">> => <<"en-US">>, <<"Title">> => Title, <<"Body">> => Body},
+Inner = iolist_to_binary(rabbit_json:encode(#{
+    <<"ServerCommand">> => <<"ServiceBroadcast">>,
+    <<"BroadcastType">> => <<"Generic">>,
+    <<"BroadcastPayload">> => #{
+        <<"BroadcastDuration">> => Duration,
+        <<"LocalizedText">> => [EntryEn, EntryEnUs]
+    }
+})),
+Outer = iolist_to_binary(rabbit_json:encode(#{
+    <<"Version">> => 2,
+    <<"AuthToken">> => <<"Nu6VmPWUMvdPMeB7qErr">>,
+    <<"MessageContent">> => Inner
+})),
+XName = rabbit_misc:r(<<"/">>, exchange, <<"heartbeats">>),
+X = rabbit_exchange:lookup_or_die(XName),
+MsgId = list_to_binary("manual-service-broadcast-" ++ integer_to_list(erlang:system_time(millisecond))),
+P = {list_to_atom("P_basic"), <<"Content">>, undefined, [], undefined,
+     undefined, undefined, undefined, undefined, MsgId, undefined,
+     undefined, <<"fls">>, <<"fls_backend">>, undefined},
+Content = rabbit_basic:build_content(P, Outer),
+{ok, Msg} = rabbit_basic:message(XName, <<"notifications">>, Content),
+Result = rabbit_queue_type:publish_at_most_once(X, Msg),
+io:format("publish=~p exchange=heartbeats routing=notifications app_id=fls_backend user_id=fls duration=~p title_bytes=~p body_bytes=~p~n",
+          [Result, Duration, byte_size(Title), byte_size(Body)]).
+EOF
+
+"${kubectl_cmd[@]}" exec -i -n "$namespace" "$mq_pod" -- sh -lc '
+  set -eu
+  export PATH=/opt/rabbitmq/sbin:/opt/erlang/lib/erlang/bin:/opt/erlang/lib/erlang/erts-14.2.5.12/bin:/bin:/usr/bin:/usr/local/bin:$PATH
+  cat > /tmp/dune-service-broadcast.erl
+  expr=$(cat /tmp/dune-service-broadcast.erl)
+  /opt/rabbitmq/sbin/rabbitmqctl eval "$expr"
+  rm -f /tmp/dune-service-broadcast.erl
+' < "$eval_file" >/dev/null
+
+echo "Message successfully broadcasted"

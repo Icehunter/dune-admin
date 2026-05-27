@@ -259,6 +259,19 @@ func (c *ampControl) ListExchanges(_ context.Context, exec Executor, _ string) (
 	return parseExchanges(raw), nil
 }
 
+// EvalOnGameBroker runs an Erlang expression via rabbitmqctl eval against the
+// game broker. The RMQ server-commands publisher (rmq_commands.go) uses this to
+// fetch broker-side data — e.g. the ServerCommandsAuthToken — that must be
+// retrieved by an Erlang expression rather than a normal AMQP operation.
+func (c *ampControl) EvalOnGameBroker(_ context.Context, exec Executor, expr string) (string, error) {
+	base := c.rabbitmqctlPrefix(loadedConfig.BrokerExecPrefix)
+	out, err := exec.Exec(fmt.Sprintf("%s eval %s 2>&1", base, shellQuote(expr)))
+	if err != nil {
+		return "", fmt.Errorf("rabbitmqctl eval: %w (output: %s)", err, strings.TrimSpace(out))
+	}
+	return strings.TrimSpace(out), nil
+}
+
 func (c *ampControl) EnsureCaptureUser(_ context.Context, exec Executor) {
 	base := c.rabbitmqctlPrefix(loadedConfig.BrokerExecPrefix)
 	out, _ := exec.Exec(fmt.Sprintf("%s add_user %s %s 2>&1", base, capUser, capPass))

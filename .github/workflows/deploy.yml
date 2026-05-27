@@ -29,6 +29,7 @@ jobs:
         working-directory: web
         env:
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_CDN_BASE_URL: ${{ vars.VITE_CDN_BASE_URL }}
 
       - uses: cloudflare/wrangler-action@v3
         with:

@@ -1,0 +1,834 @@
+[
+  {
+    "id": "Skills.Ability.BattlefieldCalculation",
+    "label": "Ability: Battlefield Calculation"
+  },
+  {
+    "id": "Skills.Ability.Blindspot",
+    "label": "Ability: Blindspot"
+  },
+  {
+    "id": "Skills.Ability.CablePull",
+    "label": "Ability: Cable Pull"
+  },
+  {
+    "id": "Skills.Ability.CablePullLong",
+    "label": "Ability: Cable Pull Long"
+  },
+  {
+    "id": "Skills.Ability.DeflectionSlow",
+    "label": "Ability: Deflection Slow"
+  },
+  {
+    "id": "Skills.Ability.EnemyAnalysis",
+    "label": "Ability: Enemy Analysis"
+  },
+  {
+    "id": "Skills.Ability.ExplosiveMine",
+    "label": "Ability: Explosive Mine"
+  },
+  {
+    "id": "Skills.Ability.FragGrenade",
+    "label": "Ability: Frag Grenade"
+  },
+  {
+    "id": "Skills.Ability.HealerSeeker",
+    "label": "Ability: Healer Seeker"
+  },
+  {
+    "id": "Skills.Ability.HealingCapsule",
+    "label": "Ability: Healing Capsule"
+  },
+  {
+    "id": "Skills.Ability.HunterSeeker",
+    "label": "Ability: Hunter Seeker"
+  },
+  {
+    "id": "Skills.Ability.Hypersprint",
+    "label": "Ability: Hypersprint"
+  },
+  {
+    "id": "Skills.Ability.KneeCharge",
+    "label": "Ability: Knee Charge"
+  },
+  {
+    "id": "Skills.Ability.KneeChargeTraverse",
+    "label": "Ability: Knee Charge Traverse"
+  },
+  {
+    "id": "Skills.Ability.MagneticAttractor",
+    "label": "Ability: Magnetic Attractor"
+  },
+  {
+    "id": "Skills.Ability.NewMentatCalculationsCapstone",
+    "label": "Ability: New Mentat Calculations Capstone"
+  },
+  {
+    "id": "Skills.Ability.NewMentatCalculationsPerfectAim",
+    "label": "Ability: New Mentat Calculations Perfect Aim"
+  },
+  {
+    "id": "Skills.Ability.NewMentatCalculationsTrophySeeker",
+    "label": "Ability: New Mentat Calculations Trophy Seeker"
+  },
+  {
+    "id": "Skills.Ability.NewMentatMisdirectionCapstone",
+    "label": "Ability: New Mentat Misdirection Capstone"
+  },
+  {
+    "id": "Skills.Ability.NewMentatMisdirectionPossfeign",
+    "label": "Ability: New Mentat Misdirection Possfeign"
+  },
+  {
+    "id": "Skills.Ability.NewMentatMisdirectionSolidoDecoy",
+    "label": "Ability: New Mentat Misdirection Solido Decoy"
+  },
+  {
+    "id": "Skills.Ability.NewMentatSeekersCapstone",
+    "label": "Ability: New Mentat Seekers Capstone"
+  },
+  {
+    "id": "Skills.Ability.NewMentatSeekersHunterSeeker",
+    "label": "Ability: New Mentat Seekers Hunter Seeker"
+  },
+  {
+    "id": "Skills.Ability.NewMentatSeekersSentinel",
+    "label": "Ability: New Mentat Seekers Sentinel"
+  },
+  {
+    "id": "Skills.Ability.PoisonCapsuleLauncher",
+    "label": "Ability: Poison Capsule Launcher"
+  },
+  {
+    "id": "Skills.Ability.RiposteBreak",
+    "label": "Ability: Riposte Break"
+  },
+  {
+    "id": "Skills.Ability.RiposteInjure",
+    "label": "Ability: Riposte Injure"
+  },
+  {
+    "id": "Skills.Ability.SolidoDecoy.Moving",
+    "label": "Ability: Moving"
+  },
+  {
+    "id": "Skills.Ability.SolidoDecoy.Stationary",
+    "label": "Ability: Stationary"
+  },
+  {
+    "id": "Skills.Ability.SukDocAnigolahAOE",
+    "label": "Ability: Suk Doc Anigolah A O E"
+  },
+  {
+    "id": "Skills.Ability.SukDocAnigolahCapstone",
+    "label": "Ability: Suk Doc Anigolah Capstone"
+  },
+  {
+    "id": "Skills.Ability.SukDocAnigolahCreate",
+    "label": "Ability: Suk Doc Anigolah Create"
+  },
+  {
+    "id": "Skills.Ability.SukDocOathCapstone",
+    "label": "Ability: Suk Doc Oath Capstone"
+  },
+  {
+    "id": "Skills.Ability.SukDocOathExploiter",
+    "label": "Ability: Suk Doc Oath Exploiter"
+  },
+  {
+    "id": "Skills.Ability.SukDocOathMedicine",
+    "label": "Ability: Suk Doc Oath Medicine"
+  },
+  {
+    "id": "Skills.Ability.SukDocPoisonCapstone",
+    "label": "Ability: Suk Doc Poison Capstone"
+  },
+  {
+    "id": "Skills.Ability.SukDocPoisonCapsule",
+    "label": "Ability: Suk Doc Poison Capsule"
+  },
+  {
+    "id": "Skills.Ability.SukDocPoisonExpunge",
+    "label": "Ability: Suk Doc Poison Expunge"
+  },
+  {
+    "id": "Skills.Ability.SuspensorGrenade_Amplification",
+    "label": "Ability: Suspensor Grenade_ Amplification"
+  },
+  {
+    "id": "Skills.Ability.SuspensorGrenade_Reduction",
+    "label": "Ability: Suspensor Grenade_ Reduction"
+  },
+  {
+    "id": "Skills.Ability.SuspensorGrenade_Stabilization",
+    "label": "Ability: Suspensor Grenade_ Stabilization"
+  },
+  {
+    "id": "Skills.Ability.SuspensorMine_Amplification",
+    "label": "Ability: Suspensor Mine_ Amplification"
+  },
+  {
+    "id": "Skills.Ability.SuspensorMine_Reduction",
+    "label": "Ability: Suspensor Mine_ Reduction"
+  },
+  {
+    "id": "Skills.Ability.SuspensorMine_Stabilization",
+    "label": "Ability: Suspensor Mine_ Stabilization"
+  },
+  {
+    "id": "Skills.Ability.SuspensorWall",
+    "label": "Ability: Suspensor Wall"
+  },
+  {
+    "id": "Skills.Ability.VoiceCompel",
+    "label": "Ability: Voice Compel"
+  },
+  {
+    "id": "Skills.Ability.WeaponsProjection",
+    "label": "Ability: Weapons Projection"
+  },
+  {
+    "id": "Skills.Ability.WeirdingStep",
+    "label": "Ability: Weirding Step"
+  },
+  {
+    "id": "Skills.Abilty.Compel",
+    "label": "Abilty: Compel"
+  },
+  {
+    "id": "Skills.Combat.Role.Attacker",
+    "label": "Combat: Attacker"
+  },
+  {
+    "id": "Skills.Combat.m_BurnTolerance",
+    "label": "Combat: Burn Tolerance"
+  },
+  {
+    "id": "Skills.Combat.m_DamageAll",
+    "label": "Combat: Damage All"
+  },
+  {
+    "id": "Skills.Combat.m_DamageAll2",
+    "label": "Combat: Damage All 2"
+  },
+  {
+    "id": "Skills.Combat.m_DamageBlade",
+    "label": "Combat: Damage Blade"
+  },
+  {
+    "id": "Skills.Combat.m_DamageBlade2",
+    "label": "Combat: Damage Blade 2"
+  },
+  {
+    "id": "Skills.Combat.m_DamageBlade3",
+    "label": "Combat: Damage Blade 3"
+  },
+  {
+    "id": "Skills.Combat.m_DamageHeavy",
+    "label": "Combat: Damage Heavy"
+  },
+  {
+    "id": "Skills.Combat.m_DamageHeavy2",
+    "label": "Combat: Damage Heavy 2"
+  },
+  {
+    "id": "Skills.Combat.m_DamageLongBlade1",
+    "label": "Combat: Damage Long Blade 1"
+  },
+  {
+    "id": "Skills.Combat.m_DamageMelee",
+    "label": "Combat: Damage Melee"
+  },
+  {
+    "id": "Skills.Combat.m_DamageMelee2",
+    "label": "Combat: Damage Melee 2"
+  },
+  {
+    "id": "Skills.Combat.m_DamagePistol",
+    "label": "Combat: Damage Pistol"
+  },
+  {
+    "id": "Skills.Combat.m_DamagePistol2",
+    "label": "Combat: Damage Pistol 2"
+  },
+  {
+    "id": "Skills.Combat.m_DamagePistol3",
+    "label": "Combat: Damage Pistol 3"
+  },
+  {
+    "id": "Skills.Combat.m_DamageRanged",
+    "label": "Combat: Damage Ranged"
+  },
+  {
+    "id": "Skills.Combat.m_DamageRanged2",
+    "label": "Combat: Damage Ranged 2"
+  },
+  {
+    "id": "Skills.Combat.m_DamageRifle",
+    "label": "Combat: Damage Rifle"
+  },
+  {
+    "id": "Skills.Combat.m_DamageRifle2",
+    "label": "Combat: Damage Rifle 2"
+  },
+  {
+    "id": "Skills.Combat.m_DamageRifle3",
+    "label": "Combat: Damage Rifle 3"
+  },
+  {
+    "id": "Skills.Combat.m_DamageSMG",
+    "label": "Combat: Damage S M G"
+  },
+  {
+    "id": "Skills.Combat.m_DamageSMG2",
+    "label": "Combat: Damage S M G 2"
+  },
+  {
+    "id": "Skills.Combat.m_DamageShortBlade1",
+    "label": "Combat: Damage Short Blade 1"
+  },
+  {
+    "id": "Skills.Combat.m_DamageShortBlade2",
+    "label": "Combat: Damage Short Blade 2"
+  },
+  {
+    "id": "Skills.Combat.m_DamageShotgun",
+    "label": "Combat: Damage Shotgun"
+  },
+  {
+    "id": "Skills.Combat.m_DamageShotgun2",
+    "label": "Combat: Damage Shotgun 2"
+  },
+  {
+    "id": "Skills.Combat.m_MaxHealth",
+    "label": "Combat: Max Health"
+  },
+  {
+    "id": "Skills.Combat.m_MaxHealth2",
+    "label": "Combat: Max Health 2"
+  },
+  {
+    "id": "Skills.Combat.m_MaxHealth3",
+    "label": "Combat: Max Health 3"
+  },
+  {
+    "id": "Skills.Combat.m_MaxHealth4",
+    "label": "Combat: Max Health 4"
+  },
+  {
+    "id": "Skills.Combat.m_MaxHealth5",
+    "label": "Combat: Max Health 5"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatCalculationsAtt1",
+    "label": "Combat: New Mentat Calculations Att 1"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatCalculationsAtt2",
+    "label": "Combat: New Mentat Calculations Att 2"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatCalculationsAtt3",
+    "label": "Combat: New Mentat Calculations Att 3"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatCalculationsAtt4",
+    "label": "Combat: New Mentat Calculations Att 4"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatMisdirectionAtt1",
+    "label": "Combat: New Mentat Misdirection Att 1"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatMisdirectionAtt2",
+    "label": "Combat: New Mentat Misdirection Att 2"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatMisdirectionAtt3",
+    "label": "Combat: New Mentat Misdirection Att 3"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatMisdirectionAtt4",
+    "label": "Combat: New Mentat Misdirection Att 4"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatSeekersAtt1",
+    "label": "Combat: New Mentat Seekers Att 1"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatSeekersAtt2",
+    "label": "Combat: New Mentat Seekers Att 2"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatSeekersAtt3",
+    "label": "Combat: New Mentat Seekers Att 3"
+  },
+  {
+    "id": "Skills.Combat.m_NewMentatSeekersAtt4",
+    "label": "Combat: New Mentat Seekers Att 4"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocAnigolahAtt1",
+    "label": "Combat: Suk Doc Anigolah Att 1"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocAnigolahAtt2",
+    "label": "Combat: Suk Doc Anigolah Att 2"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocAnigolahAtt3",
+    "label": "Combat: Suk Doc Anigolah Att 3"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocAnigolahAtt4",
+    "label": "Combat: Suk Doc Anigolah Att 4"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocOathAtt1",
+    "label": "Combat: Suk Doc Oath Att 1"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocOathAtt2",
+    "label": "Combat: Suk Doc Oath Att 2"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocOathAtt3",
+    "label": "Combat: Suk Doc Oath Att 3"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocOathAtt4",
+    "label": "Combat: Suk Doc Oath Att 4"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocPoisonAtt1",
+    "label": "Combat: Suk Doc Poison Att 1"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocPoisonAtt2",
+    "label": "Combat: Suk Doc Poison Att 2"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocPoisonAtt3",
+    "label": "Combat: Suk Doc Poison Att 3"
+  },
+  {
+    "id": "Skills.Combat.m_SukDocPoisonAtt4",
+    "label": "Combat: Suk Doc Poison Att 4"
+  },
+  {
+    "id": "Skills.Combat.mp_AbilityCooldown",
+    "label": "Combat: mp_ Ability Cooldown"
+  },
+  {
+    "id": "Skills.Combat.mp_AbilityCooldown2",
+    "label": "Combat: mp_ Ability Cooldown 2"
+  },
+  {
+    "id": "Skills.Combat.mp_AbilityCooldown3",
+    "label": "Combat: mp_ Ability Cooldown 3"
+  },
+  {
+    "id": "Skills.Combat.mp_Backstabber1",
+    "label": "Combat: mp_ Backstabber 1"
+  },
+  {
+    "id": "Skills.Combat.mp_Backstabber2",
+    "label": "Combat: mp_ Backstabber 2"
+  },
+  {
+    "id": "Skills.Combat.mp_Backstabber3",
+    "label": "Combat: mp_ Backstabber 3"
+  },
+  {
+    "id": "Skills.Combat.mp_BodyShots",
+    "label": "Combat: mp_ Body Shots"
+  },
+  {
+    "id": "Skills.Combat.mp_BodyShots2",
+    "label": "Combat: mp_ Body Shots 2"
+  },
+  {
+    "id": "Skills.Combat.mp_BodyShots3",
+    "label": "Combat: mp_ Body Shots 3"
+  },
+  {
+    "id": "Skills.Combat.mp_DeathFromAbove1",
+    "label": "Combat: mp_ Death From Above 1"
+  },
+  {
+    "id": "Skills.Combat.mp_DeathFromAbove2",
+    "label": "Combat: mp_ Death From Above 2"
+  },
+  {
+    "id": "Skills.Combat.mp_DeathFromAbove3",
+    "label": "Combat: mp_ Death From Above 3"
+  },
+  {
+    "id": "Skills.Combat.mp_HeadShots",
+    "label": "Combat: mp_ Head Shots"
+  },
+  {
+    "id": "Skills.Combat.mp_HeadShots2",
+    "label": "Combat: mp_ Head Shots 2"
+  },
+  {
+    "id": "Skills.Combat.mp_HeadShots3",
+    "label": "Combat: mp_ Head Shots 3"
+  },
+  {
+    "id": "Skills.Combat.mp_HeavyWeaponSpeed1",
+    "label": "Combat: mp_ Heavy Weapon Speed 1"
+  },
+  {
+    "id": "Skills.Combat.mp_HeavyWeaponSpeed2",
+    "label": "Combat: mp_ Heavy Weapon Speed 2"
+  },
+  {
+    "id": "Skills.Combat.mp_HeavyWeaponSpeed3",
+    "label": "Combat: mp_ Heavy Weapon Speed 3"
+  },
+  {
+    "id": "Skills.Combat.mp_MeleeChain1",
+    "label": "Combat: mp_ Melee Chain 1"
+  },
+  {
+    "id": "Skills.Combat.mp_MeleeChain2",
+    "label": "Combat: mp_ Melee Chain 2"
+  },
+  {
+    "id": "Skills.Combat.mp_MeleeChain3",
+    "label": "Combat: mp_ Melee Chain 3"
+  },
+  {
+    "id": "Skills.Exploration.m_ApparelHydrationReclaim1",
+    "label": "Exploration: Apparel Hydration Reclaim 1"
+  },
+  {
+    "id": "Skills.Exploration.m_ApparelHydrationReclaim2",
+    "label": "Exploration: Apparel Hydration Reclaim 2"
+  },
+  {
+    "id": "Skills.Exploration.m_ClimbStamina",
+    "label": "Exploration: Climb Stamina"
+  },
+  {
+    "id": "Skills.Exploration.m_ClimbStamina2",
+    "label": "Exploration: Climb Stamina 2"
+  },
+  {
+    "id": "Skills.Exploration.m_DehydratedHealthLossRate1",
+    "label": "Exploration: Dehydrated Health Loss Rate 1"
+  },
+  {
+    "id": "Skills.Exploration.m_DehydratedHealthLossRate2",
+    "label": "Exploration: Dehydrated Health Loss Rate 2"
+  },
+  {
+    "id": "Skills.Exploration.m_DehydratedStaminaCap1",
+    "label": "Exploration: Dehydrated Stamina Cap 1"
+  },
+  {
+    "id": "Skills.Exploration.m_DehydratedStaminaLossRate1",
+    "label": "Exploration: Dehydrated Stamina Loss Rate 1"
+  },
+  {
+    "id": "Skills.Exploration.m_DetectionRange",
+    "label": "Exploration: Detection Range"
+  },
+  {
+    "id": "Skills.Exploration.m_DetectionRange2",
+    "label": "Exploration: Detection Range 2"
+  },
+  {
+    "id": "Skills.Exploration.m_HandScannerRadius1",
+    "label": "Exploration: Hand Scanner Radius 1"
+  },
+  {
+    "id": "Skills.Exploration.m_HandScannerRadius2",
+    "label": "Exploration: Hand Scanner Radius 2"
+  },
+  {
+    "id": "Skills.Exploration.m_HydrationTempTolerance1",
+    "label": "Exploration: Hydration Temp Tolerance 1"
+  },
+  {
+    "id": "Skills.Exploration.m_HydrationTempTolerance2",
+    "label": "Exploration: Hydration Temp Tolerance 2"
+  },
+  {
+    "id": "Skills.Exploration.m_MaxHydration",
+    "label": "Exploration: Max Hydration"
+  },
+  {
+    "id": "Skills.Exploration.m_MaxHydration2",
+    "label": "Exploration: Max Hydration 2"
+  },
+  {
+    "id": "Skills.Exploration.m_MoveHydrationDrain1",
+    "label": "Exploration: Move Hydration Drain 1"
+  },
+  {
+    "id": "Skills.Exploration.m_MoveHydrationDrain2",
+    "label": "Exploration: Move Hydration Drain 2"
+  },
+  {
+    "id": "Skills.Exploration.m_SprintStaminaDrain",
+    "label": "Exploration: Sprint Stamina Drain"
+  },
+  {
+    "id": "Skills.Exploration.m_SprintStaminaDrain2",
+    "label": "Exploration: Sprint Stamina Drain 2"
+  },
+  {
+    "id": "Skills.Exploration.m_StaminaRegen",
+    "label": "Exploration: Stamina Regen"
+  },
+  {
+    "id": "Skills.Exploration.m_StaminaRegen2",
+    "label": "Exploration: Stamina Regen 2"
+  },
+  {
+    "id": "Skills.Exploration.m_StillsuitHydration1",
+    "label": "Exploration: Stillsuit Hydration 1"
+  },
+  {
+    "id": "Skills.Exploration.m_StillsuitHydration2",
+    "label": "Exploration: Stillsuit Hydration 2"
+  },
+  {
+    "id": "Skills.Exploration.m_VehicleScannerRadius1",
+    "label": "Exploration: Vehicle Scanner Radius 1"
+  },
+  {
+    "id": "Skills.Exploration.m_VehicleScannerRadius2",
+    "label": "Exploration: Vehicle Scanner Radius 2"
+  },
+  {
+    "id": "Skills.Exploration.m_WellHydratedStaminaBonus1",
+    "label": "Exploration: Well Hydrated Stamina Bonus 1"
+  },
+  {
+    "id": "Skills.Exploration.m_WormThreatOnFoot",
+    "label": "Exploration: Worm Threat On Foot"
+  },
+  {
+    "id": "Skills.Exploration.m_WormThreatOnFoot2",
+    "label": "Exploration: Worm Threat On Foot 2"
+  },
+  {
+    "id": "Skills.Exploration.mp_SprintStamina",
+    "label": "Exploration: mp_ Sprint Stamina"
+  },
+  {
+    "id": "Skills.Exploration.mp_SprintStamina2",
+    "label": "Exploration: mp_ Sprint Stamina 2"
+  },
+  {
+    "id": "Skills.Exploration.mp_SprintStamina3",
+    "label": "Exploration: mp_ Sprint Stamina 3"
+  },
+  {
+    "id": "Skills.Key.BeneGesserit1",
+    "label": "Key: Bene Gesserit 1"
+  },
+  {
+    "id": "Skills.Key.BeneGesserit2",
+    "label": "Key: Bene Gesserit 2"
+  },
+  {
+    "id": "Skills.Key.Dev1",
+    "label": "Key: Dev 1"
+  },
+  {
+    "id": "Skills.Key.Dev2",
+    "label": "Key: Dev 2"
+  },
+  {
+    "id": "Skills.Key.Mentat1",
+    "label": "Key: Mentat 1"
+  },
+  {
+    "id": "Skills.Key.Mentat2",
+    "label": "Key: Mentat 2"
+  },
+  {
+    "id": "Skills.Key.Planetologist1",
+    "label": "Key: Planetologist 1"
+  },
+  {
+    "id": "Skills.Key.Planetologist2",
+    "label": "Key: Planetologist 2"
+  },
+  {
+    "id": "Skills.Key.Sukdoctor1",
+    "label": "Key: Sukdoctor 1"
+  },
+  {
+    "id": "Skills.Key.Sukdoctor2",
+    "label": "Key: Sukdoctor 2"
+  },
+  {
+    "id": "Skills.Key.Swordmaster1",
+    "label": "Key: Swordmaster 1"
+  },
+  {
+    "id": "Skills.Key.Swordmaster2",
+    "label": "Key: Swordmaster 2"
+  },
+  {
+    "id": "Skills.Key.Trooper1",
+    "label": "Key: Trooper 1"
+  },
+  {
+    "id": "Skills.Key.Trooper2",
+    "label": "Key: Trooper 2"
+  },
+  {
+    "id": "Skills.Science.m_ApparelDurabilityLossRate1",
+    "label": "Science: Apparel Durability Loss Rate 1"
+  },
+  {
+    "id": "Skills.Science.m_ApparelDurabilityLossRate2",
+    "label": "Science: Apparel Durability Loss Rate 2"
+  },
+  {
+    "id": "Skills.Science.m_ApparelRepairMaxDurability1",
+    "label": "Science: Apparel Repair Max Durability 1"
+  },
+  {
+    "id": "Skills.Science.m_ApparelRepairMaxDurability2",
+    "label": "Science: Apparel Repair Max Durability 2"
+  },
+  {
+    "id": "Skills.Science.m_HarvestingYield",
+    "label": "Science: Harvesting Yield"
+  },
+  {
+    "id": "Skills.Science.m_HarvestingYield2",
+    "label": "Science: Harvesting Yield 2"
+  },
+  {
+    "id": "Skills.Science.m_PowerEfficiency",
+    "label": "Science: Power Efficiency"
+  },
+  {
+    "id": "Skills.Science.m_PowerEfficiency2",
+    "label": "Science: Power Efficiency 2"
+  },
+  {
+    "id": "Skills.Science.m_PowerMax",
+    "label": "Science: Power Max"
+  },
+  {
+    "id": "Skills.Science.m_PowerPackRegen",
+    "label": "Science: Power Pack Regen"
+  },
+  {
+    "id": "Skills.Science.m_PowerPackRegen2",
+    "label": "Science: Power Pack Regen 2"
+  },
+  {
+    "id": "Skills.Science.m_SelfHealingMultiplier",
+    "label": "Science: Self Healing Multiplier"
+  },
+  {
+    "id": "Skills.Science.m_SelfHealingMultiplier2",
+    "label": "Science: Self Healing Multiplier 2"
+  },
+  {
+    "id": "Skills.Science.m_VehicleRepairMaxDurability1",
+    "label": "Science: Vehicle Repair Max Durability 1"
+  },
+  {
+    "id": "Skills.Science.m_VehicleRepairMaxDurability2",
+    "label": "Science: Vehicle Repair Max Durability 2"
+  },
+  {
+    "id": "Skills.Science.m_WeaponDurabilityLossRate1",
+    "label": "Science: Weapon Durability Loss Rate 1"
+  },
+  {
+    "id": "Skills.Science.m_WeaponDurabilityLossRate2",
+    "label": "Science: Weapon Durability Loss Rate 2"
+  },
+  {
+    "id": "Skills.Science.m_WeaponRepairMaxDurability1",
+    "label": "Science: Weapon Repair Max Durability 1"
+  },
+  {
+    "id": "Skills.Science.m_WeaponRepairMaxDurability2",
+    "label": "Science: Weapon Repair Max Durability 2"
+  },
+  {
+    "id": "Skills.Science.m_YieldCutterray1",
+    "label": "Science: Yield Cutterray 1"
+  },
+  {
+    "id": "Skills.Science.m_YieldCutterray2",
+    "label": "Science: Yield Cutterray 2"
+  },
+  {
+    "id": "Skills.Science.m_YieldCutterrayHighEngagement1",
+    "label": "Science: Yield Cutterray High Engagement 1"
+  },
+  {
+    "id": "Skills.Science.m_YieldCutterrayHighEngagement2",
+    "label": "Science: Yield Cutterray High Engagement 2"
+  },
+  {
+    "id": "Skills.Science.m_YieldDewReaper1",
+    "label": "Science: Yield Dew Reaper 1"
+  },
+  {
+    "id": "Skills.Science.m_YieldDewReaper2",
+    "label": "Science: Yield Dew Reaper 2"
+  },
+  {
+    "id": "Skills.Science.m_YieldHarvester1",
+    "label": "Science: Yield Harvester 1"
+  },
+  {
+    "id": "Skills.Science.m_YieldHarvester2",
+    "label": "Science: Yield Harvester 2"
+  },
+  {
+    "id": "Skills.Science.mp_GadgetCooldown",
+    "label": "Science: mp_ Gadget Cooldown"
+  },
+  {
+    "id": "Skills.Science.mp_GadgetCooldown2",
+    "label": "Science: mp_ Gadget Cooldown 2"
+  },
+  {
+    "id": "Skills.Science.mp_GadgetCooldown3",
+    "label": "Science: mp_ Gadget Cooldown 3"
+  },
+  {
+    "id": "Skills.Science.mp_PowerDrain",
+    "label": "Science: mp_ Power Drain"
+  },
+  {
+    "id": "Skills.Science.mp_PowerDrain2",
+    "label": "Science: mp_ Power Drain 2"
+  },
+  {
+    "id": "Skills.Science.mp_PowerDrain3",
+    "label": "Science: mp_ Power Drain 3"
+  },
+  {
+    "id": "Skills.Science.mp_RegenCap",
+    "label": "Science: mp_ Regen Cap"
+  },
+  {
+    "id": "Skills.Science.mp_RegenCap2",
+    "label": "Science: mp_ Regen Cap 2"
+  },
+  {
+    "id": "Skills.Science.mp_RegenCap3",
+    "label": "Science: mp_ Regen Cap 3"
+  },
+  {
+    "id": "Skills.Science.mp_WeaponDurability",
+    "label": "Science: mp_ Weapon Durability"
+  }
+]

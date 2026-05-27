@@ -1423,35 +1423,57 @@ func cmdDescribeTable(tbl string) Cmd {
 	}
 }
 
+func sampleTableQuery(tbl string, limit int) string {
+	// Sanitize table name defensively even though tbl comes from pg_stat_user_tables.
+	// pgx.Identifier handles quoting and escaping to prevent SQL injection.
+	safeTable := pgx.Identifier{dbSchema, tbl}.Sanitize()
+	return fmt.Sprintf("SELECT * FROM %s LIMIT %d", safeTable, limit)
+}
+
+func sampleTableHeaders(rows pgx.Rows) []string {
+	descriptions := rows.FieldDescriptions()
+	headers := make([]string, 0, len(descriptions))
+	for _, description := range descriptions {
+		headers = append(headers, description.Name)
+	}
+	return headers
+}
+
+func formatSampleRow(values []any) []string {
+	row := make([]string, 0, len(values))
+	for _, value := range values {
+		row = append(row, fmt.Sprintf("%v", value))
+	}
+	return row
+}
+
+func sampleTableRows(rows pgx.Rows) ([][]string, error) {
+	result := make([][]string, 0)
+	for rows.Next() {
+		values, err := rows.Values()
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, formatSampleRow(values))
+	}
+	return result, nil
+}
+
 func cmdSampleTable(tbl string, limit int) Cmd {
 	return func() Msg {
 		if globalDB == nil {
 			return msgSample{err: fmt.Errorf("not connected")}
 		}
-		// Sanitize table name defensively even though tbl comes from pg_stat_user_tables.
-		// pgx.Identifier handles quoting and escaping to prevent SQL injection.
-		safeTable := pgx.Identifier{dbSchema, tbl}.Sanitize()
-		rows, err := globalDB.Query(context.Background(),
-			fmt.Sprintf("SELECT * FROM %s LIMIT %d", safeTable, limit))
+		rows, err := globalDB.Query(context.Background(), sampleTableQuery(tbl, limit))
 		if err != nil {
 			return msgSample{table: tbl, err: err}
 		}
 		defer rows.Close()
-		var headers []string
-		for _, fd := range rows.FieldDescriptions() {
-			headers = append(headers, fd.Name)
-		}
-		var result [][]string
-		for rows.Next() {
-			vals, err := rows.Values()
-			if err != nil {
-				return msgSample{table: tbl, err: err}
-			}
-			var row []string
-			for _, v := range vals {
-				row = append(row, fmt.Sprintf("%v", v))
-			}
-			result = append(result, row)
+
+		headers := sampleTableHeaders(rows)
+		result, err := sampleTableRows(rows)
+		if err != nil {
+			return msgSample{table: tbl, err: err}
 		}
 		if err := rows.Err(); err != nil {
 			return msgSample{table: tbl, err: err}

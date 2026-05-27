@@ -3,16 +3,6 @@ ARG TARGETPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
 
-FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS web-builder
-
-WORKDIR /build/web
-
-COPY web/package.json web/pnpm-lock.yaml ./
-RUN corepack enable && corepack prepare pnpm@10.28.1 --activate && pnpm install --frozen-lockfile
-
-COPY web/ ./
-RUN pnpm build
-
 FROM --platform=$BUILDPLATFORM golang:1.26.3 AS go-builder
 
 WORKDIR /build
@@ -34,7 +24,6 @@ WORKDIR /app
 
 COPY --from=go-builder /build/dune-admin .
 COPY --from=go-builder /build/tags-data.json /build/item-data.json ./
-COPY --from=web-builder /build/web/dist ./dist
 
 EXPOSE 8080
 

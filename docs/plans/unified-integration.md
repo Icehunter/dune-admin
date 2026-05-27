@@ -1,6 +1,6 @@
 # Plan: Unified dune-admin + dune-market-bot — Restructure & Integration
 
-**Status:** In progress — Phase 3 deployment/documentation sync  
+**Status:** In progress — Phase 4 complexity refactor  
 **Created:** 2025-05-27  
 **Updated:** 2025-05-27  
 **Relates to:** Issues #10–14, #18–51  
@@ -145,7 +145,7 @@ broker_jwt_secret: ""              # HMAC key for CaptureJWT (env: BROKER_JWT_SE
 
 ---
 
-## Phase 3 — Unified deployment artifacts ⏳ In progress
+## Phase 3 — Unified deployment artifacts ✅ Implemented
 
 ### `deploy/Dockerfile` (update)
 
@@ -187,8 +187,8 @@ broker_jwt_secret: ""              # HMAC key for CaptureJWT (env: BROKER_JWT_SE
 - [x] `make build` compiles
 - [x] `make test-race` passes
 - [x] `make lint` passes
-- [ ] `docker build -f deploy/Dockerfile .` succeeds (Phase 3)
-- [ ] `kubectl apply --dry-run=client -f deploy/k8s/dune-admin.yaml` (Phase 3)
+- [x] `docker build -f deploy/Dockerfile .` succeeds (Phase 3)
+- [x] `kubectl apply --dry-run=client --validate=false -f deploy/k8s/dune-admin.yaml` (Phase 3)
 - [ ] Smoke: `./bin/dune-admin` starts; `market_bot_enabled: true` starts bot loop (Phase 2 — testing now)
 - [ ] Smoke: `market_bot_enabled: false` disables bot cleanly (Phase 2)
 

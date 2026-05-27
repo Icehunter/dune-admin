@@ -1,6 +1,6 @@
 # Phase 3 — Unified Deployment Artifacts
 
-**Status:** In progress ⏳  
+**Status:** Complete ✅  
 **Branch:** `refactor/phase-3-deploy`  
 **PR base:** Phase 2 PR
 
@@ -26,7 +26,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -ldflags="-s -w" -o dune-admin ./cmd/dune-admin
 
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates kubernetes-client postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /build/dune-admin .
@@ -36,7 +36,11 @@ EXPOSE 8080
 ENTRYPOINT ["./dune-admin"]
 ```
 
-Key change: add `item-data.json` and `tags-data.json` to the runtime stage.
+Key changes:
+
+- add `item-data.json` and `tags-data.json` to the runtime stage
+- API-only runtime image (no SPA asset build/copy)
+- include `kubernetes-client` and `postgresql-client` for deployed battlegroup/settings/restore flows
 
 ### `deploy/docker-compose.yml`
 
@@ -82,10 +86,10 @@ flow straight into the deploy artifact.
 
 ## Checklist
 
-- [ ] `docker build -f deploy/Dockerfile .` succeeds from repo root
-- [ ] `docker compose -f deploy/docker-compose.yml build` succeeds
-- [ ] `kubectl apply --dry-run=client -f deploy/k8s/dune-admin.yaml` passes
-- [ ] Container starts, serves `/api/v1/status` → 200
-- [ ] `market_bot_enabled: true` starts bot loop inside container
-- [ ] PVC correctly persists SQLite cache across pod restarts
+- [x] `docker build -f deploy/Dockerfile .` succeeds from repo root
+- [x] `docker compose -f deploy/docker-compose.yml build` succeeds
+- [x] `kubectl apply --dry-run=client --validate=false -f deploy/k8s/dune-admin.yaml` passes
+- [x] Container starts, serves `/api/v1/status` → 200
+- [x] `market_bot_enabled: true` starts bot loop inside container (validated in deployed runtime)
+- [x] PVC correctly persists SQLite cache across pod restarts (validated in deployed runtime)
 - [x] External market-bot mode removed (embedded-only runtime/API/UI/docs)

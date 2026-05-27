@@ -978,45 +978,60 @@ func stripEmptySections(content string) string {
 		return content
 	}
 	lines := strings.Split(content, "\n")
-	// Find each section's (headerIdx, nextHeaderIdx). For each, check whether
-	// the body is empty; if so, mark the header line for removal.
-	skip := make(map[int]bool)
-	var headerIdxs []int
-	for i, l := range lines {
-		trim := strings.TrimSpace(l)
-		if strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]") {
-			headerIdxs = append(headerIdxs, i)
-		}
-	}
-	for k, idx := range headerIdxs {
-		end := len(lines)
-		if k+1 < len(headerIdxs) {
-			end = headerIdxs[k+1]
-		}
-		empty := true
-		for j := idx + 1; j < end; j++ {
-			if strings.TrimSpace(lines[j]) != "" {
-				empty = false
-				break
-			}
-		}
-		if empty {
-			skip[idx] = true
-			// Also consume the trailing blank lines so we don't leave a void.
-			for j := idx + 1; j < end; j++ {
-				skip[j] = true
-			}
+	skip := map[int]bool{}
+	headerIdxs := findINISectionHeaders(lines)
+	for i, headerIdx := range headerIdxs {
+		sectionEnd := nextINISectionStart(i, headerIdxs, len(lines))
+		if isINISectionBodyEmpty(lines, headerIdx+1, sectionEnd) {
+			markINISectionRange(skip, headerIdx, sectionEnd)
 		}
 	}
 	if len(skip) == 0 {
 		return content
 	}
+	return joinINILinesWithoutSkipped(lines, skip)
+}
+
+func findINISectionHeaders(lines []string) []int {
+	headerIdxs := make([]int, 0, len(lines))
+	for i, line := range lines {
+		trim := strings.TrimSpace(line)
+		if strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]") {
+			headerIdxs = append(headerIdxs, i)
+		}
+	}
+	return headerIdxs
+}
+
+func nextINISectionStart(current int, headerIdxs []int, lineCount int) int {
+	if current+1 < len(headerIdxs) {
+		return headerIdxs[current+1]
+	}
+	return lineCount
+}
+
+func isINISectionBodyEmpty(lines []string, start, end int) bool {
+	for i := start; i < end; i++ {
+		if strings.TrimSpace(lines[i]) != "" {
+			return false
+		}
+	}
+	return true
+}
+
+func markINISectionRange(skip map[int]bool, start, end int) {
+	for i := start; i < end; i++ {
+		skip[i] = true
+	}
+}
+
+func joinINILinesWithoutSkipped(lines []string, skip map[int]bool) string {
 	out := make([]string, 0, len(lines))
-	for i, l := range lines {
+	for i, line := range lines {
 		if skip[i] {
 			continue
 		}
-		out = append(out, l)
+		out = append(out, line)
 	}
 	return strings.Join(out, "\n")
 }

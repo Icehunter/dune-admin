@@ -59,7 +59,8 @@ make version-major  # bump X.0.0, tag, push
   connection.go     — global state: globalDB, globalSSH, globalExecutor, globalControl
   executor.go       — Executor interface (local vs SSH)
   control.go        — ControlPlane interface
-  control_docker.go / control_kubectl.go / control_local.go
+  control_docker.go / control_kubectl.go / control_local.go / control_amp.go
+  executor_amp.go   — ampExecutor: localExecutor with sudo-elevated WriteFile
   db.go             — all DB queries (pgx/v5); journey cache
   model.go          — shared domain types (playerInfo, itemInfo, etc.)
   handlers_*.go     — one file per feature area (players, bases, logs, etc.)
@@ -246,3 +247,70 @@ Release is triggered by `make version-patch/minor/major` which bumps `VERSION`, 
 - **FLS item grants**: item grants go via Funcom Live Services → PlayFab, not directly. `ServiceAuthToken` is the only credential.
 - **pnpm required**: `web/` uses `pnpm` (pinned to `10.28.1`). Don't use `npm` or `yarn` in `web/`.
 - **No commits without permission**: never commit code changes; make changes + run build/test, then stop for user review.
+
+---
+
+## AMP control plane
+
+The `amp` control plane targets CubeCoders AMP installations where the Dune game server runs inside a podman container managed by `ampinstmgr`. It is a sibling of `kubectl`/`docker`/`local` — selected via `control: amp` in `~/.dune-admin/config.yaml` or the `-control amp` flag.
+
+### Topology
+
+```
+host (e.g. Ubuntu VM)
+ └── AMP web panel (port 8080)
+      └── podman container "AMP_<instance>"  (cubecoders/ampbase)
+           ├── ampinstmgr (lifecycle)
+           ├── RabbitMQ broker (admin + game vhosts)
+           ├── Postgres
+           └── 1..N DuneSandboxServer-Linux-Shipping processes (one per partition)
+```
+
+`dune-admin` runs **on the host**, not inside the container. It uses `localExecutor` for shell commands and an `ampExecutor` wrapper to write INI files as the AMP user.
+
+### Config keys
+
+```yaml
+control: amp
+amp_instance:  DuneAwakening01           # ampinstmgr instance name
+amp_container: AMP_DuneAwakening01       # podman container (default: AMP_<instance>)
+amp_user:      amp                       # OS user that owns AMP (default: amp)
+amp_log_path:  /AMP/duneawakening/logs   # in-container log dir
+director_url:  http://127.0.0.1:11717    # optional — enables /director/ proxy
+broker_exec_prefix: "sudo -i -u amp podman exec AMP_DuneAwakening01"
+server_ini_dir: /home/amp/.ampdata/instances/DuneAwakening01/duneawakening/server/state
+db_host: 127.0.0.1
+db_port: 15432
+```
+
+### Sudoers grants
+
+`dune-admin` typically runs as a non-AMP user (e.g. `dune-admin`). The following grants make AMP-side operations work without prompts:
+
+```
+dune-admin ALL=(amp) NOPASSWD: /usr/bin/ampinstmgr, /usr/bin/podman, /usr/bin/tee
+```
+
+Narrow this further in production (e.g. lock `tee` to specific INI paths under `server_ini_dir`).
+
+### Provider behaviour
+
+| Method | Implementation |
+|---|---|
+| `GetStatus` | Lists `DuneSandboxServer-Linux-Shipping` host processes; reports container DB phase. |
+| `ExecCommand` | `sudo -i -u <amp_user> ampinstmgr -s/-q <amp_instance>`. |
+| `ListProcesses` | Host `ps` for game-server processes, decorated with map/port/partition. |
+| `ListLogSources` | `podman exec <container> ls <amp_log_path>`. |
+| `StreamLog` | `podman exec <container> tail -F <amp_log_path>/<name>`. |
+| `CaptureJWT` | Extracts `ServiceAuthToken` from game-server process args on the host. |
+| `ListExchanges` / `EnsureCaptureUser` | `rabbitmqctl` via `broker_exec_prefix`. |
+| `DiscoverIniDir` | Returns `server_ini_dir` (or derives the conventional AMP path). |
+| `ReadDefaultINI` | `podman exec <container> find / -name <file>` then `cat`. |
+
+### Writing UserGame.ini
+
+The AMP user owns `UserGame.ini`/`UserEngine.ini`. `ampExecutor.WriteFile` pipes content through `sudo -i -u <amp_user> tee <path> > /dev/null`. Writes follow the same upstream `patchINI` semantics as the other providers — no delimiter blocks, no AMP-marker handling. Changes require a Dune instance restart via `ExecCommand("restart")` to take effect.
+
+### Capture mode self-heal
+
+AMP can restart the broker container without warning, which resets the in-memory `dune_cap` user. `ampControl.startEnsureCaptureUserLoop` re-applies the user+permissions every 15s so capture survives broker restarts without manual intervention. Other providers don't need this; their brokers are externally managed.

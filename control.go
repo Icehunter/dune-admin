@@ -117,13 +117,15 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 			useContainer = *cfg.AmpUseContainer
 		}
 		return &ampControl{
-			instance:     cfg.AmpInstance,
-			container:    container,
-			ampUser:      user,
-			logPath:      cfg.AmpLogPath,
-			directorURL:  cfg.DirectorURL,
-			iniDir:       cfg.ServerIniDir,
-			useContainer: useContainer,
+			instance:        cfg.AmpInstance,
+			container:       container,
+			ampUser:         user,
+			logPath:         cfg.AmpLogPath,
+			directorURL:     cfg.DirectorURL,
+			iniDir:          cfg.ServerIniDir,
+			useContainer:    useContainer,
+			rabbitmqctlPath: cfg.AmpRabbitmqctlPath,
+			dataRoot:        cfg.AmpDataRoot,
 		}
 	default:
 		return &localControl{

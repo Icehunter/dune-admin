@@ -27,13 +27,15 @@ import (
 // All instance- and container-specific names come from config; this provider
 // is not specialised to any particular AMP install.
 type ampControl struct {
-	instance     string // ampinstmgr instance name (e.g. "MehDune01")
-	container    string // podman container name (only used when useContainer=true)
-	ampUser      string // OS user that owns the AMP instance (default "amp")
-	logPath      string // log directory — in-container path if containerised, host path if native
-	directorURL  string // optional Battlegroup Director URL for status/exchange discovery
-	iniDir       string // host path to UserGame.ini directory (configured)
-	useContainer bool   // true: wrap in-container ops in `podman exec`; false: run on host directly
+	instance        string // ampinstmgr instance name (e.g. "MehDune01")
+	container       string // podman container name (only used when useContainer=true)
+	ampUser         string // OS user that owns the AMP instance (default "amp")
+	logPath         string // log directory — in-container path if containerised, host path if native
+	directorURL     string // optional Battlegroup Director URL for status/exchange discovery
+	iniDir          string // host path to UserGame.ini directory (configured)
+	useContainer    bool   // true: wrap in-container ops in `podman exec`; false: run on host directly
+	rabbitmqctlPath string // absolute path to rabbitmqctl (AMP bundles its own, not on $PATH)
+	dataRoot        string // per-game data root (default /AMP/duneawakening)
 }
 
 func (c *ampControl) Name() string { return "amp" }
@@ -235,19 +237,81 @@ func (c *ampControl) CaptureJWT(_ context.Context, exec Executor) (string, strin
 
 // ── RabbitMQ admin (exchange listing + capture user provisioning) ─────────────
 
-// rabbitmqctlPrefix returns the shell-prefix that runs rabbitmqctl for this
-// AMP install. If an explicit broker_exec_prefix is configured we honour it.
-// Otherwise: container mode wraps in `podman exec`; native mode runs rabbitmqctl
-// directly on the host (as the AMP user, so RABBITMQ_ERLANG_COOKIE is read from
-// ~amp/.erlang.cookie).
+// defaultDuneRabbitmqctl is the AMP-bundled rabbitmqctl path for the Dune
+// Awakening module. AMP does not put this on $PATH inside the container, so
+// commands must use the absolute path. Other game modules use a similar
+// layout under /AMP/<game>/extracted/mq/opt/rabbitmq/sbin/.
+const defaultDuneRabbitmqctl = "/AMP/duneawakening/extracted/mq/opt/rabbitmq/sbin/rabbitmqctl"
+
+// defaultAmpDataRoot is the in-container per-game data root that AMP creates
+// for the Dune Awakening module. Other modules use the same /AMP/<game>/
+// pattern with a different game slug.
+const defaultAmpDataRoot = "/AMP/duneawakening"
+
+// rabbitmqctl returns the absolute path to the rabbitmqctl binary.
+func (c *ampControl) rabbitmqctl() string {
+	if c.rabbitmqctlPath != "" {
+		return c.rabbitmqctlPath
+	}
+	return defaultDuneRabbitmqctl
+}
+
+// ampDataRoot returns the AMP per-game data root (defaults to Dune Awakening).
+func (c *ampControl) ampDataRoot() string {
+	if c.dataRoot != "" {
+		return c.dataRoot
+	}
+	return defaultAmpDataRoot
+}
+
+// buildRabbitmqctl emits a complete shell command that runs rabbitmqctl
+// against one of AMP's brokers. AMP bundles its own musl-linked Erlang
+// runtime but only patchelfs the binaries it boots at startup (beam.smp);
+// the admin-CLI escript binary is left with the original /lib/ld-musl-* shebang.
+// To call it from outside AMP's normal launch path we have to:
+//   - invoke the bundled musl loader explicitly (works around the missing
+//     /lib/ld-musl-x86_64.so.1 on Debian-based AMP containers)
+//   - chain through the bundled escript and the rabbitmqctl escript wrapper
+//   - set HOME to the broker's runtime dir so the right .erlang.cookie is
+//     used (each broker has its own cookie under runtime/mq-<broker>-home/)
+//   - point RABBITMQ_HOME at the AMP-bundled rabbitmq install
+//   - target the right Erlang node name (rabbit-admin or rabbit-game)
+//
+// broker = "mq-admin" or "mq-game". args is the rabbitmqctl subcommand
+// plus its arguments, already shell-quoted by the caller as needed.
+func (c *ampControl) buildRabbitmqctl(broker, args string) string {
+	root := c.ampDataRoot()
+	mq := root + "/extracted/mq"
+	home := root + "/runtime/" + broker + "-home"
+	node := "rabbit-admin@localhost"
+	if strings.Contains(broker, "game") {
+		node = "rabbit-game@localhost"
+	}
+	inner := fmt.Sprintf(
+		"env -i HOME=%s LC_ALL=C "+
+			"LD_LIBRARY_PATH=%[2]s/lib:%[2]s/usr/lib:%[2]s/opt/openssl/lib "+
+			"RABBITMQ_HOME=%[2]s/opt/rabbitmq "+
+			"%[2]s/lib/ld-musl-x86_64.so.1 "+
+			"%[2]s/opt/erlang/lib/erlang/bin/escript "+
+			"%[2]s/opt/rabbitmq/escript/rabbitmqctl "+
+			"--node %s %s",
+		home, mq, node, args)
+	if c.useContainer && c.container != "" {
+		return fmt.Sprintf("sudo -i -u %s podman exec %s sh -c %s",
+			c.ampUser, c.container, shellQuote(inner))
+	}
+	return fmt.Sprintf("sudo -i -u %s sh -c %s", c.ampUser, shellQuote(inner))
+}
+
+// rabbitmqctlPrefix is retained as a legacy convenience for callers that want
+// a single-token prefix (broker_exec_prefix override path). When no override
+// is set it returns a buildRabbitmqctl wrapper targeting the admin broker;
+// callers needing the game broker must use buildRabbitmqctl directly.
 func (c *ampControl) rabbitmqctlPrefix(prefix string) string {
 	if prefix != "" {
-		return prefix + " rabbitmqctl"
+		return prefix + " " + c.rabbitmqctl()
 	}
-	if c.useContainer && c.container != "" {
-		return fmt.Sprintf("sudo -i -u %s podman exec %s rabbitmqctl", c.ampUser, c.container)
-	}
-	return fmt.Sprintf("sudo -i -u %s rabbitmqctl", c.ampUser)
+	return c.buildRabbitmqctl("mq-admin", "")
 }
 
 func (c *ampControl) ListExchanges(_ context.Context, exec Executor, _ string) ([]binding, error) {
@@ -264,8 +328,8 @@ func (c *ampControl) ListExchanges(_ context.Context, exec Executor, _ string) (
 // fetch broker-side data — e.g. the ServerCommandsAuthToken — that must be
 // retrieved by an Erlang expression rather than a normal AMQP operation.
 func (c *ampControl) EvalOnGameBroker(_ context.Context, exec Executor, expr string) (string, error) {
-	base := c.rabbitmqctlPrefix(loadedConfig.BrokerExecPrefix)
-	out, err := exec.Exec(fmt.Sprintf("%s eval %s 2>&1", base, shellQuote(expr)))
+	cmd := c.buildRabbitmqctl("mq-game", "eval "+shellQuote(expr))
+	out, err := exec.Exec(cmd + " 2>&1")
 	if err != nil {
 		return "", fmt.Errorf("rabbitmqctl eval: %w (output: %s)", err, strings.TrimSpace(out))
 	}

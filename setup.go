@@ -390,7 +390,7 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 	cfg.DefaultIniDir = ask("DefaultGame.ini directory (optional)", "")
 	fmt.Println()
 
-	fmt.Println("RabbitMQ broker (optional — used by capture mode):")
+	fmt.Println("RabbitMQ broker (used by capture mode AND live RMQ commands):")
 	var defaultBrokerPrefix string
 	if useContainer {
 		defaultBrokerPrefix = fmt.Sprintf("sudo -i -u %s podman exec %s", cfg.AmpUser, cfg.AmpContainer)
@@ -398,6 +398,10 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 		defaultBrokerPrefix = fmt.Sprintf("sudo -i -u %s", cfg.AmpUser)
 	}
 	cfg.BrokerExecPrefix = ask("Broker exec prefix", defaultBrokerPrefix)
+	// AMP bundles its own rabbitmqctl and doesn't put it on $PATH. The Dune
+	// Awakening module ships it at the path below; other AMP game modules use
+	// the same /AMP/<game>/extracted/mq/opt/rabbitmq/sbin/ layout.
+	cfg.AmpRabbitmqctlPath = ask("rabbitmqctl absolute path", defaultDuneRabbitmqctl)
 	fmt.Println()
 
 	fmt.Println("Database connection:")

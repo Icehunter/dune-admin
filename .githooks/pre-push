@@ -48,7 +48,11 @@ echo ""
 # Show what's being pushed
 echo -e "${YELLOW}Branch:${NC} ${CURRENT_BRANCH}"
 echo -e "${YELLOW}Commits:${NC}"
-git log --oneline @{u}.. 2>/dev/null | head -5 | sed 's/^/  /' || echo "  (new branch)"
+if [ -n "$UPSTREAM" ]; then
+    git log --oneline @{u}.. 2>/dev/null | head -5 | sed 's/^/  /' || echo "  (new branch)"
+else
+    echo "  (new branch)"
+fi
 echo ""
 
 # Show what's being checked
@@ -69,7 +73,7 @@ START_TIME=$(date +%s)
 # Count total checks to run
 TOTAL_CHECKS=0
 if [ -n "$HAS_GO_FILES" ]; then
-    TOTAL_CHECKS=$((TOTAL_CHECKS + 6))  # fmt, vet, lint, gosec, vulncheck, test, coverage
+    TOTAL_CHECKS=$((TOTAL_CHECKS + 6))  # fmt-check, vet, lint-go, gosec, vulncheck, test-race
 fi
 if [ -n "$HAS_MD_FILES" ]; then
     TOTAL_CHECKS=$((TOTAL_CHECKS + 1))  # markdownlint

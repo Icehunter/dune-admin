@@ -96,6 +96,11 @@ tools:
 version:
 	@echo $(VERSION)
 
+# Setup git hooks
+hooks:
+	@git config core.hooksPath .githooks
+	@echo "Git hooks configured!"
+
 # Bump patch version (1.0.0 → 1.0.1), commit, tag, and push — triggers release workflow.
 version-patch:
 	@V=$$(cat VERSION); \

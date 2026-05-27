@@ -203,45 +203,82 @@ func parseINILines(content, source string, schemaKeys map[string]bool) []RawSect
 
 	for _, raw := range strings.Split(content, "\n") {
 		line := strings.TrimSpace(raw)
-		if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+		if shouldSkipINILine(line) {
 			continue
 		}
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			curSec = line[1 : len(line)-1]
-			if _, ok := secMap[curSec]; !ok {
-				secMap[curSec] = len(result)
-				result = append(result, RawSection{Section: curSec, Source: source})
-			}
+		if section, ok := parseINISectionHeader(line); ok {
+			curSec = section
+			ensureRawSectionIndex(curSec, source, secMap, &result)
 			continue
 		}
 		if curSec == "" {
 			continue
 		}
-		prefix, rest := "", line
-		if len(line) > 0 && (line[0] == '+' || line[0] == '-') {
-			prefix = string(line[0])
-			rest = line[1:]
-		}
-		eq := strings.Index(rest, "=")
-		if eq <= 0 {
+		rawLine, ok := parseRawINILine(line)
+		if !ok {
 			continue
 		}
-		key := strings.TrimSpace(rest[:eq])
-		value := strings.TrimSpace(rest[eq+1:])
-
-		// Include if it's an array line OR the key is not in the schema.
-		if prefix != "" || !schemaKeys[curSec+"|"+key] {
-			idx := secMap[curSec]
-			result[idx].Lines = append(result[idx].Lines, RawLine{Prefix: prefix, Key: key, Value: value})
+		if shouldIncludeRawLine(curSec, rawLine, schemaKeys) {
+			idx := ensureRawSectionIndex(curSec, source, secMap, &result)
+			result[idx].Lines = append(result[idx].Lines, rawLine)
 		}
 	}
 
-	// Drop sections with no lines.
+	return compactRawSections(result)
+}
+
+func shouldSkipINILine(line string) bool {
+	return line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#")
+}
+
+func parseINISectionHeader(line string) (string, bool) {
+	if !strings.HasPrefix(line, "[") || !strings.HasSuffix(line, "]") {
+		return "", false
+	}
+	return line[1 : len(line)-1], true
+}
+
+func parseRawINILine(line string) (RawLine, bool) {
+	prefix, rest := "", line
+	if line[0] == '+' || line[0] == '-' {
+		prefix = string(line[0])
+		rest = line[1:]
+	}
+	eq := strings.Index(rest, "=")
+	if eq <= 0 {
+		return RawLine{}, false
+	}
+	return RawLine{
+		Prefix: prefix,
+		Key:    strings.TrimSpace(rest[:eq]),
+		Value:  strings.TrimSpace(rest[eq+1:]),
+	}, true
+}
+
+func shouldIncludeRawLine(section string, line RawLine, schemaKeys map[string]bool) bool {
+	if line.Prefix != "" {
+		return true
+	}
+	return !schemaKeys[section+"|"+line.Key]
+}
+
+func ensureRawSectionIndex(section, source string, secMap map[string]int, result *[]RawSection) int {
+	if idx, ok := secMap[section]; ok {
+		return idx
+	}
+	idx := len(*result)
+	secMap[section] = idx
+	*result = append(*result, RawSection{Section: section, Source: source})
+	return idx
+}
+
+func compactRawSections(result []RawSection) []RawSection {
 	out := result[:0]
-	for _, s := range result {
-		if len(s.Lines) > 0 {
-			out = append(out, s)
+	for _, section := range result {
+		if len(section.Lines) == 0 {
+			continue
 		}
+		out = append(out, section)
 	}
 	return out
 }

@@ -1,7 +1,6 @@
 # Functions excluded from the gocognit complexity gate.
 # Each entry has a GitHub issue tracking the refactor work.
 # Format: FuncName  file:line  score  issue-url
-parseINILines                  handlers_server_settings.go:198:1   24   https://github.com/Icehunter/dune-admin/issues/37
 cmdRepairVehicle               db.go:3440:1                        24   https://github.com/Icehunter/dune-admin/issues/39
 stripEmptySections             handlers_server_settings.go:703:1   22   https://github.com/Icehunter/dune-admin/issues/40
 handleGiveItems                handlers_players.go:230:1           22   https://github.com/Icehunter/dune-admin/issues/41

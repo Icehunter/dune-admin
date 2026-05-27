@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -544,6 +545,314 @@ func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
 // patchINI applies key updates to raw INI text without disturbing array lines
 // (+/- prefix) or any other content that isn't being changed.
 // updates: section → key → newValue ("" means delete the key).
+// dune-admin manages its writes inside a single delimited region at the end of
+// the INI file. Hand-edits above the BEGIN marker are preserved verbatim. UE5's
+// "last-key-wins" semantics make the dune-admin region authoritative for any
+// keys it sets, even if they're also set in the hand-edited region above.
+const (
+	duneAdminBeginMarker = "; >>>>> dune-admin managed section BEGIN — do not hand-edit between these markers >>>>>"
+	duneAdminEndMarker   = "; <<<<< dune-admin managed section END <<<<<"
+)
+
+// splitAtDuneAdminMarker separates an INI file into the hand-edited prefix and
+// any previously-written dune-admin managed region. The managed region is
+// parsed back into section→key→value so that incoming updates can be merged
+// before re-rendering.
+//
+// If no marker is found, the entire content is treated as hand-edited and
+// managed comes back empty.
+func splitAtDuneAdminMarker(content string) (preMarker string, managed map[string]map[string]string) {
+	managed = map[string]map[string]string{}
+	idx := strings.Index(content, duneAdminBeginMarker)
+	if idx < 0 {
+		return content, managed
+	}
+	preMarker = strings.TrimRight(content[:idx], "\n")
+	if preMarker != "" {
+		preMarker += "\n"
+	}
+
+	rest := content[idx:]
+	endIdx := strings.Index(rest, duneAdminEndMarker)
+	if endIdx < 0 {
+		// Malformed — drop the corrupted block rather than guessing.
+		return preMarker, managed
+	}
+	block := rest[len(duneAdminBeginMarker):endIdx]
+	for sec, kvs := range parseINI(block) {
+		managed[sec] = kvs
+	}
+	return preMarker, managed
+}
+
+// applyManagedUpdates merges the incoming updates into the existing managed
+// state. Empty values delete keys; sections that end up empty are dropped.
+func applyManagedUpdates(managed map[string]map[string]string, updates map[string]map[string]string) {
+	for sec, kvs := range updates {
+		if managed[sec] == nil {
+			managed[sec] = map[string]string{}
+		}
+		for k, v := range kvs {
+			if v == "" {
+				delete(managed[sec], k)
+			} else {
+				managed[sec][k] = v
+			}
+		}
+		if len(managed[sec]) == 0 {
+			delete(managed, sec)
+		}
+	}
+}
+
+// renderDuneAdminBlock emits the marker-delimited managed region. Sections and
+// keys are sorted alphabetically for stable diffs across writes.
+func renderDuneAdminBlock(managed map[string]map[string]string) string {
+	if len(managed) == 0 {
+		return ""
+	}
+	timestamp := time.Now().UTC().Format(time.RFC3339)
+	var b strings.Builder
+	b.WriteString(duneAdminBeginMarker + "\n")
+	b.WriteString("; Managed by dune-admin (https://github.com/Icehunter/dune-admin)\n")
+	b.WriteString("; Keys below are owned by the dune-admin web UI. UE5 reads the file\n")
+	b.WriteString("; top-to-bottom with last-key-wins semantics, so values here override\n")
+	b.WriteString("; anything set above. Last write: " + timestamp + "\n")
+	b.WriteString(";\n")
+
+	secs := make([]string, 0, len(managed))
+	for s := range managed {
+		secs = append(secs, s)
+	}
+	sort.Strings(secs)
+	for _, sec := range secs {
+		b.WriteString("\n[" + sec + "]\n")
+		keys := make([]string, 0, len(managed[sec]))
+		for k := range managed[sec] {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			b.WriteString(k + "=" + managed[sec][k] + "\n")
+		}
+	}
+	b.WriteString("\n" + duneAdminEndMarker + "\n")
+	return b.String()
+}
+
+// legacyHeaderSentinel matches the comment block emitted by the brief
+// "header-at-top-of-file" version of dune-admin (commits between the initial
+// merge and the managed-region rewrite). The new code never emits this; the
+// strip runs as a one-time migration when the legacy block is encountered.
+const legacyHeaderSentinel = "Managed by dune-admin (https://github.com/Icehunter/dune-admin)"
+
+// stripLegacyHeader removes the orphaned top-of-file comment block written by
+// the earlier "header-only" build. It matches a block of the form:
+//
+//	; ====...
+//	; Managed by dune-admin (https://github.com/Icehunter/dune-admin)
+//	; ...optional comment lines...
+//	; ====...
+//
+// Anything that doesn't match this exact shape is left alone, so user-written
+// comment blocks that happen to start with `; ====` are safe.
+func stripLegacyHeader(content string) string {
+	if !strings.Contains(content, legacyHeaderSentinel) {
+		return content
+	}
+	lines := strings.Split(content, "\n")
+	start, end := -1, -1
+	for i, l := range lines {
+		trim := strings.TrimSpace(l)
+		if !strings.HasPrefix(trim, "; ====") {
+			continue
+		}
+		if start == -1 {
+			start = i
+			continue
+		}
+		end = i
+		// Confirm the sentinel falls inside [start..end] before stripping.
+		for j := start; j <= end; j++ {
+			if strings.Contains(lines[j], legacyHeaderSentinel) {
+				// Also consume one trailing blank line if present.
+				stripEnd := end + 1
+				if stripEnd < len(lines) && strings.TrimSpace(lines[stripEnd]) == "" {
+					stripEnd++
+				}
+				return strings.Join(append(append([]string{}, lines[:start]...), lines[stripEnd:]...), "\n")
+			}
+		}
+		// Not our block — keep scanning. Reset to look for a fresh opening "; ====".
+		start, end = i, -1
+	}
+	return content
+}
+
+// stripEmptySections removes `[section]` headers whose bodies are entirely
+// whitespace. A body is "empty" only when it contains no comments, no array
+// entries, and no k=v lines — just blank lines. This preserves hand-written
+// comments and documentation, removing only the truly orphaned section
+// headers left behind after dedup.
+func stripEmptySections(content string) string {
+	if content == "" {
+		return content
+	}
+	lines := strings.Split(content, "\n")
+	// Find each section's (headerIdx, nextHeaderIdx). For each, check whether
+	// the body is empty; if so, mark the header line for removal.
+	skip := make(map[int]bool)
+	var headerIdxs []int
+	for i, l := range lines {
+		trim := strings.TrimSpace(l)
+		if strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]") {
+			headerIdxs = append(headerIdxs, i)
+		}
+	}
+	for k, idx := range headerIdxs {
+		end := len(lines)
+		if k+1 < len(headerIdxs) {
+			end = headerIdxs[k+1]
+		}
+		empty := true
+		for j := idx + 1; j < end; j++ {
+			if strings.TrimSpace(lines[j]) != "" {
+				empty = false
+				break
+			}
+		}
+		if empty {
+			skip[idx] = true
+			// Also consume the trailing blank lines so we don't leave a void.
+			for j := idx + 1; j < end; j++ {
+				skip[j] = true
+			}
+		}
+	}
+	if len(skip) == 0 {
+		return content
+	}
+	out := make([]string, 0, len(lines))
+	for i, l := range lines {
+		if skip[i] {
+			continue
+		}
+		out = append(out, l)
+	}
+	return strings.Join(out, "\n")
+}
+
+// stripKeysFromContent removes the listed keys from their sections in content.
+// Array lines (+key=val, -key=val), comments, and any key not listed are left
+// alone. Used to prevent duplicate keys between the hand-edited region and the
+// dune-admin managed region: once dune-admin owns a key, the file should have
+// exactly one definition of it.
+func stripKeysFromContent(content string, owned map[string]map[string]bool) string {
+	if len(owned) == 0 || content == "" {
+		return content
+	}
+	lines := strings.Split(content, "\n")
+	out := make([]string, 0, len(lines))
+	curSec := ""
+	for _, line := range lines {
+		trim := strings.TrimSpace(line)
+		// Section header.
+		if strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]") {
+			curSec = trim[1 : len(trim)-1]
+			out = append(out, line)
+			continue
+		}
+		// Drop only plain k=v assignments where the key is dune-admin-owned.
+		// Comments, blank lines, and array entries (+/-) are preserved as-is.
+		if curSec != "" && len(trim) > 0 &&
+			trim[0] != ';' && trim[0] != '#' && trim[0] != '+' && trim[0] != '-' {
+			if eq := strings.Index(trim, "="); eq > 0 {
+				key := strings.TrimSpace(trim[:eq])
+				if owned[curSec] != nil && owned[curSec][key] {
+					continue
+				}
+			}
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}
+
+// ownedKeySet builds the (section → set-of-keys) lookup that dune-admin owns,
+// so we can strip duplicates from the hand-edited region.
+func ownedKeySet(managed map[string]map[string]string) map[string]map[string]bool {
+	owned := make(map[string]map[string]bool, len(managed))
+	for sec, kvs := range managed {
+		set := make(map[string]bool, len(kvs))
+		for k := range kvs {
+			set[k] = true
+		}
+		owned[sec] = set
+	}
+	return owned
+}
+
+// applyDuneAdminUpdates rewrites an INI file's dune-admin managed region with
+// the incoming updates merged in. Hand-edited content above the BEGIN marker
+// is preserved exactly EXCEPT for keys dune-admin now owns — those are stripped
+// from above so the file has exactly one definition per dune-admin-owned key.
+// If after merging the managed region would be empty, the markers are dropped
+// and the pre-marker content is left intact.
+func applyDuneAdminUpdates(content string, updates map[string]map[string]string) string {
+	// One-time migration: strip the orphaned top-of-file header from the
+	// earlier "header-only" build, if present.
+	content = stripLegacyHeader(content)
+
+	preMarker, managed := splitAtDuneAdminMarker(content)
+	applyManagedUpdates(managed, updates)
+	block := renderDuneAdminBlock(managed)
+	if block == "" {
+		// No managed keys left — return just the hand-edited prefix.
+		return stripEmptySections(preMarker)
+	}
+	// Remove pre-marker copies of keys dune-admin now owns to prevent
+	// duplicates. Hand-edited keys dune-admin doesn't own stay untouched.
+	preMarker = stripKeysFromContent(preMarker, ownedKeySet(managed))
+	// Drop any section headers whose bodies became empty after dedup.
+	preMarker = stripEmptySections(preMarker)
+	// Ensure exactly one blank line between hand-edited content and the marker.
+	if strings.TrimSpace(preMarker) == "" {
+		return block
+	}
+	return strings.TrimRight(preMarker, "\n") + "\n\n" + block
+}
+
+// applyDuneAdminRawSection rewrites a single section's content inside the
+// dune-admin managed region without touching anything else. Used by the raw
+// (array-line) section editor. Plain k=v keys inside the supplied section are
+// stripped from the hand-edited region above the marker so the file has one
+// definition per key. Array (+/-) entries in the hand-edited region stay
+// untouched.
+func applyDuneAdminRawSection(content, section, rawLines string) string {
+	content = stripLegacyHeader(content)
+	preMarker, managed := splitAtDuneAdminMarker(content)
+	if strings.TrimSpace(rawLines) == "" {
+		delete(managed, section)
+	} else {
+		// Replace the section's content with the supplied raw lines, parsed.
+		parsed := parseINI("[" + section + "]\n" + rawLines)
+		managed[section] = parsed[section]
+		if managed[section] == nil {
+			managed[section] = map[string]string{}
+		}
+	}
+	block := renderDuneAdminBlock(managed)
+	if block == "" {
+		return stripEmptySections(preMarker)
+	}
+	preMarker = stripKeysFromContent(preMarker, ownedKeySet(managed))
+	preMarker = stripEmptySections(preMarker)
+	if strings.TrimSpace(preMarker) == "" {
+		return block
+	}
+	return strings.TrimRight(preMarker, "\n") + "\n\n" + block
+}
+
 func patchINI(content string, updates map[string]map[string]string) string {
 	if len(updates) == 0 {
 		return content
@@ -748,14 +1057,16 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(gameUpdates) > 0 {
 		path := dir + "/UserGame.ini"
-		if err := globalExecutor.WriteFile(path, strings.NewReader(patchINI(readINIContent(path), gameUpdates))); err != nil {
+		body := applyDuneAdminUpdates(readINIContent(path), gameUpdates)
+		if err := globalExecutor.WriteFile(path, strings.NewReader(body)); err != nil {
 			jsonErr(w, fmt.Errorf("write UserGame.ini: %w", err), 500)
 			return
 		}
 	}
 	if len(engineUpdates) > 0 {
 		path := dir + "/UserEngine.ini"
-		if err := globalExecutor.WriteFile(path, strings.NewReader(patchINI(readINIContent(path), engineUpdates))); err != nil {
+		body := applyDuneAdminUpdates(readINIContent(path), engineUpdates)
+		if err := globalExecutor.WriteFile(path, strings.NewReader(body)); err != nil {
 			jsonErr(w, fmt.Errorf("write UserEngine.ini: %w", err), 500)
 			return
 		}
@@ -800,7 +1111,7 @@ func handleUpdateRawSection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	existing := readINIContent(filePath)
-	updated := replaceSectionContent(existing, req.Section, strings.TrimSpace(req.Lines))
+	updated := applyDuneAdminRawSection(existing, req.Section, strings.TrimSpace(req.Lines))
 
 	var buf bytes.Buffer
 	buf.WriteString(updated)

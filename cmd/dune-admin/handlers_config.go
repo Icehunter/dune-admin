@@ -28,44 +28,42 @@ func handleGetConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleSaveConfig writes an updated config, then reconnects.
-func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
-	var cfg appConfig
-	if err := decode(r, &cfg); err != nil {
-		jsonErr(w, fmt.Errorf("decode: %w", err), 400)
+func preserveMaskedDBPass(
+	cfg *appConfig,
+	readFile func(string) ([]byte, error),
+	path string,
+	fallback string,
+) {
+	if cfg.DBPass != "••••••••" {
 		return
 	}
-
-	// If the client sent back the masked placeholder, keep the existing password.
+	existing, err := readFile(path)
+	if err == nil {
+		var old appConfig
+		if yaml.Unmarshal(existing, &old) == nil && old.DBPass != "" {
+			cfg.DBPass = old.DBPass
+		}
+	}
 	if cfg.DBPass == "••••••••" {
-		existing, err := os.ReadFile(configPath())
-		if err == nil {
-			var old appConfig
-			if yaml.Unmarshal(existing, &old) == nil && old.DBPass != "" {
-				cfg.DBPass = old.DBPass
-			}
-		}
-		if cfg.DBPass == "••••••••" {
-			cfg.DBPass = dbPass // fall back to in-memory value
-		}
+		cfg.DBPass = fallback
 	}
+}
 
+func writeConfigFile(cfg appConfig) error {
 	if err := os.MkdirAll(configDir(), 0700); err != nil {
-		jsonErr(w, fmt.Errorf("create config dir: %w", err), 500)
-		return
+		return fmt.Errorf("create config dir: %w", err)
 	}
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
-		jsonErr(w, fmt.Errorf("marshal config: %w", err), 500)
-		return
+		return fmt.Errorf("marshal config: %w", err)
 	}
 	if err := os.WriteFile(configPath(), data, 0600); err != nil {
-		jsonErr(w, fmt.Errorf("write config: %w", err), 500)
-		return
+		return fmt.Errorf("write config: %w", err)
 	}
+	return nil
+}
 
-	// Apply the new values to globals so connectAll picks them up.
-	applyConfig(cfg)
-
+func resetRuntimeConnections() {
 	if globalDB != nil {
 		globalDB.Close()
 		globalDB = nil
@@ -76,6 +74,26 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	globalSSH = nil
 	globalControl = nil
+}
+
+func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
+	var cfg appConfig
+	if err := decode(r, &cfg); err != nil {
+		jsonErr(w, fmt.Errorf("decode: %w", err), 400)
+		return
+	}
+
+	// If the client sent back the masked placeholder, keep the existing password.
+	preserveMaskedDBPass(&cfg, os.ReadFile, configPath(), dbPass)
+
+	if err := writeConfigFile(cfg); err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
+
+	// Apply the new values to globals so connectAll picks them up.
+	applyConfig(cfg)
+	resetRuntimeConnections()
 
 	if err := connectAll(); err != nil {
 		jsonErr(w, fmt.Errorf("reconnect failed: %w", err), 500)

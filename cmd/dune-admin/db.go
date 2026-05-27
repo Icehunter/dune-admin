@@ -3830,55 +3830,82 @@ func cmdRepairPlayerGear(playerID int64) Cmd {
 	}
 }
 
-func cmdRepairVehicle(playerID, vehicleID int64) Cmd {
-	return func() Msg {
-		if globalDB == nil {
-			return msgRepairVehicle{err: fmt.Errorf("not connected")}
-		}
-		if playerID == 0 {
-			return msgRepairVehicle{err: fmt.Errorf("player ID required")}
-		}
-		ctx := context.Background()
-		if err := checkPlayerOffline(ctx, playerID); err != nil {
-			return msgRepairVehicle{err: err}
-		}
+func validateRepairVehicleInput(playerID int64) error {
+	if globalDB == nil {
+		return fmt.Errorf("not connected")
+	}
+	if playerID == 0 {
+		return fmt.Errorf("player ID required")
+	}
+	return nil
+}
 
-		rows, err := globalDB.Query(ctx, `
+type vehicleModule struct {
+	id         int64
+	templateID string
+}
+
+func loadVehicleModules(ctx context.Context, vehicleID int64) ([]vehicleModule, error) {
+	rows, err := globalDB.Query(ctx, `
 			SELECT id, template_id
 			FROM dune.vehicle_modules
 			WHERE vehicle_id = $1::bigint`, vehicleID)
-		if err != nil {
-			return msgRepairVehicle{err: fmt.Errorf("scan modules: %w", err)}
-		}
-		defer rows.Close()
+	if err != nil {
+		return nil, fmt.Errorf("scan modules: %w", err)
+	}
+	defer rows.Close()
 
-		type moduleRow struct {
-			id         int64
-			templateID string
+	var modules []vehicleModule
+	for rows.Next() {
+		var module vehicleModule
+		if err := rows.Scan(&module.id, &module.templateID); err != nil {
+			return nil, fmt.Errorf("scan module: %w", err)
 		}
-		var modules []moduleRow
-		for rows.Next() {
-			var m moduleRow
-			if err := rows.Scan(&m.id, &m.templateID); err != nil {
-				return msgRepairVehicle{err: fmt.Errorf("scan module: %w", err)}
-			}
-			modules = append(modules, m)
-		}
-		if err := rows.Err(); err != nil {
-			return msgRepairVehicle{err: err}
-		}
+		modules = append(modules, module)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return modules, nil
+}
 
-		total := len(modules)
-		repaired := 0
-		skipped := 0
-		for _, m := range modules {
-			target, ok := itemMaxDurability(m.templateID)
-			if !ok || target <= 0 {
-				skipped++
-				continue
-			}
-			// Both fields must be written — Current-only is clamped to surviving Decayed on reload.
-			_, err := globalDB.Exec(ctx, `
+type vehicleRepairSummary struct {
+	repaired int
+	skipped  int
+	total    int
+	err      error
+}
+
+func vehicleRepairTarget(templateID string) (float64, bool) {
+	target, ok := itemMaxDurability(templateID)
+	if !ok || target <= 0 {
+		return 0, false
+	}
+	return target, true
+}
+
+func runVehicleModuleRepairs(
+	modules []vehicleModule,
+	update func(module vehicleModule, target float64) error,
+) vehicleRepairSummary {
+	summary := vehicleRepairSummary{total: len(modules)}
+	for _, module := range modules {
+		target, ok := vehicleRepairTarget(module.templateID)
+		if !ok {
+			summary.skipped++
+			continue
+		}
+		if err := update(module, target); err != nil {
+			summary.err = fmt.Errorf("repair module %d: %w", module.id, err)
+			return summary
+		}
+		summary.repaired++
+	}
+	return summary
+}
+
+func updateVehicleModuleDurability(ctx context.Context, moduleID int64, target float64) error {
+	_, err := globalDB.Exec(ctx, `
 				UPDATE dune.vehicle_modules
 				SET stats = jsonb_set(
 					jsonb_set(stats,
@@ -3886,13 +3913,30 @@ func cmdRepairVehicle(playerID, vehicleID int64) Cmd {
 						to_jsonb($2::float8), true),
 					'{FVehicleModuleDurabilityStats,1,DecayedMaxDurability}',
 					to_jsonb($2::float8), true)
-				WHERE id = $1::bigint`, m.id, target)
-			if err != nil {
-				return msgRepairVehicle{repaired: repaired, skipped: skipped, total: total, err: fmt.Errorf("repair module %d: %w", m.id, err)}
-			}
-			repaired++
+				WHERE id = $1::bigint`, moduleID, target)
+	return err
+}
+
+func cmdRepairVehicle(playerID, vehicleID int64) Cmd {
+	return func() Msg {
+		if err := validateRepairVehicleInput(playerID); err != nil {
+			return msgRepairVehicle{err: err}
 		}
-		return msgRepairVehicle{repaired: repaired, skipped: skipped, total: total}
+		ctx := context.Background()
+		if err := checkPlayerOffline(ctx, playerID); err != nil {
+			return msgRepairVehicle{err: err}
+		}
+
+		modules, err := loadVehicleModules(ctx, vehicleID)
+		if err != nil {
+			return msgRepairVehicle{err: err}
+		}
+
+		summary := runVehicleModuleRepairs(modules, func(module vehicleModule, target float64) error {
+			// Both fields must be written — Current-only is clamped to surviving Decayed on reload.
+			return updateVehicleModuleDurability(ctx, module.id, target)
+		})
+		return msgRepairVehicle(summary)
 	}
 }
 

@@ -1776,6 +1776,118 @@ func cmdCompleteContracts(accountID int64, contractIDs []string) Cmd {
 	}
 }
 
+func validateContractMutationInput(accountID int64, contractIDs []string) error {
+	if accountID == 0 {
+		return fmt.Errorf("account ID required")
+	}
+	if len(contractIDs) == 0 {
+		return fmt.Errorf("at least one contract required")
+	}
+	return nil
+}
+
+type contractRemovalSet struct {
+	resolvedNames []string
+	removeTags    []string
+	removeSkills  []string
+}
+
+func buildContractRemovalSet(contractIDs []string) (contractRemovalSet, error) {
+	seenTag := map[string]bool{}
+	seenSkill := map[string]bool{}
+	set := contractRemovalSet{
+		resolvedNames: make([]string, 0, len(contractIDs)),
+		removeTags:    make([]string, 0, len(contractIDs)),
+		removeSkills:  make([]string, 0, len(contractIDs)),
+	}
+
+	for _, id := range contractIDs {
+		name, tags, err := resolveContractTags(id)
+		if err != nil {
+			return contractRemovalSet{}, err
+		}
+		set.resolvedNames = append(set.resolvedNames, name)
+		for _, tag := range tags {
+			if seenTag[tag] {
+				continue
+			}
+			seenTag[tag] = true
+			set.removeTags = append(set.removeTags, tag)
+		}
+		for _, skill := range tagsData.ContractSkillGrants[name] {
+			if seenSkill[skill] {
+				continue
+			}
+			seenSkill[skill] = true
+			set.removeSkills = append(set.removeSkills, skill)
+		}
+	}
+
+	return set, nil
+}
+
+func removeContractTags(ctx context.Context, accountID int64, removeTags []string) error {
+	if len(removeTags) == 0 {
+		return nil
+	}
+	if _, err := globalDB.Exec(ctx,
+		`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
+		accountID, removeTags); err != nil {
+		return fmt.Errorf("remove tags: %w", err)
+	}
+	return nil
+}
+
+func loadContractPawnID(ctx context.Context, accountID int64) int64 {
+	var pawnID int64
+	_ = globalDB.QueryRow(ctx,
+		`SELECT player_pawn_id FROM dune.player_state WHERE account_id = $1 LIMIT 1`,
+		accountID).Scan(&pawnID)
+	return pawnID
+}
+
+func stripContractSkillBlocks(ctx context.Context, pawnID int64, removeSkills []string) (int, error) {
+	if pawnID == 0 || len(removeSkills) == 0 {
+		return 0, nil
+	}
+
+	stripped := 0
+	for _, skill := range removeSkills {
+		key := fmt.Sprintf(`(TagName="%s")`, skill)
+		tag, err := globalDB.Exec(ctx, `
+			UPDATE dune.fgl_entities fe
+			SET components = jsonb_set(
+				fe.components,
+				ARRAY['FLevelComponent','1','ModuleData'],
+				(fe.components->'FLevelComponent'->1->'ModuleData') - $2::text)
+			WHERE fe.entity_id = (
+				SELECT entity_id FROM dune.actor_fgl_entities
+				WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
+			)
+			AND COALESCE(
+				(fe.components->'FLevelComponent'->1->'ModuleData'->$2->>'SkillPointsSpent')::int,
+				0
+			) <= 1`,
+			pawnID, key)
+		if err != nil {
+			return 0, fmt.Errorf("strip %s: %w", skill, err)
+		}
+		if tag.RowsAffected() > 0 {
+			stripped++
+		}
+	}
+
+	return stripped, nil
+}
+
+func contractBatchSummary(resolvedNames []string) string {
+	summary := resolvedNames[0]
+	if len(resolvedNames) > 1 {
+		summary = fmt.Sprintf("%d contracts", len(resolvedNames))
+	}
+	return summary
+}
+
 // cmdReverseContracts removes the AddedFlagsOnCompletion tags and strips the
 // Skills.Key.* ModuleData entries that cmdCompleteContracts wrote. Skill blocks
 // are only removed when SkillPointsSpent <= 1 — branches the player genuinely
@@ -1785,90 +1897,30 @@ func cmdReverseContracts(accountID int64, contractIDs []string) Cmd {
 		if globalDB == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
-		if accountID == 0 {
-			return msgMutate{err: fmt.Errorf("account ID required")}
-		}
-		if len(contractIDs) == 0 {
-			return msgMutate{err: fmt.Errorf("at least one contract required")}
+		if err := validateContractMutationInput(accountID, contractIDs); err != nil {
+			return msgMutate{err: err}
 		}
 
-		seenTag := map[string]bool{}
-		var removeTags []string
-		seenSkill := map[string]bool{}
-		var removeSkills []string
-		var resolved []string
-
-		for _, id := range contractIDs {
-			name, tags, err := resolveContractTags(id)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-			resolved = append(resolved, name)
-			for _, t := range tags {
-				if !seenTag[t] {
-					seenTag[t] = true
-					removeTags = append(removeTags, t)
-				}
-			}
-			for _, sk := range tagsData.ContractSkillGrants[name] {
-				if !seenSkill[sk] {
-					seenSkill[sk] = true
-					removeSkills = append(removeSkills, sk)
-				}
-			}
+		set, err := buildContractRemovalSet(contractIDs)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
 		ctx := context.Background()
-
-		if len(removeTags) > 0 {
-			if _, err := globalDB.Exec(ctx,
-				`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
-				accountID, removeTags); err != nil {
-				return msgMutate{err: fmt.Errorf("remove tags: %w", err)}
-			}
+		if err := removeContractTags(ctx, accountID, set.removeTags); err != nil {
+			return msgMutate{err: err}
 		}
 
-		stripped := 0
-		if len(removeSkills) > 0 {
-			var pawnID int64
-			_ = globalDB.QueryRow(ctx,
-				`SELECT player_pawn_id FROM dune.player_state WHERE account_id = $1 LIMIT 1`,
-				accountID).Scan(&pawnID)
-			if pawnID != 0 {
-				for _, sk := range removeSkills {
-					key := fmt.Sprintf(`(TagName="%s")`, sk)
-					tag, err := globalDB.Exec(ctx, `
-						UPDATE dune.fgl_entities fe
-						SET components = jsonb_set(
-							fe.components,
-							ARRAY['FLevelComponent','1','ModuleData'],
-							(fe.components->'FLevelComponent'->1->'ModuleData') - $2::text)
-						WHERE fe.entity_id = (
-							SELECT entity_id FROM dune.actor_fgl_entities
-							WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
-						)
-						AND COALESCE(
-							(fe.components->'FLevelComponent'->1->'ModuleData'->$2->>'SkillPointsSpent')::int,
-							0
-						) <= 1`,
-						pawnID, key)
-					if err != nil {
-						return msgMutate{err: fmt.Errorf("strip %s: %w", sk, err)}
-					}
-					if tag.RowsAffected() > 0 {
-						stripped++
-					}
-				}
-			}
+		pawnID := loadContractPawnID(ctx, accountID)
+		stripped, err := stripContractSkillBlocks(ctx, pawnID, set.removeSkills)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
-		summary := resolved[0]
-		if len(resolved) > 1 {
-			summary = fmt.Sprintf("%d contracts", len(resolved))
-		}
+		summary := contractBatchSummary(set.resolvedNames)
 		return msgMutate{ok: fmt.Sprintf(
 			"Reversed %s: removed %d tag(s), stripped %d skill block(s) — takes effect on next login",
-			summary, len(removeTags), stripped)}
+			summary, len(set.removeTags), stripped)}
 	}
 }
 

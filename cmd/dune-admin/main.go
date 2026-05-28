@@ -412,120 +412,160 @@ func needsSetup() bool {
 	return true
 }
 
-func main() {
-	flag.Parse()
+func runSQLMode(query string) error {
+	if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
+		return fmt.Errorf("connect: %w", msg.err)
+	}
+	if msg, ok := cmdRunSQL(query)().(msgSQL); ok {
+		if msg.err != nil {
+			return msg.err
+		}
+		fmt.Println(msg.result)
+	}
+	return nil
+}
 
+func runImmediateModes() (handled bool, err error) {
 	// Explicit -setup flag: reconfigure and exit (don't start server).
 	if setupMode {
 		runSetup()
-		return
+		return true, nil
 	}
-
 	if sqlQuery != "" {
-		if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
-			fmt.Fprintln(os.Stderr, "connect:", msg.err)
-			os.Exit(1)
-		}
-		if msg, ok := cmdRunSQL(sqlQuery)().(msgSQL); ok {
-			if msg.err != nil {
-				fmt.Fprintln(os.Stderr, msg.err)
-				os.Exit(1)
-			}
-			fmt.Println(msg.result)
-		}
-		return
+		return true, runSQLMode(sqlQuery)
 	}
 	if renderK8SOut != "" {
-		if err := renderK8SManifest(renderK8SOut); err != nil {
-			fmt.Fprintln(os.Stderr, "render-k8s:", err)
+		return true, renderK8SManifest(renderK8SOut)
+	}
+	return false, nil
+}
+
+func loadRuntimeData() error {
+	if err := loadItemData(); err != nil {
+		return err
+	}
+	if err := loadTagsData(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func setupIfNeeded() bool {
+	// Auto-run setup wizard when no config exists — setup leaves us connected.
+	if !needsSetup() {
+		return false
+	}
+	runSetup()
+	fmt.Println()
+	fmt.Printf("Starting server on %s...\n", listenAddr)
+	return true
+}
+
+func closeGlobalConnections() {
+	if globalDB != nil {
+		globalDB.Close()
+	}
+	if globalSSH != nil {
+		_ = globalSSH.Close()
+	}
+}
+
+func refreshItemTemplates() {
+	if msg, ok := cmdFetchItemTemplates().(msgItemTemplates); ok {
+		mergeItemTemplates(msg.templates)
+	}
+}
+
+func connectAndPrimeTemplates(alreadyConnected bool) {
+	if alreadyConnected {
+		// Already connected by setup; just populate item templates.
+		refreshItemTemplates()
+		return
+	}
+	// Connect synchronously (SSH + DB).
+	if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
+		fmt.Fprintln(os.Stderr, "connect:", msg.err)
+		fmt.Fprintln(os.Stderr, "Starting server anyway — use /api/v1/reconnect to retry")
+		return
+	}
+	refreshItemTemplates()
+}
+
+func resolveEmbeddedMarketBotPaths(cfg appConfig, fallbackItemDataPath string) (cacheDB string, itemDataForBot string) {
+	cacheDB = cfg.MarketBotCacheDB
+	if cacheDB == "" {
+		cacheDB = filepath.Join(configDir(), "market-bot-cache.db")
+	}
+	itemDataForBot = cfg.MarketBotItemData
+	if itemDataForBot == "" {
+		if fallbackItemDataPath != "" {
+			itemDataForBot = fallbackItemDataPath
+		} else {
+			itemDataForBot = resolveItemDataPath()
+		}
+	}
+	return cacheDB, itemDataForBot
+}
+
+func startEmbeddedMarketBotIfEnabled(cfg appConfig) context.CancelFunc {
+	if !cfg.MarketBotEnabled {
+		return nil
+	}
+	botCtx, botCancel := context.WithCancel(context.Background())
+	cacheDB, itemDataForBot := resolveEmbeddedMarketBotPaths(cfg, itemDataPath)
+	inst, err := marketbot.Run(botCtx, marketbot.BotConfig{
+		DBPool:       globalDB,
+		DBHost:       dbHost,
+		DBPort:       dbPort,
+		DBUser:       dbUser,
+		DBPass:       dbPass,
+		DBName:       dbName,
+		DBSchema:     dbSchema,
+		CacheDB:      cacheDB,
+		ItemDataPath: itemDataForBot,
+		BuyInterval:  cfg.MarketBotBuyInt,
+		ListInterval: cfg.MarketBotListInt,
+		BuyThreshold: cfg.MarketBotThresh,
+		MaxBuys:      cfg.MarketBotMaxBuys,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "market-bot: startup failed: %v\n", err)
+		botCancel()
+		return nil
+	}
+	embeddedBot = inst
+	return botCancel
+}
+
+func main() {
+	flag.Parse()
+
+	handled, err := runImmediateModes()
+	if handled {
+		if err != nil {
+			label := ""
+			if renderK8SOut != "" {
+				label = "render-k8s: "
+			}
+			fmt.Fprintln(os.Stderr, label+err.Error())
 			os.Exit(1)
 		}
 		return
 	}
 
-	if err := loadItemData(); err != nil {
+	if err := loadRuntimeData(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	if err := loadTagsData(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	alreadyConnected := setupIfNeeded()
+	defer closeGlobalConnections()
 
-	// Auto-run setup wizard when no config exists — setup leaves us connected.
-	alreadyConnected := false
-	if needsSetup() {
-		runSetup()
-		alreadyConnected = true
-		fmt.Println()
-		fmt.Printf("Starting server on %s...\n", listenAddr)
-	}
+	connectAndPrimeTemplates(alreadyConnected)
 
-	defer func() {
-		if globalDB != nil {
-			globalDB.Close()
-		}
-		if globalSSH != nil {
-			_ = globalSSH.Close()
-		}
-	}()
-
-	if !alreadyConnected {
-		// Connect synchronously (SSH + DB).
-		if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
-			fmt.Fprintln(os.Stderr, "connect:", msg.err)
-			fmt.Fprintln(os.Stderr, "Starting server anyway — use /api/v1/reconnect to retry")
-		} else {
-			if msg, ok := cmdFetchItemTemplates().(msgItemTemplates); ok {
-				mergeItemTemplates(msg.templates)
-			}
-		}
-	} else {
-		// Already connected by setup; just populate item templates.
-		if msg, ok := cmdFetchItemTemplates().(msgItemTemplates); ok {
-			mergeItemTemplates(msg.templates)
-		}
-	}
-
-	// Start embedded market bot when enabled in config.
-	if loadedConfig.MarketBotEnabled {
-		botCtx, botCancel := context.WithCancel(context.Background())
-		cacheDB := loadedConfig.MarketBotCacheDB
-		if cacheDB == "" {
-			cacheDB = filepath.Join(configDir(), "market-bot-cache.db")
-		}
-		itemDataForBot := loadedConfig.MarketBotItemData
-		if itemDataForBot == "" {
-			if itemDataPath != "" {
-				itemDataForBot = itemDataPath
-			} else {
-				itemDataForBot = resolveItemDataPath()
-			}
-		}
-		inst, err := marketbot.Run(botCtx, marketbot.BotConfig{
-			DBPool:       globalDB,
-			DBHost:       dbHost,
-			DBPort:       dbPort,
-			DBUser:       dbUser,
-			DBPass:       dbPass,
-			DBName:       dbName,
-			DBSchema:     dbSchema,
-			CacheDB:      cacheDB,
-			ItemDataPath: itemDataForBot,
-			BuyInterval:  loadedConfig.MarketBotBuyInt,
-			ListInterval: loadedConfig.MarketBotListInt,
-			BuyThreshold: loadedConfig.MarketBotThresh,
-			MaxBuys:      loadedConfig.MarketBotMaxBuys,
-		})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "market-bot: startup failed: %v\n", err)
-			botCancel()
-		} else {
-			embeddedBot = inst
-			// Ensure the bot is stopped on process exit.
-			defer botCancel()
-		}
+	if botCancel := startEmbeddedMarketBotIfEnabled(loadedConfig); botCancel != nil {
+		// Ensure the bot is stopped on process exit.
+		defer botCancel()
 	}
 
 	startServer(listenAddr)

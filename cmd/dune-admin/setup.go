@@ -103,7 +103,7 @@ func runSetup() {
 
 // ── kubectl setup flow ────────────────────────────────────────────────────────
 
-func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
+func setupKubectlSSHKey(ask func(string, string) string, ok, fail func(string)) string {
 	// SSH key
 	fmt.Println("Checking for SSH key...")
 	keyPath := resolveKeyPath()
@@ -125,7 +125,14 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 		sshKeyPath = keyPath
 	}
 	fmt.Println()
+	return keyPath
+}
 
+func setupKubectlSSHConnection(
+	ask func(string, string) string,
+	ok, fail func(string),
+	keyPath string,
+) *sshExecutor {
 	// SSH connection details
 	fmt.Println("SSH connection:")
 	sshHost = ask("VM host:port", envOr("SSH_HOST", "192.168.0.72:22"))
@@ -150,24 +157,58 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 	}
 	ok("SSH connected")
 	fmt.Println()
+	globalSSH = client
+	return &sshExecutor{client: client}
+}
 
+func setupKubectlDiscoverDBPod(exec *sshExecutor, ok, fail func(string), cfg *appConfig) {
 	// Discover DB pod
 	fmt.Println("Discovering database pod...")
-	sshExecWrap := &sshExecutor{client: client}
-	ns, pod, podIP, err := discoverDBPod(sshExecWrap)
+	ns, pod, podIP, err := discoverDBPod(exec)
 	if err != nil {
 		fail("Pod discovery failed: " + err.Error())
 		fmt.Println()
 		fmt.Println("  Make sure the SSH user can run: sudo kubectl get pods -A")
 		exitSetup(1)
 	}
-	globalSSH = client
 	globalPodNS = ns
 	globalPod = pod
 	globalPodIP = podIP
+	cfg.ControlNamespace = ns
+	controlNS = ns
 	ok("Database pod: " + pod)
 	fmt.Println()
+}
 
+func selectBattlegroup(battlegroups []string, ask func(string, string) string) string {
+	if len(battlegroups) == 0 {
+		return ""
+	}
+	chosen := battlegroups[0]
+	if len(battlegroups) == 1 {
+		return chosen
+	}
+
+	fmt.Println("  Available battlegroups:")
+	for i, bg := range battlegroups {
+		fmt.Printf("    [%d] %s\n", i+1, bg)
+	}
+	fmt.Println()
+	idxStr := ask(fmt.Sprintf("Which battlegroup? [1-%d]", len(battlegroups)), "1")
+	idx := 1
+	_, _ = fmt.Sscanf(idxStr, "%d", &idx)
+	if idx >= 1 && idx <= len(battlegroups) {
+		chosen = battlegroups[idx-1]
+	}
+	return chosen
+}
+
+func setupKubectlDiscoverDBCredentials(
+	exec *sshExecutor,
+	ask func(string, string) string,
+	ok, fail func(string),
+	cfg *appConfig,
+) (string, string) {
 	// Discover DB password
 	fmt.Println("Discovering database password...")
 	discoveredUser := "postgres"
@@ -177,36 +218,21 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 	if bg := battlegroupFromPod(globalPod); bg != "" {
 		battlegroups = []string{bg}
 	} else {
-		battlegroups = listBattlegroups(sshExecWrap)
+		battlegroups = listBattlegroups(exec)
 	}
 
 	if len(battlegroups) == 0 {
 		fmt.Println("  Could not determine battlegroup name")
 	} else {
-		chosen := battlegroups[0]
-		if len(battlegroups) > 1 {
-			fmt.Println("  Available battlegroups:")
-			for i, bg := range battlegroups {
-				fmt.Printf("    [%d] %s\n", i+1, bg)
-			}
-			fmt.Println()
-			idxStr := ask(fmt.Sprintf("Which battlegroup? [1-%d]", len(battlegroups)), "1")
-			idx := 1
-			_, _ = fmt.Sscanf(idxStr, "%d", &idx)
-			if idx >= 1 && idx <= len(battlegroups) {
-				chosen = battlegroups[idx-1]
-			}
-		}
+		chosen := selectBattlegroup(battlegroups, ask)
 		yamlPath := fmt.Sprintf("~/.dune/%s.yaml", chosen)
-		if u, pass := extractPasswordFromYAML(sshExecWrap, yamlPath); pass != "" {
+		if u, pass := extractPasswordFromYAML(exec, yamlPath); pass != "" {
 			discoveredUser = u
 			discoveredPass = pass
 			ok(fmt.Sprintf("Password found in %s (user: %s)", yamlPath, u))
 		} else {
 			fail("No password found in " + yamlPath)
 		}
-		cfg.ControlNamespace = ns
-		controlNS = ns
 	}
 
 	if discoveredPass == "" {
@@ -220,7 +246,15 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 		}
 	}
 	fmt.Println()
+	return discoveredUser, discoveredPass
+}
 
+func setupKubectlConnectDB(
+	discoveredUser, discoveredPass string,
+	exec *sshExecutor,
+	cfg *appConfig,
+	ok, fail func(string),
+) {
 	// Connect to DB
 	fmt.Println("Connecting to database...")
 	dbUser = discoveredUser
@@ -233,11 +267,21 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 		exitSetup(1)
 	}
 	globalDB = pool
-	globalExecutor = sshExecWrap
+	globalExecutor = exec
 	globalControl = newControlPlane("kubectl", *cfg)
 	ok("Database connected as: " + dbUser)
 	fmt.Println()
+}
 
+func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
+	keyPath := setupKubectlSSHKey(ask, ok, fail)
+	exec := setupKubectlSSHConnection(ask, ok, fail, keyPath)
+	setupKubectlDiscoverDBPod(exec, ok, fail, cfg)
+	discoveredUser, discoveredPass := setupKubectlDiscoverDBCredentials(exec, ask, ok, fail, cfg)
+	setupKubectlConnectDB(discoveredUser, discoveredPass, exec, cfg, ok, fail)
+
+	cfg.ControlNamespace = globalPodNS
+	controlNS = globalPodNS
 	if abs, err := filepath.Abs(keyPath); err == nil {
 		keyPath = abs
 	}

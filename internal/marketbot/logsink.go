@@ -71,7 +71,10 @@ func (s *LogSink) Subscribe() chan string {
 
 	go func() {
 		for _, line := range history {
-			ch <- line
+			select {
+			case ch <- line:
+			default:
+			}
 		}
 	}()
 	return ch

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -94,6 +95,7 @@ type Exchange struct {
 	ownerID       int64 // actor ID of the market bot (Revy)
 	exchangeID    int64
 	accessPointID int64
+	mapMu         sync.RWMutex // protects prices and catalogMap
 	prices        map[string]int64
 	marketPrices  map[string]marketPrice // real market prices from dune_exchange_get_item_price_stats
 	categories    map[string]categoryEntry
@@ -231,16 +233,17 @@ func (e *Exchange) Init(ctx context.Context, catalog []CatalogItem) error {
 		return fmt.Errorf("bot user: %w", err)
 	}
 
-	// Seed list prices.
+	newCatalog := make(map[string]CatalogItem, len(catalog))
+	for _, item := range catalog {
+		newCatalog[item.TemplateID] = item
+	}
+
+	e.mapMu.Lock()
 	for _, item := range catalog {
 		e.prices[item.TemplateID] = item.ListPrice
 	}
-
-	// Build catalog map for buyable checks.
-	e.catalogMap = make(map[string]CatalogItem, len(catalog))
-	for _, item := range catalog {
-		e.catalogMap[item.TemplateID] = item
-	}
+	e.catalogMap = newCatalog
+	e.mapMu.Unlock()
 
 	// Start position counter after existing items.
 	_ = e.db.QueryRow(ctx,
@@ -833,7 +836,9 @@ func (e *Exchange) updatePrices(ctx context.Context, catalog []CatalogItem, snap
 			}
 		}
 
+		e.mapMu.Lock()
 		e.prices[tmpl] = adjusted
+		e.mapMu.Unlock()
 	}
 }
 

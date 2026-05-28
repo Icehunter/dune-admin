@@ -24,7 +24,7 @@ func (c *localControl) kubectlEnabled(exec Executor) bool {
 	if c.controlNamespace == "" || exec == nil {
 		return false
 	}
-	_, err := exec.Exec("kubectl version --client >/dev/null 2>&1")
+	_, err := exec.Exec(kubectlCLI(exec) + " version --client >/dev/null 2>&1")
 	return err == nil
 }
 
@@ -129,15 +129,16 @@ func (c *localControl) ReadDefaultINI(ctx context.Context, exec Executor, filena
 func (c *localControl) DiscoverIniDir(_ context.Context, exec Executor) (string, error) {
 	if c.kubectlEnabled(exec) {
 		ns := c.controlNamespace
+		kctl := kubectlCLI(exec)
 		// UserSettings live on game-server pods (-sg-), not the bgd deploy pod.
 		podOut, err := exec.Exec(fmt.Sprintf(
-			"kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep -- '-sg-' | head -1",
-			ns,
+			"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep -- '-sg-' | head -1",
+			kctl, ns,
 		))
 		if err != nil || strings.TrimSpace(podOut) == "" {
 			podOut, err = exec.Exec(fmt.Sprintf(
-				"kubectl get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep bgd | head -1",
-				ns,
+				"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep bgd | head -1",
+				kctl, ns,
 			))
 		}
 		if err != nil || strings.TrimSpace(podOut) == "" {
@@ -146,8 +147,8 @@ func (c *localControl) DiscoverIniDir(_ context.Context, exec Executor) (string,
 		pod := strings.TrimSpace(podOut)
 		findCmd := `for d in /home/dune/server/DuneSandbox/Saved/UserSettings /DuneSandbox/Saved/UserSettings /game/DuneSandbox/Saved/UserSettings; do if [ -d "$d" ]; then echo "$d"; exit 0; fi; done; find / -type d -path "*/Saved/UserSettings" 2>/dev/null | head -1`
 		dirOut, err := exec.Exec(fmt.Sprintf(
-			"kubectl exec -n %s %s -- sh -lc %s 2>/dev/null",
-			ns, pod, shellQuote(findCmd),
+			"%s exec -n %s %s -- sh -lc %s 2>/dev/null",
+			kctl, ns, pod, shellQuote(findCmd),
 		))
 		if err != nil || strings.TrimSpace(dirOut) == "" {
 			return "", fmt.Errorf("could not auto-discover ini dir in pod %s", pod)

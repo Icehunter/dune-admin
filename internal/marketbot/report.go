@@ -10,6 +10,8 @@ func (e *Exchange) reportData(ctx context.Context) []reportRow {
 	if e.db == nil {
 		return nil
 	}
+	e.mapMu.RLock()
+	defer e.mapMu.RUnlock()
 	rows, err := e.db.Query(ctx, `
 		SELECT o.template_id,
 		       COALESCE(SUM(f.stack_size), 0)          AS sold,

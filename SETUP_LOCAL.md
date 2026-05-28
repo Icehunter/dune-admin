@@ -1,6 +1,8 @@
 # Provider: local
 
-Use this provider when dune-admin runs on the same machine as the Dune server and there is no Kubernetes or Docker involved — e.g. AMP, LGSM, bare-metal, or any setup where the game server is managed by shell commands.
+Use this provider when dune-admin runs on the same machine as the Dune server and there is no Kubernetes or Docker involved — e.g. LGSM, bare-metal, or any setup where the game server is managed by shell commands.
+
+> If you run CubeCoders AMP, prefer `control: amp` and follow [SETUP_AMP.md](SETUP_AMP.md).
 
 ```
 dune-admin (same machine)
@@ -23,7 +25,7 @@ make setup
 # Select: local
 # Enter DB host, port, credentials
 # Enter optional shell commands for server control
-make build
+make build   # builds frontend + dune-admin binary
 ./dune-admin
 ```
 
@@ -104,7 +106,7 @@ Leave all `cmd_*` fields empty. The Battlegroup tab will show an error for start
 | Pod/process list | Not supported |
 | Log streaming | Not supported — tail your own log files |
 | DB access | Yes — direct TCP to `db_host:db_port` |
-| RabbitMQ capture | Yes — runs `rabbitmqctl` directly if available in `$PATH` |
+| RabbitMQ broker commands | Yes — runs `rabbitmqctl` directly if available in `$PATH` |
 | Backup download / upload | Yes — through local file I/O |
 | Backup restore | Yes — `pg_restore` run locally |
 
@@ -114,4 +116,4 @@ Leave all `cmd_*` fields empty. The Battlegroup tab will show an error for start
 
 **DB connection fails** — verify PostgreSQL is listening on the configured `db_host:db_port`. For AMP, the DB is usually on `127.0.0.1:5432` or a custom port; check your AMP instance settings.
 
-**RabbitMQ capture fails** — `rabbitmqctl` must be in `$PATH` for the user running dune-admin. Run `which rabbitmqctl` to verify.
+**RabbitMQ broker command fails** — `rabbitmqctl` must be in `$PATH` for the user running dune-admin. Run `which rabbitmqctl` to verify.

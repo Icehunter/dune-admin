@@ -35,7 +35,7 @@ With SSH set, `docker` CLI commands run on the remote host and DB connections ar
 make setup
 # Select: docker
 # Enter container names when prompted
-make build
+make build   # builds frontend + dune-admin binary
 ./dune-admin
 ```
 
@@ -48,8 +48,8 @@ control: docker
 
 # Container names — must match exactly what `docker ps` shows:
 docker_gameserver: dune-gameserver
-docker_broker_game: dune-mq-game      # optional — for capture mode
-docker_broker_admin: dune-mq-admin    # optional — for capture mode
+docker_broker_game: dune-mq-game      # optional — for broker command path
+docker_broker_admin: dune-mq-admin    # optional — for broker command path
 
 # Database — use Docker DNS name or IP:
 db_host: database       # service name in your compose file
@@ -96,7 +96,7 @@ services:
 | Container list | Yes — `docker ps` |
 | Log streaming | Yes — `docker logs -f` |
 | DB access | Yes — direct TCP to `db_host:db_port` |
-| RabbitMQ capture | Yes — `docker exec` into broker container |
+| RabbitMQ broker commands | Yes — `docker exec` into broker container |
 | Backup download / upload | Yes — through executor file I/O |
 | Backup restore | Yes — `pg_restore` run via executor |
 

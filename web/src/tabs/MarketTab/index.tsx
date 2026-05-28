@@ -13,11 +13,7 @@ import BotControlPanel from './bot/BotControlPanel'
 
 const DEFAULT_FILTERS: MarketFilters = { search: '', category: '', owner: '' }
 
-type Props = {
-  isSignedIn?: boolean
-}
-
-export default function MarketTab({ isSignedIn = false }: Props) {
+export default function MarketTab() {
   const [items, setItems] = useState<MarketItem[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -61,11 +57,9 @@ export default function MarketTab({ isSignedIn = false }: Props) {
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
       <PageHeader title="Market Board" subtitle="Browse active exchange listings from bot and player sellers.">
-        {isSignedIn && (
-          <Button size="sm" variant="ghost" onPress={() => setBotOpen(true)}>
-            <Icon name="bot" /> Bot Control
-          </Button>
-        )}
+        <Button size="sm" variant="ghost" onPress={() => setBotOpen(true)}>
+          <Icon name="bot" /> Bot Control
+        </Button>
         <ViewToggle view={view} onChange={setView} />
         <Button size="sm" variant="ghost" onPress={load} isDisabled={loading}>
           {loading ? <Spinner size="sm" color="current" /> : <><Icon name="refresh-cw" /> Refresh</>}
@@ -98,9 +92,7 @@ export default function MarketTab({ isSignedIn = false }: Props) {
         <ItemDetail item={selected} onClose={() => setSelected(null)} />
       </div>
 
-      {isSignedIn && (
-        <BotControlPanel open={botOpen} onClose={() => setBotOpen(false)} />
-      )}
+      <BotControlPanel open={botOpen} onClose={() => setBotOpen(false)} />
     </div>
   )
 }

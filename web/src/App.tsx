@@ -241,7 +241,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
             <ServerSettingsTab />
           </Tabs.Panel>
           <Tabs.Panel id="market" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
-            <MarketTab />
+            <MarketTab isSignedIn={isSignedIn} />
           </Tabs.Panel>
         </Tabs>
       </div>

@@ -286,7 +286,12 @@ func writeBackupFile(dir, name string, src io.Reader) error {
 		}
 		return nil
 	}
-	return globalExecutor.WriteFile(strings.TrimRight(dir, "/")+"/"+name, src)
+	cleanDir := filepath.Clean(dir)
+	destPath := filepath.Join(cleanDir, name)
+	if !strings.HasPrefix(destPath, cleanDir+string(filepath.Separator)) {
+		return fmt.Errorf("backup entry %q escapes target directory", name)
+	}
+	return globalExecutor.WriteFile(destPath, src)
 }
 
 func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {

@@ -425,7 +425,7 @@ func configuredDefaultINIPath(filename string) string {
 	if loadedConfig.DefaultIniDir == "" {
 		return ""
 	}
-	return filepath.Join(loadedConfig.DefaultIniDir, filename)
+	return filepath.Join(loadedConfig.DefaultIniDir, filepath.Base(filename))
 }
 
 func k8sDerivedDefaultINICandidates(inPodDir, filename string) []string {

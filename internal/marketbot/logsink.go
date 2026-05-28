@@ -63,11 +63,12 @@ func (s *LogSink) Subscribe() chan string {
 	} else {
 		history = s.ring[:s.pos]
 	}
-	s.mu.Unlock()
-
+	// Register the subscriber while s.mu is still held so that no Write() call
+	// between snapshot and registration can slip through undelivered.
 	s.subsMu.Lock()
 	s.subs[ch] = struct{}{}
 	s.subsMu.Unlock()
+	s.mu.Unlock()
 
 	go func() {
 		for _, line := range history {

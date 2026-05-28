@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os/exec"
+	"path/filepath"
 )
 
 // ampExecutor wraps any Executor with sudo-elevated file writes. The dune-admin
@@ -26,6 +27,11 @@ func (e *ampExecutor) WriteFile(path string, data io.Reader) error {
 	if e.ampUser == "" {
 		return fmt.Errorf("amp executor requires amp_user to be configured")
 	}
+	cleanPath := filepath.Clean(path)
+	if !filepath.IsAbs(cleanPath) {
+		return fmt.Errorf("WriteFile path must be absolute: %s", path)
+	}
+	path = cleanPath
 	cmd := fmt.Sprintf("sudo -i -u %s tee %s > /dev/null", shellQuote(e.ampUser), shellQuote(path))
 	if sshExec, ok := e.Executor.(*sshExecutor); ok {
 		sess, err := sshExec.client.NewSession()

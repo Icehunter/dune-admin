@@ -13,7 +13,7 @@ import BotControlPanel from './bot/BotControlPanel'
 
 const DEFAULT_FILTERS: MarketFilters = { search: '', category: '', owner: '' }
 
-export default function MarketTab() {
+export default function MarketTab({ isSignedIn = true }: { isSignedIn?: boolean }) {
   const [items, setItems] = useState<MarketItem[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -57,7 +57,7 @@ export default function MarketTab() {
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
       <PageHeader title="Market Board" subtitle="Browse active exchange listings from bot and player sellers.">
-        <Button size="sm" variant="ghost" onPress={() => setBotOpen(true)}>
+        <Button size="sm" variant="ghost" onPress={() => setBotOpen(true)} isDisabled={!isSignedIn}>
           <Icon name="bot" /> Bot Control
         </Button>
         <ViewToggle view={view} onChange={setView} />

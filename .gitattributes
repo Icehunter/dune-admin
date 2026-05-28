@@ -1,0 +1,15 @@
+# Force LF line endings for files where line endings matter at runtime or for
+# tooling correctness. Without this, contributors who clone on Windows with
+# the default `core.autocrlf=true` get CRLF in the working tree, which makes
+# `gofmt -l .` (and therefore `make fmt-check` / the pre-commit hook) report
+# every Go file as unformatted on first checkout.
+
+*.go        text eol=lf
+*.sh        text eol=lf
+*.bash      text eol=lf
+Makefile    text eol=lf
+.githooks/* text eol=lf
+
+# Treat lockfiles as binary so diffs don't churn on encoding changes.
+go.sum             -text
+web/pnpm-lock.yaml -text

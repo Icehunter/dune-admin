@@ -12,6 +12,8 @@ builds:
     binary: dune-admin
     env:
       - CGO_ENABLED=0
+    flags:
+      - -tags=embed
     ldflags:
       - -s -w
       - -X main.AppVersion={{.Version}}

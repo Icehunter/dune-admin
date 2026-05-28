@@ -18,13 +18,19 @@ GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS    := -ldflags "-s -w -X main.AppVersion=$(VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.BuildTime=$(BUILD_TIME)"
 
-# Build frontend + backend binary.
-build: web go
+# Build frontend + backend binary with embedded SPA.
+build: web go-embed
 
-# Build backend binary only.
+# Build backend binary only (no embedded frontend).
 go:
 	@mkdir -p bin
 	$(GO) build -trimpath $(LDFLAGS) -o $(BIN) $(CMD)
+	install -m 0755 $(BIN) ./dune-admin
+
+# Build backend binary with embedded frontend (requires make web first).
+go-embed:
+	@mkdir -p bin
+	$(GO) build -trimpath $(LDFLAGS) -tags embed -o $(BIN) $(CMD)
 	install -m 0755 $(BIN) ./dune-admin
 
 # Install the binary system-wide.
@@ -79,6 +85,8 @@ setup:
 
 web:
 	cd web && pnpm install --frozen-lockfile && pnpm build
+	rm -rf cmd/dune-admin/dist
+	cp -r web/dist cmd/dune-admin/dist
 
 deploy-web:
 	cd web && pnpm install --frozen-lockfile && pnpm build && wrangler pages deploy dist --project-name dune-admin

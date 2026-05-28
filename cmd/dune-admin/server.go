@@ -238,14 +238,18 @@ func startServer(addr string) {
 		}
 	}
 
-	// SPA frontend (local restoration: phase-0 removed this for the
-	// Cloudflare Pages deploy path; AMP / single-binary deploys still
-	// need it). Pending upstream issue + PR.
-	for _, dir := range []string{"./dist", "./web/dist"} {
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			log.Printf("Serving frontend from %s", dir)
-			mux.Handle("/", spaHandler(dir))
-			break
+	// SPA frontend: prefer the embedded FS (release builds with -tags=embed),
+	// then fall back to a local dist directory for dev/AMP deployments.
+	if fsys := embeddedSPAFS(); fsys != nil {
+		log.Println("Serving frontend from embedded assets")
+		mux.Handle("/", spaHandlerFS(fsys))
+	} else {
+		for _, dir := range []string{"./dist", "./web/dist"} {
+			if info, err := os.Stat(dir); err == nil && info.IsDir() {
+				log.Printf("Serving frontend from %s", dir)
+				mux.Handle("/", spaHandler(dir))
+				break
+			}
 		}
 	}
 
@@ -278,6 +282,30 @@ func spaHandler(distDir string) http.Handler {
 			return
 		}
 		http.ServeFile(w, r, filepath.Join(cleanDist, "index.html"))
+	})
+}
+
+// spaHandlerFS serves an embedded http.FileSystem as a SPA, falling back to
+// index.html for any path that does not map to a real file.
+func spaHandlerFS(fsys http.FileSystem) http.Handler {
+	fileServer := http.FileServer(fsys)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			f, err := fsys.Open(r.URL.Path)
+			if err == nil {
+				fi, statErr := f.Stat()
+				_ = f.Close()
+				if statErr == nil && !fi.IsDir() {
+					fileServer.ServeHTTP(w, r)
+					return
+				}
+			}
+		}
+		r2 := *r
+		r2URL := *r.URL
+		r2URL.Path = "/index.html"
+		r2.URL = &r2URL
+		fileServer.ServeHTTP(w, &r2)
 	})
 }
 

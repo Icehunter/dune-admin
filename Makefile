@@ -1,4 +1,4 @@
-.PHONY: build web go linux dev dev-server dev-backend dev-web setup deploy-web \
+.PHONY: build web go go-embed linux dev dev-server dev-backend dev-web setup deploy-web \
         render-k8s render-k8s-stdout k8s-dry-run \
         vulncheck gosec pnpm-audit \
         test test-race vet fmt fmt-check \

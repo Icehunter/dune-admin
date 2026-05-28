@@ -779,6 +779,56 @@ func (e *Exchange) ListTick(ctx context.Context, catalog []CatalogItem) {
 	e.listingCount.Store(count)
 }
 
+// CleanupListings deletes every active bot-owned listing (and the backing
+// item rows) for Revy. Player listings, fulfilled order history, and the bot's
+// Solari balance are left untouched. Returns the number of orders and items
+// removed.
+func (e *Exchange) CleanupListings(ctx context.Context) (orders int64, items int64, err error) {
+	if e.ownerID == 0 {
+		return 0, 0, fmt.Errorf("bot owner id not initialised")
+	}
+	tx, err := e.db.Begin(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	itemRes, err := tx.Exec(ctx, `
+		DELETE FROM dune.items
+		WHERE id IN (
+			SELECT item_id FROM dune.dune_exchange_orders
+			WHERE owner_id = $1 AND is_npc_order = TRUE AND item_id IS NOT NULL
+		)`, e.ownerID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("delete items: %w", err)
+	}
+	items = itemRes.RowsAffected()
+
+	// dune_exchange_sell_orders rows cascade via FK; if not, delete them too.
+	if _, err = tx.Exec(ctx, `
+		DELETE FROM dune.dune_exchange_sell_orders
+		WHERE order_id IN (
+			SELECT id FROM dune.dune_exchange_orders
+			WHERE owner_id = $1 AND is_npc_order = TRUE
+		)`, e.ownerID); err != nil {
+		return 0, 0, fmt.Errorf("delete sell orders: %w", err)
+	}
+
+	orderRes, err := tx.Exec(ctx, `
+		DELETE FROM dune.dune_exchange_orders
+		WHERE owner_id = $1 AND is_npc_order = TRUE`, e.ownerID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("delete orders: %w", err)
+	}
+	orders = orderRes.RowsAffected()
+
+	if err = tx.Commit(ctx); err != nil {
+		return 0, 0, fmt.Errorf("commit: %w", err)
+	}
+	e.listingCount.Store(0)
+	return orders, items, nil
+}
+
 // Tick runs both BuyTick and ListTick. Used for the initial run on startup.
 func (e *Exchange) Tick(ctx context.Context, catalog []CatalogItem) {
 	e.BuyTick(ctx)

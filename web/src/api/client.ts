@@ -549,6 +549,7 @@ export const api = {
     config: async () => normalizeBotConfig(await req<unknown>('GET', '/market-bot/config')),
     saveConfig: async (cfg: BotConfig) => normalizeBotConfig(await req<unknown>('PUT', '/market-bot/config', cfg)),
     lifecycle: (cmd: 'start' | 'stop' | 'restart') => req<{ output: string }>('POST', '/market-bot/exec', { cmd }),
+    cleanup: () => req<{ orders_deleted: number; items_deleted: number }>('POST', '/market-bot/cleanup'),
     logsReady: () => req<{ ready: boolean; reason?: string; namespace?: string; name?: string }>('GET', '/market-bot/logs-ready'),
   },
 }

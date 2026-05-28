@@ -117,6 +117,27 @@ func handleMarketBotExec(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"output": output})
 }
 
+// ── cleanup ───────────────────────────────────────────────────────────────────
+
+// handleMarketBotCleanup deletes every active bot-owned listing. The tick loop
+// is paused for the duration and resumed if it was running. Player listings
+// and fulfilled-order history are untouched.
+func handleMarketBotCleanup(w http.ResponseWriter, r *http.Request) {
+	if embeddedBot == nil {
+		jsonErr(w, fmt.Errorf("embedded market bot is disabled"), http.StatusServiceUnavailable)
+		return
+	}
+	orders, items, err := embeddedBot.CleanupListings(r.Context())
+	if err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
+	jsonOK(w, map[string]int64{
+		"orders_deleted": orders,
+		"items_deleted":  items,
+	})
+}
+
 // ── log streaming ─────────────────────────────────────────────────────────────
 
 func handleMarketBotLogsReady(w http.ResponseWriter, r *http.Request) {

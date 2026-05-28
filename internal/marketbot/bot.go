@@ -81,6 +81,21 @@ func (i *Instance) Enabled() bool {
 	return i.cfg.Snapshot().Enabled
 }
 
+// CleanupListings deletes every active bot-owned listing. The tick loop is
+// paused for the duration and resumed only if it was running before. The next
+// list tick will rebuild listings from the catalog.
+func (i *Instance) CleanupListings(ctx context.Context) (orders int64, items int64, err error) {
+	wasEnabled := i.Enabled()
+	if wasEnabled {
+		i.Pause()
+	}
+	orders, items, err = i.ex.CleanupListings(ctx)
+	if wasEnabled {
+		i.Resume()
+	}
+	return orders, items, err
+}
+
 // Run starts the market bot. It blocks until ctx is cancelled.
 // The returned *Instance is valid as soon as Run returns a non-nil value
 // in the first return position; callers should check err for startup errors.

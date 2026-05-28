@@ -32,6 +32,7 @@ var BuildTime = "unknown"
 
 var (
 	setupMode       bool
+	cleanMarketMode bool
 	sqlQuery        string
 	renderK8SOut    string
 	sshHost         string
@@ -285,6 +286,7 @@ func init() {
 	flag.StringVar(&backupDir, "backup-dir", envOr("BACKUP_DIR", ""), "Backup directory path")
 	flag.StringVar(&serverIniDir, "ini-dir", envOr("SERVER_INI_DIR", ""), "Directory containing UserGame.ini / UserOverrides.ini")
 	flag.BoolVar(&setupMode, "setup", false, "Interactive setup wizard — writes ~/.dune-admin/config.yaml")
+	flag.BoolVar(&cleanMarketMode, "clean-market", false, "Delete all bot listings (Revy), then exit")
 	flag.StringVar(&sqlQuery, "sql", "", "Run a SQL query and print results to stdout, then exit")
 	flag.StringVar(&renderK8SOut, "render-k8s", "", "Render k8s manifest with values from loaded config (path or '-' for stdout)")
 }
@@ -425,6 +427,48 @@ func runSQLMode(query string) error {
 	return nil
 }
 
+// runCleanMarketMode wipes every active Revy listing then exits. Useful as a
+// one-shot operation from cron, AMP, or an admin laptop without having to
+// spin up the full HTTP server.
+func runCleanMarketMode() error {
+	if err := loadItemData(); err != nil {
+		return fmt.Errorf("load item data: %w", err)
+	}
+	if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
+		return fmt.Errorf("connect: %w", msg.err)
+	}
+	defer closeGlobalConnections()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cacheDB, itemDataForBot := resolveEmbeddedMarketBotPaths(loadedConfig, itemDataPath)
+	inst, err := marketbot.Run(ctx, marketbot.BotConfig{
+		DBPool:       globalDB,
+		DBHost:       dbHost,
+		DBPort:       dbPort,
+		DBUser:       dbUser,
+		DBPass:       dbPass,
+		DBName:       dbName,
+		DBSchema:     dbSchema,
+		CacheDB:      cacheDB,
+		ItemDataPath: itemDataForBot,
+	})
+	if err != nil {
+		return fmt.Errorf("init market bot: %w", err)
+	}
+	// Pause immediately so the tick loop spawned by Run does not race the
+	// cleanup we are about to perform.
+	inst.Pause()
+
+	orders, items, err := inst.CleanupListings(ctx)
+	if err != nil {
+		return fmt.Errorf("cleanup: %w", err)
+	}
+	fmt.Printf("market cleanup: deleted %d orders, %d items\n", orders, items)
+	return nil
+}
+
 func runImmediateModes() (handled bool, err error) {
 	// Explicit -setup flag: reconfigure and exit (don't start server).
 	if setupMode {
@@ -433,6 +477,9 @@ func runImmediateModes() (handled bool, err error) {
 	}
 	if sqlQuery != "" {
 		return true, runSQLMode(sqlQuery)
+	}
+	if cleanMarketMode {
+		return true, runCleanMarketMode()
 	}
 	if renderK8SOut != "" {
 		return true, renderK8SManifest(renderK8SOut)
@@ -546,6 +593,9 @@ func main() {
 			label := ""
 			if renderK8SOut != "" {
 				label = "render-k8s: "
+			}
+			if cleanMarketMode {
+				label = "clean-market: "
 			}
 			fmt.Fprintln(os.Stderr, label+err.Error())
 			os.Exit(1)

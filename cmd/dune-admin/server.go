@@ -219,6 +219,7 @@ func startServer(addr string) {
 	mux.HandleFunc("GET /api/v1/market-bot/config", handleMarketBotConfig)
 	mux.HandleFunc("PUT /api/v1/market-bot/config", handleMarketBotConfig)
 	mux.HandleFunc("POST /api/v1/market-bot/exec", handleMarketBotExec)
+	mux.HandleFunc("POST /api/v1/market-bot/cleanup", handleMarketBotCleanup)
 	mux.HandleFunc("GET /api/v1/market-bot/logs-ready", handleMarketBotLogsReady)
 	mux.HandleFunc("GET /api/v1/market-bot/logs", handleMarketBotLogs)
 

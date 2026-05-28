@@ -1289,7 +1289,7 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("UserGame.ini: %w", err), 409)
 		return
 	}
-	if gameBody != "" {
+	if len(gameUpdates) > 0 {
 		if err := writeINIContent(gamePath, gameBody); err != nil {
 			jsonErr(w, fmt.Errorf("write UserGame.ini: %w", err), 500)
 			return
@@ -1302,7 +1302,7 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("UserEngine.ini: %w", err), 409)
 		return
 	}
-	if engineBody != "" {
+	if len(engineUpdates) > 0 {
 		if err := writeINIContent(enginePath, engineBody); err != nil {
 			jsonErr(w, fmt.Errorf("write UserEngine.ini: %w", err), 500)
 			return

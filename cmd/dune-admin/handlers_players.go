@@ -227,52 +227,68 @@ func handleGiveItem(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]any{"ok": msg.ok, "path": "db"})
 }
 
-func handleGiveItems(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		PlayerID int64 `json:"player_id"`
-		Items    []struct {
-			Template string `json:"template"`
-			Qty      int64  `json:"qty"`
-			Quality  int64  `json:"quality"`
-		} `json:"items"`
-	}
-	if err := decode(r, &req); err != nil {
-		jsonErr(w, err, 400)
-		return
-	}
-	type skippedItem struct {
-		Template string `json:"template"`
-		Reason   string `json:"reason"`
-	}
-	given := []string{}
-	skipped := []skippedItem{}
+type giveItemInput struct {
+	Template string `json:"template"`
+	Qty      int64  `json:"qty"`
+	Quality  int64  `json:"quality"`
+}
 
-	ctx := context.Background()
-	// Determine path once for all items in the batch.
-	online := req.PlayerID != 0 && checkPlayerOffline(ctx, req.PlayerID) != nil
-	var flsID string
-	if online {
-		var err error
-		flsID, err = flsIDFromActorID(ctx, req.PlayerID)
-		if err != nil {
-			online = false // fall back to DB path if FLS ID resolution fails
-		}
-	}
+type giveItemsRequest struct {
+	PlayerID int64           `json:"player_id"`
+	Items    []giveItemInput `json:"items"`
+}
 
+type skippedItem struct {
+	Template string `json:"template"`
+	Reason   string `json:"reason"`
+}
+
+type giveItemsDeps struct {
+	checkCapacity func(context.Context, int64, string, int64) error
+	rmqAdd        func(string, string, int, float64) error
+	dbGive        func(int64, string, int64, int64) (msgMutate, bool)
+}
+
+func resolveGiveItemsOnlinePath(
+	ctx context.Context,
+	playerID int64,
+	isOffline func(context.Context, int64) error,
+	resolveFLS func(context.Context, int64) (string, error),
+) (bool, string) {
+	online := playerID != 0 && isOffline(ctx, playerID) != nil
+	if !online {
+		return false, ""
+	}
+	flsID, err := resolveFLS(ctx, playerID)
+	if err != nil {
+		return false, ""
+	}
+	return true, flsID
+}
+
+func processGiveItems(
+	ctx context.Context,
+	req giveItemsRequest,
+	online bool,
+	flsID string,
+	deps giveItemsDeps,
+) ([]string, []skippedItem) {
+	given := make([]string, 0, len(req.Items))
+	skipped := make([]skippedItem, 0)
 	for _, item := range req.Items {
 		if online && item.Quality == 0 {
-			if err := checkInventoryCapacity(ctx, req.PlayerID, item.Template, item.Qty); err != nil {
+			if err := deps.checkCapacity(ctx, req.PlayerID, item.Template, item.Qty); err != nil {
 				skipped = append(skipped, skippedItem{Template: item.Template, Reason: err.Error()})
 				continue
 			}
-			if err := rmqAddItemToInventory(flsID, item.Template, int(item.Qty), 1.0); err != nil {
+			if err := deps.rmqAdd(flsID, item.Template, int(item.Qty), 1.0); err != nil {
 				skipped = append(skipped, skippedItem{Template: item.Template, Reason: err.Error()})
 				continue
 			}
 			given = append(given, item.Template)
 			continue
 		}
-		msg, ok := cmdGiveItem(req.PlayerID, item.Template, item.Qty, item.Quality)().(msgMutate)
+		msg, ok := deps.dbGive(req.PlayerID, item.Template, item.Qty, item.Quality)
 		if !ok || msg.err != nil {
 			reason := "internal error"
 			if ok && msg.err != nil {
@@ -283,6 +299,26 @@ func handleGiveItems(w http.ResponseWriter, r *http.Request) {
 		}
 		given = append(given, item.Template)
 	}
+	return given, skipped
+}
+
+func handleGiveItems(w http.ResponseWriter, r *http.Request) {
+	var req giveItemsRequest
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, err, 400)
+		return
+	}
+	ctx := context.Background()
+	online, flsID := resolveGiveItemsOnlinePath(ctx, req.PlayerID, checkPlayerOffline, flsIDFromActorID)
+	given, skipped := processGiveItems(ctx, req, online, flsID, giveItemsDeps{
+		checkCapacity: checkInventoryCapacity,
+		rmqAdd:        rmqAddItemToInventory,
+		dbGive: func(playerID int64, template string, qty, quality int64) (msgMutate, bool) {
+			msg, ok := cmdGiveItem(playerID, template, qty, quality)().(msgMutate)
+			return msg, ok
+		},
+	})
+
 	jsonOK(w, map[string]any{"given": given, "skipped": skipped})
 }
 

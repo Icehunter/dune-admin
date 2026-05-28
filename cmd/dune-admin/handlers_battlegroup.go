@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -395,6 +396,65 @@ func handleBGRestore(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"output": out})
 }
 
+func allowedBackupArchiveEntry(entryName string) (string, bool) {
+	name := filepath.Base(entryName)
+	if strings.ContainsAny(name, "/\\") {
+		return "", false
+	}
+	if strings.HasSuffix(name, ".backup") || strings.HasSuffix(name, ".backup.yaml") {
+		return name, true
+	}
+	return "", false
+}
+
+func writeBackupArchiveEntries(dir string, zr *zip.Reader) (string, error) {
+	var backupName string
+	for _, zf := range zr.File {
+		name, ok := allowedBackupArchiveEntry(zf.Name)
+		if !ok {
+			continue
+		}
+		rc, err := zf.Open()
+		if err != nil {
+			continue
+		}
+		if err := writeBackupFile(dir, name, rc); err != nil {
+			_ = rc.Close()
+			return "", fmt.Errorf("upload failed for %s: %w", name, err)
+		}
+		if err := rc.Close(); err != nil {
+			continue
+		}
+		if strings.HasSuffix(name, ".backup") {
+			backupName = name
+		}
+	}
+	return backupName, nil
+}
+
+func uploadBackupArchive(dir string, file multipart.File) (string, int, error) {
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return "", 400, fmt.Errorf("read zip: %w", err)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return "", 400, fmt.Errorf("invalid zip: %w", err)
+	}
+	backupName, err := writeBackupArchiveEntries(dir, zr)
+	if err != nil {
+		return "", 500, err
+	}
+	if backupName == "" {
+		return "", 400, fmt.Errorf("zip contains no .backup file")
+	}
+	return backupName, 200, nil
+}
+
+func isDirectBackupUpload(filename string) bool {
+	return strings.HasSuffix(filename, ".backup") && !strings.ContainsAny(filename, "/\\")
+}
+
 func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 	if globalExecutor == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
@@ -424,55 +484,25 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.HasSuffix(filename, ".zip") {
-		data, err := io.ReadAll(file)
+		backupName, status, err := uploadBackupArchive(dir, file)
 		if err != nil {
-			jsonErr(w, fmt.Errorf("read zip: %w", err), 400)
-			return
-		}
-		zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-		if err != nil {
-			jsonErr(w, fmt.Errorf("invalid zip: %w", err), 400)
-			return
-		}
-		var backupName string
-		for _, zf := range zr.File {
-			name := filepath.Base(zf.Name)
-			if strings.ContainsAny(name, "/\\") {
-				continue
-			}
-			if !strings.HasSuffix(name, ".backup") && !strings.HasSuffix(name, ".backup.yaml") {
-				continue
-			}
-			rc, err := zf.Open()
-			if err != nil {
-				continue
-			}
-			if err := writeBackupFile(dir, name, rc); err != nil {
-				_ = rc.Close()
-				jsonErr(w, fmt.Errorf("upload failed for %s: %w", name, err), 500)
-				return
-			}
-			if err := rc.Close(); err != nil {
-				continue
-			}
-			if strings.HasSuffix(name, ".backup") && !strings.HasSuffix(name, ".yaml") {
-				backupName = name
-			}
-		}
-		if backupName == "" {
-			jsonErr(w, fmt.Errorf("zip contains no .backup file"), 400)
+			jsonErr(w, err, status)
 			return
 		}
 		jsonOK(w, map[string]string{"name": backupName})
-	} else if strings.HasSuffix(filename, ".backup") && !strings.ContainsAny(filename, "/\\") {
+		return
+	}
+
+	if isDirectBackupUpload(filename) {
 		if err := writeBackupFile(dir, filename, file); err != nil {
 			jsonErr(w, fmt.Errorf("upload failed: %w", err), 500)
 			return
 		}
 		jsonOK(w, map[string]string{"name": filename})
-	} else {
-		jsonErr(w, fmt.Errorf("file must be .backup or .zip"), 400)
+		return
 	}
+
+	jsonErr(w, fmt.Errorf("file must be .backup or .zip"), 400)
 }
 
 // restoreViaControl runs a restore command appropriate for the active control plane.

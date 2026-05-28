@@ -99,6 +99,40 @@ type ampGameProcess struct {
 	partition int
 }
 
+func parseAMPMapName(argsFields []string) string {
+	for i, field := range argsFields {
+		if field == "DuneSandbox" && i+1 < len(argsFields) {
+			return argsFields[i+1]
+		}
+	}
+	return ""
+}
+
+func parseAMPArgInt(re *regexp.Regexp, args string) int {
+	m := re.FindStringSubmatch(args)
+	if len(m) <= 1 {
+		return 0
+	}
+	value, _ := strconv.Atoi(m[1])
+	return value
+}
+
+func parseAMPGameProcess(line string) (ampGameProcess, bool) {
+	fields := strings.Fields(line)
+	if len(fields) < 2 {
+		return ampGameProcess{}, false
+	}
+	pid, _ := strconv.Atoi(fields[0])
+	argsFields := fields[1:]
+	args := strings.Join(argsFields, " ")
+	return ampGameProcess{
+		pid:       pid,
+		mapName:   parseAMPMapName(argsFields),
+		port:      parseAMPArgInt(ampPortRe, args),
+		partition: parseAMPArgInt(ampPartRe, args),
+	}, true
+}
+
 func (c *ampControl) listGameProcesses(exec Executor) ([]ampGameProcess, error) {
 	out, err := exec.Exec(`ps -eo pid,args --no-headers 2>/dev/null | grep 'DuneSandboxServer-Linux-Shipping' | grep -v grep`)
 	if err != nil && strings.TrimSpace(out) == "" {
@@ -106,31 +140,14 @@ func (c *ampControl) listGameProcesses(exec Executor) ([]ampGameProcess, error) 
 	}
 	var procs []ampGameProcess
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		if line == "" {
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
+		proc, ok := parseAMPGameProcess(line)
+		if !ok {
 			continue
 		}
-		pid, _ := strconv.Atoi(fields[0])
-		args := strings.Join(fields[1:], " ")
-		mapName := ""
-		for i, p := range fields[1:] {
-			if p == "DuneSandbox" && i+1 < len(fields[1:]) {
-				mapName = fields[1+i+1]
-				break
-			}
-		}
-		port := 0
-		if m := ampPortRe.FindStringSubmatch(args); len(m) > 1 {
-			port, _ = strconv.Atoi(m[1])
-		}
-		partition := 0
-		if m := ampPartRe.FindStringSubmatch(args); len(m) > 1 {
-			partition, _ = strconv.Atoi(m[1])
-		}
-		procs = append(procs, ampGameProcess{pid: pid, mapName: mapName, port: port, partition: partition})
+		procs = append(procs, proc)
 	}
 	return procs, nil
 }

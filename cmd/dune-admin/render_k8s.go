@@ -43,6 +43,27 @@ func indentLines(s, prefix string) string {
 	return strings.Join(lines, "\n") + "\n"
 }
 
+func addIfNonEmpty(m map[string]any, key, val string) {
+	if val != "" {
+		m[key] = val
+	}
+}
+
+func addAmpManifestFields(m map[string]any, cfg *appConfig, control string) {
+	if cfg.Control != "amp" && control != "amp" {
+		return
+	}
+	addIfNonEmpty(m, "amp_instance", cfg.AmpInstance)
+	addIfNonEmpty(m, "amp_container", cfg.AmpContainer)
+	addIfNonEmpty(m, "amp_user", cfg.AmpUser)
+	addIfNonEmpty(m, "amp_log_path", cfg.AmpLogPath)
+	if cfg.AmpUseContainer != nil {
+		m["amp_use_container"] = *cfg.AmpUseContainer
+	}
+	addIfNonEmpty(m, "amp_data_root", cfg.AmpDataRoot)
+	addIfNonEmpty(m, "director_url", cfg.DirectorURL)
+}
+
 func renderK8SManifest(outPath string) error {
 	control := firstNonEmpty(controlPlane, loadedConfig.Control)
 	if control == "" {
@@ -56,11 +77,10 @@ func renderK8SManifest(outPath string) error {
 	dbHostVal := firstNonEmpty(dbHost, loadedConfig.DBHost, "postgres.default.svc.cluster.local")
 	dbPortVal := dbPort
 	if dbPortVal == 0 {
-		if loadedConfig.DBPort != 0 {
-			dbPortVal = loadedConfig.DBPort
-		} else {
-			dbPortVal = 15432
-		}
+		dbPortVal = loadedConfig.DBPort
+	}
+	if dbPortVal == 0 {
+		dbPortVal = 15432
 	}
 	dbUserVal := firstNonEmpty(dbUser, loadedConfig.DBUser, "dune")
 	dbNameVal := firstNonEmpty(dbName, loadedConfig.DBName, "dune")
@@ -96,59 +116,19 @@ func renderK8SManifest(outPath string) error {
 		"market_bot_buy_threshold": buyThreshold,
 		"market_bot_max_buys":      maxBuys,
 	}
-	if loadedConfig.SSHHost != "" {
-		manifestCfg["ssh_host"] = loadedConfig.SSHHost
-	}
-	if loadedConfig.SSHUser != "" {
-		manifestCfg["ssh_user"] = loadedConfig.SSHUser
-	}
-	if loadedConfig.SSHKey != "" {
-		manifestCfg["ssh_key"] = loadedConfig.SSHKey
-	}
-	if loadedConfig.ControlNamespace != "" {
-		manifestCfg["control_namespace"] = loadedConfig.ControlNamespace
-	}
-	if loadedConfig.BrokerGameAddr != "" {
-		manifestCfg["broker_game_addr"] = loadedConfig.BrokerGameAddr
-	}
-	if loadedConfig.BrokerAdminAddr != "" {
-		manifestCfg["broker_admin_addr"] = loadedConfig.BrokerAdminAddr
-	}
+	addIfNonEmpty(manifestCfg, "ssh_host", loadedConfig.SSHHost)
+	addIfNonEmpty(manifestCfg, "ssh_user", loadedConfig.SSHUser)
+	addIfNonEmpty(manifestCfg, "ssh_key", loadedConfig.SSHKey)
+	addIfNonEmpty(manifestCfg, "control_namespace", loadedConfig.ControlNamespace)
+	addIfNonEmpty(manifestCfg, "broker_game_addr", loadedConfig.BrokerGameAddr)
+	addIfNonEmpty(manifestCfg, "broker_admin_addr", loadedConfig.BrokerAdminAddr)
 	if loadedConfig.BrokerTLS {
 		manifestCfg["broker_tls"] = true
 	}
-	if loadedConfig.ServerIniDir != "" {
-		manifestCfg["server_ini_dir"] = loadedConfig.ServerIniDir
-	}
-	if loadedConfig.DefaultIniDir != "" {
-		manifestCfg["default_ini_dir"] = loadedConfig.DefaultIniDir
-	}
-	if loadedConfig.BackupDir != "" {
-		manifestCfg["backup_dir"] = loadedConfig.BackupDir
-	}
-	if loadedConfig.Control == "amp" || control == "amp" {
-		if loadedConfig.AmpInstance != "" {
-			manifestCfg["amp_instance"] = loadedConfig.AmpInstance
-		}
-		if loadedConfig.AmpContainer != "" {
-			manifestCfg["amp_container"] = loadedConfig.AmpContainer
-		}
-		if loadedConfig.AmpUser != "" {
-			manifestCfg["amp_user"] = loadedConfig.AmpUser
-		}
-		if loadedConfig.AmpLogPath != "" {
-			manifestCfg["amp_log_path"] = loadedConfig.AmpLogPath
-		}
-		if loadedConfig.AmpUseContainer != nil {
-			manifestCfg["amp_use_container"] = *loadedConfig.AmpUseContainer
-		}
-		if loadedConfig.AmpDataRoot != "" {
-			manifestCfg["amp_data_root"] = loadedConfig.AmpDataRoot
-		}
-		if loadedConfig.DirectorURL != "" {
-			manifestCfg["director_url"] = loadedConfig.DirectorURL
-		}
-	}
+	addIfNonEmpty(manifestCfg, "server_ini_dir", loadedConfig.ServerIniDir)
+	addIfNonEmpty(manifestCfg, "default_ini_dir", loadedConfig.DefaultIniDir)
+	addIfNonEmpty(manifestCfg, "backup_dir", loadedConfig.BackupDir)
+	addAmpManifestFields(manifestCfg, &loadedConfig, control)
 
 	cfgYAMLBytes, err := yaml.Marshal(manifestCfg)
 	if err != nil {

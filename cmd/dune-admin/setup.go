@@ -403,6 +403,44 @@ func runLocalSetup(ask func(string, string) string, ok, fail func(string), cfg *
 
 // ── amp setup flow ────────────────────────────────────────────────────────────
 
+type ampSetupDefaults struct {
+	instance string
+	user     string
+	topology string
+	selected *ampInstance
+}
+
+func detectAmpSetupDefaults(ask func(string, string) string) ampSetupDefaults {
+	d := ampSetupDefaults{instance: "DuneAwakening01", user: "amp", topology: "container"}
+	instances, detectedUser, _ := detectAmpInstances()
+	if len(instances) == 0 {
+		return d
+	}
+	fmt.Printf("Detected %d AMP instance(s):\n", len(instances))
+	for i, inst := range instances {
+		fmt.Printf("  %d) %s\n", i+1, summarizeInstance(inst))
+	}
+	choice := 1
+	if len(instances) > 1 {
+		pickStr := ask("Pick instance [1]", "1")
+		if n, err := strconv.Atoi(strings.TrimSpace(pickStr)); err == nil && n >= 1 && n <= len(instances) {
+			choice = n
+		}
+	}
+	d.selected = &instances[choice-1]
+	d.instance = d.selected.Name
+	if d.selected.InContainer {
+		d.topology = "container"
+	} else {
+		d.topology = "native"
+	}
+	if detectedUser != "" {
+		d.user = detectedUser
+	}
+	fmt.Println()
+	return d
+}
+
 // runAmpSetup configures the AMP control plane (CubeCoders AMP). AMP supports
 // two deployment topologies — game server in a podman container, or running
 // natively on the host as the AMP user. All paths/names are configurable.
@@ -412,38 +450,11 @@ func runLocalSetup(ask func(string, string) string, ok, fail func(string), cfg *
 // hardcoded defaults (DuneAwakening01, /AMP/duneawakening/...) when
 // detection isn't possible — every prompt is still overridable.
 func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
-	// ── Auto-detect AMP instances ─────────────────────────────────────────────
-	instances, detectedUser, _ := detectAmpInstances()
-
-	defaultInstance := "DuneAwakening01"
-	defaultUser := "amp"
-	defaultTopology := "container"
-	var selected *ampInstance
-
-	if len(instances) > 0 {
-		fmt.Printf("Detected %d AMP instance(s):\n", len(instances))
-		for i, inst := range instances {
-			fmt.Printf("  %d) %s\n", i+1, summarizeInstance(inst))
-		}
-		choice := 1
-		if len(instances) > 1 {
-			pickStr := ask("Pick instance [1]", "1")
-			if n, err := strconv.Atoi(strings.TrimSpace(pickStr)); err == nil && n >= 1 && n <= len(instances) {
-				choice = n
-			}
-		}
-		selected = &instances[choice-1]
-		defaultInstance = selected.Name
-		if selected.InContainer {
-			defaultTopology = "container"
-		} else {
-			defaultTopology = "native"
-		}
-		if detectedUser != "" {
-			defaultUser = detectedUser
-		}
-		fmt.Println()
-	}
+	d := detectAmpSetupDefaults(ask)
+	defaultInstance := d.instance
+	defaultUser := d.user
+	defaultTopology := d.topology
+	selected := d.selected
 
 	fmt.Println("AMP instance:")
 	cfg.AmpInstance = ask("Instance name (ampinstmgr instance)", defaultInstance)

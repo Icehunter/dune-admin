@@ -476,6 +476,26 @@ func ensureGiveItemVolumeCapacity(
 	return nil
 }
 
+func fillExistingStacks(sorted []giveItemStackSlot, remaining, stackMax int64) ([]giveItemStackUpdate, int64) {
+	updates := make([]giveItemStackUpdate, 0, len(sorted))
+	for _, st := range sorted {
+		if remaining == 0 {
+			break
+		}
+		space := stackMax - st.size
+		if space <= 0 {
+			continue
+		}
+		add := space
+		if add > remaining {
+			add = remaining
+		}
+		updates = append(updates, giveItemStackUpdate{id: st.id, add: add})
+		remaining -= add
+	}
+	return updates, remaining
+}
+
 func planGiveItemStacks(qty, stackMax int64, stacks []giveItemStackSlot) ([]giveItemStackUpdate, []int64) {
 	sorted := make([]giveItemStackSlot, len(stacks))
 	copy(sorted, stacks)
@@ -483,23 +503,11 @@ func planGiveItemStacks(qty, stackMax int64, stacks []giveItemStackSlot) ([]give
 		return sorted[i].size > sorted[j].size
 	})
 	remaining := qty
-	updates := make([]giveItemStackUpdate, 0, len(sorted))
+	var updates []giveItemStackUpdate
 	if stackMax > 1 {
-		for _, st := range sorted {
-			if remaining == 0 {
-				break
-			}
-			space := stackMax - st.size
-			if space <= 0 {
-				continue
-			}
-			add := space
-			if add > remaining {
-				add = remaining
-			}
-			updates = append(updates, giveItemStackUpdate{id: st.id, add: add})
-			remaining -= add
-		}
+		updates, remaining = fillExistingStacks(sorted, remaining, stackMax)
+	} else {
+		updates = make([]giveItemStackUpdate, 0)
 	}
 	newStackCap := 0
 	if stackMax > 0 {

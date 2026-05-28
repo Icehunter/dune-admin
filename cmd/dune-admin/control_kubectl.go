@@ -250,6 +250,39 @@ func extractPasswordFromYAML(exec Executor, filePath string) (user, pass string)
 	return parseDeploymentCredentials([]byte(out))
 }
 
+// tryReadINIFromPod attempts to read filename from a specific pod by trying
+// well-known Config paths first, then falling back to a find-based search.
+func tryReadINIFromPod(exec Executor, kctl, namespace, pod, filename string) string {
+	candidates := []string{
+		"/DuneSandbox/Config/" + filename,
+		"/home/dune/server/DuneSandbox/Config/" + filename,
+		"/home/dune/DuneSandbox/Config/" + filename,
+		"/game/DuneSandbox/Config/" + filename,
+	}
+	for _, p := range candidates {
+		content, err := exec.Exec(fmt.Sprintf(
+			"%s exec -n %s %s -- cat %s 2>/dev/null",
+			kctl, namespace, pod, shellQuote(p)))
+		if err == nil && len(strings.TrimSpace(content)) > 0 {
+			log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
+			return content
+		}
+	}
+	pathOut, _ := exec.Exec(fmt.Sprintf(
+		"%s exec -n %s %s -- find -L /DuneSandbox /home /app /game -name %s -not -path '*/Saved/*' 2>/dev/null | head -1",
+		kctl, namespace, pod, shellQuote(filename)))
+	if p := strings.TrimSpace(pathOut); p != "" {
+		content, err := exec.Exec(fmt.Sprintf(
+			"%s exec -n %s %s -- cat %s 2>/dev/null",
+			kctl, namespace, pod, shellQuote(p)))
+		if err == nil && len(strings.TrimSpace(content)) > 0 {
+			log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
+			return content
+		}
+	}
+	return ""
+}
+
 func (c *kubectlControl) ReadDefaultINI(_ context.Context, exec Executor, filename string) string {
 	if c.namespace == "" {
 		return ""
@@ -286,37 +319,9 @@ func (c *kubectlControl) ReadDefaultINI(_ context.Context, exec Executor, filena
 		return ""
 	}
 
-	// Try well-known Config directories directly. find / misses paths that are
-	// only accessible via bind-mount roots or require following symlinks.
-	candidates := []string{
-		"/DuneSandbox/Config/" + filename,
-		"/home/dune/server/DuneSandbox/Config/" + filename,
-		"/home/dune/DuneSandbox/Config/" + filename,
-		"/game/DuneSandbox/Config/" + filename,
-	}
 	for _, pod := range pods {
-		for _, p := range candidates {
-			content, err := exec.Exec(fmt.Sprintf(
-				"%s exec -n %s %s -- cat %s 2>/dev/null",
-				kctl, c.namespace, pod, shellQuote(p)))
-			if err == nil && len(strings.TrimSpace(content)) > 0 {
-				log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
-				return content
-			}
-		}
-
-		// Fall back: find with symlink-following under game-relevant roots.
-		pathOut, _ := exec.Exec(fmt.Sprintf(
-			"%s exec -n %s %s -- find -L /DuneSandbox /home /app /game -name %s -not -path '*/Saved/*' 2>/dev/null | head -1",
-			kctl, c.namespace, pod, shellQuote(filename)))
-		if p := strings.TrimSpace(pathOut); p != "" {
-			content, err := exec.Exec(fmt.Sprintf(
-				"%s exec -n %s %s -- cat %s 2>/dev/null",
-				kctl, c.namespace, pod, shellQuote(p)))
-			if err == nil && len(strings.TrimSpace(content)) > 0 {
-				log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
-				return content
-			}
+		if content := tryReadINIFromPod(exec, kctl, c.namespace, pod, filename); content != "" {
+			return content
 		}
 	}
 

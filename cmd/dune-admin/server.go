@@ -290,16 +290,9 @@ func spaHandler(distDir string) http.Handler {
 func spaHandlerFS(fsys http.FileSystem) http.Handler {
 	fileServer := http.FileServer(fsys)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			f, err := fsys.Open(r.URL.Path)
-			if err == nil {
-				fi, statErr := f.Stat()
-				_ = f.Close()
-				if statErr == nil && !fi.IsDir() {
-					fileServer.ServeHTTP(w, r)
-					return
-				}
-			}
+		if r.URL.Path != "/" && isRegularFile(fsys, r.URL.Path) {
+			fileServer.ServeHTTP(w, r)
+			return
 		}
 		r2 := *r
 		r2URL := *r.URL
@@ -307,6 +300,16 @@ func spaHandlerFS(fsys http.FileSystem) http.Handler {
 		r2.URL = &r2URL
 		fileServer.ServeHTTP(w, &r2)
 	})
+}
+
+func isRegularFile(fsys http.FileSystem, path string) bool {
+	f, err := fsys.Open(path)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = f.Close() }()
+	fi, err := f.Stat()
+	return err == nil && !fi.IsDir()
 }
 
 // ── JSON helpers ──────────────────────────────────────────────────────────────

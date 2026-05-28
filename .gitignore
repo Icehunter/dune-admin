@@ -12,9 +12,10 @@ sshKey.pub
 fetch-item-data.js
 
 # Compiled binaries
-dune-admin
-dune-admin-linux
-dune-admin.exe
+/bin/
+/dune-admin
+/dune-admin-linux
+/dune-admin.exe
 *.exe
 
 # Tools (downloaded, not part of the project)
@@ -37,9 +38,12 @@ blueprint.json
 # Exception: community-facing ADRs and deployment docs are tracked.
 docs/*
 !docs/amp-direct-connect/
+!docs/adr/
+!docs/plans/
 
 # Local dev/testing artifacts
 local/
+deploy/k8s/dune-admin.rendered.yaml
 
 # Reference material / ideas / scratch — not for sharing
 Samples-Ideas/

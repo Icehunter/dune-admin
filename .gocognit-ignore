@@ -1,37 +1,3 @@
 # Functions excluded from the gocognit complexity gate.
 # Each entry has a GitHub issue tracking the refactor work.
 # Format: FuncName  file:line  score  issue-url
-cmdGiveItem                    db.go:262:1                         109  https://github.com/Icehunter/dune-admin/issues/18
-handleExportBase               handlers_bases.go:82:1              53   https://github.com/Icehunter/dune-admin/issues/19
-cmdReverseContracts            db.go:1695:1                        51   https://github.com/Icehunter/dune-admin/issues/20
-cmdRepairPlayerGear            db.go:3336:1                        46   https://github.com/Icehunter/dune-admin/issues/21
-handleGetServerSettings        handlers_server_settings.go:410:1   41   https://github.com/Icehunter/dune-admin/issues/22
-importBlueprintData            handlers_blueprints.go:274:1        41   https://github.com/Icehunter/dune-admin/issues/23
-cmdCompleteContracts           db.go:1618:1                        38   https://github.com/Icehunter/dune-admin/issues/24
-handleBGBackupUpload           handlers_battlegroup.go:203:1       37   https://github.com/Icehunter/dune-admin/issues/25
-checkInventoryCapacity         db.go:476:1                         37   https://github.com/Icehunter/dune-admin/issues/26
-handleMarketItems              handlers_market.go:12:1             34   https://github.com/Icehunter/dune-admin/issues/27
-cmdAwardCharXP                 db.go:2723:1                        33   https://github.com/Icehunter/dune-admin/issues/28
-cmdProgressionUnlock           db.go:2314:1                        32   https://github.com/Icehunter/dune-admin/issues/29
-cmdReverseProgressionUnlock    db.go:2457:1                        32   https://github.com/Icehunter/dune-admin/issues/30
-main                           main.go:420:1                       30   https://github.com/Icehunter/dune-admin/issues/31
-captureBroker                  capture.go:191:1                    27   https://github.com/Icehunter/dune-admin/issues/32
-handleUpdateServerSettings     handlers_server_settings.go:862:1   26   https://github.com/Icehunter/dune-admin/issues/33
-discoverDefaultINI             handlers_server_settings.go:339:1   26   https://github.com/Icehunter/dune-admin/issues/34
-cmdSetStarterClass             db.go:1866:1                        25   https://github.com/Icehunter/dune-admin/issues/35
-runKubectlSetup                setup.go:99:1                       25   https://github.com/Icehunter/dune-admin/issues/36
-parseINILines                  handlers_server_settings.go:198:1   24   https://github.com/Icehunter/dune-admin/issues/37
-runCapture                     capture.go:98:1                     24   https://github.com/Icehunter/dune-admin/issues/38
-cmdRepairVehicle               db.go:3440:1                        24   https://github.com/Icehunter/dune-admin/issues/39
-stripEmptySections             handlers_server_settings.go:703:1   22   https://github.com/Icehunter/dune-admin/issues/40
-handleGiveItems                handlers_players.go:230:1           22   https://github.com/Icehunter/dune-admin/issues/41
-fetchBlueprintData             handlers_blueprints.go:148:1        22   https://github.com/Icehunter/dune-admin/issues/42
-cmdApplyProgressionPreset      progression_presets.go:92:1         19   https://github.com/Icehunter/dune-admin/issues/43
-connectAll                     connection.go:40:1                  18   https://github.com/Icehunter/dune-admin/issues/44
-cmdRepairItem                  db.go:3265:1                        18   https://github.com/Icehunter/dune-admin/issues/45
-listGameProcesses              control_amp.go:104:1                17   https://github.com/Icehunter/dune-admin/issues/46
-cmdRunSQL                      db.go:219:1                         17   https://github.com/Icehunter/dune-admin/issues/47
-stripKeysFromContent           handlers_server_settings.go:756:1   17   https://github.com/Icehunter/dune-admin/issues/48
-handleSaveConfig               handlers_config.go:31:1             16   https://github.com/Icehunter/dune-admin/issues/49
-cmdSampleTable                 db.go:1277:1                        16   https://github.com/Icehunter/dune-admin/issues/50
-cmdGrantAllKeystones           db.go:3015:1                        16   https://github.com/Icehunter/dune-admin/issues/51

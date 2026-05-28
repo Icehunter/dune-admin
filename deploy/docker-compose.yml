@@ -1,0 +1,19 @@
+services:
+  dune-admin:
+    container_name: dune-admin
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      SSH_KEY: /app/sshKey
+      LISTEN_ADDR: :8080
+    volumes:
+      - ../sshKey:/app/sshKey:ro
+      - ${HOME}/.dune-admin:/root/.dune-admin
+      - market-bot-cache:/data
+
+volumes:
+  market-bot-cache:

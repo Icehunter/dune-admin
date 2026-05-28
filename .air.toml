@@ -2,11 +2,11 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  cmd        = "go build -o ./tmp/dune-admin ."
+  cmd        = "go build -o ./tmp/dune-admin ./cmd/dune-admin"
   bin        = "./tmp/dune-admin"
   full_bin   = "./tmp/dune-admin"
   include_ext = ["go"]
-  exclude_dir = ["web", "bin", "tmp", "db-routines", "db-snapshots", "docs"]
+  exclude_dir = ["web", "bin", "tmp", "db-routines", "db-snapshots", "docs", "deploy"]
   exclude_file = ["*_test.go"]
   exclude_regex = ["_test\\.go$"]
   delay = 1000

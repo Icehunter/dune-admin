@@ -16,10 +16,12 @@ export default function BotActions({ status, onRefresh }: Props) {
     setBusy(cmd)
     try {
       const res = await api.marketBot.lifecycle(cmd)
-      toast.success(`Bot ${cmd}: ${res.output || 'ok'}`)
+      const actionLabel = cmd === 'start' ? 'resume' : cmd === 'stop' ? 'pause' : 'reinitialize'
+      toast.success(`Bot ${actionLabel}: ${res.output || 'ok'}`)
       setTimeout(onRefresh, 1500)
     } catch (e: unknown) {
-      toast.danger(`Failed to ${cmd} bot: ${e instanceof Error ? e.message : String(e)}`)
+      const actionLabel = cmd === 'start' ? 'resume' : cmd === 'stop' ? 'pause' : 'reinitialize'
+      toast.danger(`Failed to ${actionLabel} bot: ${e instanceof Error ? e.message : String(e)}`)
     } finally {
       setBusy(null)
     }
@@ -36,7 +38,7 @@ export default function BotActions({ status, onRefresh }: Props) {
         onPress={() => run('start')}
       >
         {busy === 'start' ? <Spinner size="sm" color="current" /> : <Icon name="play" />}
-        Start
+        Resume
       </Button>
       <Button
         size="sm"
@@ -45,7 +47,7 @@ export default function BotActions({ status, onRefresh }: Props) {
         onPress={() => run('stop')}
       >
         {busy === 'stop' ? <Spinner size="sm" color="current" /> : <Icon name="square" />}
-        Stop
+        Pause
       </Button>
       <Button
         size="sm"
@@ -54,7 +56,7 @@ export default function BotActions({ status, onRefresh }: Props) {
         onPress={() => run('restart')}
       >
         {busy === 'restart' ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
-        Restart
+        Reinitialize
       </Button>
     </div>
   )

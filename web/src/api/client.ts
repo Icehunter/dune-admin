@@ -18,11 +18,12 @@ function getApiBase(): string {
   // users to set localStorage('dune_admin_backend') to their SSH tunnel.
   const isCdnDeploy = !!(import.meta.env.VITE_CDN_BASE_URL as string | undefined)
 
-  // Single-binary deploys (AMP, local Go): SPA and API are same-origin.
-  // Anything that isn't the Vite dev server gets the auto-detected origin.
-  const devHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
-  if (!isCdnDeploy && typeof window !== 'undefined' && !devHosts.has(window.location.hostname)) {
-    return window.location.origin + '/api/v1'
+  // Single-binary deploys (AMP, local Go, k8s port-forward): SPA and API are
+  // same-origin unless we're on the Vite dev server.
+  if (!isCdnDeploy && typeof window !== 'undefined') {
+    if (window.location.port !== '5173') {
+      return window.location.origin + '/api/v1'
+    }
   }
   return 'http://localhost:8080/api/v1'
 }
@@ -222,7 +223,9 @@ export type CatalogItem = {
   display_name: string
 }
 export type BotStatus = {
-  running: boolean      // injected by dune-admin proxy (true = bot responded)
+  running: boolean
+  mode?: 'embedded'
+  enabled?: boolean
   uptime: string
   last_list_tick: string | null
   last_buy_tick: string | null
@@ -234,16 +237,40 @@ export type BotStatus = {
   error?: string        // set when running=false
 }
 export type BotConfig = {
-  list_tick_interval: string
-  buy_tick_interval: string
+  list_interval: string
+  buy_interval: string
   rarity_multipliers: Record<string, number>
   vendor_multipliers?: Record<string, number>
   grade_multipliers: number[]
   buy_threshold: number
-  max_buys_per_tick: number
+  max_buys: number
   listings_per_grade: number
   disabled_items: string[]
   enabled: boolean
+}
+
+function normalizeBotConfig(raw: unknown): BotConfig {
+  const src = (raw && typeof raw === 'object') ? (raw as Record<string, unknown>) : {}
+  return {
+    list_interval: typeof src.list_interval === 'string'
+      ? src.list_interval
+      : (typeof src.list_tick_interval === 'string' ? src.list_tick_interval : '30m0s'),
+    buy_interval: typeof src.buy_interval === 'string'
+      ? src.buy_interval
+      : (typeof src.buy_tick_interval === 'string' ? src.buy_tick_interval : '5m0s'),
+    rarity_multipliers: (src.rarity_multipliers as Record<string, number> | undefined) ?? {},
+    vendor_multipliers: (src.vendor_multipliers as Record<string, number> | undefined) ?? {},
+    grade_multipliers: Array.isArray(src.grade_multipliers)
+      ? (src.grade_multipliers as number[])
+      : [],
+    buy_threshold: typeof src.buy_threshold === 'number' ? src.buy_threshold : 1.05,
+    max_buys: typeof src.max_buys === 'number'
+      ? src.max_buys
+      : (typeof src.max_buys_per_tick === 'number' ? src.max_buys_per_tick : 50),
+    listings_per_grade: typeof src.listings_per_grade === 'number' ? src.listings_per_grade : 5,
+    disabled_items: Array.isArray(src.disabled_items) ? (src.disabled_items as string[]) : [],
+    enabled: typeof src.enabled === 'boolean' ? src.enabled : true,
+  }
 }
 
 export type ProgressionPreset = {
@@ -519,8 +546,8 @@ export const api = {
 
   marketBot: {
     status: () => req<BotStatus>('GET', '/market-bot/status'),
-    config: () => req<BotConfig>('GET', '/market-bot/config'),
-    saveConfig: (cfg: BotConfig) => req<BotConfig>('PUT', '/market-bot/config', cfg),
+    config: async () => normalizeBotConfig(await req<unknown>('GET', '/market-bot/config')),
+    saveConfig: async (cfg: BotConfig) => normalizeBotConfig(await req<unknown>('PUT', '/market-bot/config', cfg)),
     lifecycle: (cmd: 'start' | 'stop' | 'restart') => req<{ output: string }>('POST', '/market-bot/exec', { cmd }),
     logsReady: () => req<{ ready: boolean; reason?: string; namespace?: string; name?: string }>('GET', '/market-bot/logs-ready'),
   },

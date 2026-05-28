@@ -406,26 +406,79 @@ func runLocalSetup(ask func(string, string) string, ok, fail func(string), cfg *
 // runAmpSetup configures the AMP control plane (CubeCoders AMP). AMP supports
 // two deployment topologies — game server in a podman container, or running
 // natively on the host as the AMP user. All paths/names are configurable.
+//
+// The wizard auto-detects AMP instances via `ampinstmgr -l` when available
+// and pre-fills prompts with discovered values. Falls back to historical
+// hardcoded defaults (DuneAwakening01, /AMP/duneawakening/...) when
+// detection isn't possible — every prompt is still overridable.
 func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
+	// ── Auto-detect AMP instances ─────────────────────────────────────────────
+	instances, detectedUser, _ := detectAmpInstances()
+
+	defaultInstance := "DuneAwakening01"
+	defaultUser := "amp"
+	defaultTopology := "container"
+	var selected *ampInstance
+
+	if len(instances) > 0 {
+		fmt.Printf("Detected %d AMP instance(s):\n", len(instances))
+		for i, inst := range instances {
+			fmt.Printf("  %d) %s\n", i+1, summarizeInstance(inst))
+		}
+		choice := 1
+		if len(instances) > 1 {
+			pickStr := ask("Pick instance [1]", "1")
+			if n, err := strconv.Atoi(strings.TrimSpace(pickStr)); err == nil && n >= 1 && n <= len(instances) {
+				choice = n
+			}
+		}
+		selected = &instances[choice-1]
+		defaultInstance = selected.Name
+		if selected.InContainer {
+			defaultTopology = "container"
+		} else {
+			defaultTopology = "native"
+		}
+		if detectedUser != "" {
+			defaultUser = detectedUser
+		}
+		fmt.Println()
+	}
+
 	fmt.Println("AMP instance:")
-	cfg.AmpInstance = ask("Instance name (ampinstmgr instance)", "DuneAwakening01")
-	cfg.AmpUser = ask("OS user that runs AMP", "amp")
+	cfg.AmpInstance = ask("Instance name (ampinstmgr instance)", defaultInstance)
+	cfg.AmpUser = ask("OS user that runs AMP", defaultUser)
 	fmt.Println()
 
 	fmt.Println("AMP topology:")
 	fmt.Println("  container — game server runs inside `podman exec AMP_<instance>` (default template)")
 	fmt.Println("  native    — game server runs directly on the host as the AMP user")
-	topology := ask("Topology [container/native]", "container")
+	topology := ask("Topology [container/native]", defaultTopology)
 	useContainer := topology != "native"
 	cfg.AmpUseContainer = &useContainer
 
-	defaultLogPath := "/AMP/duneawakening/logs"
-	defaultIniDir := fmt.Sprintf("/home/%s/.ampdata/instances/%s/duneawakening/server/state",
-		cfg.AmpUser, cfg.AmpInstance)
+	// ── Game install root: try to probe the container instead of hardcoding
+	//     `/AMP/duneawakening`. Falls back to the historical default if the
+	//     probe can't answer (container not running, non-standard layout, etc.)
+	gameRoot := "/AMP/duneawakening"
+	if useContainer && selected != nil && selected.InContainer {
+		probeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		container := "AMP_" + cfg.AmpInstance
+		if root, _ := probeGameRoot(probeCtx, cfg.AmpUser, container); root != "" {
+			gameRoot = root
+			fmt.Printf("Detected game install root: %s\n", gameRoot)
+		}
+		cancel()
+	}
+	gameFolder := filepath.Base(gameRoot) // e.g. "duneawakening"
+
+	defaultLogPath := gameRoot + "/logs"
+	defaultIniDir := fmt.Sprintf("/home/%s/.ampdata/instances/%s/%s/server/state",
+		cfg.AmpUser, cfg.AmpInstance, gameFolder)
 	if !useContainer {
-		// Native topology: game files live under /AMP/<game>/extracted/...
-		defaultLogPath = "/AMP/duneawakening/extracted/game-server/home/dune/server/DuneSandbox/Saved/Logs"
-		defaultIniDir = "/AMP/duneawakening/extracted/game-server/home/dune/server/DuneSandbox/Saved/Config/LinuxServer"
+		// Native topology: game files live under <game-root>/extracted/...
+		defaultLogPath = gameRoot + "/extracted/game-server/home/dune/server/DuneSandbox/Saved/Logs"
+		defaultIniDir = gameRoot + "/extracted/game-server/home/dune/server/DuneSandbox/Saved/Config/LinuxServer"
 	}
 
 	if useContainer {

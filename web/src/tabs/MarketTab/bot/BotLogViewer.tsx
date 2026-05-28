@@ -42,65 +42,55 @@ export default function BotLogViewer({ active = false }: Props) {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
   }, [])
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(() => {
     if (wsRef.current) { wsRef.current.close(); wsRef.current = null }
     stopFlush()
     bufRef.current = []
-    setLines([])
-    setError(null)
-    setConnState('connecting')
-
-    try {
-      const check = await api.marketBot.logsReady()
-      if (!check.ready) {
-        setError(check.reason ?? 'Log streaming not available')
-        setConnState('error')
-        return
-      }
-    } catch {
-      setError('Could not reach backend — check that it is running.')
-      setConnState('error')
-      return
-    }
-
-    const ws = new WebSocket(`${getWsBase()}/market-bot/logs`)
-    wsRef.current = ws
-
-    ws.onopen = () => { setConnState('connected'); startFlush() }
-
-    ws.onmessage = (e: MessageEvent) => { bufRef.current.push(e.data as string) }
-
-    ws.onerror = () => {
-      setError('WebSocket connection failed — the log stream was interrupted.')
-      setConnState('error')
-    }
-
-    ws.onclose = (e) => {
-      stopFlush()
-      if (bufRef.current.length > 0) {
-        setLines(prev => [...prev, ...bufRef.current])
-        bufRef.current = []
-      }
-      if (connState !== 'error') {
-        if (e.code !== 1000 && e.code !== 1001) {
-          setError(`Connection closed (code ${e.code})${e.reason ? ': ' + e.reason : ''}`)
+    Promise.resolve()
+      .then(() => { setLines([]); setError(null); setConnState('connecting') })
+      .then(() => api.marketBot.logsReady())
+      .then(check => {
+        if (!check.ready) {
+          setError(check.reason ?? 'Log streaming not available')
           setConnState('error')
-        } else {
-          setConnState('idle')
+          return
         }
-      }
-    }
-  }, [startFlush, stopFlush, connState])
+        const ws = new WebSocket(`${getWsBase()}/market-bot/logs`)
+        wsRef.current = ws
+        ws.onopen = () => { setConnState('connected'); startFlush() }
+        ws.onmessage = (e: MessageEvent) => { bufRef.current.push(e.data as string) }
+        ws.onerror = () => {
+          setError('WebSocket connection failed — the log stream was interrupted.')
+          setConnState('error')
+        }
+        ws.onclose = (e) => {
+          stopFlush()
+          if (bufRef.current.length > 0) {
+            setLines(prev => [...prev, ...bufRef.current])
+            bufRef.current = []
+          }
+          if (e.code !== 1000 && e.code !== 1001) {
+            setError(`Connection closed (code ${e.code})${e.reason ? ': ' + e.reason : ''}`)
+            setConnState('error')
+          } else {
+            setConnState('idle')
+          }
+        }
+      })
+      .catch(() => {
+        setError('Could not reach backend — check that it is running.')
+        setConnState('error')
+      })
+  }, [startFlush, stopFlush])
 
   const disconnect = useCallback(() => {
     if (wsRef.current) { wsRef.current.close(1000); wsRef.current = null }
     stopFlush()
-    setConnState('idle')
-    setError(null)
+    Promise.resolve().then(() => { setConnState('idle'); setError(null) })
   }, [stopFlush])
 
   useEffect(() => {
-    if (active) connect()
+    if (active) void connect()
     else disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
@@ -151,7 +141,7 @@ export default function BotLogViewer({ active = false }: Props) {
 
       <pre
         ref={containerRef}
-        className="flex-1 overflow-auto p-3 text-xs font-mono m-0 whitespace-pre-wrap break-all rounded-[var(--radius)] border border-border/60 bg-background text-success min-h-[200px]"
+        className="flex-1 overflow-auto p-3 text-xs font-mono m-0 whitespace-pre-wrap break-all rounded-[var(--radius)] border border-border/60 bg-background text-success"
       >
         {lines.length === 0
           ? (connState === 'connected' ? 'Waiting for log lines…' : connState === 'connecting' ? 'Connecting…' : '')

@@ -202,16 +202,54 @@ func (e *Exchange) gameNow() int64 {
 	return time.Now().Unix() - e.gameEpochUnix
 }
 
-func (e *Exchange) Init(ctx context.Context, catalog []CatalogItem) error {
-	err := e.db.QueryRow(ctx,
-		`SELECT exchange_id FROM dune.dune_exchange_orders WHERE is_npc_order = FALSE LIMIT 1`).Scan(&e.exchangeID)
-	if err != nil {
-		// No player orders yet — fall back to first non-Global exchange
-		if err2 := e.db.QueryRow(ctx,
-			`SELECT id FROM dune.dune_exchanges WHERE exchange_name != 'Global' ORDER BY id LIMIT 1`).Scan(&e.exchangeID); err2 != nil {
-			return fmt.Errorf("detect exchange id: %w", err2)
-		}
+// detectExchangeID resolves the exchange ID via a three-tier cascade:
+//  1. An existing player order's exchange_id (most reliable).
+//  2. Any row in dune_exchanges (works on fresh servers with no player trades).
+//  3. An upsert via get_dune_exchange_id('Global') so a completely empty DB
+//     still boots rather than crashing with "no rows in result set".
+//
+// Each tier is provided as a closure so the function can be unit-tested without
+// a live Postgres connection.
+func detectExchangeID(
+	fromOrders func() (int64, error),
+	fromTable func() (int64, error),
+	autoCreate func() (int64, error),
+) (int64, error) {
+	if id, err := fromOrders(); err == nil {
+		return id, nil
 	}
+	if id, err := fromTable(); err == nil {
+		return id, nil
+	}
+	id, err := autoCreate()
+	if err != nil {
+		return 0, fmt.Errorf("detect exchange id: %w", err)
+	}
+	return id, nil
+}
+
+func (e *Exchange) Init(ctx context.Context, catalog []CatalogItem) error {
+	id, err := detectExchangeID(
+		func() (int64, error) {
+			var id int64
+			return id, e.db.QueryRow(ctx,
+				`SELECT exchange_id FROM dune.dune_exchange_orders WHERE is_npc_order = FALSE LIMIT 1`).Scan(&id)
+		},
+		func() (int64, error) {
+			var id int64
+			return id, e.db.QueryRow(ctx,
+				`SELECT id FROM dune.dune_exchanges ORDER BY id LIMIT 1`).Scan(&id)
+		},
+		func() (int64, error) {
+			var id int64
+			return id, e.db.QueryRow(ctx,
+				`SELECT dune.get_dune_exchange_id('Global')`).Scan(&id)
+		},
+	)
+	if err != nil {
+		return err
+	}
+	e.exchangeID = id
 	log.Printf("exchange id: %d", e.exchangeID)
 
 	if err := e.db.QueryRow(ctx,
@@ -448,6 +486,12 @@ func (e *Exchange) buyPlayerListings(ctx context.Context, orderExpiry int64, sna
 
 		// Skip items the operator has marked as non-buyable.
 		if item, ok := e.catalogMap[tmpl]; ok && !item.Buyable {
+			skippedUnknown++
+			continue
+		}
+
+		// Skip items disabled via runtime config.
+		if snap.isDisabled(tmpl) {
 			skippedUnknown++
 			continue
 		}
@@ -697,12 +741,24 @@ func (e *Exchange) ListTick(ctx context.Context, catalog []CatalogItem) {
 		}
 
 		for _, grade := range applicableGrades(item) {
+			key := gradeKey{item.TemplateID, grade}
+			listings := current[key]
+
+			// If this item is disabled, prune all existing bot listings for it
+			// and skip creating new ones.
+			if snap.isDisabled(item.TemplateID) {
+				for _, l := range listings {
+					staleOrderIDs = append(staleOrderIDs, l.orderID)
+					staleItemIDs = append(staleItemIDs, l.itemID)
+					pruned++
+				}
+				continue
+			}
+
 			price := gradeFloor(item, grade, snap)
 			if item.MaterialCost <= 0 {
 				price = gradedPrice(basePrice, grade, snap.GradeMultipliers)
 			}
-			key := gradeKey{item.TemplateID, grade}
-			listings := current[key]
 
 			// Collect stale listings (wrong price) for bulk delete.
 			var valid []listingInfo

@@ -27,7 +27,7 @@ export default function DisabledItemsManager({ config, onSaved }: Props) {
     api.market.catalog().then(setCatalog).catch(() => {})
   }, [])
 
-  const safeItems = config.disabled_items ?? []
+  const safeItems = useMemo(() => config.disabled_items ?? [], [config.disabled_items])
 
   const results = useMemo(() => {
     const q = search.trim().toLowerCase()

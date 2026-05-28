@@ -13,7 +13,7 @@ type ItemProps = {
  * Bordered, slightly-elevated label/value row card — the "Phase Reconciling
  * | Database Ready" health row pattern from BattlegroupTab.
  */
-function InfoCardRoot({ children, className = '' }: CardProps) {
+export function InfoCard({ children, className = '' }: CardProps) {
   return (
     <div
       className={
@@ -27,7 +27,7 @@ function InfoCardRoot({ children, className = '' }: CardProps) {
   )
 }
 
-function InfoCardItem({ label, value, valueColor }: ItemProps) {
+export function InfoCardItem({ label, value, valueColor }: ItemProps) {
   return (
     <div className="flex items-center gap-2">
       <span className="text-muted">{label}</span>
@@ -38,4 +38,5 @@ function InfoCardItem({ label, value, valueColor }: ItemProps) {
   )
 }
 
-export const InfoCard = Object.assign(InfoCardRoot, { Item: InfoCardItem })
+// Namespace alias kept for callers using <InfoCard.Item>
+InfoCard.Item = InfoCardItem

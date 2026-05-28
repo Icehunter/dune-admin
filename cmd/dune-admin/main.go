@@ -151,13 +151,30 @@ type appConfig struct {
 
 	// ── Embedded market bot ────────────────────────────────────────────────
 	// MarketBotEnabled starts the market bot as an in-process goroutine.
-	MarketBotEnabled  bool          `yaml:"market_bot_enabled"`
+	// Pointer so we can distinguish "unset" (default-on for backward compat
+	// with upgrades that pre-date this key) from "explicitly false".
+	MarketBotEnabled  *bool         `yaml:"market_bot_enabled"`
 	MarketBotCacheDB  string        `yaml:"market_bot_cache_db"`
 	MarketBotItemData string        `yaml:"market_bot_item_data"`
+	MarketBotState    string        `yaml:"market_bot_state"` // path to persisted runtime state JSON
 	MarketBotBuyInt   time.Duration `yaml:"market_bot_buy_interval"`
 	MarketBotListInt  time.Duration `yaml:"market_bot_list_interval"`
 	MarketBotThresh   float64       `yaml:"market_bot_buy_threshold"`
 	MarketBotMaxBuys  int           `yaml:"market_bot_max_buys"`
+	// Remote market bot proxy: when set, dune-admin forwards /api/v1/market-bot/*
+	// to the given URL instead of running an embedded bot.
+	// Set market_bot_enabled: false alongside this.
+	MarketBotRemoteURL   string `yaml:"market_bot_remote_url"`
+	MarketBotRemoteToken string `yaml:"market_bot_remote_token"`
+}
+
+// marketBotEnabled returns the effective bot-enabled flag. Missing yaml key →
+// default on (so upgrades enable the feature). Explicit false → off.
+func marketBotEnabled(cfg appConfig) bool {
+	if cfg.MarketBotEnabled == nil {
+		return true
+	}
+	return *cfg.MarketBotEnabled
 }
 
 func configDir() string {
@@ -442,7 +459,7 @@ func runCleanMarketMode() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cacheDB, itemDataForBot := resolveEmbeddedMarketBotPaths(loadedConfig, itemDataPath)
+	cacheDB, itemDataForBot, _ := resolveEmbeddedMarketBotPaths(loadedConfig, itemDataPath)
 	inst, err := marketbot.Run(ctx, marketbot.BotConfig{
 		DBPool:       globalDB,
 		DBHost:       dbHost,
@@ -538,7 +555,7 @@ func connectAndPrimeTemplates(alreadyConnected bool) {
 	refreshItemTemplates()
 }
 
-func resolveEmbeddedMarketBotPaths(cfg appConfig, fallbackItemDataPath string) (cacheDB string, itemDataForBot string) {
+func resolveEmbeddedMarketBotPaths(cfg appConfig, fallbackItemDataPath string) (cacheDB string, itemDataForBot string, statePath string) {
 	cacheDB = cfg.MarketBotCacheDB
 	if cacheDB == "" {
 		cacheDB = filepath.Join(configDir(), "market-bot-cache.db")
@@ -551,15 +568,19 @@ func resolveEmbeddedMarketBotPaths(cfg appConfig, fallbackItemDataPath string) (
 			itemDataForBot = resolveItemDataPath()
 		}
 	}
-	return cacheDB, itemDataForBot
+	statePath = cfg.MarketBotState
+	if statePath == "" {
+		statePath = filepath.Join(configDir(), "market-bot-state.json")
+	}
+	return cacheDB, itemDataForBot, statePath
 }
 
 func startEmbeddedMarketBotIfEnabled(cfg appConfig) context.CancelFunc {
-	if !cfg.MarketBotEnabled {
+	if !marketBotEnabled(cfg) {
 		return nil
 	}
 	botCtx, botCancel := context.WithCancel(context.Background())
-	cacheDB, itemDataForBot := resolveEmbeddedMarketBotPaths(cfg, itemDataPath)
+	cacheDB, itemDataForBot, statePath := resolveEmbeddedMarketBotPaths(cfg, itemDataPath)
 	inst, err := marketbot.Run(botCtx, marketbot.BotConfig{
 		DBPool:       globalDB,
 		DBHost:       dbHost,
@@ -569,6 +590,7 @@ func startEmbeddedMarketBotIfEnabled(cfg appConfig) context.CancelFunc {
 		DBName:       dbName,
 		DBSchema:     dbSchema,
 		CacheDB:      cacheDB,
+		StatePath:    statePath,
 		ItemDataPath: itemDataForBot,
 		BuyInterval:  cfg.MarketBotBuyInt,
 		ListInterval: cfg.MarketBotListInt,
@@ -614,8 +636,11 @@ func main() {
 	connectAndPrimeTemplates(alreadyConnected)
 
 	if botCancel := startEmbeddedMarketBotIfEnabled(loadedConfig); botCancel != nil {
-		// Ensure the bot is stopped on process exit.
 		defer botCancel()
+	}
+
+	if loadedConfig.MarketBotRemoteURL != "" {
+		remoteBotProxy = newRemoteBotClient(loadedConfig.MarketBotRemoteURL, loadedConfig.MarketBotRemoteToken)
 	}
 
 	startServer(listenAddr)
@@ -624,3 +649,7 @@ func main() {
 // embeddedBot holds the live market bot instance when market_bot_enabled=true.
 // Nil when bot is disabled.
 var embeddedBot *marketbot.Instance
+
+// remoteBotProxy forwards /api/v1/market-bot/* to a remote bot when set.
+// Takes precedence when embeddedBot is nil.
+var remoteBotProxy *remoteBotClient

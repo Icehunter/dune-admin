@@ -18,7 +18,10 @@ export default function MarketSearch({ filters, onChange, onReset }: Props) {
   const [searchDraft, setSearchDraft] = useState(filters.search)
 
   // Sync draft when filters are reset externally.
-  useEffect(() => { setSearchDraft(filters.search) }, [filters.search])
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDraft(filters.search), 0)
+    return () => clearTimeout(t)
+  }, [filters.search])
 
   // Debounce: commit search text 350ms after the user stops typing.
   useEffect(() => {

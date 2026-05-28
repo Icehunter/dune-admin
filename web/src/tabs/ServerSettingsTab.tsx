@@ -396,20 +396,13 @@ export default function ServerSettingsTab() {
     localStorage.getItem('serverSettings.expandedCategory') || null
   )
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await api.serverSettings.get()
-      setItems(data.settings ?? [])
-      setRaw(data.raw ?? [])
-      setPending(new Map())
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e)
-      setError(msg)
-    } finally {
-      setLoading(false)
-    }
+  const load = useCallback(() => {
+    Promise.resolve()
+      .then(() => { setLoading(true); setError(null) })
+      .then(() => api.serverSettings.get())
+      .then(data => { setItems(data.settings ?? []); setRaw(data.raw ?? []); setPending(new Map()) })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false))
   }, [])
 
   useEffect(() => { load() }, [load])

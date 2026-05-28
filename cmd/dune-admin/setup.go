@@ -562,9 +562,18 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 func runMarketBotSetup(ask func(string, string) string, ok func(string), cfg *appConfig) {
 	fmt.Println("Embedded market bot:")
 	enabled := strings.ToLower(strings.TrimSpace(ask("Enable embedded market bot [yes/no]", "yes")))
-	cfg.MarketBotEnabled = enabled != "n" && enabled != "no" && enabled != "false" && enabled != "0"
-	if !cfg.MarketBotEnabled {
+	enabledBool := enabled != "n" && enabled != "no" && enabled != "false" && enabled != "0"
+	cfg.MarketBotEnabled = &enabledBool
+	if !enabledBool {
 		ok("Embedded market bot disabled")
+
+		// Offer remote proxy config.
+		remoteURL := strings.TrimSpace(ask("Remote bot URL (leave blank to skip)", ""))
+		if remoteURL != "" {
+			cfg.MarketBotRemoteURL = remoteURL
+			cfg.MarketBotRemoteToken = strings.TrimSpace(ask("Remote bot API token", ""))
+			ok("Remote market bot proxy configured")
+		}
 		fmt.Println()
 		return
 	}

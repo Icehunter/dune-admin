@@ -298,5 +298,6 @@ if [[ "$NO_PORT_FORWARD" -eq 0 ]]; then
   echo "Opening API port-forward at http://127.0.0.1:8080 ..."
   kubectl -n "$NAMESPACE" port-forward svc/dune-admin 8080:8080
 else
-  echo "Deploy complete. Run ./listen.sh to open API port-forward."
+  NODE_PORT=$(kubectl get svc dune-admin -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].nodePort}')
+  echo "Deploy complete. Access your dashboard at http://${VM_HOST}:${NODE_PORT} (or via API port-forward if enabled)."
 fi

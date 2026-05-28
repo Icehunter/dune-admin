@@ -41,17 +41,16 @@ export default function ItemDetail({ item, onClose }: Props) {
 
   useEffect(() => {
     if (!item) return
-    setListings([])
-    setEntry(null)
-    setLoading(true)
-    Promise.all([
-      api.market.listings(item.template_id),
-      getItemEntry(item.template_id),
-    ])
+    Promise.resolve()
+      .then(() => { setListings([]); setEntry(null); setLoading(true) })
+      .then(() => Promise.all([
+        api.market.listings(item.template_id),
+        getItemEntry(item.template_id),
+      ]))
       .then(([ls, e]) => { setListings(ls); setEntry(e) })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [item?.template_id])
+  }, [item])
 
   if (!item) return null
 

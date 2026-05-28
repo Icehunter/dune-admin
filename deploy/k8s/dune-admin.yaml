@@ -44,6 +44,7 @@ stringData:
   BROKER_USER: ""
   BROKER_PASS: ""
   BROKER_JWT_SECRET: ""
+  MARKET_BOT_REMOTE_TOKEN: ""
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -150,6 +151,12 @@ spec:
                 secretKeyRef:
                   name: dune-admin-secrets
                   key: BROKER_JWT_SECRET
+            - name: MARKET_BOT_REMOTE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: dune-admin-secrets
+                  key: MARKET_BOT_REMOTE_TOKEN
+                  optional: true
           volumeMounts:
             - name: market-bot-cache
               mountPath: /data
@@ -191,4 +198,5 @@ spec:
     - name: http
       port: 8080
       targetPort: http
-  type: ClusterIP
+      nodePort: 30080
+  type: NodePort

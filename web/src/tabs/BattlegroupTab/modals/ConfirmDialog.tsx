@@ -19,7 +19,7 @@ export function ConfirmDialog({ action, onConfirm, onClose }: Props) {
               <p className="text-foreground">{action?.msg ?? ''}</p>
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="tertiary" onPress={onClose}>Cancel</Button>
+              <Button variant="tertiary" slot="close">Cancel</Button>
               <Button
                 variant={action?.danger ? 'danger' : 'primary'}
                 onPress={() => action && onConfirm(action)}

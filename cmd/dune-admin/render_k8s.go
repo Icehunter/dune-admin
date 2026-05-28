@@ -108,7 +108,7 @@ func renderK8SManifest(outPath string) error {
 		"db_user":                  dbUserVal,
 		"db_name":                  dbNameVal,
 		"db_schema":                dbSchemaVal,
-		"market_bot_enabled":       loadedConfig.MarketBotEnabled,
+		"market_bot_enabled":       marketBotEnabled(loadedConfig),
 		"market_bot_cache_db":      cacheDB,
 		"market_bot_item_data":     itemData,
 		"market_bot_buy_interval":  buyInt.String(),
@@ -116,6 +116,7 @@ func renderK8SManifest(outPath string) error {
 		"market_bot_buy_threshold": buyThreshold,
 		"market_bot_max_buys":      maxBuys,
 	}
+	addIfNonEmpty(manifestCfg, "market_bot_remote_url", loadedConfig.MarketBotRemoteURL)
 	addIfNonEmpty(manifestCfg, "ssh_host", loadedConfig.SSHHost)
 	addIfNonEmpty(manifestCfg, "ssh_user", loadedConfig.SSHUser)
 	addIfNonEmpty(manifestCfg, "ssh_key", loadedConfig.SSHKey)
@@ -150,7 +151,7 @@ func renderK8SManifest(outPath string) error {
 	out.WriteString("  DB_SCHEMA: " + yamlScalar(dbSchemaVal) + "\n")
 	out.WriteString("  LISTEN_ADDR: " + yamlScalar(listen) + "\n")
 	out.WriteString("  CONTROL: " + yamlScalar(control) + "\n")
-	out.WriteString("  MARKET_BOT_ENABLED: " + yamlScalar(strconv.FormatBool(loadedConfig.MarketBotEnabled)) + "\n")
+	out.WriteString("  MARKET_BOT_ENABLED: " + yamlScalar(strconv.FormatBool(marketBotEnabled(loadedConfig))) + "\n")
 	out.WriteString("  MARKET_BOT_BUY_INTERVAL: " + yamlScalar(buyInt.String()) + "\n")
 	out.WriteString("  MARKET_BOT_LIST_INTERVAL: " + yamlScalar(listInt.String()) + "\n")
 	out.WriteString("  config.yaml: |\n")
@@ -162,6 +163,9 @@ func renderK8SManifest(outPath string) error {
 	out.WriteString("  BROKER_USER: " + yamlScalar(brokerUserVal) + "\n")
 	out.WriteString("  BROKER_PASS: " + yamlScalar(brokerPassVal) + "\n")
 	out.WriteString("  BROKER_JWT_SECRET: " + yamlScalar(brokerJWTVal) + "\n")
+	if loadedConfig.MarketBotRemoteToken != "" {
+		out.WriteString("  MARKET_BOT_REMOTE_TOKEN: " + yamlScalar(loadedConfig.MarketBotRemoteToken) + "\n")
+	}
 
 	out.WriteString(`---
 apiVersion: v1
@@ -310,7 +314,7 @@ spec:
     - name: http
       port: 8080
       targetPort: http
-  type: ClusterIP
+  type: NodePort
 `)
 
 	if outPath == "-" {

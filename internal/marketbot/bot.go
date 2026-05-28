@@ -24,6 +24,7 @@ type BotConfig struct {
 	DBSchema     string
 	DBPool       *pgxpool.Pool // optional shared dune-admin pool (preserves SSH/tunnel routing)
 	CacheDB      string
+	StatePath    string // optional path for persisted runtime config (UI-tunable fields)
 	ItemDataPath string
 	BuyInterval  time.Duration
 	ListInterval time.Duration
@@ -165,10 +166,30 @@ func Run(ctx context.Context, cfg BotConfig) (*Instance, error) {
 	}
 
 	botCfg := &Config{config: defaultConfig()}
+	// Seed from BotConfig (CLI/yaml). These act as initial defaults; if a
+	// persisted state file exists, its values win below.
 	botCfg.config.BuyInterval = cfg.BuyInterval
 	botCfg.config.ListInterval = cfg.ListInterval
 	botCfg.config.BuyThreshold = cfg.BuyThreshold
 	botCfg.config.MaxBuys = cfg.MaxBuys
+
+	// Restore UI-tunable runtime config from disk if present.
+	if cfg.StatePath != "" {
+		if state, err := LoadState(cfg.StatePath); err != nil {
+			logger.Printf("warn: load persisted state %s: %v (using defaults)", cfg.StatePath, err)
+		} else if state.MaxBuys > 0 || len(state.DisabledItems) > 0 || state.BuyThreshold > 0 {
+			// Non-zero state indicates the file existed and had real content.
+			botCfg.config = state
+			logger.Printf("loaded persisted runtime state from %s (%d disabled items)", cfg.StatePath, len(state.DisabledItems))
+		}
+		// Register persistence hook so every successful Apply writes through.
+		statePath := cfg.StatePath
+		botCfg.OnChange(func(v configValues) {
+			if err := SaveState(statePath, v); err != nil {
+				logger.Printf("warn: persist state %s: %v", statePath, err)
+			}
+		})
+	}
 
 	logger.Println("loading catalog...")
 	catalog, err := loadCatalog(cfg.ItemDataPath)
@@ -199,8 +220,8 @@ func Run(ctx context.Context, cfg BotConfig) (*Instance, error) {
 
 	var api *APIServer
 	if cfg.APIAddr != "" {
-		api = newAPIServer(botCfg, ex, cfg.APIToken)
-		go api.ListenAndServe(cfg.APIAddr)
+		api = newAPIServer(botCfg, ex, nil, cfg.APIToken)
+		// inst is wired in below after construction.
 	}
 
 	inst := &Instance{
@@ -211,6 +232,11 @@ func Run(ctx context.Context, cfg BotConfig) (*Instance, error) {
 		ex:      ex,
 		pool:    pool,
 		started: started,
+	}
+
+	if api != nil {
+		api.inst = inst
+		go api.ListenAndServe(cfg.APIAddr)
 	}
 
 	go func() {

@@ -37,31 +37,37 @@ export default function BattlegroupTab() {
   const [backupFiles, setBackupFiles] = useState<BackupFile[]>([])
   const [backupFilesLoading, setBackupFilesLoading] = useState(false)
 
-  const fetchStatus = useCallback(async () => {
-    setStatusLoading(true)
-    try {
-      const res = await api.battlegroup.status() as unknown as DetailedStatus
-      setStatus(res)
-    } catch (e: unknown) {
-      toast.danger(`Status failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
-      setStatusLoading(false)
-    }
+  const fetchStatus = useCallback(() => {
+    Promise.resolve()
+      .then(() => setStatusLoading(true))
+      .then(() => api.battlegroup.status() as Promise<unknown>)
+      .then(res => setStatus(res as DetailedStatus))
+      .catch((e: unknown) => toast.danger(`Status failed: ${e instanceof Error ? e.message : String(e)}`))
+      .finally(() => setStatusLoading(false))
   }, [])
 
   useEffect(() => { fetchStatus() }, [fetchStatus])
 
-  // Re-render when init-warning window expires
-  const [, forceRender] = useState(0)
+  // isInitializing tracks whether we're inside the post-start warning window.
+  // We use a boolean state rather than computing from Date.now() in render (impure).
+  const [isInitializing, setIsInitializing] = useState(false)
   useEffect(() => {
-    if (startedAt === null) return
+    if (startedAt === null) {
+      const t = setTimeout(() => setIsInitializing(false), 0)
+      return () => clearTimeout(t)
+    }
     const remaining = INIT_WARN_MS - (Date.now() - startedAt)
-    if (remaining <= 0) { setStartedAt(null); return }
-    const t = setTimeout(() => { setStartedAt(null); forceRender(n => n + 1) }, remaining)
-    return () => clearTimeout(t)
+    if (remaining <= 0) {
+      const t = setTimeout(() => setStartedAt(null), 0)
+      return () => clearTimeout(t)
+    }
+    const tStart = setTimeout(() => setIsInitializing(true), 0)
+    const tEnd = setTimeout(() => {
+      setStartedAt(null)
+      setIsInitializing(false)
+    }, remaining)
+    return () => { clearTimeout(tStart); clearTimeout(tEnd) }
   }, [startedAt])
-
-  const isInitializing = startedAt !== null && (Date.now() - startedAt) < INIT_WARN_MS
 
   const runCmd = async (action: ActionDef) => {
     setConfirmCmd(null)

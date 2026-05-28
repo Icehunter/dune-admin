@@ -16,7 +16,7 @@ export function useTableSort<T, K extends string>(
     out.sort((a, b) => {
       const av = getValue(a, sortKey)
       const bv = getValue(b, sortKey)
-      let cmp = 0
+      let cmp: number
       if (typeof av === 'number' && typeof bv === 'number') cmp = av - bv
       else cmp = String(av ?? '').localeCompare(String(bv ?? ''), undefined, { numeric: true })
       return sortDir === 'asc' ? cmp : -cmp

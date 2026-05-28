@@ -224,7 +224,7 @@ export type CatalogItem = {
 }
 export type BotStatus = {
   running: boolean
-  mode?: 'embedded'
+  mode?: 'embedded' | 'remote' | 'none'
   enabled?: boolean
   uptime: string
   last_list_tick: string | null

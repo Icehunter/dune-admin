@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   Button, Chip, Input, InputGroup, Modal, Spinner, TextField, toast,
 } from '@heroui/react'
@@ -42,18 +42,16 @@ export default function StorageTab() {
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      setContainers(await api.storage.list())
-    } catch (e: unknown) {
-      toast.danger(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoading(false)
-    }
-  }
+  const load = useCallback(() => {
+    Promise.resolve()
+      .then(() => setLoading(true))
+      .then(() => api.storage.list())
+      .then(setContainers)
+      .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false))
+  }, [])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
 
   const selectContainer = async (c: Container) => {
     setSelected(c)
@@ -238,9 +236,12 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
 
   useEffect(() => {
     if (!open) return
-    setLoading(true)
-    api.players.templates().then(setTemplates).catch(() => {}).finally(() => setLoading(false))
-    setQuery(''); setSelected(''); setQty(1); setQuality(0); setStaged([]); setResult(null)
+    Promise.resolve()
+      .then(() => { setLoading(true); setQuery(''); setSelected(''); setQty(1); setQuality(0); setStaged([]); setResult(null) })
+      .then(() => api.players.templates())
+      .then(setTemplates)
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [open])
 
   const filtered = useMemo(() => {
@@ -287,15 +288,15 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
   return (
     <Modal>
       <Modal.Backdrop isOpen={open} onOpenChange={v => !v && onClose()}>
-        <Modal.Container size="cover">
-          <Modal.Dialog className="flex flex-col">
+        <Modal.Container size="cover" scroll="outside">
+          <Modal.Dialog>
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading className="text-accent">
                 {container.name || `Container #${container.id}`} — Add Items
               </Modal.Heading>
             </Modal.Header>
-            <Modal.Body className="flex flex-col gap-3 overflow-hidden">
+            <Modal.Body className="flex flex-col gap-3">
               {loading ? (
                 <div className="flex justify-center py-6"><Spinner size="lg" /></div>
               ) : (
@@ -403,7 +404,7 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
               )}
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="tertiary" size="sm" onPress={onClose}>Cancel</Button>
+              <Button variant="tertiary" size="sm" slot="close">Cancel</Button>
               <Button size="sm" onPress={handleSubmit} isDisabled={submitting || staged.length === 0}>
                 {submitting ? <Spinner size="sm" color="current" /> : <Icon name="plus" />}
                 Add {staged.length} Item{staged.length !== 1 ? 's' : ''}

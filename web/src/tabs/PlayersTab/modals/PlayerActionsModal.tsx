@@ -139,26 +139,37 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) {
-      setSection('resources')
-      setNodesLoaded(false); setNodes([])
-      setPlayerSpecs([]); setPlayerKeystones([]); setSpecsLoaded(false)
-      setHistoryLoaded(false); setEvents([]); setDungeons([])
-      setCharXPCurrent(null)
-      setTagsLoaded(false); setTags([]); setPendingTags([])
-      setConfirmPending(null)
+      Promise.resolve().then(() => {
+        setSection('resources')
+        setNodesLoaded(false); setNodes([])
+        setPlayerSpecs([]); setPlayerKeystones([]); setSpecsLoaded(false)
+        setHistoryLoaded(false); setEvents([]); setDungeons([])
+        setCharXPCurrent(null)
+        setTagsLoaded(false); setTags([]); setPendingTags([])
+        setConfirmPending(null)
+      })
     } else {
-      setFactionId(player.faction_id > 0 ? player.faction_id : 1)
-      api.players.partitions().then(setPartitions).catch(() => {})
-      api.players.charXPCurrent(player.id).then(setCharXPCurrent).catch(() => {})
-      // Pull every player so the teleport-to-player selector can offer a target.
-      api.players.list().then(ps => setAllPlayers(ps.filter(p => p.id !== player.id))).catch(() => {})
+      Promise.resolve()
+        .then(() => setFactionId(player.faction_id > 0 ? player.faction_id : 1))
+        .then(() => Promise.all([
+          api.players.partitions(),
+          api.players.charXPCurrent(player.id),
+          api.players.list(),
+        ]))
+        .then(([parts, xp, ps]) => {
+          setPartitions(parts)
+          setCharXPCurrent(xp)
+          setAllPlayers(ps.filter(p => p.id !== player.id))
+        })
+        .catch(() => {})
     }
   }, [open, player.faction_id, player.id])
 
   useEffect(() => {
     if (section === 'journey' && !nodesLoaded && open) {
-      setNodesLoading(true)
-      api.players.journey(player.account_id)
+      Promise.resolve()
+        .then(() => setNodesLoading(true))
+        .then(() => api.players.journey(player.account_id))
         .then(n => { setNodes(n); setNodesLoaded(true) })
         .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
         .finally(() => setNodesLoading(false))
@@ -177,13 +188,13 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
 
   useEffect(() => {
     if (section === 'specs' && !specsLoaded && open) {
-      setSpecsLoading(true)
-      Promise.all([
-        api.players.specs_for(player.controller_id),
-        api.players.keystones(player.controller_id),
-      ]).then(([s, k]) => {
-        setPlayerSpecs(s); setPlayerKeystones(k); setSpecsLoaded(true)
-      })
+      Promise.resolve()
+        .then(() => setSpecsLoading(true))
+        .then(() => Promise.all([
+          api.players.specs_for(player.controller_id),
+          api.players.keystones(player.controller_id),
+        ]))
+        .then(([s, k]) => { setPlayerSpecs(s); setPlayerKeystones(k); setSpecsLoaded(true) })
         .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
         .finally(() => setSpecsLoading(false))
     }
@@ -191,13 +202,13 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
 
   useEffect(() => {
     if (section === 'history' && !historyLoaded && open) {
-      setHistoryLoading(true)
-      Promise.all([
-        api.players.events(player.id),
-        api.players.dungeons(player.id),
-      ]).then(([evts, dngns]) => {
-        setEvents(evts); setDungeons(dngns); setHistoryLoaded(true)
-      })
+      Promise.resolve()
+        .then(() => setHistoryLoading(true))
+        .then(() => Promise.all([
+          api.players.events(player.id),
+          api.players.dungeons(player.id),
+        ]))
+        .then(([evts, dngns]) => { setEvents(evts); setDungeons(dngns); setHistoryLoaded(true) })
         .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
         .finally(() => setHistoryLoading(false))
     }
@@ -205,8 +216,9 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
 
   useEffect(() => {
     if (section !== 'tags' || tagsLoaded || !open) return
-    setTagsLoading(true)
-    api.players.tags(player.account_id)
+    Promise.resolve()
+      .then(() => setTagsLoading(true))
+      .then(() => api.players.tags(player.account_id))
       .then(t => { setTags(t); setTagsLoaded(true) })
       .catch(() => {})
       .finally(() => setTagsLoading(false))
@@ -271,7 +283,7 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
     <>
     <Modal>
       <Modal.Backdrop isOpen={open} onOpenChange={v => !v && onClose()}>
-        <Modal.Container size="cover">
+        <Modal.Container size="cover" scroll="outside">
           <Modal.Dialog className="h-[92vh] flex flex-col dialog-surface-alt">
             <Modal.CloseTrigger />
             <Modal.Header>

@@ -12,6 +12,12 @@ usage() {
   cat <<'EOF'
 Usage: ./listen.sh [options]
 
+Opens a kubectl port-forward to the dune-admin service.
+
+NOTE: The service is now type=NodePort exposed on port 30080 on the VM,
+so you can also reach it directly at http://<VM-IP>:30080 without this script.
+This script is only needed if you want to map a specific local port.
+
 Options:
   --namespace <ns>         Kubernetes namespace (default: dune-admin)
   --local-port <port>      Local listen port (default: 8080)
@@ -31,4 +37,5 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "Opening API port-forward at http://127.0.0.1:${LOCAL_PORT} ..."
+echo "(Alternatively, use http://<VM-IP>:30080 directly via NodePort)"
 kubectl -n "$NAMESPACE" port-forward svc/dune-admin "${LOCAL_PORT}:${REMOTE_PORT}"

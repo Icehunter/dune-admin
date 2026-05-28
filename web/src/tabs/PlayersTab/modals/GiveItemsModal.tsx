@@ -28,10 +28,15 @@ export function GiveItemsModal({ player, open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) return
-    setLoading(true)
-    api.players.templates().then(setTemplates).catch(() => {}).finally(() => setLoading(false))
-    fetch('/packs.json').then(r => r.json()).then(setPacksData).catch(() => setPacksData({ packs: {} }))
-    setQuery(''); setSelected(''); setQty(1); setQuality(0); setStaged([]); setResult(null)
+    Promise.resolve()
+      .then(() => { setLoading(true); setQuery(''); setSelected(''); setQty(1); setQuality(0); setStaged([]); setResult(null) })
+      .then(() => Promise.all([
+        api.players.templates(),
+        fetch('/packs.json').then(r => r.json() as Promise<PacksData>).catch(() => ({ packs: {} } as PacksData)),
+      ]))
+      .then(([tmpls, packs]) => { setTemplates(tmpls); setPacksData(packs) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [open])
 
   const filtered = useMemo(() => {
@@ -92,13 +97,13 @@ export function GiveItemsModal({ player, open, onClose }: Props) {
   return (
     <Modal>
       <Modal.Backdrop isOpen={open} onOpenChange={v => !v && onClose()}>
-        <Modal.Container size="cover">
-          <Modal.Dialog className="flex flex-col">
+        <Modal.Container size="cover" scroll="outside">
+          <Modal.Dialog>
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading className="text-accent">{player.name} — Give Items</Modal.Heading>
             </Modal.Header>
-            <Modal.Body className="flex flex-col gap-3 overflow-hidden">
+            <Modal.Body className="flex flex-col gap-3">
               {loading ? (
                 <div className="flex justify-center py-6"><Spinner size="lg" /></div>
               ) : (
@@ -239,7 +244,7 @@ export function GiveItemsModal({ player, open, onClose }: Props) {
               )}
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="tertiary" size="sm" onPress={onClose}>Cancel</Button>
+              <Button variant="tertiary" size="sm" slot="close">Cancel</Button>
               <Button size="sm" onPress={handleSubmit} isDisabled={submitting || staged.length === 0}>
                 {submitting ? <Spinner size="sm" color="current" /> : <Icon name="gift" />}
                 Give {staged.length} Item{staged.length !== 1 ? 's' : ''}

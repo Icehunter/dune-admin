@@ -38,19 +38,18 @@ export function InventoryModal({ player, open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) {
-      setVehicles([])
+      Promise.resolve().then(() => setVehicles([]))
       return
     }
-    setLoading(true)
-    setVehiclesLoading(true)
-    api.players.inventory(player.id)
-      .then(setItems)
+    Promise.resolve()
+      .then(() => { setLoading(true); setVehiclesLoading(true) })
+      .then(() => Promise.all([
+        api.players.inventory(player.id),
+        api.players.vehicles(player.controller_id),
+      ]))
+      .then(([inv, vehs]) => { setItems(inv); setVehicles(vehs) })
       .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false))
-    api.players.vehicles(player.controller_id)
-      .then(setVehicles)
-      .catch(() => {})
-      .finally(() => setVehiclesLoading(false))
+      .finally(() => { setLoading(false); setVehiclesLoading(false) })
   }, [open, player.id, player.controller_id])
 
   const handleDelete = async (itemId: number) => {
@@ -122,11 +121,11 @@ export function InventoryModal({ player, open, onClose }: Props) {
   return (
     <Modal>
       <Modal.Backdrop isOpen={open} onOpenChange={v => !v && onClose()}>
-        <Modal.Container size="cover">
+        <Modal.Container size="cover" scroll="outside">
           <Modal.Dialog>
             <Modal.CloseTrigger />
             <Modal.Header><Modal.Heading className="text-accent">{player.name} — Inventory</Modal.Heading></Modal.Header>
-            <Modal.Body className="flex flex-col gap-4 overflow-hidden">
+            <Modal.Body className="flex flex-col gap-4">
               {loading ? (
                 <div className="flex justify-center py-8"><Spinner size="lg" /></div>
               ) : (

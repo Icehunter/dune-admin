@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { toast } from '@heroui/react'
 import { api } from '../../api/client'
 import type {
@@ -36,18 +36,16 @@ export default function PlayersTab() {
   const [showGiveItems, setShowGiveItems] = useState(false)
   const [showActions, setShowActions] = useState(false)
 
-  useEffect(() => { loadPlayers() }, [])
+  const loadPlayers = useCallback(() => {
+    Promise.resolve()
+      .then(() => setLoading(true))
+      .then(() => api.players.list())
+      .then(setPlayers)
+      .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false))
+  }, [])
 
-  const loadPlayers = async () => {
-    setLoading(true)
-    try {
-      setPlayers(await api.players.list())
-    } catch (e: unknown) {
-      toast.danger(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoading(false)
-    }
-  }
+  useEffect(() => { loadPlayers() }, [loadPlayers])
 
   const loadSideData = async (section: SidebarKey) => {
     setActive(section)

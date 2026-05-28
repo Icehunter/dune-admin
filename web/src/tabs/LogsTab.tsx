@@ -39,15 +39,16 @@ export default function LogsTab() {
   const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const logContainerRef = useRef<HTMLPreElement | null>(null)
 
-  const loadPods = () => {
-    setPodsLoading(true)
-    api.logs.pods()
+  const loadPods = useCallback(() => {
+    Promise.resolve()
+      .then(() => setPodsLoading(true))
+      .then(() => api.logs.pods())
       .then(setPods)
       .catch((e: unknown) => toast.danger(`Failed to load pods: ${e instanceof Error ? e.message : String(e)}`))
       .finally(() => setPodsLoading(false))
-  }
+  }, [])
 
-  useEffect(() => { loadPods() }, [])
+  useEffect(() => { loadPods() }, [loadPods])
 
   const startFlush = useCallback(() => {
     if (flushTimerRef.current) return
@@ -198,13 +199,14 @@ export default function LogsTab() {
                   switch (key) {
                     case 'time':      return <span className="font-mono text-muted">{c.event_time}</span>
                     case 'character': return c.character_name
-                    case 'cheat_type':
+                    case 'cheat_type': {
                       const suspicious = /dup|negative/i.test(c.cheat_type)
                       return (
                         <Chip size="sm" color={suspicious ? 'danger' : 'default'} variant="soft">
                           {c.cheat_type}
                         </Chip>
                       )
+                    }
                   }
                 }}
               />

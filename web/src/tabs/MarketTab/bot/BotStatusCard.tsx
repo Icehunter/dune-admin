@@ -12,16 +12,19 @@ function fmtBalance(n: number | undefined): string {
 }
 
 export default function BotStatusCard({ status }: { status: BotStatus }) {
+  const statusLabel = status.running ? '● Running' : '⏸ Paused'
+  const statusColor = status.running ? 'success' : 'warning'
+
   return (
     <div className="flex flex-wrap gap-4 items-start">
       <div className="flex flex-col gap-1 min-w-[120px]">
         <span className="text-xs text-muted uppercase tracking-wider">Status</span>
         <Chip
           size="sm"
-          color={status.running ? 'success' : 'default'}
+          color={statusColor}
           variant="soft"
         >
-          {status.running ? '● Running' : '○ Stopped'}
+          {statusLabel}
         </Chip>
       </div>
 

@@ -1,4 +1,5 @@
 .PHONY: build web go linux dev dev-server dev-backend dev-web setup deploy-web \
+        render-k8s render-k8s-stdout k8s-dry-run \
         vulncheck gosec pnpm-audit \
         test test-race vet fmt fmt-check \
         tools verify \
@@ -17,14 +18,17 @@ GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS    := -ldflags "-s -w -X main.AppVersion=$(VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.BuildTime=$(BUILD_TIME)"
 
-# Build the binary.
-build:
+# Build frontend + backend binary.
+build: web go
+
+# Build backend binary only.
+go:
 	@mkdir -p bin
 	$(GO) build -trimpath $(LDFLAGS) -o $(BIN) $(CMD)
 	install -m 0755 $(BIN) ./dune-admin
 
 # Install the binary system-wide.
-install: build
+install: go
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install -m 0755 $(BIN) $(DESTDIR)$(PREFIX)/bin/dune-admin
 
@@ -74,10 +78,19 @@ setup:
 # ── Web ───────────────────────────────────────────────────────────────────────
 
 web:
-	cd web && npm ci && npm run build
+	cd web && pnpm install --frozen-lockfile && pnpm build
 
 deploy-web:
-	cd web && npm ci && npm run build && wrangler pages deploy dist --project-name dune-admin
+	cd web && pnpm install --frozen-lockfile && pnpm build && wrangler pages deploy dist --project-name dune-admin
+
+render-k8s:
+	go run $(CMD) -render-k8s deploy/k8s/dune-admin.rendered.yaml
+
+render-k8s-stdout:
+	go run $(CMD) -render-k8s -
+
+k8s-dry-run:
+	@$(MAKE) render-k8s-stdout | kubectl apply --dry-run=client -f -
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 

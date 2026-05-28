@@ -7,6 +7,86 @@ import (
 	"strings"
 )
 
+type marketItemsFilter struct {
+	search   string
+	category string
+	tier     *int
+	rarity   string
+	owner    string
+}
+
+func buildMarketItemsFilter(r *http.Request) marketItemsFilter {
+	q := r.URL.Query()
+	filter := marketItemsFilter{
+		search:   strings.ToLower(q.Get("search")),
+		category: q.Get("category"),
+		rarity:   strings.ToLower(q.Get("rarity")),
+		owner:    q.Get("owner"),
+	}
+	if tierStr := q.Get("tier"); tierStr != "" {
+		if tier, err := strconv.Atoi(tierStr); err == nil {
+			filter.tier = &tier
+		}
+	}
+	return filter
+}
+
+func marketItemMatchesFilter(it marketItem, filter marketItemsFilter) bool {
+	if filter.search != "" {
+		if !strings.Contains(strings.ToLower(it.DisplayName), filter.search) &&
+			!strings.Contains(strings.ToLower(it.TemplateID), filter.search) {
+			return false
+		}
+	}
+	if filter.category != "" && !strings.HasPrefix(it.Category, filter.category) {
+		return false
+	}
+	if filter.tier != nil && it.Tier != *filter.tier {
+		return false
+	}
+	if filter.rarity != "" && !strings.EqualFold(it.Rarity, filter.rarity) {
+		return false
+	}
+	if filter.owner == "bot" && it.BotStock == 0 {
+		return false
+	}
+	if filter.owner == "player" && (it.TotalStock-it.BotStock) == 0 {
+		return false
+	}
+	return true
+}
+
+func filterMarketItems(items []marketItem, filter marketItemsFilter) []marketItem {
+	filtered := make([]marketItem, 0, len(items))
+	for _, it := range items {
+		if marketItemMatchesFilter(it, filter) {
+			filtered = append(filtered, it)
+		}
+	}
+	return filtered
+}
+
+func marketItemsPagination(r *http.Request, total int) (start, end, page, limit int) {
+	q := r.URL.Query()
+	limit = 100
+	page = 0
+	if parsedLimit, err := strconv.Atoi(q.Get("limit")); err == nil && parsedLimit > 0 && parsedLimit <= 500 {
+		limit = parsedLimit
+	}
+	if parsedPage, err := strconv.Atoi(q.Get("page")); err == nil && parsedPage > 0 {
+		page = parsedPage
+	}
+	start = page * limit
+	end = start + limit
+	if start >= total {
+		start = total
+	}
+	if end > total {
+		end = total
+	}
+	return start, end, page, limit
+}
+
 // handleMarketItems returns all active exchange listings aggregated by template ID.
 // Query params: search, category, tier, rarity, owner (bot|player|all), page, limit.
 func handleMarketItems(w http.ResponseWriter, r *http.Request) {
@@ -25,59 +105,9 @@ func handleMarketItems(w http.ResponseWriter, r *http.Request) {
 		items = []marketItem{}
 	}
 
-	q := r.URL.Query()
-	search := strings.ToLower(q.Get("search"))
-	category := q.Get("category")
-	tierStr := q.Get("tier")
-	rarity := strings.ToLower(q.Get("rarity"))
-	owner := q.Get("owner") // "bot", "player", or "" for all
-
-	// Apply filters in Go — simpler than parameterised SQL for this aggregation query.
-	filtered := items[:0]
-	for _, it := range items {
-		if search != "" {
-			if !strings.Contains(strings.ToLower(it.DisplayName), search) &&
-				!strings.Contains(strings.ToLower(it.TemplateID), search) {
-				continue
-			}
-		}
-		if category != "" && !strings.HasPrefix(it.Category, category) {
-			continue
-		}
-		if tierStr != "" {
-			if t, err := strconv.Atoi(tierStr); err == nil && it.Tier != t {
-				continue
-			}
-		}
-		if rarity != "" && !strings.EqualFold(it.Rarity, rarity) {
-			continue
-		}
-		if owner == "bot" && it.BotStock == 0 {
-			continue
-		}
-		if owner == "player" && (it.TotalStock-it.BotStock) == 0 {
-			continue
-		}
-		filtered = append(filtered, it)
-	}
-
-	// Pagination.
-	limit := 100
-	page := 0
-	if l, err := strconv.Atoi(q.Get("limit")); err == nil && l > 0 && l <= 500 {
-		limit = l
-	}
-	if p, err := strconv.Atoi(q.Get("page")); err == nil && p > 0 {
-		page = p
-	}
-	start := page * limit
-	end := start + limit
-	if start >= len(filtered) {
-		start = len(filtered)
-	}
-	if end > len(filtered) {
-		end = len(filtered)
-	}
+	filter := buildMarketItemsFilter(r)
+	filtered := filterMarketItems(items, filter)
+	start, end, page, limit := marketItemsPagination(r, len(filtered))
 
 	jsonOK(w, map[string]any{
 		"items": filtered[start:end],

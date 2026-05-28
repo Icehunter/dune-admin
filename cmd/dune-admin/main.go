@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -10,8 +11,11 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"dune-admin/internal/marketbot"
 )
 
 // AppVersion is the conduit release version shown to users.
@@ -27,33 +31,30 @@ var BuildTime = "unknown"
 // ── config ────────────────────────────────────────────────────────────────────
 
 var (
-	setupMode          bool
-	sqlQuery           string
-	sshHost            string
-	sshUser            string
-	sshKeyPath         string
-	itemDataPath       string
-	scripCurrencyID    int
-	dbHost             string
-	dbPort             int
-	dbUser             string
-	dbPass             string
-	dbName             string
-	dbSchema           string
-	listenAddr         string
-	controlPlane       string
-	controlNS          string
-	brokerGameAddr     string
-	brokerAdminAddr    string
-	brokerTLS          bool
-	brokerUser         string
-	brokerPass         string
-	backupDir          string
-	serverIniDir       string
-	marketBotAddr      string
-	marketBotToken     string
-	marketBotContainer string
-	marketBotNamespace string
+	setupMode       bool
+	sqlQuery        string
+	renderK8SOut    string
+	sshHost         string
+	sshUser         string
+	sshKeyPath      string
+	itemDataPath    string
+	scripCurrencyID int
+	dbHost          string
+	dbPort          int
+	dbUser          string
+	dbPass          string
+	dbName          string
+	dbSchema        string
+	listenAddr      string
+	controlPlane    string
+	controlNS       string
+	brokerGameAddr  string
+	brokerAdminAddr string
+	brokerTLS       bool
+	brokerUser      string
+	brokerPass      string
+	backupDir       string
+	serverIniDir    string
 )
 
 // appConfig mirrors the fields written to ~/.dune-admin/config.yaml.
@@ -122,15 +123,6 @@ type appConfig struct {
 	ScripCurrency int    `yaml:"scrip_currency"`
 	ListenAddr    string `yaml:"listen_addr"`
 
-	// Market bot — optional; enables bot control panel.
-	// MarketBotAddr is the bot's HTTP API address (e.g. "http://market-bot.svc:8081").
-	// MarketBotContainer is the deployment name (kubectl) or container name (docker).
-	// MarketBotNamespace is only used by the kubectl control plane.
-	MarketBotAddr      string `yaml:"market_bot_addr"`
-	MarketBotToken     string `yaml:"market_bot_token"`
-	MarketBotContainer string `yaml:"market_bot_container"`
-	MarketBotNamespace string `yaml:"market_bot_namespace"`
-
 	// AMP-specific — used when Control == "amp" (CubeCoders AMP w/ podman).
 	// AmpInstance is the ampinstmgr instance name (e.g. "MehDune01").
 	// AmpContainer is the podman container name (default "AMP_<instance>").
@@ -156,9 +148,15 @@ type appConfig struct {
 	AmpDataRoot string `yaml:"amp_data_root"`
 	DirectorURL string `yaml:"director_url"`
 
-	// FrontendDir overrides the auto-detected SPA directory. When unset the
-	// server looks in ./dist then ./web/dist and serves the first match.
-	FrontendDir string `yaml:"frontend_dir"`
+	// ── Embedded market bot ────────────────────────────────────────────────
+	// MarketBotEnabled starts the market bot as an in-process goroutine.
+	MarketBotEnabled  bool          `yaml:"market_bot_enabled"`
+	MarketBotCacheDB  string        `yaml:"market_bot_cache_db"`
+	MarketBotItemData string        `yaml:"market_bot_item_data"`
+	MarketBotBuyInt   time.Duration `yaml:"market_bot_buy_interval"`
+	MarketBotListInt  time.Duration `yaml:"market_bot_list_interval"`
+	MarketBotThresh   float64       `yaml:"market_bot_buy_threshold"`
+	MarketBotMaxBuys  int           `yaml:"market_bot_max_buys"`
 }
 
 func configDir() string {
@@ -217,10 +215,6 @@ func loadConfig() {
 			setEnvIfMissing("BROKER_JWT_SECRET", cfg.BrokerJWTSecret)
 			setEnvIfMissing("BACKUP_DIR", cfg.BackupDir)
 			setEnvIfMissing("SERVER_INI_DIR", cfg.ServerIniDir)
-			setEnvIfMissing("MARKET_BOT_ADDR", cfg.MarketBotAddr)
-			setEnvIfMissing("MARKET_BOT_TOKEN", cfg.MarketBotToken)
-			setEnvIfMissing("MARKET_BOT_CONTAINER", cfg.MarketBotContainer)
-			setEnvIfMissing("MARKET_BOT_NAMESPACE", cfg.MarketBotNamespace)
 			return
 		}
 	}
@@ -290,12 +284,9 @@ func init() {
 	flag.StringVar(&brokerPass, "broker-pass", envOr("BROKER_PASS", ""), "AMQP broker password (required for broker features)")
 	flag.StringVar(&backupDir, "backup-dir", envOr("BACKUP_DIR", ""), "Backup directory path")
 	flag.StringVar(&serverIniDir, "ini-dir", envOr("SERVER_INI_DIR", ""), "Directory containing UserGame.ini / UserOverrides.ini")
-	flag.StringVar(&marketBotAddr, "market-bot-addr", envOr("MARKET_BOT_ADDR", ""), "Market bot HTTP API address (e.g. http://host:8081)")
-	flag.StringVar(&marketBotToken, "market-bot-token", envOr("MARKET_BOT_TOKEN", ""), "Market bot bearer token")
-	flag.StringVar(&marketBotContainer, "market-bot-container", envOr("MARKET_BOT_CONTAINER", "market-bot"), "Market bot container/deployment name")
-	flag.StringVar(&marketBotNamespace, "market-bot-namespace", envOr("MARKET_BOT_NAMESPACE", ""), "Market bot k8s namespace")
 	flag.BoolVar(&setupMode, "setup", false, "Interactive setup wizard — writes ~/.dune-admin/config.yaml")
 	flag.StringVar(&sqlQuery, "sql", "", "Run a SQL query and print results to stdout, then exit")
+	flag.StringVar(&renderK8SOut, "render-k8s", "", "Render k8s manifest with values from loaded config (path or '-' for stdout)")
 }
 
 func resolveKeyPath() string {
@@ -421,74 +412,165 @@ func needsSetup() bool {
 	return true
 }
 
-func main() {
-	flag.Parse()
+func runSQLMode(query string) error {
+	if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
+		return fmt.Errorf("connect: %w", msg.err)
+	}
+	if msg, ok := cmdRunSQL(query)().(msgSQL); ok {
+		if msg.err != nil {
+			return msg.err
+		}
+		fmt.Println(msg.result)
+	}
+	return nil
+}
 
+func runImmediateModes() (handled bool, err error) {
 	// Explicit -setup flag: reconfigure and exit (don't start server).
 	if setupMode {
 		runSetup()
+		return true, nil
+	}
+	if sqlQuery != "" {
+		return true, runSQLMode(sqlQuery)
+	}
+	if renderK8SOut != "" {
+		return true, renderK8SManifest(renderK8SOut)
+	}
+	return false, nil
+}
+
+func loadRuntimeData() error {
+	if err := loadItemData(); err != nil {
+		return err
+	}
+	if err := loadTagsData(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func setupIfNeeded() bool {
+	// Auto-run setup wizard when no config exists — setup leaves us connected.
+	if !needsSetup() {
+		return false
+	}
+	runSetup()
+	fmt.Println()
+	fmt.Printf("Starting server on %s...\n", listenAddr)
+	return true
+}
+
+func closeGlobalConnections() {
+	if globalDB != nil {
+		globalDB.Close()
+	}
+	if globalSSH != nil {
+		_ = globalSSH.Close()
+	}
+}
+
+func refreshItemTemplates() {
+	if msg, ok := cmdFetchItemTemplates().(msgItemTemplates); ok {
+		mergeItemTemplates(msg.templates)
+	}
+}
+
+func connectAndPrimeTemplates(alreadyConnected bool) {
+	if alreadyConnected {
+		// Already connected by setup; just populate item templates.
+		refreshItemTemplates()
 		return
 	}
+	// Connect synchronously (SSH + DB).
+	if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
+		fmt.Fprintln(os.Stderr, "connect:", msg.err)
+		fmt.Fprintln(os.Stderr, "Starting server anyway — use /api/v1/reconnect to retry")
+		return
+	}
+	refreshItemTemplates()
+}
 
-	if sqlQuery != "" {
-		if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
-			fmt.Fprintln(os.Stderr, "connect:", msg.err)
+func resolveEmbeddedMarketBotPaths(cfg appConfig, fallbackItemDataPath string) (cacheDB string, itemDataForBot string) {
+	cacheDB = cfg.MarketBotCacheDB
+	if cacheDB == "" {
+		cacheDB = filepath.Join(configDir(), "market-bot-cache.db")
+	}
+	itemDataForBot = cfg.MarketBotItemData
+	if itemDataForBot == "" {
+		if fallbackItemDataPath != "" {
+			itemDataForBot = fallbackItemDataPath
+		} else {
+			itemDataForBot = resolveItemDataPath()
+		}
+	}
+	return cacheDB, itemDataForBot
+}
+
+func startEmbeddedMarketBotIfEnabled(cfg appConfig) context.CancelFunc {
+	if !cfg.MarketBotEnabled {
+		return nil
+	}
+	botCtx, botCancel := context.WithCancel(context.Background())
+	cacheDB, itemDataForBot := resolveEmbeddedMarketBotPaths(cfg, itemDataPath)
+	inst, err := marketbot.Run(botCtx, marketbot.BotConfig{
+		DBPool:       globalDB,
+		DBHost:       dbHost,
+		DBPort:       dbPort,
+		DBUser:       dbUser,
+		DBPass:       dbPass,
+		DBName:       dbName,
+		DBSchema:     dbSchema,
+		CacheDB:      cacheDB,
+		ItemDataPath: itemDataForBot,
+		BuyInterval:  cfg.MarketBotBuyInt,
+		ListInterval: cfg.MarketBotListInt,
+		BuyThreshold: cfg.MarketBotThresh,
+		MaxBuys:      cfg.MarketBotMaxBuys,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "market-bot: startup failed: %v\n", err)
+		botCancel()
+		return nil
+	}
+	embeddedBot = inst
+	return botCancel
+}
+
+func main() {
+	flag.Parse()
+
+	handled, err := runImmediateModes()
+	if handled {
+		if err != nil {
+			label := ""
+			if renderK8SOut != "" {
+				label = "render-k8s: "
+			}
+			fmt.Fprintln(os.Stderr, label+err.Error())
 			os.Exit(1)
 		}
-		if msg, ok := cmdRunSQL(sqlQuery)().(msgSQL); ok {
-			if msg.err != nil {
-				fmt.Fprintln(os.Stderr, msg.err)
-				os.Exit(1)
-			}
-			fmt.Println(msg.result)
-		}
 		return
 	}
 
-	if err := loadItemData(); err != nil {
+	if err := loadRuntimeData(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	if err := loadTagsData(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	alreadyConnected := setupIfNeeded()
+	defer closeGlobalConnections()
 
-	// Auto-run setup wizard when no config exists — setup leaves us connected.
-	alreadyConnected := false
-	if needsSetup() {
-		runSetup()
-		alreadyConnected = true
-		fmt.Println()
-		fmt.Printf("Starting server on %s...\n", listenAddr)
-	}
+	connectAndPrimeTemplates(alreadyConnected)
 
-	defer func() {
-		if globalDB != nil {
-			globalDB.Close()
-		}
-		if globalSSH != nil {
-			_ = globalSSH.Close()
-		}
-	}()
-
-	if !alreadyConnected {
-		// Connect synchronously (SSH + DB).
-		if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
-			fmt.Fprintln(os.Stderr, "connect:", msg.err)
-			fmt.Fprintln(os.Stderr, "Starting server anyway — use /api/v1/reconnect to retry")
-		} else {
-			if msg, ok := cmdFetchItemTemplates().(msgItemTemplates); ok {
-				mergeItemTemplates(msg.templates)
-			}
-		}
-	} else {
-		// Already connected by setup; just populate item templates.
-		if msg, ok := cmdFetchItemTemplates().(msgItemTemplates); ok {
-			mergeItemTemplates(msg.templates)
-		}
+	if botCancel := startEmbeddedMarketBotIfEnabled(loadedConfig); botCancel != nil {
+		// Ensure the bot is stopped on process exit.
+		defer botCancel()
 	}
 
 	startServer(listenAddr)
 }
+
+// embeddedBot holds the live market bot instance when market_bot_enabled=true.
+// Nil when bot is disabled.
+var embeddedBot *marketbot.Instance

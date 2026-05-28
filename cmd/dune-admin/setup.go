@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -74,14 +76,19 @@ func runSetup() {
 		runAmpSetup(ask, ok, fail, &cfg)
 	}
 
-	// ── Market bot (optional) ──────────────────────────────────────────────────
+	// ── Embedded market bot ────────────────────────────────────────────────────
 
-	runMarketBotSetup(ask, ok, ctrl, &cfg)
+	runMarketBotSetup(ask, ok, &cfg)
 
 	// ── Common: listen address ─────────────────────────────────────────────────
 
 	fmt.Println("Server config:")
-	cfg.ListenAddr = ask("HTTP listen address", listenAddr)
+	defaultListenAddr := listenAddr
+	if ctrl == "amp" && (defaultListenAddr == "" || defaultListenAddr == ":8080") {
+		// AMP web panel commonly binds :8080 on host installs.
+		defaultListenAddr = ":18080"
+	}
+	cfg.ListenAddr = ask("HTTP listen address", defaultListenAddr)
 	fmt.Println()
 
 	// ── Write config ───────────────────────────────────────────────────────────
@@ -96,7 +103,7 @@ func runSetup() {
 
 // ── kubectl setup flow ────────────────────────────────────────────────────────
 
-func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
+func setupKubectlSSHKey(ask func(string, string) string, ok, fail func(string)) string {
 	// SSH key
 	fmt.Println("Checking for SSH key...")
 	keyPath := resolveKeyPath()
@@ -118,7 +125,14 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 		sshKeyPath = keyPath
 	}
 	fmt.Println()
+	return keyPath
+}
 
+func setupKubectlSSHConnection(
+	ask func(string, string) string,
+	ok, fail func(string),
+	keyPath string,
+) *sshExecutor {
 	// SSH connection details
 	fmt.Println("SSH connection:")
 	sshHost = ask("VM host:port", envOr("SSH_HOST", "192.168.0.72:22"))
@@ -143,24 +157,58 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 	}
 	ok("SSH connected")
 	fmt.Println()
+	globalSSH = client
+	return &sshExecutor{client: client}
+}
 
+func setupKubectlDiscoverDBPod(exec *sshExecutor, ok, fail func(string), cfg *appConfig) {
 	// Discover DB pod
 	fmt.Println("Discovering database pod...")
-	sshExecWrap := &sshExecutor{client: client}
-	ns, pod, podIP, err := discoverDBPod(sshExecWrap)
+	ns, pod, podIP, err := discoverDBPod(exec)
 	if err != nil {
 		fail("Pod discovery failed: " + err.Error())
 		fmt.Println()
 		fmt.Println("  Make sure the SSH user can run: sudo kubectl get pods -A")
 		exitSetup(1)
 	}
-	globalSSH = client
 	globalPodNS = ns
 	globalPod = pod
 	globalPodIP = podIP
+	cfg.ControlNamespace = ns
+	controlNS = ns
 	ok("Database pod: " + pod)
 	fmt.Println()
+}
 
+func selectBattlegroup(battlegroups []string, ask func(string, string) string) string {
+	if len(battlegroups) == 0 {
+		return ""
+	}
+	chosen := battlegroups[0]
+	if len(battlegroups) == 1 {
+		return chosen
+	}
+
+	fmt.Println("  Available battlegroups:")
+	for i, bg := range battlegroups {
+		fmt.Printf("    [%d] %s\n", i+1, bg)
+	}
+	fmt.Println()
+	idxStr := ask(fmt.Sprintf("Which battlegroup? [1-%d]", len(battlegroups)), "1")
+	idx := 1
+	_, _ = fmt.Sscanf(idxStr, "%d", &idx)
+	if idx >= 1 && idx <= len(battlegroups) {
+		chosen = battlegroups[idx-1]
+	}
+	return chosen
+}
+
+func setupKubectlDiscoverDBCredentials(
+	exec *sshExecutor,
+	ask func(string, string) string,
+	ok, fail func(string),
+	cfg *appConfig,
+) (string, string) {
 	// Discover DB password
 	fmt.Println("Discovering database password...")
 	discoveredUser := "postgres"
@@ -170,36 +218,21 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 	if bg := battlegroupFromPod(globalPod); bg != "" {
 		battlegroups = []string{bg}
 	} else {
-		battlegroups = listBattlegroups(sshExecWrap)
+		battlegroups = listBattlegroups(exec)
 	}
 
 	if len(battlegroups) == 0 {
 		fmt.Println("  Could not determine battlegroup name")
 	} else {
-		chosen := battlegroups[0]
-		if len(battlegroups) > 1 {
-			fmt.Println("  Available battlegroups:")
-			for i, bg := range battlegroups {
-				fmt.Printf("    [%d] %s\n", i+1, bg)
-			}
-			fmt.Println()
-			idxStr := ask(fmt.Sprintf("Which battlegroup? [1-%d]", len(battlegroups)), "1")
-			idx := 1
-			_, _ = fmt.Sscanf(idxStr, "%d", &idx)
-			if idx >= 1 && idx <= len(battlegroups) {
-				chosen = battlegroups[idx-1]
-			}
-		}
+		chosen := selectBattlegroup(battlegroups, ask)
 		yamlPath := fmt.Sprintf("~/.dune/%s.yaml", chosen)
-		if u, pass := extractPasswordFromYAML(sshExecWrap, yamlPath); pass != "" {
+		if u, pass := extractPasswordFromYAML(exec, yamlPath); pass != "" {
 			discoveredUser = u
 			discoveredPass = pass
 			ok(fmt.Sprintf("Password found in %s (user: %s)", yamlPath, u))
 		} else {
 			fail("No password found in " + yamlPath)
 		}
-		cfg.ControlNamespace = ns
-		controlNS = ns
 	}
 
 	if discoveredPass == "" {
@@ -213,7 +246,15 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 		}
 	}
 	fmt.Println()
+	return discoveredUser, discoveredPass
+}
 
+func setupKubectlConnectDB(
+	discoveredUser, discoveredPass string,
+	exec *sshExecutor,
+	cfg *appConfig,
+	ok, fail func(string),
+) {
 	// Connect to DB
 	fmt.Println("Connecting to database...")
 	dbUser = discoveredUser
@@ -226,11 +267,21 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 		exitSetup(1)
 	}
 	globalDB = pool
-	globalExecutor = sshExecWrap
+	globalExecutor = exec
 	globalControl = newControlPlane("kubectl", *cfg)
 	ok("Database connected as: " + dbUser)
 	fmt.Println()
+}
 
+func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
+	keyPath := setupKubectlSSHKey(ask, ok, fail)
+	exec := setupKubectlSSHConnection(ask, ok, fail, keyPath)
+	setupKubectlDiscoverDBPod(exec, ok, fail, cfg)
+	discoveredUser, discoveredPass := setupKubectlDiscoverDBCredentials(exec, ask, ok, fail, cfg)
+	setupKubectlConnectDB(discoveredUser, discoveredPass, exec, cfg, ok, fail)
+
+	cfg.ControlNamespace = globalPodNS
+	controlNS = globalPodNS
 	if abs, err := filepath.Abs(keyPath); err == nil {
 		keyPath = abs
 	}
@@ -442,50 +493,49 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 	cfg.ScripCurrency = scripCurrencyID
 }
 
-// ── Market bot setup (optional) ───────────────────────────────────────────────
+// ── Market bot setup ───────────────────────────────────────────────────────────
 
-// runMarketBotSetup asks optional market-bot connection details.
-// Defaults: container/deployment = "market-bot"; addr derived from SSH host
-// (kubectl) or localhost (docker/local). Blank responses skip the section.
-func runMarketBotSetup(ask func(string, string) string, ok func(string), ctrl string, cfg *appConfig) {
-	fmt.Println("Market bot (optional — press Enter to skip each field):")
-
-	// Compute a sensible default address.
-	defaultAddr := "http://localhost:8081"
-	if ctrl == "kubectl" && sshHost != "" {
-		host := sshHost
-		if h, _, err := splitHostPort(host); err == nil {
-			host = h
-		}
-		defaultAddr = "http://" + host + ":8081"
+func runMarketBotSetup(ask func(string, string) string, ok func(string), cfg *appConfig) {
+	fmt.Println("Embedded market bot:")
+	enabled := strings.ToLower(strings.TrimSpace(ask("Enable embedded market bot [yes/no]", "yes")))
+	cfg.MarketBotEnabled = enabled != "n" && enabled != "no" && enabled != "false" && enabled != "0"
+	if !cfg.MarketBotEnabled {
+		ok("Embedded market bot disabled")
+		fmt.Println()
+		return
 	}
 
-	cfg.MarketBotAddr = ask("Bot API address", defaultAddr)
+	cfg.MarketBotCacheDB = ask("Bot cache database path", filepath.Join(configDir(), "market-bot-cache.db"))
+	cfg.MarketBotItemData = ask("Bot item-data.json path (optional)", "")
 
-	// Only ask for the rest if an address was supplied.
-	if cfg.MarketBotAddr != "" {
-		cfg.MarketBotToken = ask("Bot API token (optional)", "")
-		cfg.MarketBotContainer = ask("Bot deployment/container name", "market-bot")
-		if ctrl == "kubectl" {
-			cfg.MarketBotNamespace = ask("Bot k8s namespace", "dune-market-bot")
+	parseDur := func(input string, fallback time.Duration) time.Duration {
+		d, err := time.ParseDuration(strings.TrimSpace(input))
+		if err != nil || d <= 0 {
+			return fallback
 		}
-		marketBotAddr = cfg.MarketBotAddr
-		marketBotToken = cfg.MarketBotToken
-		marketBotContainer = cfg.MarketBotContainer
-		marketBotNamespace = cfg.MarketBotNamespace
-		ok("Market bot configured at " + cfg.MarketBotAddr)
+		return d
 	}
+	parseFloat := func(input string, fallback float64) float64 {
+		v, err := strconv.ParseFloat(strings.TrimSpace(input), 64)
+		if err != nil || v <= 0 {
+			return fallback
+		}
+		return v
+	}
+	parseInt := func(input string, fallback int) int {
+		v, err := strconv.Atoi(strings.TrimSpace(input))
+		if err != nil || v <= 0 {
+			return fallback
+		}
+		return v
+	}
+
+	cfg.MarketBotBuyInt = parseDur(ask("Buy tick interval", "5m"), 5*time.Minute)
+	cfg.MarketBotListInt = parseDur(ask("List tick interval", "30m"), 30*time.Minute)
+	cfg.MarketBotThresh = parseFloat(ask("Buy threshold multiplier", "1.05"), 1.05)
+	cfg.MarketBotMaxBuys = parseInt(ask("Max buys per tick", "50"), 50)
+	ok("Embedded market bot configured")
 	fmt.Println()
-}
-
-// splitHostPort splits host:port. Returns an error if no port is present.
-func splitHostPort(hostport string) (host, port string, err error) {
-	for i := len(hostport) - 1; i >= 0; i-- {
-		if hostport[i] == ':' {
-			return hostport[:i], hostport[i+1:], nil
-		}
-	}
-	return "", "", fmt.Errorf("no port")
 }
 
 // ── Write config ──────────────────────────────────────────────────────────────

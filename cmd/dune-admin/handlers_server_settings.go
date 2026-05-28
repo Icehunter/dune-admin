@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -202,45 +203,82 @@ func parseINILines(content, source string, schemaKeys map[string]bool) []RawSect
 
 	for _, raw := range strings.Split(content, "\n") {
 		line := strings.TrimSpace(raw)
-		if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+		if shouldSkipINILine(line) {
 			continue
 		}
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			curSec = line[1 : len(line)-1]
-			if _, ok := secMap[curSec]; !ok {
-				secMap[curSec] = len(result)
-				result = append(result, RawSection{Section: curSec, Source: source})
-			}
+		if section, ok := parseINISectionHeader(line); ok {
+			curSec = section
+			ensureRawSectionIndex(curSec, source, secMap, &result)
 			continue
 		}
 		if curSec == "" {
 			continue
 		}
-		prefix, rest := "", line
-		if len(line) > 0 && (line[0] == '+' || line[0] == '-') {
-			prefix = string(line[0])
-			rest = line[1:]
-		}
-		eq := strings.Index(rest, "=")
-		if eq <= 0 {
+		rawLine, ok := parseRawINILine(line)
+		if !ok {
 			continue
 		}
-		key := strings.TrimSpace(rest[:eq])
-		value := strings.TrimSpace(rest[eq+1:])
-
-		// Include if it's an array line OR the key is not in the schema.
-		if prefix != "" || !schemaKeys[curSec+"|"+key] {
-			idx := secMap[curSec]
-			result[idx].Lines = append(result[idx].Lines, RawLine{Prefix: prefix, Key: key, Value: value})
+		if shouldIncludeRawLine(curSec, rawLine, schemaKeys) {
+			idx := ensureRawSectionIndex(curSec, source, secMap, &result)
+			result[idx].Lines = append(result[idx].Lines, rawLine)
 		}
 	}
 
-	// Drop sections with no lines.
+	return compactRawSections(result)
+}
+
+func shouldSkipINILine(line string) bool {
+	return line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#")
+}
+
+func parseINISectionHeader(line string) (string, bool) {
+	if !strings.HasPrefix(line, "[") || !strings.HasSuffix(line, "]") {
+		return "", false
+	}
+	return line[1 : len(line)-1], true
+}
+
+func parseRawINILine(line string) (RawLine, bool) {
+	prefix, rest := "", line
+	if line[0] == '+' || line[0] == '-' {
+		prefix = string(line[0])
+		rest = line[1:]
+	}
+	eq := strings.Index(rest, "=")
+	if eq <= 0 {
+		return RawLine{}, false
+	}
+	return RawLine{
+		Prefix: prefix,
+		Key:    strings.TrimSpace(rest[:eq]),
+		Value:  strings.TrimSpace(rest[eq+1:]),
+	}, true
+}
+
+func shouldIncludeRawLine(section string, line RawLine, schemaKeys map[string]bool) bool {
+	if line.Prefix != "" {
+		return true
+	}
+	return !schemaKeys[section+"|"+line.Key]
+}
+
+func ensureRawSectionIndex(section, source string, secMap map[string]int, result *[]RawSection) int {
+	if idx, ok := secMap[section]; ok {
+		return idx
+	}
+	idx := len(*result)
+	secMap[section] = idx
+	*result = append(*result, RawSection{Section: section, Source: source})
+	return idx
+}
+
+func compactRawSections(result []RawSection) []RawSection {
 	out := result[:0]
-	for _, s := range result {
-		if len(s.Lines) > 0 {
-			out = append(out, s)
+	for _, section := range result {
+		if len(section.Lines) == 0 {
+			continue
 		}
+		out = append(out, section)
 	}
 	return out
 }
@@ -379,56 +417,126 @@ func readDefaultINIContent(iniDir, filename string) string {
 // discoverDefaultINI does the actual multi-strategy search for a Default INI
 // file. Search order:
 //  1. Configured default_ini_dir (local read or via executor)
-//  2. Common host paths — /home, /root, /dune first, then k3s containerd layers
-//  3. Relative path traversal from iniDir (Hyper-V / bare-metal layouts)
-//  4. kubectl/docker exec into the game container (requires pod running)
+//  2. If iniDir is k8s://..., derive nearby Config paths in the same pod
+//  3. Common host paths — /home, /root, /dune first, then k3s containerd layers
+//  4. Relative path traversal from iniDir (Hyper-V / bare-metal layouts)
+//  5. kubectl/docker exec into the game container (requires pod running)
+func configuredDefaultINIPath(filename string) string {
+	if loadedConfig.DefaultIniDir == "" {
+		return ""
+	}
+	return filepath.Join(loadedConfig.DefaultIniDir, filename)
+}
+
+func k8sDerivedDefaultINICandidates(inPodDir, filename string) []string {
+	return []string{
+		pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "..", "Config", filename)),
+		pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "Config", filename)),
+		pathpkg.Clean(pathpkg.Join(inPodDir, "..", "..", "..", "..", "Config", filename)),
+		"/DuneSandbox/Config/" + filename,
+		"/home/dune/server/DuneSandbox/Config/" + filename,
+		"/home/dune/DuneSandbox/Config/" + filename,
+		"/game/DuneSandbox/Config/" + filename,
+	}
+}
+
+func hostDefaultINICandidates(filename string) []string {
+	return []string{
+		"/home/dune/" + filename,
+		"/home/" + filename,
+		"/root/" + filename,
+		"/dune/" + filename,
+		"/home/dune/server/DuneSandbox/Config/" + filename,
+	}
+}
+
+func relativeDefaultINICandidates(iniDir, filename string) []string {
+	return []string{
+		filepath.Join(iniDir, "..", "..", "..", "Config", filename),
+		filepath.Join(iniDir, "..", "..", "Config", filename),
+		filepath.Join(iniDir, "..", "..", "..", "..", "Config", filename),
+	}
+}
+
+func discoverViaConfiguredPath(filename string) string {
+	path := configuredDefaultINIPath(filename)
+	if path == "" {
+		return ""
+	}
+	if data, err := os.ReadFile(path); err == nil && len(data) > 0 {
+		return string(data)
+	}
+	return readINIContent(path)
+}
+
+func discoverViaK8sDerivedPath(iniDir, filename string) string {
+	ns, pod, inPodDir, ok := parseK8sINIPath(iniDir)
+	if !ok {
+		return ""
+	}
+	for _, inPodPath := range k8sDerivedDefaultINICandidates(inPodDir, filename) {
+		if content := readINIContent(fmt.Sprintf("k8s://%s/%s%s", ns, pod, inPodPath)); content != "" {
+			return content
+		}
+	}
+	return ""
+}
+
+func discoverViaHostPaths(filename string) string {
+	for _, path := range hostDefaultINICandidates(filename) {
+		if content := readINIContent(path); content != "" {
+			return content
+		}
+	}
+	return ""
+}
+
+func discoverViaHostFind(filename string) string {
+	out, _ := globalExecutor.Exec(fmt.Sprintf(
+		"sudo find /home /root /dune /run/k3s/containerd /var/lib/rancher/k3s/agent/containerd"+
+			" -maxdepth 10 -name %s -not -path '*/Saved/*' -not -path '*/saved/*' 2>/dev/null | head -1",
+		shellQuote(filename)))
+	if path := strings.TrimSpace(out); path != "" {
+		return readINIContent(path)
+	}
+	return ""
+}
+
+func discoverViaRelativePath(iniDir, filename string) string {
+	for _, path := range relativeDefaultINICandidates(iniDir, filename) {
+		if content := readINIContent(path); content != "" {
+			return content
+		}
+	}
+	return ""
+}
+
 func discoverDefaultINI(iniDir, filename string) string {
-	// 1. Explicit config path.
-	if loadedConfig.DefaultIniDir != "" {
-		p := filepath.Join(loadedConfig.DefaultIniDir, filename)
-		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
-			return string(data)
-		}
-		if c := readINIContent(p); c != "" {
-			return c
-		}
+	if content := discoverViaConfiguredPath(filename); content != "" {
+		return content
+	}
+
+	// 1b. When INI dir points to a k8s pod path, derive nearby Config paths in
+	// the same pod first. This is the most reliable source in deployed mode.
+	if content := discoverViaK8sDerivedPath(iniDir, filename); content != "" {
+		return content
 	}
 
 	if globalExecutor != nil {
 		// 2a. Well-known host directories — tried in order before any find.
-		for _, p := range []string{
-			"/home/dune/" + filename,
-			"/home/" + filename,
-			"/root/" + filename,
-			"/dune/" + filename,
-			"/home/dune/server/DuneSandbox/Config/" + filename,
-		} {
-			if c := readINIContent(p); c != "" {
-				return c
-			}
+		if content := discoverViaHostPaths(filename); content != "" {
+			return content
 		}
 
 		// 2b. Host filesystem scan: /home /root /dune first, then k3s containerd
 		// paths. These require sudo but the executor already runs with sudo access.
-		out, _ := globalExecutor.Exec(fmt.Sprintf(
-			"sudo find /home /root /dune /run/k3s/containerd /var/lib/rancher/k3s/agent/containerd"+
-				" -maxdepth 10 -name %s -not -path '*/Saved/*' -not -path '*/saved/*' 2>/dev/null | head -1",
-			shellQuote(filename)))
-		if p := strings.TrimSpace(out); p != "" {
-			if c := readINIContent(p); c != "" {
-				return c
-			}
+		if content := discoverViaHostFind(filename); content != "" {
+			return content
 		}
 
 		// 3. Relative candidates from iniDir (non-k8s layouts).
-		for _, p := range []string{
-			filepath.Join(iniDir, "..", "..", "..", "Config", filename),
-			filepath.Join(iniDir, "..", "..", "Config", filename),
-			filepath.Join(iniDir, "..", "..", "..", "..", "Config", filename),
-		} {
-			if c := readINIContent(p); c != "" {
-				return c
-			}
+		if content := discoverViaRelativePath(iniDir, filename); content != "" {
+			return content
 		}
 	}
 
@@ -442,15 +550,198 @@ func discoverDefaultINI(iniDir, filename string) string {
 	return ""
 }
 
+func parseK8sINIPath(path string) (ns, pod, inPodPath string, ok bool) {
+	const prefix = "k8s://"
+	if !strings.HasPrefix(path, prefix) {
+		return "", "", "", false
+	}
+	rest := strings.TrimPrefix(path, prefix)
+	parts := strings.SplitN(rest, "/", 3)
+	if len(parts) < 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return "", "", "", false
+	}
+	ns, pod, inPodPath = parts[0], parts[1], "/"+strings.TrimLeft(parts[2], "/")
+	return ns, pod, inPodPath, true
+}
+
 func readINIContent(path string) string {
 	if globalExecutor == nil {
 		return ""
+	}
+	if ns, pod, inPodPath, ok := parseK8sINIPath(path); ok {
+		kctl := kubectlCLI(globalExecutor)
+		out, err := globalExecutor.Exec(fmt.Sprintf(
+			"%s exec -n %s %s -- cat %s 2>/dev/null",
+			kctl, ns, pod, shellQuote(inPodPath)))
+		if err != nil {
+			return ""
+		}
+		return out
 	}
 	out, err := globalExecutor.Exec(fmt.Sprintf("sudo cat %s 2>/dev/null", shellQuote(path)))
 	if err != nil {
 		return ""
 	}
 	return out
+}
+
+type layerSource struct {
+	name string
+	ini  map[string]map[string]string
+}
+
+type discoveredKey struct {
+	section string
+	key     string
+}
+
+func serverSettingsSchemaKeys() map[string]bool {
+	schemaKeys := make(map[string]bool, len(serverSettingsSchema))
+	for _, def := range serverSettingsSchema {
+		schemaKeys[def.Section+"|"+def.Key] = true
+	}
+	return schemaKeys
+}
+
+func buildLayerSources(
+	defaultEngineIni,
+	defaultGameIni,
+	engineIni,
+	gameIni map[string]map[string]string,
+) []layerSource {
+	return []layerSource{
+		{name: "defaultEngine", ini: defaultEngineIni},
+		{name: "defaultGame", ini: defaultGameIni},
+		{name: "userEngine", ini: engineIni},
+		{name: "userGame", ini: gameIni},
+	}
+}
+
+func applySettingLayers(s *ServerSetting, layerSources []layerSource) {
+	for _, src := range layerSources {
+		if v, ok := src.ini[s.Section][s.Key]; ok {
+			if s.Type == "" {
+				s.Type = string(inferType(v))
+			}
+			s.Layers = append(s.Layers, SettingLayer{Source: src.name, Value: v})
+			s.Current = v
+			s.Source = src.name
+		}
+	}
+	s.IsOverride = strings.HasPrefix(s.Source, "user")
+	if s.Layers == nil {
+		s.Layers = []SettingLayer{}
+	}
+}
+
+func buildSchemaSettings(layerSources []layerSource) []ServerSetting {
+	settings := make([]ServerSetting, 0, len(serverSettingsSchema))
+	for _, def := range serverSettingsSchema {
+		s := ServerSetting{
+			Section:     def.Section,
+			Key:         def.Key,
+			Type:        string(def.Type),
+			Default:     def.Default,
+			Label:       def.Label,
+			Description: def.Description,
+			Category:    def.Category,
+			Current:     def.Default,
+		}
+		applySettingLayers(&s, layerSources)
+		settings = append(settings, s)
+	}
+	return settings
+}
+
+func discoverUnknownSettings(layerSources []layerSource, schemaKeys map[string]bool) []discoveredKey {
+	seenKeys := make(map[string]bool, len(schemaKeys))
+	for k := range schemaKeys {
+		seenKeys[k] = true
+	}
+
+	discovered := make([]discoveredKey, 0, 32)
+	for _, src := range layerSources {
+		for section, keys := range src.ini {
+			for key := range keys {
+				// Skip array-prefix lines (+/-); they belong in raw sections.
+				if strings.HasPrefix(key, "+") || strings.HasPrefix(key, "-") {
+					continue
+				}
+				composite := section + "|" + key
+				if seenKeys[composite] {
+					continue
+				}
+				seenKeys[composite] = true
+				discovered = append(discovered, discoveredKey{section: section, key: key})
+			}
+		}
+	}
+	sort.Slice(discovered, func(i, j int) bool {
+		if discovered[i].section != discovered[j].section {
+			return discovered[i].section < discovered[j].section
+		}
+		return discovered[i].key < discovered[j].key
+	})
+	return discovered
+}
+
+func buildDiscoveredSettings(
+	discovered []discoveredKey,
+	layerSources []layerSource,
+	schemaKeys map[string]bool,
+) []ServerSetting {
+	settings := make([]ServerSetting, 0, len(discovered))
+	for _, dk := range discovered {
+		s := ServerSetting{
+			Section:  dk.section,
+			Key:      dk.key,
+			Label:    dk.key,
+			Category: shortSectionName(dk.section),
+			Layers:   []SettingLayer{},
+		}
+		applySettingLayers(&s, layerSources)
+		if s.Type == "" {
+			s.Type = string(settingString)
+		}
+		settings = append(settings, s)
+		schemaKeys[dk.section+"|"+dk.key] = true
+	}
+	return settings
+}
+
+func buildServerSettingsRawSections(
+	defaultGameContent,
+	defaultEngineContent,
+	gameContent,
+	engineContent string,
+	schemaKeys map[string]bool,
+) []RawSection {
+	raw := make([]RawSection, 0, 16)
+	raw = append(raw, parseINILines(defaultGameContent, "defaultGame", schemaKeys)...)
+	raw = append(raw, parseINILines(defaultEngineContent, "defaultEngine", schemaKeys)...)
+	raw = append(raw, parseINILines(gameContent, "userGame", schemaKeys)...)
+	raw = append(raw, parseINILines(engineContent, "userEngine", schemaKeys)...)
+	return raw
+}
+
+func writeINIContent(path, body string) error {
+	if globalExecutor == nil {
+		return fmt.Errorf("not connected")
+	}
+	if ns, pod, inPodPath, ok := parseK8sINIPath(path); ok {
+		kctl := kubectlCLI(globalExecutor)
+		payload := base64.StdEncoding.EncodeToString([]byte(body))
+		cmd := fmt.Sprintf(
+			"echo %s | base64 -d | %s exec -i -n %s %s -- sh -lc 'cat > %s' 2>/dev/null",
+			shellQuote(payload), kctl, ns, pod, shellQuote(inPodPath),
+		)
+		out, err := globalExecutor.Exec(cmd)
+		if err != nil {
+			return fmt.Errorf("write %s: %w — %s", inPodPath, err, strings.TrimSpace(out))
+		}
+		return nil
+	}
+	return globalExecutor.WriteFile(path, strings.NewReader(body))
 }
 
 func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
@@ -474,113 +765,12 @@ func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
 	defaultGameIni := parseINI(defaultGameContent)
 	defaultEngineIni := parseINI(defaultEngineContent)
 
-	// Build schema key set for raw-line filtering.
-	schemaKeys := map[string]bool{}
-	for _, def := range serverSettingsSchema {
-		schemaKeys[def.Section+"|"+def.Key] = true
-	}
-
-	// Schema settings — build layers from all INI sources and always include all entries.
-	type layerSource struct {
-		name string
-		ini  map[string]map[string]string
-	}
-	layerSources := []layerSource{
-		{"defaultEngine", defaultEngineIni},
-		{"defaultGame", defaultGameIni},
-		{"userEngine", engineIni},
-		{"userGame", gameIni},
-	}
-
-	var settings []ServerSetting
-	for _, def := range serverSettingsSchema {
-		s := ServerSetting{
-			Section:     def.Section,
-			Key:         def.Key,
-			Type:        string(def.Type),
-			Default:     def.Default,
-			Label:       def.Label,
-			Description: def.Description,
-			Category:    def.Category,
-			Current:     def.Default,
-		}
-		for _, src := range layerSources {
-			if v, ok := src.ini[def.Section][def.Key]; ok {
-				s.Layers = append(s.Layers, SettingLayer{Source: src.name, Value: v})
-				s.Current = v
-				s.Source = src.name
-			}
-		}
-		s.IsOverride = strings.HasPrefix(s.Source, "user")
-		if s.Layers == nil {
-			s.Layers = []SettingLayer{}
-		}
-		settings = append(settings, s)
-	}
-
-	// Discover all keys present in any INI file that aren't in the hardcoded schema.
-	// These get typed settings with inferred types so they participate in the layer UI.
-	type discoveredKey struct{ section, key string }
-	seenKeys := make(map[string]bool, len(schemaKeys))
-	for k := range schemaKeys {
-		seenKeys[k] = true
-	}
-	var discovered []discoveredKey
-	for _, src := range layerSources {
-		for section, keys := range src.ini {
-			for key := range keys {
-				// Skip array-prefix lines (+/-); they belong in raw sections.
-				if strings.HasPrefix(key, "+") || strings.HasPrefix(key, "-") {
-					continue
-				}
-				k := section + "|" + key
-				if !seenKeys[k] {
-					seenKeys[k] = true
-					discovered = append(discovered, discoveredKey{section, key})
-				}
-			}
-		}
-	}
-	sort.Slice(discovered, func(i, j int) bool {
-		if discovered[i].section != discovered[j].section {
-			return discovered[i].section < discovered[j].section
-		}
-		return discovered[i].key < discovered[j].key
-	})
-	for _, dk := range discovered {
-		s := ServerSetting{
-			Section:  dk.section,
-			Key:      dk.key,
-			Label:    dk.key,
-			Category: shortSectionName(dk.section),
-			Layers:   []SettingLayer{},
-		}
-		for _, src := range layerSources {
-			if v, ok := src.ini[dk.section][dk.key]; ok {
-				if s.Type == "" {
-					s.Type = string(inferType(v))
-				}
-				s.Layers = append(s.Layers, SettingLayer{Source: src.name, Value: v})
-				s.Current = v
-				s.Source = src.name
-			}
-		}
-		if s.Type == "" {
-			s.Type = string(settingString)
-		}
-		s.IsOverride = strings.HasPrefix(s.Source, "user")
-		settings = append(settings, s)
-		schemaKeys[dk.section+"|"+dk.key] = true
-	}
-
-	// Raw lines — array entries and anything not promoted to a typed setting.
-	// All four files use the same schemaKeys (which now includes discovered keys)
-	// so nothing appears in both the typed panel and the raw panel.
-	var raw []RawSection
-	raw = append(raw, parseINILines(defaultGameContent, "defaultGame", schemaKeys)...)
-	raw = append(raw, parseINILines(defaultEngineContent, "defaultEngine", schemaKeys)...)
-	raw = append(raw, parseINILines(gameContent, "userGame", schemaKeys)...)
-	raw = append(raw, parseINILines(engineContent, "userEngine", schemaKeys)...)
+	layerSources := buildLayerSources(defaultEngineIni, defaultGameIni, engineIni, gameIni)
+	schemaKeys := serverSettingsSchemaKeys()
+	settings := buildSchemaSettings(layerSources)
+	discovered := discoverUnknownSettings(layerSources, schemaKeys)
+	settings = append(settings, buildDiscoveredSettings(discovered, layerSources, schemaKeys)...)
+	raw := buildServerSettingsRawSections(defaultGameContent, defaultEngineContent, gameContent, engineContent, schemaKeys)
 
 	jsonOK(w, map[string]any{
 		"settings": settings,
@@ -788,45 +978,60 @@ func stripEmptySections(content string) string {
 		return content
 	}
 	lines := strings.Split(content, "\n")
-	// Find each section's (headerIdx, nextHeaderIdx). For each, check whether
-	// the body is empty; if so, mark the header line for removal.
-	skip := make(map[int]bool)
-	var headerIdxs []int
-	for i, l := range lines {
-		trim := strings.TrimSpace(l)
-		if strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]") {
-			headerIdxs = append(headerIdxs, i)
-		}
-	}
-	for k, idx := range headerIdxs {
-		end := len(lines)
-		if k+1 < len(headerIdxs) {
-			end = headerIdxs[k+1]
-		}
-		empty := true
-		for j := idx + 1; j < end; j++ {
-			if strings.TrimSpace(lines[j]) != "" {
-				empty = false
-				break
-			}
-		}
-		if empty {
-			skip[idx] = true
-			// Also consume the trailing blank lines so we don't leave a void.
-			for j := idx + 1; j < end; j++ {
-				skip[j] = true
-			}
+	skip := map[int]bool{}
+	headerIdxs := findINISectionHeaders(lines)
+	for i, headerIdx := range headerIdxs {
+		sectionEnd := nextINISectionStart(i, headerIdxs, len(lines))
+		if isINISectionBodyEmpty(lines, headerIdx+1, sectionEnd) {
+			markINISectionRange(skip, headerIdx, sectionEnd)
 		}
 	}
 	if len(skip) == 0 {
 		return content
 	}
+	return joinINILinesWithoutSkipped(lines, skip)
+}
+
+func findINISectionHeaders(lines []string) []int {
+	headerIdxs := make([]int, 0, len(lines))
+	for i, line := range lines {
+		trim := strings.TrimSpace(line)
+		if strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]") {
+			headerIdxs = append(headerIdxs, i)
+		}
+	}
+	return headerIdxs
+}
+
+func nextINISectionStart(current int, headerIdxs []int, lineCount int) int {
+	if current+1 < len(headerIdxs) {
+		return headerIdxs[current+1]
+	}
+	return lineCount
+}
+
+func isINISectionBodyEmpty(lines []string, start, end int) bool {
+	for i := start; i < end; i++ {
+		if strings.TrimSpace(lines[i]) != "" {
+			return false
+		}
+	}
+	return true
+}
+
+func markINISectionRange(skip map[int]bool, start, end int) {
+	for i := start; i < end; i++ {
+		skip[i] = true
+	}
+}
+
+func joinINILinesWithoutSkipped(lines []string, skip map[int]bool) string {
 	out := make([]string, 0, len(lines))
-	for i, l := range lines {
+	for i, line := range lines {
 		if skip[i] {
 			continue
 		}
-		out = append(out, l)
+		out = append(out, line)
 	}
 	return strings.Join(out, "\n")
 }
@@ -836,6 +1041,39 @@ func stripEmptySections(content string) string {
 // or "-Foo" appears in owned, any line with that exact prefixed key is removed;
 // if plain "Foo" is owned, all variants (plain, +Foo, -Foo) are removed.
 // Comments and unrelated lines are left alone.
+func parseOwnedINIKey(trim string) (lineKey, baseKey string, ok bool) {
+	if len(trim) == 0 || trim[0] == ';' || trim[0] == '#' {
+		return "", "", false
+	}
+	rest := trim
+	prefix := ""
+	if trim[0] == '+' || trim[0] == '-' {
+		prefix = string(trim[0])
+		rest = trim[1:]
+	}
+	eq := strings.Index(rest, "=")
+	if eq <= 0 {
+		return "", "", false
+	}
+	baseKey = strings.TrimSpace(rest[:eq])
+	return prefix + baseKey, baseKey, true
+}
+
+func shouldStripOwnedLine(section, trim string, owned map[string]map[string]bool) bool {
+	if section == "" {
+		return false
+	}
+	lineKey, baseKey, ok := parseOwnedINIKey(trim)
+	if !ok {
+		return false
+	}
+	secOwned := owned[section]
+	if secOwned == nil {
+		return false
+	}
+	return secOwned[lineKey] || secOwned[baseKey]
+}
+
 func stripKeysFromContent(content string, owned map[string]map[string]bool) string {
 	if len(owned) == 0 || content == "" {
 		return content
@@ -851,24 +1089,8 @@ func stripKeysFromContent(content string, owned map[string]map[string]bool) stri
 			out = append(out, line)
 			continue
 		}
-		// Drop lines where the (possibly-prefixed) key is dune-admin-owned.
-		// Comments, blank lines, and section headers are preserved as-is.
-		if curSec != "" && len(trim) > 0 && trim[0] != ';' && trim[0] != '#' {
-			rest := trim
-			pfx := ""
-			if trim[0] == '+' || trim[0] == '-' {
-				pfx = string(trim[0])
-				rest = trim[1:]
-			}
-			if eq := strings.Index(rest, "="); eq > 0 {
-				baseKey := strings.TrimSpace(rest[:eq])
-				lineKey := pfx + baseKey
-				secOwned := owned[curSec]
-				// Drop if: exact prefixed key owned, OR plain base key owned (covers all variants).
-				if secOwned != nil && (secOwned[lineKey] || secOwned[baseKey]) {
-					continue
-				}
-			}
+		if shouldStripOwnedLine(curSec, trim, owned) {
+			continue
 		}
 		out = append(out, line)
 	}
@@ -961,6 +1183,75 @@ func applyDuneAdminRawSection(content, section, rawLines string) (string, error)
 	return strings.TrimRight(preMarker, "\n") + "\n\n" + block, nil
 }
 
+type normalizedServerSettingUpdates struct {
+	updates map[string]map[string]string
+	applied int
+	cleared int
+}
+
+func buildServerSettingsSchemaMap() map[string]settingDef {
+	schemaMap := make(map[string]settingDef, len(serverSettingsSchema))
+	for _, d := range serverSettingsSchema {
+		schemaMap[d.Section+"|"+d.Key] = d
+	}
+	return schemaMap
+}
+
+func normalizeServerSettingsUpdates(
+	requested []serverSettingUpdate,
+	schemaMap map[string]settingDef,
+) (normalizedServerSettingUpdates, error) {
+	normalized := normalizedServerSettingUpdates{
+		updates: make(map[string]map[string]string, len(requested)),
+	}
+	for _, update := range requested {
+		if normalized.updates[update.Section] == nil {
+			normalized.updates[update.Section] = map[string]string{}
+		}
+		if update.Value == "" {
+			normalized.updates[update.Section][update.Key] = ""
+			normalized.cleared++
+			continue
+		}
+
+		def, known := schemaMap[update.Section+"|"+update.Key]
+		if known {
+			norm, err := normalizeValue(def.Type, update.Value)
+			if err != nil {
+				return normalizedServerSettingUpdates{}, fmt.Errorf("invalid value for %s: %w", update.Key, err)
+			}
+			normalized.updates[update.Section][update.Key] = norm
+		} else {
+			normalized.updates[update.Section][update.Key] = update.Value
+		}
+		normalized.applied++
+	}
+	return normalized, nil
+}
+
+func splitServerSettingsUpdatesByFile(
+	defaultEngineIni map[string]map[string]string,
+	updates map[string]map[string]string,
+) (gameUpdates, engineUpdates map[string]map[string]string) {
+	gameUpdates = map[string]map[string]string{}
+	engineUpdates = map[string]map[string]string{}
+	for sec, kvs := range updates {
+		if _, inEngine := defaultEngineIni[sec]; inEngine {
+			engineUpdates[sec] = kvs
+		} else {
+			gameUpdates[sec] = kvs
+		}
+	}
+	return gameUpdates, engineUpdates
+}
+
+func buildUpdatedINIContent(path string, updates map[string]map[string]string) (string, error) {
+	if len(updates) == 0 {
+		return "", nil
+	}
+	return applyDuneAdminUpdates(readINIContent(path), updates)
+}
+
 func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 	if globalExecutor == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
@@ -980,79 +1271,48 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build schema lookup for type validation.
-	schemaMap := map[string]settingDef{}
-	for _, d := range serverSettingsSchema {
-		schemaMap[d.Section+"|"+d.Key] = d
-	}
-
-	// Normalise values and build the update map.
-	updates := map[string]map[string]string{}
-	applied, cleared := 0, 0
-	for _, u := range req.Updates {
-		if updates[u.Section] == nil {
-			updates[u.Section] = map[string]string{}
-		}
-		if u.Value == "" {
-			updates[u.Section][u.Key] = ""
-			cleared++
-		} else {
-			def, known := schemaMap[u.Section+"|"+u.Key]
-			if known {
-				norm, err := normalizeValue(def.Type, u.Value)
-				if err != nil {
-					jsonErr(w, fmt.Errorf("invalid value for %s: %w", u.Key, err), 400)
-					return
-				}
-				updates[u.Section][u.Key] = norm
-			} else {
-				updates[u.Section][u.Key] = u.Value
-			}
-			applied++
-		}
+	normalized, err := normalizeServerSettingsUpdates(req.Updates, buildServerSettingsSchemaMap())
+	if err != nil {
+		jsonErr(w, err, 400)
+		return
 	}
 
 	// Route each section to UserGame.ini or UserEngine.ini based on which default
 	// file declares it. Sections found in DefaultEngine.ini go to UserEngine.ini;
 	// everything else goes to UserGame.ini.
 	defaultEngineIni := parseINI(readDefaultINIContent(dir, "DefaultEngine.ini"))
-	gameUpdates, engineUpdates := map[string]map[string]string{}, map[string]map[string]string{}
-	for sec, kvs := range updates {
-		if _, inEngine := defaultEngineIni[sec]; inEngine {
-			engineUpdates[sec] = kvs
-		} else {
-			gameUpdates[sec] = kvs
-		}
+	gameUpdates, engineUpdates := splitServerSettingsUpdatesByFile(defaultEngineIni, normalized.updates)
+
+	gamePath := dir + "/UserGame.ini"
+	gameBody, err := buildUpdatedINIContent(gamePath, gameUpdates)
+	if err != nil {
+		jsonErr(w, fmt.Errorf("UserGame.ini: %w", err), 409)
+		return
 	}
 	if len(gameUpdates) > 0 {
-		path := dir + "/UserGame.ini"
-		body, err := applyDuneAdminUpdates(readINIContent(path), gameUpdates)
-		if err != nil {
-			jsonErr(w, fmt.Errorf("UserGame.ini: %w", err), 409)
-			return
-		}
-		if err := globalExecutor.WriteFile(path, strings.NewReader(body)); err != nil {
+		if err := writeINIContent(gamePath, gameBody); err != nil {
 			jsonErr(w, fmt.Errorf("write UserGame.ini: %w", err), 500)
 			return
 		}
 	}
+
+	enginePath := dir + "/UserEngine.ini"
+	engineBody, err := buildUpdatedINIContent(enginePath, engineUpdates)
+	if err != nil {
+		jsonErr(w, fmt.Errorf("UserEngine.ini: %w", err), 409)
+		return
+	}
 	if len(engineUpdates) > 0 {
-		path := dir + "/UserEngine.ini"
-		body, err := applyDuneAdminUpdates(readINIContent(path), engineUpdates)
-		if err != nil {
-			jsonErr(w, fmt.Errorf("UserEngine.ini: %w", err), 409)
-			return
-		}
-		if err := globalExecutor.WriteFile(path, strings.NewReader(body)); err != nil {
+		if err := writeINIContent(enginePath, engineBody); err != nil {
 			jsonErr(w, fmt.Errorf("write UserEngine.ini: %w", err), 500)
 			return
 		}
 	}
 
 	jsonOK(w, map[string]any{
-		"ok":      fmt.Sprintf("Saved (%d set, %d cleared). Restart the game server to apply.", applied, cleared),
-		"applied": applied,
-		"cleared": cleared,
+		"ok":      fmt.Sprintf("Saved (%d set, %d cleared). Restart the game server to apply.", normalized.applied, normalized.cleared),
+		"applied": normalized.applied,
+		"cleared": normalized.cleared,
 	})
 }
 
@@ -1094,9 +1354,7 @@ func handleUpdateRawSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var buf bytes.Buffer
-	buf.WriteString(updated)
-	if err := globalExecutor.WriteFile(filePath, &buf); err != nil {
+	if err := writeINIContent(filePath, updated); err != nil {
 		jsonErr(w, fmt.Errorf("write %s: %w", filePath, err), 500)
 		return
 	}

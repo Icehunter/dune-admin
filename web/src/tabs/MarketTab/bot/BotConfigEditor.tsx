@@ -54,15 +54,15 @@ export default function BotConfigEditor({ config, onSaved }: Props) {
           <Field label="List tick interval" hint="e.g. 30m, 1h">
             <input
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
-              value={draft.list_tick_interval}
-              onChange={e => set('list_tick_interval', e.target.value)}
+              value={draft.list_interval}
+              onChange={e => set('list_interval', e.target.value)}
             />
           </Field>
           <Field label="Buy tick interval" hint="e.g. 5m">
             <input
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
-              value={draft.buy_tick_interval}
-              onChange={e => set('buy_tick_interval', e.target.value)}
+              value={draft.buy_interval}
+              onChange={e => set('buy_interval', e.target.value)}
             />
           </Field>
         </div>
@@ -74,8 +74,8 @@ export default function BotConfigEditor({ config, onSaved }: Props) {
             <input
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
               type="number"
-              value={draft.max_buys_per_tick}
-              onChange={e => set('max_buys_per_tick', Number(e.target.value))}
+              value={draft.max_buys}
+              onChange={e => set('max_buys', Number(e.target.value))}
             />
           </Field>
           <Field label="Listings per grade">

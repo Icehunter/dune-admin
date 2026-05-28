@@ -216,6 +216,51 @@ func cmdFetchSpecs() Msg {
 	return msgSpecs{rows: out}
 }
 
+func sqlHeaderNames(rows pgx.Rows) []string {
+	descs := rows.FieldDescriptions()
+	headers := make([]string, len(descs))
+	for i, desc := range descs {
+		headers[i] = string(desc.Name)
+	}
+	return headers
+}
+
+func collectSQLRows(rows pgx.Rows, limit int) ([][]any, bool) {
+	collected := make([][]any, 0, limit)
+	for rows.Next() && len(collected) < limit {
+		values, err := rows.Values()
+		if err != nil {
+			continue
+		}
+		collected = append(collected, values)
+	}
+	return collected, len(collected) == limit
+}
+
+func formatSQLRow(values []any) string {
+	parts := make([]string, len(values))
+	for i, value := range values {
+		parts[i] = fmt.Sprintf("%v", value)
+	}
+	return strings.Join(parts, " │ ")
+}
+
+func buildSQLResult(headers []string, rows [][]any, truncated bool) string {
+	var sb strings.Builder
+	sb.WriteString(strings.Join(headers, " │ "))
+	sb.WriteString("\n")
+	sb.WriteString(strings.Repeat("─", 80))
+	sb.WriteString("\n")
+	for _, row := range rows {
+		sb.WriteString(formatSQLRow(row))
+		sb.WriteString("\n")
+	}
+	if truncated {
+		sb.WriteString("… (limited to 200 rows)\n")
+	}
+	return sb.String()
+}
+
 func cmdRunSQL(sql string) Cmd {
 	return func() Msg {
 		if globalDB == nil {
@@ -227,246 +272,416 @@ func cmdRunSQL(sql string) Cmd {
 		}
 		defer rows.Close()
 
-		var sb strings.Builder
-		descs := rows.FieldDescriptions()
-		headers := make([]string, len(descs))
-		for i, d := range descs {
-			headers[i] = string(d.Name)
-		}
-		sb.WriteString(strings.Join(headers, " │ "))
-		sb.WriteString("\n")
-		sb.WriteString(strings.Repeat("─", 80))
-		sb.WriteString("\n")
-
-		count := 0
-		for rows.Next() && count < 200 {
-			vals, err := rows.Values()
-			if err != nil {
-				continue
-			}
-			parts := make([]string, len(vals))
-			for i, v := range vals {
-				parts[i] = fmt.Sprintf("%v", v)
-			}
-			sb.WriteString(strings.Join(parts, " │ "))
-			sb.WriteString("\n")
-			count++
-		}
-		if count == 200 {
-			sb.WriteString("… (limited to 200 rows)\n")
-		}
-		return msgSQL{result: sb.String()}
+		headers := sqlHeaderNames(rows)
+		resultRows, truncated := collectSQLRows(rows, 200)
+		return msgSQL{result: buildSQLResult(headers, resultRows, truncated)}
 	}
 }
 
 func cmdGiveItem(playerID int64, template string, qty, quality int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
-			return msgMutate{err: fmt.Errorf("not connected")}
-		}
-		if playerID == 0 {
-			return msgMutate{err: fmt.Errorf("player ID required")}
-		}
-		template = strings.TrimSpace(template)
-		if template == "" {
-			return msgMutate{err: fmt.Errorf("item template required")}
-		}
-		if qty <= 0 {
-			return msgMutate{err: fmt.Errorf("quantity must be > 0")}
-		}
-		ctx := context.Background()
+		return runGiveItem(playerID, template, qty, quality)
+	}
+}
 
-		// Prefer the backpack (inventory_type=0) — that's where resources live.
-		// Fall back to the first available inventory if not found.
-		var invID int64
-		var maxSlots int
-		var maxVolume float64
-		err := globalDB.QueryRow(ctx, `
-			SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
-			FROM dune.inventories
-			WHERE actor_id = $1::bigint AND inventory_type = 0
-			LIMIT 1`, playerID).Scan(&invID, &maxSlots, &maxVolume)
-		if err != nil {
-			err = globalDB.QueryRow(ctx,
-				`SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
-				 FROM dune.inventories WHERE actor_id = $1::bigint LIMIT 1`, playerID).Scan(&invID, &maxSlots, &maxVolume)
-			if err != nil {
-				return msgMutate{err: fmt.Errorf("find inventory: %w", err)}
+func runGiveItem(playerID int64, template string, qty, quality int64) Msg {
+	if globalDB == nil {
+		return msgMutate{err: fmt.Errorf("not connected")}
+	}
+	trimmedTemplate, err := validateGiveItemInput(playerID, template, qty)
+	if err != nil {
+		return msgMutate{err: err}
+	}
+	template = trimmedTemplate
+
+	ctx := context.Background()
+	inv, err := findGiveItemInventory(ctx, playerID)
+	if err != nil {
+		return msgMutate{err: err}
+	}
+	state, err := loadGiveItemInventoryState(ctx, inv.id, template, quality, inv.hasVolumeCap)
+	if err != nil {
+		return msgMutate{err: err}
+	}
+	stackMax, err := resolveStackMax(ctx, template, quality)
+	if err != nil {
+		return msgMutate{err: err}
+	}
+	if stackMax < 1 {
+		stackMax = 1
+	}
+	if err := ensureGiveItemVolumeCapacity(ctx, inv, state, template, qty); err != nil {
+		return msgMutate{err: err}
+	}
+
+	updates, newStacks := planGiveItemStacks(qty, stackMax, state.stacks)
+	if err := ensureGiveItemSlotCapacity(inv, state, len(newStacks)); err != nil {
+		return msgMutate{err: err}
+	}
+	if err := applyGiveItemChanges(ctx, inv.id, template, quality, state.maxPos, updates, newStacks); err != nil {
+		return msgMutate{err: err}
+	}
+	return msgMutate{ok: formatGiveItemResult(playerID, template, qty, len(updates), len(newStacks))}
+}
+
+type giveItemInventory struct {
+	id           int64
+	maxSlots     int
+	maxVolume    float64
+	hasSlotCap   bool
+	hasVolumeCap bool
+}
+
+type giveItemStackSlot struct {
+	id   int64
+	size int64
+}
+
+type giveItemInventoryState struct {
+	stacks     []giveItemStackSlot
+	usedSlots  int
+	usedVolume float64
+	maxPos     int64
+}
+
+type giveItemStackUpdate struct {
+	id  int64
+	add int64
+}
+
+func validateGiveItemInput(playerID int64, template string, qty int64) (string, error) {
+	if playerID == 0 {
+		return "", fmt.Errorf("player ID required")
+	}
+	template = strings.TrimSpace(template)
+	if template == "" {
+		return "", fmt.Errorf("item template required")
+	}
+	if qty <= 0 {
+		return "", fmt.Errorf("quantity must be > 0")
+	}
+	return template, nil
+}
+
+func findGiveItemInventory(ctx context.Context, playerID int64) (giveItemInventory, error) {
+	var inv giveItemInventory
+	err := globalDB.QueryRow(ctx, `
+		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
+		FROM dune.inventories
+		WHERE actor_id = $1::bigint AND inventory_type = 0
+		LIMIT 1`, playerID).Scan(&inv.id, &inv.maxSlots, &inv.maxVolume)
+	if err == nil {
+		inv.hasSlotCap = inv.maxSlots > 0
+		inv.hasVolumeCap = inv.maxVolume > 0
+		return inv, nil
+	}
+	err = globalDB.QueryRow(ctx, `
+		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
+		FROM dune.inventories
+		WHERE actor_id = $1::bigint
+		LIMIT 1`, playerID).Scan(&inv.id, &inv.maxSlots, &inv.maxVolume)
+	if err != nil {
+		return giveItemInventory{}, fmt.Errorf("find inventory: %w", err)
+	}
+	inv.hasSlotCap = inv.maxSlots > 0
+	inv.hasVolumeCap = inv.maxVolume > 0
+	return inv, nil
+}
+
+func loadGiveItemInventoryState(ctx context.Context, invID int64, template string, quality int64, includeVolume bool) (giveItemInventoryState, error) {
+	rows, err := globalDB.Query(ctx, `
+		SELECT id, template_id, stack_size, quality_level, volume_override, position_index
+		FROM dune.items
+		WHERE inventory_id = $1::bigint`, invID)
+	if err != nil {
+		return giveItemInventoryState{}, err
+	}
+	defer rows.Close()
+
+	state := giveItemInventoryState{maxPos: -1}
+	for rows.Next() {
+		var id int64
+		var tmpl string
+		var stackSize int64
+		var qLevel int64
+		var vol pgtype.Float8
+		var pos int64
+		if err := rows.Scan(&id, &tmpl, &stackSize, &qLevel, &vol, &pos); err != nil {
+			continue
+		}
+		state.usedSlots++
+		if pos > state.maxPos {
+			state.maxPos = pos
+		}
+		if qLevel == quality && tmpl == template {
+			state.stacks = append(state.stacks, giveItemStackSlot{id: id, size: stackSize})
+		}
+		if includeVolume {
+			state.usedVolume += inventoryItemVolume(tmpl, vol) * float64(stackSize)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return giveItemInventoryState{}, err
+	}
+	return state, nil
+}
+
+func inventoryItemVolume(template string, vol pgtype.Float8) float64 {
+	if vol.Valid && vol.Float64 > 0 {
+		return vol.Float64
+	}
+	if itemData.Items != nil {
+		if rule, ok := itemData.Items[strings.ToLower(template)]; ok {
+			return rule.Volume // 0 is valid — item takes no volume
+		}
+		if itemData.DefaultVolume > 0 {
+			return itemData.DefaultVolume
+		}
+		// Unknown volume: treat as 0 (no space consumed).
+		return 0
+	}
+	if itemData.DefaultVolume > 0 {
+		return itemData.DefaultVolume
+	}
+	return 0
+}
+
+func ensureGiveItemVolumeCapacity(
+	ctx context.Context,
+	inv giveItemInventory,
+	state giveItemInventoryState,
+	template string,
+	qty int64,
+) error {
+	if !inv.hasVolumeCap {
+		return nil
+	}
+	perItemVol, err := resolveItemVolume(ctx, template)
+	if err != nil {
+		return err
+	}
+	if perItemVol <= 0 {
+		return nil
+	}
+	availableVol := inv.maxVolume - state.usedVolume
+	if availableVol < 0 {
+		availableVol = 0
+	}
+	maxByVolume := int64(math.Floor(availableVol / perItemVol))
+	if maxByVolume < qty {
+		return fmt.Errorf(
+			"over weight limit: room for %d more %s (%.2f/%.2f volume used)",
+			maxByVolume, template, state.usedVolume, inv.maxVolume)
+	}
+	return nil
+}
+
+func planGiveItemStacks(qty, stackMax int64, stacks []giveItemStackSlot) ([]giveItemStackUpdate, []int64) {
+	sorted := make([]giveItemStackSlot, len(stacks))
+	copy(sorted, stacks)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].size > sorted[j].size
+	})
+	remaining := qty
+	updates := make([]giveItemStackUpdate, 0, len(sorted))
+	if stackMax > 1 {
+		for _, st := range sorted {
+			if remaining == 0 {
+				break
 			}
-		}
-
-		hasSlotCap := maxSlots > 0
-		hasVolumeCap := maxVolume > 0
-
-		type stackSlot struct {
-			id   int64
-			size int64
-		}
-		var stacks []stackSlot
-		usedSlots := 0
-		usedVolume := 0.0
-		maxPos := int64(-1)
-
-		rows, err := globalDB.Query(ctx, `
-			SELECT id, template_id, stack_size, quality_level, volume_override, position_index
-			FROM dune.items
-			WHERE inventory_id = $1::bigint`, invID)
-		if err != nil {
-			return msgMutate{err: err}
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var id int64
-			var tmpl string
-			var stackSize int64
-			var qLevel int64
-			var vol pgtype.Float8
-			var pos int64
-			if err := rows.Scan(&id, &tmpl, &stackSize, &qLevel, &vol, &pos); err != nil {
+			space := stackMax - st.size
+			if space <= 0 {
 				continue
 			}
-			usedSlots++
-			if pos > maxPos {
-				maxPos = pos
+			add := space
+			if add > remaining {
+				add = remaining
 			}
-			if qLevel == quality && tmpl == template {
-				stacks = append(stacks, stackSlot{id: id, size: stackSize})
-			}
-			if hasVolumeCap {
-				itemVol := 0.0
-				if vol.Valid && vol.Float64 > 0 {
-					itemVol = vol.Float64
-				} else if itemData.Items != nil {
-					if rule, ok := itemData.Items[strings.ToLower(tmpl)]; ok {
-						itemVol = rule.Volume // 0 is valid — item takes no volume
-					} else if itemData.DefaultVolume > 0 {
-						itemVol = itemData.DefaultVolume
-					}
-					// Unknown volume: treat as 0 (no space consumed).
-				} else if itemData.DefaultVolume > 0 {
-					itemVol = itemData.DefaultVolume
-				}
-				usedVolume += itemVol * float64(stackSize)
-			}
+			updates = append(updates, giveItemStackUpdate{id: st.id, add: add})
+			remaining -= add
 		}
-		if rows.Err() != nil {
-			return msgMutate{err: rows.Err()}
-		}
-		stackMax, err := resolveStackMax(ctx, template, quality)
-		if err != nil {
-			return msgMutate{err: err}
-		}
-		if stackMax < 1 {
-			stackMax = 1
-		}
-
-		if hasVolumeCap {
-			perItemVol, err := resolveItemVolume(ctx, template)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-			if perItemVol > 0 {
-				availableVol := maxVolume - usedVolume
-				if availableVol < 0 {
-					availableVol = 0
-				}
-				maxByVolume := int64(math.Floor(availableVol / perItemVol))
-				if maxByVolume < qty {
-					return msgMutate{err: fmt.Errorf(
-						"over weight limit: room for %d more %s (%.2f/%.2f volume used)",
-						maxByVolume, template, usedVolume, maxVolume)}
-				}
-			}
-			// perItemVol == 0: item takes no volume, always fits.
-		}
-
-		sort.Slice(stacks, func(i, j int) bool {
-			return stacks[i].size > stacks[j].size
-		})
-
-		remaining := qty
-		type stackUpdate struct {
-			id  int64
-			add int64
-		}
-		var updates []stackUpdate
-		if stackMax > 1 {
-			for _, st := range stacks {
-				if remaining == 0 {
-					break
-				}
-				space := stackMax - st.size
-				if space <= 0 {
-					continue
-				}
-				add := space
-				if add > remaining {
-					add = remaining
-				}
-				updates = append(updates, stackUpdate{id: st.id, add: add})
-				remaining -= add
-			}
-		}
-
-		var newStacks []int64
-		for remaining > 0 {
-			size := stackMax
-			if size > remaining {
-				size = remaining
-			}
-			newStacks = append(newStacks, size)
-			remaining -= size
-		}
-
-		if hasSlotCap {
-			freeSlots := maxSlots - usedSlots
-			if freeSlots < len(newStacks) {
-				return msgMutate{err: fmt.Errorf(
-					"inventory full: need %d free slots, have %d",
-					len(newStacks), freeSlots)}
-			}
-		}
-
-		tx, err := globalDB.Begin(ctx)
-		if err != nil {
-			return msgMutate{err: err}
-		}
-		defer func() { _ = tx.Rollback(ctx) }()
-
-		for _, u := range updates {
-			_, err = tx.Exec(ctx, `
-				UPDATE dune.items
-				SET stack_size = stack_size + $1::bigint
-				WHERE id = $2::bigint`, u.add, u.id)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-		}
-
-		nextPos := maxPos + 1
-		for _, size := range newStacks {
-			_, err = tx.Exec(ctx, `
-				INSERT INTO dune.items (inventory_id, stack_size, position_index, template_id, quality_level, stats)
-				VALUES ($1::bigint, $2::bigint, $3::bigint, $4::text, $5::bigint, '{}'::jsonb)`,
-				invID, size, nextPos, template, quality)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-			nextPos++
-		}
-
-		if err := tx.Commit(ctx); err != nil {
-			return msgMutate{err: err}
-		}
-
-		msg := fmt.Sprintf("Added %d × %s to player %d", qty, template, playerID)
-		if len(updates) > 0 || len(newStacks) > 0 {
-			msg = fmt.Sprintf(
-				"Added %d × %s to player %d (%d stack(s) topped up, %d new stack(s))",
-				qty, template, playerID, len(updates), len(newStacks))
-		}
-		return msgMutate{ok: msg}
 	}
+	newStackCap := 0
+	if stackMax > 0 {
+		newStackCap = int((remaining + stackMax - 1) / stackMax)
+	}
+	newStacks := make([]int64, 0, newStackCap)
+	for remaining > 0 {
+		size := stackMax
+		if size > remaining {
+			size = remaining
+		}
+		newStacks = append(newStacks, size)
+		remaining -= size
+	}
+	return updates, newStacks
+}
+
+func ensureGiveItemSlotCapacity(inv giveItemInventory, state giveItemInventoryState, newStackCount int) error {
+	if !inv.hasSlotCap {
+		return nil
+	}
+	freeSlots := inv.maxSlots - state.usedSlots
+	if freeSlots < newStackCount {
+		return fmt.Errorf("inventory full: need %d free slots, have %d", newStackCount, freeSlots)
+	}
+	return nil
+}
+
+func applyGiveItemChanges(
+	ctx context.Context,
+	invID int64,
+	template string,
+	quality int64,
+	maxPos int64,
+	updates []giveItemStackUpdate,
+	newStacks []int64,
+) error {
+	tx, err := globalDB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	for _, u := range updates {
+		if _, err := tx.Exec(ctx, `
+			UPDATE dune.items
+			SET stack_size = stack_size + $1::bigint
+			WHERE id = $2::bigint`, u.add, u.id); err != nil {
+			return err
+		}
+	}
+
+	nextPos := maxPos + 1
+	for _, size := range newStacks {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO dune.items (inventory_id, stack_size, position_index, template_id, quality_level, stats)
+			VALUES ($1::bigint, $2::bigint, $3::bigint, $4::text, $5::bigint, '{}'::jsonb)`,
+			invID, size, nextPos, template, quality); err != nil {
+			return err
+		}
+		nextPos++
+	}
+
+	return tx.Commit(ctx)
+}
+
+func formatGiveItemResult(playerID int64, template string, qty int64, toppedUp, created int) string {
+	msg := fmt.Sprintf("Added %d × %s to player %d", qty, template, playerID)
+	if toppedUp > 0 || created > 0 {
+		return fmt.Sprintf(
+			"Added %d × %s to player %d (%d stack(s) topped up, %d new stack(s))",
+			qty, template, playerID, toppedUp, created)
+	}
+	return msg
+}
+
+type inventoryCapacityProfile struct {
+	id           int64
+	maxSlots     int
+	maxVolume    float64
+	hasSlotCap   bool
+	hasVolumeCap bool
+}
+
+type inventoryUsage struct {
+	usedSlots  int
+	usedVolume float64
+}
+
+func loadBackpackCapacity(ctx context.Context, playerID int64) (inventoryCapacityProfile, bool) {
+	var profile inventoryCapacityProfile
+	err := globalDB.QueryRow(ctx, `
+		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
+		FROM dune.inventories
+		WHERE actor_id = $1::bigint AND inventory_type = 0
+		LIMIT 1`, playerID).Scan(&profile.id, &profile.maxSlots, &profile.maxVolume)
+	if err != nil {
+		// No inventory found — cannot validate; let the game server decide.
+		return inventoryCapacityProfile{}, false
+	}
+	profile.hasSlotCap = profile.maxSlots > 0
+	profile.hasVolumeCap = profile.maxVolume > 0
+	return profile, true
+}
+
+func loadInventoryUsage(ctx context.Context, inventoryID int64, includeVolume bool) (inventoryUsage, error) {
+	rows, err := globalDB.Query(ctx, `
+		SELECT template_id, stack_size, volume_override
+		FROM dune.items
+		WHERE inventory_id = $1::bigint`, inventoryID)
+	if err != nil {
+		return inventoryUsage{}, err
+	}
+	defer rows.Close()
+
+	usage := inventoryUsage{}
+	for rows.Next() {
+		var templateID string
+		var stackSize int64
+		var volumeOverride pgtype.Float8
+		if err := rows.Scan(&templateID, &stackSize, &volumeOverride); err != nil {
+			continue
+		}
+		usage.usedSlots++
+		if includeVolume {
+			usage.usedVolume += inventoryItemVolume(templateID, volumeOverride) * float64(stackSize)
+		}
+	}
+	return usage, nil
+}
+
+func maxItemsByVolume(maxVolume, usedVolume, perItemVol float64) int64 {
+	availableVolume := maxVolume - usedVolume
+	if availableVolume < 0 {
+		availableVolume = 0
+	}
+	return int64(math.Floor(availableVolume / perItemVol))
+}
+
+func requiredStackCount(qty, stackMax int64) int {
+	return int((qty + stackMax - 1) / stackMax)
+}
+
+func checkInventoryVolumeLimit(
+	ctx context.Context,
+	profile inventoryCapacityProfile,
+	usage inventoryUsage,
+	template string,
+	qty int64,
+) error {
+	if !profile.hasVolumeCap {
+		return nil
+	}
+	perItemVol, err := resolveItemVolume(ctx, template)
+	if err != nil || perItemVol <= 0 {
+		return nil
+	}
+	maxByVolume := maxItemsByVolume(profile.maxVolume, usage.usedVolume, perItemVol)
+	if maxByVolume < qty {
+		return fmt.Errorf(
+			"over weight limit: room for %d more %s (%.2f/%.2f volume used)",
+			maxByVolume, template, usage.usedVolume, profile.maxVolume)
+	}
+	return nil
+}
+
+func checkInventorySlotLimit(ctx context.Context, profile inventoryCapacityProfile, usage inventoryUsage, template string, qty int64) error {
+	if !profile.hasSlotCap {
+		return nil
+	}
+	stackMax, err := resolveStackMax(ctx, template, 0)
+	if err != nil || stackMax < 1 {
+		stackMax = 1
+	}
+	freeSlots := profile.maxSlots - usage.usedSlots
+	newStacks := requiredStackCount(qty, stackMax)
+	if freeSlots < newStacks {
+		return fmt.Errorf(
+			"inventory full: need %d free slots, have %d",
+			newStacks, freeSlots)
+	}
+	return nil
 }
 
 // checkInventoryCapacity verifies that qty items of template fit in the player's
@@ -477,88 +692,22 @@ func checkInventoryCapacity(ctx context.Context, playerID int64, template string
 	if globalDB == nil {
 		return fmt.Errorf("not connected")
 	}
-	var invID int64
-	var maxSlots int
-	var maxVolume float64
-	err := globalDB.QueryRow(ctx, `
-		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
-		FROM dune.inventories
-		WHERE actor_id = $1::bigint AND inventory_type = 0
-		LIMIT 1`, playerID).Scan(&invID, &maxSlots, &maxVolume)
-	if err != nil {
-		// No inventory found — cannot validate; let the game server decide.
+	profile, ok := loadBackpackCapacity(ctx, playerID)
+	if !ok {
 		return nil
 	}
-
-	hasSlotCap := maxSlots > 0
-	hasVolumeCap := maxVolume > 0
-	if !hasSlotCap && !hasVolumeCap {
+	if !profile.hasSlotCap && !profile.hasVolumeCap {
 		return nil
 	}
-
-	usedSlots := 0
-	usedVolume := 0.0
-	rows, err := globalDB.Query(ctx, `
-		SELECT template_id, stack_size, volume_override
-		FROM dune.items
-		WHERE inventory_id = $1::bigint`, invID)
+	usage, err := loadInventoryUsage(ctx, profile.id, profile.hasVolumeCap)
 	if err != nil {
 		return nil
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var tmpl string
-		var stackSize int64
-		var vol pgtype.Float8
-		if err := rows.Scan(&tmpl, &stackSize, &vol); err != nil {
-			continue
-		}
-		usedSlots++
-		if hasVolumeCap {
-			itemVol := 0.0
-			if vol.Valid && vol.Float64 > 0 {
-				itemVol = vol.Float64
-			} else if itemData.Items != nil {
-				if rule, ok := itemData.Items[strings.ToLower(tmpl)]; ok {
-					itemVol = rule.Volume
-				} else if itemData.DefaultVolume > 0 {
-					itemVol = itemData.DefaultVolume
-				}
-			} else if itemData.DefaultVolume > 0 {
-				itemVol = itemData.DefaultVolume
-			}
-			usedVolume += itemVol * float64(stackSize)
-		}
+	if err := checkInventoryVolumeLimit(ctx, profile, usage, template, qty); err != nil {
+		return err
 	}
-
-	if hasVolumeCap {
-		perItemVol, err := resolveItemVolume(ctx, template)
-		if err == nil && perItemVol > 0 {
-			availableVol := maxVolume - usedVolume
-			if availableVol < 0 {
-				availableVol = 0
-			}
-			maxByVolume := int64(math.Floor(availableVol / perItemVol))
-			if maxByVolume < qty {
-				return fmt.Errorf(
-					"over weight limit: room for %d more %s (%.2f/%.2f volume used)",
-					maxByVolume, template, usedVolume, maxVolume)
-			}
-		}
-	}
-
-	if hasSlotCap {
-		stackMax, err := resolveStackMax(ctx, template, 0)
-		if err != nil || stackMax < 1 {
-			stackMax = 1
-		}
-		newStacks := int((qty + stackMax - 1) / stackMax)
-		freeSlots := maxSlots - usedSlots
-		if freeSlots < newStacks {
-			return fmt.Errorf(
-				"inventory full: need %d free slots, have %d",
-				newStacks, freeSlots)
-		}
+	if err := checkInventorySlotLimit(ctx, profile, usage, template, qty); err != nil {
+		return err
 	}
 	return nil
 }
@@ -1274,35 +1423,57 @@ func cmdDescribeTable(tbl string) Cmd {
 	}
 }
 
+func sampleTableQuery(tbl string, limit int) string {
+	// Sanitize table name defensively even though tbl comes from pg_stat_user_tables.
+	// pgx.Identifier handles quoting and escaping to prevent SQL injection.
+	safeTable := pgx.Identifier{dbSchema, tbl}.Sanitize()
+	return fmt.Sprintf("SELECT * FROM %s LIMIT %d", safeTable, limit)
+}
+
+func sampleTableHeaders(rows pgx.Rows) []string {
+	descriptions := rows.FieldDescriptions()
+	headers := make([]string, 0, len(descriptions))
+	for _, description := range descriptions {
+		headers = append(headers, description.Name)
+	}
+	return headers
+}
+
+func formatSampleRow(values []any) []string {
+	row := make([]string, 0, len(values))
+	for _, value := range values {
+		row = append(row, fmt.Sprintf("%v", value))
+	}
+	return row
+}
+
+func sampleTableRows(rows pgx.Rows) ([][]string, error) {
+	result := make([][]string, 0)
+	for rows.Next() {
+		values, err := rows.Values()
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, formatSampleRow(values))
+	}
+	return result, nil
+}
+
 func cmdSampleTable(tbl string, limit int) Cmd {
 	return func() Msg {
 		if globalDB == nil {
 			return msgSample{err: fmt.Errorf("not connected")}
 		}
-		// Sanitize table name defensively even though tbl comes from pg_stat_user_tables.
-		// pgx.Identifier handles quoting and escaping to prevent SQL injection.
-		safeTable := pgx.Identifier{dbSchema, tbl}.Sanitize()
-		rows, err := globalDB.Query(context.Background(),
-			fmt.Sprintf("SELECT * FROM %s LIMIT %d", safeTable, limit))
+		rows, err := globalDB.Query(context.Background(), sampleTableQuery(tbl, limit))
 		if err != nil {
 			return msgSample{table: tbl, err: err}
 		}
 		defer rows.Close()
-		var headers []string
-		for _, fd := range rows.FieldDescriptions() {
-			headers = append(headers, fd.Name)
-		}
-		var result [][]string
-		for rows.Next() {
-			vals, err := rows.Values()
-			if err != nil {
-				return msgSample{table: tbl, err: err}
-			}
-			var row []string
-			for _, v := range vals {
-				row = append(row, fmt.Sprintf("%v", v))
-			}
-			result = append(result, row)
+
+		headers := sampleTableHeaders(rows)
+		result, err := sampleTableRows(rows)
+		if err != nil {
+			return msgSample{table: tbl, err: err}
 		}
 		if err := rows.Err(); err != nil {
 			return msgSample{table: tbl, err: err}
@@ -1620,72 +1791,168 @@ func cmdCompleteContracts(accountID int64, contractIDs []string) Cmd {
 		if globalDB == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
-		if accountID == 0 {
-			return msgMutate{err: fmt.Errorf("account ID required")}
-		}
-		if len(contractIDs) == 0 {
-			return msgMutate{err: fmt.Errorf("at least one contract required")}
+		if err := validateContractMutationInput(accountID, contractIDs); err != nil {
+			return msgMutate{err: err}
 		}
 
-		seenTag := map[string]bool{}
-		var allTags []string
-		seenSkill := map[string]bool{}
-		var allSkillGrants []string
-		var resolved []string
-		for _, id := range contractIDs {
-			name, tags, err := resolveContractTags(id)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-			resolved = append(resolved, name)
-			for _, t := range tags {
-				if !seenTag[t] {
-					seenTag[t] = true
-					allTags = append(allTags, t)
-				}
-			}
-			for _, sk := range tagsData.ContractSkillGrants[name] {
-				if !seenSkill[sk] {
-					seenSkill[sk] = true
-					allSkillGrants = append(allSkillGrants, sk)
-				}
-			}
-		}
-
-		ctx := context.Background()
-		extra, err := applyTagsWithTierBump(ctx, accountID, allTags)
+		set, err := buildContractRemovalSet(contractIDs)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 
-		if len(allSkillGrants) > 0 {
-			grantedExtra, err := grantSkillBlocks(ctx, accountID, allSkillGrants)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-			extra += grantedExtra
+		ctx := context.Background()
+		extra, err := applyTagsWithTierBump(ctx, accountID, set.removeTags)
+		if err != nil {
+			return msgMutate{err: err}
 		}
+
+		grantedExtra, err := applyContractSkillGrants(ctx, accountID, set.removeSkills)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+		extra += grantedExtra
 
 		// Strip any in-progress ContractItem rows so the in-game quest
 		// tracker doesn't keep showing the conditions for a contract we just
 		// force-completed. ContractName.Name uses the short alias form
 		// (no DA_CT_ prefix).
-		shortNames := make([]string, 0, len(resolved))
-		for _, full := range resolved {
-			shortNames = append(shortNames, strings.TrimPrefix(full, "DA_CT_"))
-		}
+		shortNames := contractShortNames(set.resolvedNames)
 		dismissedExtra, err := dismissActiveContracts(ctx, accountID, shortNames)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 		extra += dismissedExtra
 
-		summary := resolved[0]
-		if len(resolved) > 1 {
-			summary = fmt.Sprintf("%d contracts", len(resolved))
-		}
+		summary := contractBatchSummary(set.resolvedNames)
 		return msgMutate{ok: fmt.Sprintf("Applied %s%s — takes effect on next login", summary, extra)}
 	}
+}
+
+func validateContractMutationInput(accountID int64, contractIDs []string) error {
+	if accountID == 0 {
+		return fmt.Errorf("account ID required")
+	}
+	if len(contractIDs) == 0 {
+		return fmt.Errorf("at least one contract required")
+	}
+	return nil
+}
+
+type contractRemovalSet struct {
+	resolvedNames []string
+	removeTags    []string
+	removeSkills  []string
+}
+
+func buildContractRemovalSet(contractIDs []string) (contractRemovalSet, error) {
+	seenTag := map[string]bool{}
+	seenSkill := map[string]bool{}
+	set := contractRemovalSet{
+		resolvedNames: make([]string, 0, len(contractIDs)),
+		removeTags:    make([]string, 0, len(contractIDs)),
+		removeSkills:  make([]string, 0, len(contractIDs)),
+	}
+
+	for _, id := range contractIDs {
+		name, tags, err := resolveContractTags(id)
+		if err != nil {
+			return contractRemovalSet{}, err
+		}
+		set.resolvedNames = append(set.resolvedNames, name)
+		for _, tag := range tags {
+			if seenTag[tag] {
+				continue
+			}
+			seenTag[tag] = true
+			set.removeTags = append(set.removeTags, tag)
+		}
+		for _, skill := range tagsData.ContractSkillGrants[name] {
+			if seenSkill[skill] {
+				continue
+			}
+			seenSkill[skill] = true
+			set.removeSkills = append(set.removeSkills, skill)
+		}
+	}
+
+	return set, nil
+}
+
+func applyContractSkillGrants(ctx context.Context, accountID int64, skills []string) (string, error) {
+	if len(skills) == 0 {
+		return "", nil
+	}
+	return grantSkillBlocks(ctx, accountID, skills)
+}
+
+func contractShortNames(resolvedNames []string) []string {
+	shortNames := make([]string, 0, len(resolvedNames))
+	for _, full := range resolvedNames {
+		shortNames = append(shortNames, strings.TrimPrefix(full, "DA_CT_"))
+	}
+	return shortNames
+}
+
+func removeContractTags(ctx context.Context, accountID int64, removeTags []string) error {
+	if len(removeTags) == 0 {
+		return nil
+	}
+	if _, err := globalDB.Exec(ctx,
+		`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
+		accountID, removeTags); err != nil {
+		return fmt.Errorf("remove tags: %w", err)
+	}
+	return nil
+}
+
+func loadContractPawnID(ctx context.Context, accountID int64) int64 {
+	var pawnID int64
+	_ = globalDB.QueryRow(ctx,
+		`SELECT player_pawn_id FROM dune.player_state WHERE account_id = $1 LIMIT 1`,
+		accountID).Scan(&pawnID)
+	return pawnID
+}
+
+func stripContractSkillBlocks(ctx context.Context, pawnID int64, removeSkills []string) (int, error) {
+	if pawnID == 0 || len(removeSkills) == 0 {
+		return 0, nil
+	}
+
+	stripped := 0
+	for _, skill := range removeSkills {
+		key := fmt.Sprintf(`(TagName="%s")`, skill)
+		tag, err := globalDB.Exec(ctx, `
+			UPDATE dune.fgl_entities fe
+			SET components = jsonb_set(
+				fe.components,
+				ARRAY['FLevelComponent','1','ModuleData'],
+				(fe.components->'FLevelComponent'->1->'ModuleData') - $2::text)
+			WHERE fe.entity_id = (
+				SELECT entity_id FROM dune.actor_fgl_entities
+				WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
+			)
+			AND COALESCE(
+				(fe.components->'FLevelComponent'->1->'ModuleData'->$2->>'SkillPointsSpent')::int,
+				0
+			) <= 1`,
+			pawnID, key)
+		if err != nil {
+			return 0, fmt.Errorf("strip %s: %w", skill, err)
+		}
+		if tag.RowsAffected() > 0 {
+			stripped++
+		}
+	}
+
+	return stripped, nil
+}
+
+func contractBatchSummary(resolvedNames []string) string {
+	summary := resolvedNames[0]
+	if len(resolvedNames) > 1 {
+		summary = fmt.Sprintf("%d contracts", len(resolvedNames))
+	}
+	return summary
 }
 
 // cmdReverseContracts removes the AddedFlagsOnCompletion tags and strips the
@@ -1697,90 +1964,30 @@ func cmdReverseContracts(accountID int64, contractIDs []string) Cmd {
 		if globalDB == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
-		if accountID == 0 {
-			return msgMutate{err: fmt.Errorf("account ID required")}
-		}
-		if len(contractIDs) == 0 {
-			return msgMutate{err: fmt.Errorf("at least one contract required")}
+		if err := validateContractMutationInput(accountID, contractIDs); err != nil {
+			return msgMutate{err: err}
 		}
 
-		seenTag := map[string]bool{}
-		var removeTags []string
-		seenSkill := map[string]bool{}
-		var removeSkills []string
-		var resolved []string
-
-		for _, id := range contractIDs {
-			name, tags, err := resolveContractTags(id)
-			if err != nil {
-				return msgMutate{err: err}
-			}
-			resolved = append(resolved, name)
-			for _, t := range tags {
-				if !seenTag[t] {
-					seenTag[t] = true
-					removeTags = append(removeTags, t)
-				}
-			}
-			for _, sk := range tagsData.ContractSkillGrants[name] {
-				if !seenSkill[sk] {
-					seenSkill[sk] = true
-					removeSkills = append(removeSkills, sk)
-				}
-			}
+		set, err := buildContractRemovalSet(contractIDs)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
 		ctx := context.Background()
-
-		if len(removeTags) > 0 {
-			if _, err := globalDB.Exec(ctx,
-				`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
-				accountID, removeTags); err != nil {
-				return msgMutate{err: fmt.Errorf("remove tags: %w", err)}
-			}
+		if err := removeContractTags(ctx, accountID, set.removeTags); err != nil {
+			return msgMutate{err: err}
 		}
 
-		stripped := 0
-		if len(removeSkills) > 0 {
-			var pawnID int64
-			_ = globalDB.QueryRow(ctx,
-				`SELECT player_pawn_id FROM dune.player_state WHERE account_id = $1 LIMIT 1`,
-				accountID).Scan(&pawnID)
-			if pawnID != 0 {
-				for _, sk := range removeSkills {
-					key := fmt.Sprintf(`(TagName="%s")`, sk)
-					tag, err := globalDB.Exec(ctx, `
-						UPDATE dune.fgl_entities fe
-						SET components = jsonb_set(
-							fe.components,
-							ARRAY['FLevelComponent','1','ModuleData'],
-							(fe.components->'FLevelComponent'->1->'ModuleData') - $2::text)
-						WHERE fe.entity_id = (
-							SELECT entity_id FROM dune.actor_fgl_entities
-							WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
-						)
-						AND COALESCE(
-							(fe.components->'FLevelComponent'->1->'ModuleData'->$2->>'SkillPointsSpent')::int,
-							0
-						) <= 1`,
-						pawnID, key)
-					if err != nil {
-						return msgMutate{err: fmt.Errorf("strip %s: %w", sk, err)}
-					}
-					if tag.RowsAffected() > 0 {
-						stripped++
-					}
-				}
-			}
+		pawnID := loadContractPawnID(ctx, accountID)
+		stripped, err := stripContractSkillBlocks(ctx, pawnID, set.removeSkills)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
-		summary := resolved[0]
-		if len(resolved) > 1 {
-			summary = fmt.Sprintf("%d contracts", len(resolved))
-		}
+		summary := contractBatchSummary(set.resolvedNames)
 		return msgMutate{ok: fmt.Sprintf(
 			"Reversed %s: removed %d tag(s), stripped %d skill block(s) — takes effect on next login",
-			summary, len(removeTags), stripped)}
+			summary, len(set.removeTags), stripped)}
 	}
 }
 
@@ -1853,6 +2060,103 @@ var starterAbilityByJob = map[string]string{
 	"Trooper":       "Skills.Ability.SuspensorGrenade_Reduction",
 }
 
+func resolveStarterClassAbility(job string) (string, error) {
+	if _, ok := tagsData.JobSkillBlocks[job]; !ok {
+		return "", fmt.Errorf("unknown job %q", job)
+	}
+	ability, ok := starterAbilityByJob[job]
+	if !ok {
+		return "", fmt.Errorf("no starter ability mapping for %q", job)
+	}
+	return ability, nil
+}
+
+func loadPawnIDForAccount(ctx context.Context, accountID int64) (int64, error) {
+	var pawnID int64
+	_ = globalDB.QueryRow(ctx, `
+		SELECT player_pawn_id FROM dune.player_state
+		WHERE account_id = $1 LIMIT 1`, accountID).Scan(&pawnID)
+	if pawnID == 0 {
+		return 0, fmt.Errorf("no pawn for account %d", accountID)
+	}
+	return pawnID, nil
+}
+
+func loadStarterTagForPawn(ctx context.Context, pawnID int64) string {
+	var starterTag string
+	_ = globalDB.QueryRow(ctx, `
+		SELECT fe.components->'FLevelComponent'->1->'StarterSkillTreeTag'->>'TagName'
+		FROM dune.fgl_entities fe
+		JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
+		WHERE afe.actor_id = $1 AND afe.slot_name = 'DuneCharacter'`,
+		pawnID).Scan(&starterTag)
+	return starterTag
+}
+
+func starterKeysToRemove(oldStarterTag, newJob string) []string {
+	if !strings.HasPrefix(oldStarterTag, "Skills.Key.") || !strings.HasSuffix(oldStarterTag, "1") {
+		return nil
+	}
+	oldJob := strings.TrimSuffix(strings.TrimPrefix(oldStarterTag, "Skills.Key."), "1")
+	if oldJob == "" || oldJob == newJob {
+		return nil
+	}
+	keys := []string{fmt.Sprintf(`(TagName="%s")`, oldStarterTag)}
+	if oldAbility, ok := starterAbilityByJob[oldJob]; ok {
+		keys = append(keys, fmt.Sprintf(`(TagName="%s")`, oldAbility))
+	}
+	return keys
+}
+
+func starterClassTagAndKeys(job, ability string) (starterTag, starterKey, abilityKey string) {
+	starterTag = fmt.Sprintf("Skills.Key.%s1", job)
+	starterKey = fmt.Sprintf(`(TagName="%s")`, starterTag)
+	abilityKey = fmt.Sprintf(`(TagName="%s")`, ability)
+	return starterTag, starterKey, abilityKey
+}
+
+func applyStarterClassUpdate(
+	ctx context.Context,
+	pawnID int64,
+	newStarterTag, newStarterKey string,
+	keysToRemove []string,
+	newAbilityKey string,
+) error {
+	_, err := globalDB.Exec(ctx, `
+		UPDATE dune.fgl_entities fe
+		SET components = jsonb_set(
+			jsonb_set(
+				jsonb_set(
+					jsonb_set(
+						fe.components,
+						ARRAY['FLevelComponent','1','ModuleData'],
+						(fe.components->'FLevelComponent'->1->'ModuleData') - $4::text[]),
+					ARRAY['FLevelComponent','1','StarterSkillTreeTag','TagName'],
+					to_jsonb($2::text)),
+				ARRAY['FLevelComponent','1','ModuleData',$3],
+				'{"SkillPointsSpent": 1}'::jsonb,
+				true),
+			ARRAY['FLevelComponent','1','ModuleData',$5],
+			'{"SkillPointsSpent": 1}'::jsonb,
+			true)
+		WHERE fe.entity_id = (
+			SELECT entity_id FROM dune.actor_fgl_entities
+			WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
+		)`, pawnID, newStarterTag, newStarterKey, keysToRemove, newAbilityKey)
+	if err != nil {
+		return fmt.Errorf("set starter tag: %w", err)
+	}
+	return nil
+}
+
+func formatStarterClassMessage(job, newStarterTag, newAbility string, removedCount int) string {
+	msg := fmt.Sprintf("Starter class set to %s (%s + %s active)", job, newStarterTag, newAbility)
+	if removedCount > 0 {
+		msg += fmt.Sprintf(", cleared previous starter (%d module(s))", removedCount)
+	}
+	return msg
+}
+
 // cmdSetStarterClass swaps the player's starter class:
 //  1. removes the previous starter's Skills.Key.<Old>1 block + its starter
 //     ability from ModuleData (so you don't end up with two starters
@@ -1871,83 +2175,33 @@ func cmdSetStarterClass(accountID int64, job string) Cmd {
 		if accountID == 0 {
 			return msgMutate{err: fmt.Errorf("account ID required")}
 		}
-		if _, ok := tagsData.JobSkillBlocks[job]; !ok {
-			return msgMutate{err: fmt.Errorf("unknown job %q", job)}
-		}
-		newAbility, ok := starterAbilityByJob[job]
-		if !ok {
-			return msgMutate{err: fmt.Errorf("no starter ability mapping for %q", job)}
+		newAbility, err := resolveStarterClassAbility(job)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 		ctx := context.Background()
 
-		var pawnID int64
-		_ = globalDB.QueryRow(ctx, `
-			SELECT player_pawn_id FROM dune.player_state
-			WHERE account_id = $1 LIMIT 1`, accountID).Scan(&pawnID)
-		if pawnID == 0 {
-			return msgMutate{err: fmt.Errorf("no pawn for account %d", accountID)}
+		pawnID, err := loadPawnIDForAccount(ctx, accountID)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
 		// Look up the current starter so we can deactivate it. Format is
 		// "Skills.Key.<Job>1"; we strip the prefix/suffix to recover the
 		// job name and look up its starter-ability for removal.
-		var oldStarterTag string
-		_ = globalDB.QueryRow(ctx, `
-			SELECT fe.components->'FLevelComponent'->1->'StarterSkillTreeTag'->>'TagName'
-			FROM dune.fgl_entities fe
-			JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
-			WHERE afe.actor_id = $1 AND afe.slot_name = 'DuneCharacter'`,
-			pawnID).Scan(&oldStarterTag)
-
-		var keysToRemove []string
-		if strings.HasPrefix(oldStarterTag, "Skills.Key.") && strings.HasSuffix(oldStarterTag, "1") {
-			oldJob := strings.TrimSuffix(strings.TrimPrefix(oldStarterTag, "Skills.Key."), "1")
-			if oldJob != "" && oldJob != job {
-				keysToRemove = append(keysToRemove, fmt.Sprintf(`(TagName="%s")`, oldStarterTag))
-				if oldAb, ok := starterAbilityByJob[oldJob]; ok {
-					keysToRemove = append(keysToRemove, fmt.Sprintf(`(TagName="%s")`, oldAb))
-				}
-			}
-		}
-
-		newStarterTag := fmt.Sprintf("Skills.Key.%s1", job)
-		newStarterKey := fmt.Sprintf(`(TagName="%s")`, newStarterTag)
-		newAbilityKey := fmt.Sprintf(`(TagName="%s")`, newAbility)
+		oldStarterTag := loadStarterTagForPawn(ctx, pawnID)
+		keysToRemove := starterKeysToRemove(oldStarterTag, job)
+		newStarterTag, newStarterKey, newAbilityKey := starterClassTagAndKeys(job, newAbility)
 
 		// One chained jsonb update: strip old keys, write new tag, activate
 		// new starter block, grant new starter ability. - operator on an
 		// empty text[] is a no-op so it's safe when there's no old starter
 		// to clean up (e.g. fresh character with StarterSkillTreeTag=None).
-		_, err := globalDB.Exec(ctx, `
-			UPDATE dune.fgl_entities fe
-			SET components = jsonb_set(
-				jsonb_set(
-					jsonb_set(
-						jsonb_set(
-							fe.components,
-							ARRAY['FLevelComponent','1','ModuleData'],
-							(fe.components->'FLevelComponent'->1->'ModuleData') - $4::text[]),
-						ARRAY['FLevelComponent','1','StarterSkillTreeTag','TagName'],
-						to_jsonb($2::text)),
-					ARRAY['FLevelComponent','1','ModuleData',$3],
-					'{"SkillPointsSpent": 1}'::jsonb,
-					true),
-				ARRAY['FLevelComponent','1','ModuleData',$5],
-				'{"SkillPointsSpent": 1}'::jsonb,
-				true)
-			WHERE fe.entity_id = (
-				SELECT entity_id FROM dune.actor_fgl_entities
-				WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
-			)`, pawnID, newStarterTag, newStarterKey, keysToRemove, newAbilityKey)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("set starter tag: %w", err)}
+		if err := applyStarterClassUpdate(ctx, pawnID, newStarterTag, newStarterKey, keysToRemove, newAbilityKey); err != nil {
+			return msgMutate{err: err}
 		}
 
-		msg := fmt.Sprintf("Starter class set to %s (%s + %s active)", job, newStarterTag, newAbility)
-		if len(keysToRemove) > 0 {
-			msg += fmt.Sprintf(", cleared previous starter (%d module(s))", len(keysToRemove))
-		}
-		return msgMutate{ok: msg}
+		return msgMutate{ok: formatStarterClassMessage(job, newStarterTag, newAbility, len(keysToRemove))}
 	}
 }
 
@@ -2305,6 +2559,231 @@ func nodesForPreset(faction, preset string) []string {
 	return nodes
 }
 
+const progressionUnlockMaxTier = 5
+
+type progressionFactionConfig struct {
+	factionID        int16
+	dialogueFlag     string
+	alignedFlag      string
+	metRecruiterFlag string
+	factionUnlocked  string
+	recruitmentDone  string
+}
+
+func progressionFactionConfigFor(faction string) (progressionFactionConfig, error) {
+	switch faction {
+	case "atreides":
+		return progressionFactionConfig{
+			factionID:        1,
+			dialogueFlag:     "DialogueFlags.Factions.SentToMeetHawat",
+			alignedFlag:      "DialogueFlags.Factions.AlignedAtreides",
+			metRecruiterFlag: "DialogueFlags.Factions.MetHawat",
+			factionUnlocked:  "Contract.Tracking.AtreidesFactionUnlocked",
+			recruitmentDone:  "Contract.Tracking.AtreidesRecruitmentCompleted",
+		}, nil
+	case "harkonnen":
+		return progressionFactionConfig{
+			factionID:        2,
+			dialogueFlag:     "DialogueFlags.Factions.SentToPiterDeVries",
+			alignedFlag:      "DialogueFlags.Factions.AlignedHarkonnen",
+			metRecruiterFlag: "DialogueFlags.Factions.MetPiterDeVries",
+			factionUnlocked:  "Contract.Tracking.HarkonnenFactionUnlocked",
+			recruitmentDone:  "Contract.Tracking.HarkonnenRecruitmentCompleted",
+		}, nil
+	default:
+		return progressionFactionConfig{}, fmt.Errorf("faction must be atreides or harkonnen")
+	}
+}
+
+func progressionTargetTierForPreset(preset string) (int, error) {
+	switch preset {
+	case "ch3_start":
+		return 5, nil
+	case "rank19_eligible":
+		return 19, nil
+	default:
+		return 0, fmt.Errorf("preset must be ch3_start or rank19_eligible")
+	}
+}
+
+func progressionUnlockTags(cfg progressionFactionConfig, targetTier int) []string {
+	factionName := factionDisplayName(cfg.factionID)
+	// Faction.<X>.TierN is only a real gameplay tag for N ∈ [0,5] — see
+	// DA_Atreides.json / DA_Harkonnen.json m_FactionTiers, where Tier 6+
+	// all have m_FactionTierTag.TagName == "None". Tier 5 flips
+	// m_bAllowPromotionThroughReputation to true, after which rep alone
+	// advances the displayed rank. So Tier0–5 + a rep >= threshold[19] is
+	// enough to display rank 19 — no need to write phantom Tier6..19 tags.
+	allTags := []string{
+		cfg.dialogueFlag, cfg.alignedFlag, cfg.metRecruiterFlag,
+		cfg.factionUnlocked, cfg.recruitmentDone,
+		"DialogueFlags.Factions.FactionIntro",
+		"DialogueFlags.Factions.FactionRank1",
+		"DialogueFlags.Factions.FactionRank3",
+		"DialogueFlags.Factions.MetARecruiter",
+		"DialogueFlags.Factions.PlayedAllegianceCinematic",
+		"DialogueFlags.Factions.SeenAnvilCinematic",
+	}
+	if targetTier >= 19 {
+		allTags = append(allTags, "Journey.LandsraadContractsUnlocked")
+	}
+	for tier := 0; tier <= progressionUnlockMaxTier; tier++ {
+		allTags = append(allTags, fmt.Sprintf("Faction.%s.Tier%d", factionName, tier))
+	}
+	return allTags
+}
+
+func resolveProgressionUnlockPlayer(ctx context.Context, actorID int64) (accountID, controllerID int64, flsID string, err error) {
+	if err = globalDB.QueryRow(ctx, `
+		SELECT COALESCE(a.owner_account_id, 0),
+		       COALESCE(ps.player_controller_id, 0)
+		FROM dune.actors a
+		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
+		WHERE a.id = $1`, actorID,
+	).Scan(&accountID, &controllerID); err != nil || accountID == 0 {
+		return 0, 0, "", fmt.Errorf("player %d not found or has no account", actorID)
+	}
+	if controllerID == 0 {
+		return 0, 0, "", fmt.Errorf("player %d has no controller actor", actorID)
+	}
+	flsID, err = rawFuncomID(ctx, accountID)
+	if err != nil || flsID == "" {
+		return 0, 0, "", fmt.Errorf("player %d has no FLS ID", actorID)
+	}
+	return accountID, controllerID, flsID, nil
+}
+
+func applyProgressionUnlock(
+	ctx context.Context,
+	accountID, controllerID int64,
+	flsID string,
+	factionID int16,
+	factionName string,
+	targetTier int,
+	journeyNodes, allTags []string,
+) error {
+	tx, err := globalDB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err = tx.Exec(ctx,
+		`SELECT dune.complete_journey_story_nodes_for_player($1, $2::text[])`,
+		flsID, journeyNodes); err != nil {
+		return fmt.Errorf("complete journey nodes: %w", err)
+	}
+
+	// Align the player with the chosen faction. Required for fresh / unaligned
+	// characters (no player_faction row) — without this the rank UI doesn't
+	// reflect tier changes because the game treats the player as unaligned.
+	// neutral_faction_id = 3 ("None") so this proc takes the upsert branch.
+	if _, err = tx.Exec(ctx,
+		`SELECT dune.change_player_faction($1::bigint, $2::smallint, 3::smallint, NOW()::timestamp)`,
+		controllerID, factionID); err != nil {
+		return fmt.Errorf("change_player_faction: %w", err)
+	}
+
+	if _, err = tx.Exec(ctx,
+		`SELECT dune.update_player_tags($1, $2::text[], '{}'::text[])`, accountID, allTags); err != nil {
+		return fmt.Errorf("update player tags: %w", err)
+	}
+
+	// +1 over the tier threshold: the game UI floors at the threshold
+	// (rep == threshold shows the tier below), so we nudge just over.
+	targetRep := factionTierThresholds[targetTier] + 1
+	if _, err = tx.Exec(ctx,
+		`SELECT dune.set_player_faction_reputation($1, $2, $3)`,
+		controllerID, factionID, targetRep); err != nil {
+		return fmt.Errorf("set faction rep: %w", err)
+	}
+	if _, err = tx.Exec(ctx, factionPlayerComponentRepSQL,
+		controllerID, factionName, targetRep); err != nil {
+		return fmt.Errorf("update FactionPlayerComponent rep: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func formatProgressionUnlockSuccess(
+	preset, faction string,
+	journeyNodeCount int,
+	factionName string,
+	targetTier int,
+	controllerID int64,
+) string {
+	return fmt.Sprintf(
+		"Progression unlock (%s/%s): %d journey nodes completed + %s tier tags 0–%d + rep tier %d on controller %d — takes effect on next login",
+		preset, faction, journeyNodeCount, factionName, progressionUnlockMaxTier, targetTier, controllerID)
+}
+
+func resolveProgressionAccountID(ctx context.Context, actorID int64) (int64, error) {
+	var accountID int64
+	if err := globalDB.QueryRow(ctx,
+		`SELECT COALESCE(owner_account_id, 0) FROM dune.actors WHERE id = $1`,
+		actorID).Scan(&accountID); err != nil || accountID == 0 {
+		return 0, fmt.Errorf("player %d not found or has no account", actorID)
+	}
+	return accountID, nil
+}
+
+func progressionReverseTags(baseTags, nodes []string) []string {
+	allTags := append([]string{}, baseTags...)
+	seen := make(map[string]bool, len(allTags))
+	for _, tag := range allTags {
+		seen[tag] = true
+	}
+	for _, node := range nodes {
+		for _, tag := range tagsForJourneyNodeSubtree(node) {
+			if seen[tag] {
+				continue
+			}
+			seen[tag] = true
+			allTags = append(allTags, tag)
+		}
+	}
+	return allTags
+}
+
+func applyProgressionReverse(ctx context.Context, accountID int64, allTags, nodes []string) (int64, error) {
+	tx, err := globalDB.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err = tx.Exec(ctx,
+		`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
+		accountID, allTags); err != nil {
+		return 0, fmt.Errorf("remove tags: %w", err)
+	}
+
+	result, err := tx.Exec(ctx, `
+		UPDATE dune.journey_story_node
+		SET complete_condition_state = 'false'::jsonb,
+		    has_pending_reward       = false
+		WHERE account_id = $1
+		  AND story_node_id = ANY($2::text[])`,
+		accountID, nodes)
+	if err != nil {
+		return 0, fmt.Errorf("reset journey nodes: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+func formatProgressionReverseSuccess(preset, faction string, resetNodes int64, removedTags int) string {
+	return fmt.Sprintf(
+		"Reversed progression unlock (%s/%s): reset %d node(s), removed %d tag(s) — takes effect on next login",
+		preset, faction, resetNodes, removedTags)
+}
+
 // cmdProgressionUnlock completes all prerequisite faction story journey nodes,
 // writes the corresponding gameplay tags, and sets reputation to the preset's
 // target tier.
@@ -2317,136 +2796,47 @@ func cmdProgressionUnlock(actorID int64, faction, preset string) Cmd {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 
-		var factionID int16
-		var dialogueFlag, alignedFlag, metRecruiterFlag, factionUnlocked, recruitmentDone string
-		switch faction {
-		case "atreides":
-			factionID = 1
-			dialogueFlag = "DialogueFlags.Factions.SentToMeetHawat"
-			alignedFlag = "DialogueFlags.Factions.AlignedAtreides"
-			metRecruiterFlag = "DialogueFlags.Factions.MetHawat"
-			factionUnlocked = "Contract.Tracking.AtreidesFactionUnlocked"
-			recruitmentDone = "Contract.Tracking.AtreidesRecruitmentCompleted"
-		case "harkonnen":
-			factionID = 2
-			dialogueFlag = "DialogueFlags.Factions.SentToPiterDeVries"
-			alignedFlag = "DialogueFlags.Factions.AlignedHarkonnen"
-			metRecruiterFlag = "DialogueFlags.Factions.MetPiterDeVries"
-			factionUnlocked = "Contract.Tracking.HarkonnenFactionUnlocked"
-			recruitmentDone = "Contract.Tracking.HarkonnenRecruitmentCompleted"
-		default:
-			return msgMutate{err: fmt.Errorf("faction must be atreides or harkonnen")}
-		}
-
-		var targetTier int
-		switch preset {
-		case "ch3_start":
-			targetTier = 5
-		case "rank19_eligible":
-			targetTier = 19
-		default:
-			return msgMutate{err: fmt.Errorf("preset must be ch3_start or rank19_eligible")}
-		}
-
-		ctx := context.Background()
-
-		var accountID, controllerID int64
-		err := globalDB.QueryRow(ctx, `
-			SELECT COALESCE(a.owner_account_id, 0),
-			       COALESCE(ps.player_controller_id, 0)
-			FROM dune.actors a
-			LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
-			WHERE a.id = $1`, actorID,
-		).Scan(&accountID, &controllerID)
-		if err != nil || accountID == 0 {
-			return msgMutate{err: fmt.Errorf("player %d not found or has no account", actorID)}
-		}
-		if controllerID == 0 {
-			return msgMutate{err: fmt.Errorf("player %d has no controller actor", actorID)}
-		}
-		flsID, err := rawFuncomID(ctx, accountID)
-		if err != nil || flsID == "" {
-			return msgMutate{err: fmt.Errorf("player %d has no FLS ID", actorID)}
-		}
-
-		journeyNodes := nodesForPreset(faction, preset)
-
-		factionName := factionDisplayName(factionID)
-		// Faction.<X>.TierN is only a real gameplay tag for N ∈ [0,5] — see
-		// DA_Atreides.json / DA_Harkonnen.json m_FactionTiers, where Tier 6+
-		// all have m_FactionTierTag.TagName == "None". Tier 5 flips
-		// m_bAllowPromotionThroughReputation to true, after which rep alone
-		// advances the displayed rank. So Tier0–5 + a rep >= threshold[19] is
-		// enough to display rank 19 — no need to write phantom Tier6..19 tags.
-		const maxTier = 5
-		// Baseline faction-progression tags observed on both rank-up reference
-		// characters (rank 19 Atreides + rank 8 Harkonnen). MetARecruiter,
-		// PlayedAllegianceCinematic, SeenAnvilCinematic, FactionRank1/3 are
-		// faction-neutral; the faction-specific flags are picked above.
-		allTags := []string{
-			dialogueFlag, alignedFlag, metRecruiterFlag,
-			factionUnlocked, recruitmentDone,
-			"DialogueFlags.Factions.FactionIntro",
-			"DialogueFlags.Factions.FactionRank1",
-			"DialogueFlags.Factions.FactionRank3",
-			"DialogueFlags.Factions.MetARecruiter",
-			"DialogueFlags.Factions.PlayedAllegianceCinematic",
-			"DialogueFlags.Factions.SeenAnvilCinematic",
-		}
-		if targetTier >= 19 {
-			allTags = append(allTags, "Journey.LandsraadContractsUnlocked")
-		}
-		for t := 0; t <= maxTier; t++ {
-			allTags = append(allTags, fmt.Sprintf("Faction.%s.Tier%d", factionName, t))
-		}
-
-		tx, err := globalDB.Begin(ctx)
+		cfg, err := progressionFactionConfigFor(faction)
 		if err != nil {
 			return msgMutate{err: err}
 		}
-		defer func() { _ = tx.Rollback(ctx) }()
-
-		if _, err = tx.Exec(ctx,
-			`SELECT dune.complete_journey_story_nodes_for_player($1, $2::text[])`,
-			flsID, journeyNodes); err != nil {
-			return msgMutate{err: fmt.Errorf("complete journey nodes: %w", err)}
-		}
-
-		// Align the player with the chosen faction. Required for fresh / unaligned
-		// characters (no player_faction row) — without this the rank UI doesn't
-		// reflect tier changes because the game treats the player as unaligned.
-		// neutral_faction_id = 3 ("None") so this proc takes the upsert branch.
-		if _, err = tx.Exec(ctx,
-			`SELECT dune.change_player_faction($1::bigint, $2::smallint, 3::smallint, NOW()::timestamp)`,
-			controllerID, factionID); err != nil {
-			return msgMutate{err: fmt.Errorf("change_player_faction: %w", err)}
-		}
-
-		if _, err = tx.Exec(ctx,
-			`SELECT dune.update_player_tags($1, $2::text[], '{}'::text[])`, accountID, allTags); err != nil {
-			return msgMutate{err: fmt.Errorf("update player tags: %w", err)}
-		}
-
-		// +1 over the tier threshold: the game UI floors at the threshold
-		// (rep == threshold shows the tier below), so we nudge just over.
-		targetRep := factionTierThresholds[targetTier] + 1
-		if _, err = tx.Exec(ctx,
-			`SELECT dune.set_player_faction_reputation($1, $2, $3)`,
-			controllerID, factionID, targetRep); err != nil {
-			return msgMutate{err: fmt.Errorf("set faction rep: %w", err)}
-		}
-		if _, err = tx.Exec(ctx, factionPlayerComponentRepSQL,
-			controllerID, factionName, targetRep); err != nil {
-			return msgMutate{err: fmt.Errorf("update FactionPlayerComponent rep: %w", err)}
-		}
-
-		if err := tx.Commit(ctx); err != nil {
+		targetTier, err := progressionTargetTierForPreset(preset)
+		if err != nil {
 			return msgMutate{err: err}
 		}
 
-		return msgMutate{ok: fmt.Sprintf(
-			"Progression unlock (%s/%s): %d journey nodes completed + %s tier tags 0–%d + rep tier %d on controller %d — takes effect on next login",
-			preset, faction, len(journeyNodes), factionName, maxTier, targetTier, controllerID)}
+		journeyNodes := nodesForPreset(faction, preset)
+		factionName := factionDisplayName(cfg.factionID)
+		allTags := progressionUnlockTags(cfg, targetTier)
+
+		ctx := context.Background()
+		accountID, controllerID, flsID, err := resolveProgressionUnlockPlayer(ctx, actorID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+
+		if err := applyProgressionUnlock(
+			ctx,
+			accountID,
+			controllerID,
+			flsID,
+			cfg.factionID,
+			factionName,
+			targetTier,
+			journeyNodes,
+			allTags,
+		); err != nil {
+			return msgMutate{err: err}
+		}
+
+		return msgMutate{ok: formatProgressionUnlockSuccess(
+			preset,
+			faction,
+			len(journeyNodes),
+			factionName,
+			targetTier,
+			controllerID,
+		)}
 	}
 }
 
@@ -2460,111 +2850,36 @@ func cmdReverseProgressionUnlock(actorID int64, faction, preset string) Cmd {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 
-		var factionID int16
-		var dialogueFlag, alignedFlag, metRecruiterFlag, factionUnlocked, recruitmentDone string
-		switch faction {
-		case "atreides":
-			factionID = 1
-			dialogueFlag = "DialogueFlags.Factions.SentToMeetHawat"
-			alignedFlag = "DialogueFlags.Factions.AlignedAtreides"
-			metRecruiterFlag = "DialogueFlags.Factions.MetHawat"
-			factionUnlocked = "Contract.Tracking.AtreidesFactionUnlocked"
-			recruitmentDone = "Contract.Tracking.AtreidesRecruitmentCompleted"
-		case "harkonnen":
-			factionID = 2
-			dialogueFlag = "DialogueFlags.Factions.SentToPiterDeVries"
-			alignedFlag = "DialogueFlags.Factions.AlignedHarkonnen"
-			metRecruiterFlag = "DialogueFlags.Factions.MetPiterDeVries"
-			factionUnlocked = "Contract.Tracking.HarkonnenFactionUnlocked"
-			recruitmentDone = "Contract.Tracking.HarkonnenRecruitmentCompleted"
-		default:
-			return msgMutate{err: fmt.Errorf("faction must be atreides or harkonnen")}
+		cfg, err := progressionFactionConfigFor(faction)
+		if err != nil {
+			return msgMutate{err: err}
 		}
-
-		var targetTier int
-		switch preset {
-		case "ch3_start":
-			targetTier = 5
-		case "rank19_eligible":
-			targetTier = 19
-		default:
-			return msgMutate{err: fmt.Errorf("preset must be ch3_start or rank19_eligible")}
+		targetTier, err := progressionTargetTierForPreset(preset)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
 		ctx := context.Background()
-
-		var accountID int64
-		if err := globalDB.QueryRow(ctx,
-			`SELECT COALESCE(owner_account_id, 0) FROM dune.actors WHERE id = $1`,
-			actorID).Scan(&accountID); err != nil || accountID == 0 {
-			return msgMutate{err: fmt.Errorf("player %d not found or has no account", actorID)}
+		accountID, err := resolveProgressionAccountID(ctx, actorID)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
-		// Build the exact same tag set the forward function writes so we can remove it.
-		factionName := factionDisplayName(factionID)
-		const maxTier = 5
-		allTags := []string{
-			dialogueFlag, alignedFlag, metRecruiterFlag,
-			factionUnlocked, recruitmentDone,
-			"DialogueFlags.Factions.FactionIntro",
-			"DialogueFlags.Factions.FactionRank1",
-			"DialogueFlags.Factions.FactionRank3",
-			"DialogueFlags.Factions.MetARecruiter",
-			"DialogueFlags.Factions.PlayedAllegianceCinematic",
-			"DialogueFlags.Factions.SeenAnvilCinematic",
-		}
-		if targetTier >= 19 {
-			allTags = append(allTags, "Journey.LandsraadContractsUnlocked")
-		}
-		for t := 0; t <= maxTier; t++ {
-			allTags = append(allTags, fmt.Sprintf("Faction.%s.Tier%d", factionName, t))
-		}
-
-		// Also collect any tags the journey nodes themselves emit on completion.
 		nodes := nodesForPreset(faction, preset)
-		seen := map[string]bool{}
-		for _, t := range allTags {
-			seen[t] = true
-		}
-		for _, node := range nodes {
-			for _, t := range tagsForJourneyNodeSubtree(node) {
-				if !seen[t] {
-					seen[t] = true
-					allTags = append(allTags, t)
-				}
-			}
-		}
+		baseTags := progressionUnlockTags(cfg, targetTier)
+		allTags := progressionReverseTags(baseTags, nodes)
 
-		tx, err := globalDB.Begin(ctx)
+		resetNodes, err := applyProgressionReverse(ctx, accountID, allTags, nodes)
 		if err != nil {
 			return msgMutate{err: err}
 		}
-		defer func() { _ = tx.Rollback(ctx) }()
 
-		if _, err = tx.Exec(ctx,
-			`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
-			accountID, allTags); err != nil {
-			return msgMutate{err: fmt.Errorf("remove tags: %w", err)}
-		}
-
-		result, err := tx.Exec(ctx, `
-			UPDATE dune.journey_story_node
-			SET complete_condition_state = 'false'::jsonb,
-			    has_pending_reward       = false
-			WHERE account_id = $1
-			  AND story_node_id = ANY($2::text[])`,
-			accountID, nodes)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("reset journey nodes: %w", err)}
-		}
-
-		if err := tx.Commit(ctx); err != nil {
-			return msgMutate{err: err}
-		}
-
-		return msgMutate{ok: fmt.Sprintf(
-			"Reversed progression unlock (%s/%s): reset %d node(s), removed %d tag(s) — takes effect on next login",
-			preset, faction, result.RowsAffected(), len(allTags))}
+		return msgMutate{ok: formatProgressionReverseSuccess(
+			preset,
+			faction,
+			resetNodes,
+			len(allTags),
+		)}
 	}
 }
 
@@ -2702,6 +3017,15 @@ type msgCharXP struct {
 	err   error
 }
 
+type charXPOutcome struct {
+	newXP        int64
+	newLevel     int64
+	newTotalSP   int64
+	newUnspentSP int64
+	newIntel     int64
+	capped       bool
+}
+
 func cmdFetchCharXP(playerID int64) Cmd {
 	return func() Msg {
 		if globalDB == nil {
@@ -2720,6 +3044,143 @@ func cmdFetchCharXP(playerID int64) Cmd {
 	}
 }
 
+func readCharXPState(ctx context.Context, playerID int64) (currentXP, spentSP int64, err error) {
+	err = globalDB.QueryRow(ctx, `
+		SELECT
+			(fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint,
+			COALESCE((
+				SELECT SUM((v->>'SkillPointsSpent')::int)
+				FROM jsonb_each(fe.components->'FLevelComponent'->1->'ModuleData') AS kv(k, v)
+				WHERE k != format('(TagName="%s")',
+					fe.components->'FLevelComponent'->1->'StarterSkillTreeTag'->>'TagName')
+			), 0)
+		FROM dune.fgl_entities fe
+		JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
+		WHERE afe.actor_id = $1 AND afe.slot_name = 'DuneCharacter'`, playerID).Scan(&currentXP, &spentSP)
+	if err != nil {
+		return 0, 0, fmt.Errorf("read current state: %w", err)
+	}
+	return currentXP, spentSP, nil
+}
+
+func resolveControllerIDForPawn(ctx context.Context, playerID int64) (int64, error) {
+	var controllerID int64
+	err := globalDB.QueryRow(ctx, `
+		SELECT player_controller_id FROM dune.player_state
+		WHERE player_pawn_id = $1 LIMIT 1`, playerID).Scan(&controllerID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("resolve controller id: %w", err)
+	}
+	return controllerID, nil
+}
+
+func loadControllerKeystoneIDs(ctx context.Context, controllerID int64) ([]int16, error) {
+	if controllerID == 0 {
+		return nil, nil
+	}
+	rows, err := globalDB.Query(ctx, `
+		SELECT keystone_id FROM dune.purchased_specialization_keystones
+		WHERE player_id = $1::bigint`, controllerID)
+	if err != nil {
+		return nil, fmt.Errorf("read keystones: %w", err)
+	}
+	defer rows.Close()
+
+	ids := make([]int16, 0, 8)
+	for rows.Next() {
+		var id int16
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan keystone: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scan keystone: %w", err)
+	}
+	return ids, nil
+}
+
+func fetchKeystoneBonusForPawn(ctx context.Context, playerID int64) (int64, error) {
+	controllerID, err := resolveControllerIDForPawn(ctx, playerID)
+	if err != nil {
+		return 0, err
+	}
+	ids, err := loadControllerKeystoneIDs(ctx, controllerID)
+	if err != nil {
+		return 0, err
+	}
+	return keystoneSPBonus(ids), nil
+}
+
+func computeAwardCharXPOutcome(currentXP, spentSP, keystoneBonus, amount int64) charXPOutcome {
+	newXP := currentXP + amount
+	if newXP > maxCharXP {
+		newXP = maxCharXP
+	}
+	newLevel := int64(xpToLevel(newXP))
+	newTotalSP := newLevel + keystoneBonus
+	// Starter job always occupies 1 SP that is excluded from spentSP.
+	newUnspentSP := newTotalSP - spentSP - 1
+	if newUnspentSP < 0 {
+		newUnspentSP = 0
+	}
+	newIntel := intelAtLevel(int(newLevel))
+	return charXPOutcome{
+		newXP:        newXP,
+		newLevel:     newLevel,
+		newTotalSP:   newTotalSP,
+		newUnspentSP: newUnspentSP,
+		newIntel:     newIntel,
+		capped:       newXP == maxCharXP,
+	}
+}
+
+func applyAwardCharXPFLevelUpdate(ctx context.Context, playerID int64, outcome charXPOutcome) error {
+	_, err := globalDB.Exec(ctx, `
+		UPDATE dune.fgl_entities
+		SET components = jsonb_set(jsonb_set(jsonb_set(
+			components,
+			'{FLevelComponent,1,TotalXPEarned}',    to_jsonb($2::bigint)),
+			'{FLevelComponent,1,TotalSkillPoints}',  to_jsonb($3::bigint)),
+			'{FLevelComponent,1,UnspentSkillPoints}', to_jsonb($4::bigint))
+		WHERE entity_id = (
+			SELECT entity_id FROM dune.actor_fgl_entities
+			WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
+		)`, playerID, outcome.newXP, outcome.newTotalSP, outcome.newUnspentSP)
+	if err != nil {
+		return fmt.Errorf("update fgl xp/sp: %w", err)
+	}
+	return nil
+}
+
+func applyAwardCharXPIntelUpdate(ctx context.Context, playerID int64, newIntel int64) error {
+	_, err := globalDB.Exec(ctx, `
+		UPDATE dune.actors
+		SET properties = jsonb_set(
+			properties,
+			'{TechKnowledgePlayerComponent,m_TechKnowledgePoints}',
+			to_jsonb($2::bigint))
+		WHERE id = $1 AND properties ? 'TechKnowledgePlayerComponent'`,
+		playerID, newIntel)
+	if err != nil {
+		return fmt.Errorf("update intel: %w", err)
+	}
+	return nil
+}
+
+func formatAwardCharXPSuccess(playerID int64, outcome charXPOutcome, spentSP int64) string {
+	capped := ""
+	if outcome.capped {
+		capped = " (capped at level 200)"
+	}
+	return fmt.Sprintf(
+		"Player %d → level %d%s | XP %d | SP %d unspent (%d spent) | Intel %d",
+		playerID, outcome.newLevel, capped, outcome.newXP, outcome.newUnspentSP, spentSP, outcome.newIntel)
+}
+
 func cmdAwardCharXP(playerID int64, amount int64) Cmd {
 	return func() Msg {
 		if globalDB == nil {
@@ -2733,104 +3194,29 @@ func cmdAwardCharXP(playerID int64, amount int64) Cmd {
 			return msgMutate{err: err}
 		}
 
-		// Read current XP and count of skill points already spent in the tree.
-		var currentXP, spentSP int64
-		err := globalDB.QueryRow(ctx, `
-			SELECT
-				(fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint,
-				COALESCE((
-					SELECT SUM((v->>'SkillPointsSpent')::int)
-					FROM jsonb_each(fe.components->'FLevelComponent'->1->'ModuleData') AS kv(k, v)
-					WHERE k != format('(TagName="%s")',
-						fe.components->'FLevelComponent'->1->'StarterSkillTreeTag'->>'TagName')
-				), 0)
-			FROM dune.fgl_entities fe
-			JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
-			WHERE afe.actor_id = $1 AND afe.slot_name = 'DuneCharacter'`, playerID).Scan(&currentXP, &spentSP)
+		currentXP, spentSP, err := readCharXPState(ctx, playerID)
 		if err != nil {
-			return msgMutate{err: fmt.Errorf("read current state: %w", err)}
+			return msgMutate{err: err}
 		}
 
-		// Resolve controller id from the pawn id so we can read purchased
-		// keystones (which are keyed by controller id). A missing player_state
-		// row means no keystones could have been purchased — treat bonus as 0.
-		var keystoneBonus int64
-		var controllerID int64
-		err = globalDB.QueryRow(ctx, `
-			SELECT player_controller_id FROM dune.player_state
-			WHERE player_pawn_id = $1 LIMIT 1`, playerID).Scan(&controllerID)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return msgMutate{err: fmt.Errorf("resolve controller id: %w", err)}
-		}
-		if controllerID != 0 {
-			rows, err := globalDB.Query(ctx, `
-				SELECT keystone_id FROM dune.purchased_specialization_keystones
-				WHERE player_id = $1::bigint`, controllerID)
-			if err != nil {
-				return msgMutate{err: fmt.Errorf("read keystones: %w", err)}
-			}
-			var ids []int16
-			for rows.Next() {
-				var id int16
-				if err := rows.Scan(&id); err != nil {
-					rows.Close()
-					return msgMutate{err: fmt.Errorf("scan keystone: %w", err)}
-				}
-				ids = append(ids, id)
-			}
-			rows.Close()
-			keystoneBonus = keystoneSPBonus(ids)
+		keystoneBonus, err := fetchKeystoneBonusForPawn(ctx, playerID)
+		if err != nil {
+			return msgMutate{err: err}
 		}
 
-		newXP := currentXP + amount
-		if newXP > maxCharXP {
-			newXP = maxCharXP
-		}
-		newLevel := int64(xpToLevel(newXP))
-		newTotalSP := newLevel + keystoneBonus
-		// Starter job always occupies 1 SP that is excluded from spentSP.
-		newUnspentSP := newTotalSP - spentSP - 1
-		if newUnspentSP < 0 {
-			newUnspentSP = 0
-		}
-		newIntel := intelAtLevel(int(newLevel))
+		outcome := computeAwardCharXPOutcome(currentXP, spentSP, keystoneBonus, amount)
 
 		// Update FLevelComponent: XP + both skill point fields.
-		_, err = globalDB.Exec(ctx, `
-			UPDATE dune.fgl_entities
-			SET components = jsonb_set(jsonb_set(jsonb_set(
-				components,
-				'{FLevelComponent,1,TotalXPEarned}',    to_jsonb($2::bigint)),
-				'{FLevelComponent,1,TotalSkillPoints}',  to_jsonb($3::bigint)),
-				'{FLevelComponent,1,UnspentSkillPoints}', to_jsonb($4::bigint))
-			WHERE entity_id = (
-				SELECT entity_id FROM dune.actor_fgl_entities
-				WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
-			)`, playerID, newXP, newTotalSP, newUnspentSP)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("update fgl xp/sp: %w", err)}
+		if err := applyAwardCharXPFLevelUpdate(ctx, playerID, outcome); err != nil {
+			return msgMutate{err: err}
 		}
 
 		// Update intel points on the PlayerCharacter actor.
-		_, err = globalDB.Exec(ctx, `
-			UPDATE dune.actors
-			SET properties = jsonb_set(
-				properties,
-				'{TechKnowledgePlayerComponent,m_TechKnowledgePoints}',
-				to_jsonb($2::bigint))
-			WHERE id = $1 AND properties ? 'TechKnowledgePlayerComponent'`,
-			playerID, newIntel)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("update intel: %w", err)}
+		if err := applyAwardCharXPIntelUpdate(ctx, playerID, outcome.newIntel); err != nil {
+			return msgMutate{err: err}
 		}
 
-		capped := ""
-		if newXP == maxCharXP {
-			capped = " (capped at level 200)"
-		}
-		return msgMutate{ok: fmt.Sprintf(
-			"Player %d → level %d%s | XP %d | SP %d unspent (%d spent) | Intel %d",
-			playerID, newLevel, capped, newXP, newUnspentSP, spentSP, newIntel)}
+		return msgMutate{ok: formatAwardCharXPSuccess(playerID, outcome, spentSP)}
 	}
 }
 
@@ -3012,37 +3398,25 @@ func keystoneSPBonus(ids []int16) int64 {
 	return total
 }
 
-func cmdGrantAllKeystones(playerID int64) Cmd {
-	return func() Msg {
-		if globalDB == nil {
-			return msgMutate{err: fmt.Errorf("not connected")}
-		}
-		ctx := context.Background()
-
-		if err := checkPlayerOffline(ctx, playerID); err != nil {
-			return msgMutate{err: err}
-		}
-
-		var err error
-		_, err = globalDB.Exec(ctx, `
+func insertAllPurchasedKeystones(ctx context.Context, playerID int64) error {
+	_, err := globalDB.Exec(ctx, `
 			INSERT INTO dune.purchased_specialization_keystones (player_id, keystone_id)
 			SELECT $1::bigint, generate_series(1, 205)
 			ON CONFLICT DO NOTHING`, playerID)
-		if err != nil {
-			return msgMutate{err: err}
-		}
+	return err
+}
 
-		// Compute the SP bonus all 205 purchased keystones should give.
-		allIDs := make([]int16, 205)
-		for i := range allIDs {
-			allIDs[i] = int16(i + 1)
-		}
-		keystoneBonus := keystoneSPBonus(allIDs)
+func allKeystoneIDs() []int16 {
+	ids := make([]int16, 205)
+	for i := range ids {
+		ids[i] = int16(i + 1)
+	}
+	return ids
+}
 
-		// Read XP, current TotalSkillPoints, and SP spent in non-starter modules.
-		// Uses pawn actor id (purchased_specialization_keystones uses controller id).
-		var xp, currentTotal, spentSP int64
-		err = globalDB.QueryRow(ctx, `
+func readLevelComponentSkillState(ctx context.Context, playerID int64) (int64, int64, int64, error) {
+	var xp, currentTotal, spentSP int64
+	err := globalDB.QueryRow(ctx, `
 			SELECT
 				(fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint,
 				(fe.components->'FLevelComponent'->1->>'TotalSkillPoints')::bigint,
@@ -3059,25 +3433,26 @@ func cmdGrantAllKeystones(playerID int64) Cmd {
 				SELECT player_pawn_id FROM dune.player_state
 				WHERE player_controller_id = $1 LIMIT 1
 			  )`, playerID).Scan(&xp, &currentTotal, &spentSP)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("read FLevelComponent: %w", err)}
-		}
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("read FLevelComponent: %w", err)
+	}
+	return xp, currentTotal, spentSP, nil
+}
 
-		level := int64(xpToLevel(xp))
-		expectedTotal := level + keystoneBonus
-		// UnspentSkillPoints = total - non-starter spent - 1 (starter job always occupies 1 SP).
-		expectedUnspent := expectedTotal - spentSP - 1
-		if expectedUnspent < 0 {
-			expectedUnspent = 0
-		}
+func grantAllKeystoneTargets(xp, spentSP int64) (int64, int64, int64) {
+	keystoneBonus := keystoneSPBonus(allKeystoneIDs())
+	level := int64(xpToLevel(xp))
+	expectedTotal := level + keystoneBonus
+	// UnspentSkillPoints = total - non-starter spent - 1 (starter job always occupies 1 SP).
+	expectedUnspent := expectedTotal - spentSP - 1
+	if expectedUnspent < 0 {
+		expectedUnspent = 0
+	}
+	return expectedTotal, expectedUnspent, keystoneBonus
+}
 
-		if currentTotal >= expectedTotal {
-			return msgMutate{ok: fmt.Sprintf(
-				"Granted all keystones to player %d — SP already correct (%d total, %d unspent)",
-				playerID, currentTotal, expectedUnspent)}
-		}
-
-		_, err = globalDB.Exec(ctx, `
+func updateLevelComponentSkillPoints(ctx context.Context, playerID, expectedTotal, expectedUnspent int64) error {
+	_, err := globalDB.Exec(ctx, `
 			UPDATE dune.fgl_entities
 			SET components = jsonb_set(jsonb_set(
 				components,
@@ -3093,8 +3468,44 @@ func cmdGrantAllKeystones(playerID int64) Cmd {
 					WHERE player_controller_id = $1 LIMIT 1
 				  )
 			)`, playerID, expectedTotal, expectedUnspent)
+	if err != nil {
+		return fmt.Errorf("update skill points: %w", err)
+	}
+	return nil
+}
+
+func cmdGrantAllKeystones(playerID int64) Cmd {
+	return func() Msg {
+		if globalDB == nil {
+			return msgMutate{err: fmt.Errorf("not connected")}
+		}
+		ctx := context.Background()
+
+		if err := checkPlayerOffline(ctx, playerID); err != nil {
+			return msgMutate{err: err}
+		}
+
+		if err := insertAllPurchasedKeystones(ctx, playerID); err != nil {
+			return msgMutate{err: err}
+		}
+
+		// Read XP, current TotalSkillPoints, and SP spent in non-starter modules.
+		// Uses pawn actor id (purchased_specialization_keystones uses controller id).
+		xp, currentTotal, spentSP, err := readLevelComponentSkillState(ctx, playerID)
 		if err != nil {
-			return msgMutate{err: fmt.Errorf("update skill points: %w", err)}
+			return msgMutate{err: err}
+		}
+
+		expectedTotal, expectedUnspent, keystoneBonus := grantAllKeystoneTargets(xp, spentSP)
+
+		if currentTotal >= expectedTotal {
+			return msgMutate{ok: fmt.Sprintf(
+				"Granted all keystones to player %d — SP already correct (%d total, %d unspent)",
+				playerID, currentTotal, expectedUnspent)}
+		}
+
+		if err := updateLevelComponentSkillPoints(ctx, playerID, expectedTotal, expectedUnspent); err != nil {
+			return msgMutate{err: err}
 		}
 
 		return msgMutate{ok: fmt.Sprintf(
@@ -3262,33 +3673,24 @@ func cmdGetPlayerVehicles(controllerID int64) Cmd {
 	}
 }
 
-func cmdRepairItem(itemID int64) Cmd {
-	return func() Msg {
-		if globalDB == nil {
-			return msgMutate{err: fmt.Errorf("not connected")}
-		}
-		ctx := context.Background()
-
-		// Derive owning player from item → inventory → actor (pawn) so we can gate Offline.
-		var pawnID int64
-		err := globalDB.QueryRow(ctx, `
+func lookupRepairItemOwner(ctx context.Context, itemID int64) (int64, error) {
+	var pawnID int64
+	err := globalDB.QueryRow(ctx, `
 			SELECT inv.actor_id
 			FROM dune.items i
 			JOIN dune.inventories inv ON inv.id = i.inventory_id
 			WHERE i.id = $1::bigint`, itemID).Scan(&pawnID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return msgMutate{err: fmt.Errorf("item %d not found", itemID)}
-		}
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("look up item owner: %w", err)}
-		}
-		if err := checkPlayerOffline(ctx, pawnID); err != nil {
-			return msgMutate{err: err}
-		}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, fmt.Errorf("item %d not found", itemID)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("look up item owner: %w", err)
+	}
+	return pawnID, nil
+}
 
-		// Write both fields: Current-only gets clamped to surviving Decayed on reload.
-		// Fallback target = 100.0 covers the 0-100 gear scale when MaxDurability is absent.
-		res, err := globalDB.Exec(ctx, `
+func repairItemDurability(ctx context.Context, itemID int64) (int64, error) {
+	res, err := globalDB.Exec(ctx, `
 			UPDATE dune.items i
 			SET stats = jsonb_set(
 				jsonb_set(i.stats,
@@ -3310,182 +3712,298 @@ func cmdRepairItem(itemID int64) Cmd {
 				abs(COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'CurrentDurability')::float8, 0) - t.val) > 0.01
 				OR abs(COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'DecayedMaxDurability')::float8, 0) - t.val) > 0.01
 			  )`, itemID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected(), nil
+}
+
+func itemHasDurabilityStats(ctx context.Context, itemID int64) (bool, error) {
+	var hasDurability bool
+	if err := globalDB.QueryRow(ctx, `
+				SELECT stats ? 'FItemStackAndDurabilityStats'
+				FROM dune.items WHERE id = $1::bigint`, itemID).Scan(&hasDurability); err != nil {
+		return false, fmt.Errorf("check item: %w", err)
+	}
+	return hasDurability, nil
+}
+
+func repairItemNoChangeMessage(itemID int64, hasDurability bool) msgMutate {
+	if !hasDurability {
+		return msgMutate{err: fmt.Errorf("item %d has no durability field", itemID)}
+	}
+	return msgMutate{ok: fmt.Sprintf("Item %d already at full durability", itemID)}
+}
+
+func repairItemSuccessMessage(itemID int64) msgMutate {
+	return msgMutate{ok: fmt.Sprintf("Repaired item %d — relog to see in-game", itemID)}
+}
+
+func cmdRepairItem(itemID int64) Cmd {
+	return func() Msg {
+		if globalDB == nil {
+			return msgMutate{err: fmt.Errorf("not connected")}
+		}
+		ctx := context.Background()
+
+		// Derive owning player from item → inventory → actor (pawn) so we can gate Offline.
+		pawnID, err := lookupRepairItemOwner(ctx, itemID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+		if err := checkPlayerOffline(ctx, pawnID); err != nil {
+			return msgMutate{err: err}
+		}
+
+		// Write both fields: Current-only gets clamped to surviving Decayed on reload.
+		// Fallback target = 100.0 covers the 0-100 gear scale when MaxDurability is absent.
+		rowsAffected, err := repairItemDurability(ctx, itemID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("repair item: %w", err)}
 		}
-		if res.RowsAffected() == 0 {
+		if rowsAffected == 0 {
 			// Item exists (owner lookup succeeded). Either no durability field, or already at ceiling.
-			var hasDur bool
-			if err := globalDB.QueryRow(ctx, `
-				SELECT stats ? 'FItemStackAndDurabilityStats'
-				FROM dune.items WHERE id = $1::bigint`, itemID).Scan(&hasDur); err != nil {
-				return msgMutate{err: fmt.Errorf("check item: %w", err)}
+			hasDurability, err := itemHasDurabilityStats(ctx, itemID)
+			if err != nil {
+				return msgMutate{err: err}
 			}
-			if !hasDur {
-				return msgMutate{err: fmt.Errorf("item %d has no durability field", itemID)}
-			}
-			return msgMutate{ok: fmt.Sprintf("Item %d already at full durability", itemID)}
+			return repairItemNoChangeMessage(itemID, hasDurability)
 		}
-		return msgMutate{ok: fmt.Sprintf("Repaired item %d — relog to see in-game", itemID)}
+		return repairItemSuccessMessage(itemID)
 	}
 }
 
 // Carried inventories: backpack, equipment, emote wheel, equipped weapons, action wheel, bank.
 var repairGearInventoryTypes = []int32{0, 1, 14, 15, 27, 30}
 
+type repairCandidate struct {
+	id     int64
+	target float64
+}
+
+func parseDurabilityText(value pgtype.Text) float64 {
+	if !value.Valid {
+		return 0
+	}
+	parsed, _ := strconv.ParseFloat(value.String, 64)
+	return parsed
+}
+
+func repairTargetForItem(templateID string, maxDurability pgtype.Text) float64 {
+	// Target priority: catalog (vehicle modules stored as items) → stats.MaxDurability → 100.
+	if value, ok := itemMaxDurability(templateID); ok && value > 0 {
+		return value
+	}
+	if maxDurability.Valid {
+		if value, err := strconv.ParseFloat(maxDurability.String, 64); err == nil && value > 0 {
+			return value
+		}
+	}
+	return 100.0
+}
+
+func buildRepairCandidate(
+	id int64,
+	templateID string,
+	maxDurability, currentDurability, decayedDurability pgtype.Text,
+) (repairCandidate, bool) {
+	target := repairTargetForItem(templateID, maxDurability)
+	current := parseDurabilityText(currentDurability)
+	decayed := parseDurabilityText(decayedDurability)
+	if math.Abs(current-target) < 0.01 && math.Abs(decayed-target) < 0.01 {
+		return repairCandidate{}, false
+	}
+	return repairCandidate{id: id, target: target}, true
+}
+
+func loadPlayerGearRepairCandidates(ctx context.Context, playerID int64) ([]repairCandidate, int, error) {
+	rows, err := globalDB.Query(ctx, `
+		SELECT i.id, i.template_id,
+		       (i.stats->'FItemStackAndDurabilityStats'->1->>'MaxDurability'),
+		       (i.stats->'FItemStackAndDurabilityStats'->1->>'CurrentDurability'),
+		       (i.stats->'FItemStackAndDurabilityStats'->1->>'DecayedMaxDurability')
+		FROM dune.items i
+		JOIN dune.inventories inv ON inv.id = i.inventory_id
+		WHERE inv.actor_id = $1::bigint
+		  AND inv.inventory_type = ANY($2::int[])
+		  AND i.stats ? 'FItemStackAndDurabilityStats'`,
+		playerID, repairGearInventoryTypes)
+	if err != nil {
+		return nil, 0, fmt.Errorf("scan items: %w", err)
+	}
+	defer rows.Close()
+
+	toRepair := make([]repairCandidate, 0, 64)
+	scanned := 0
+	for rows.Next() {
+		scanned++
+
+		var id int64
+		var templateID string
+		var maxDurability, currentDurability, decayedDurability pgtype.Text
+		if err := rows.Scan(&id, &templateID, &maxDurability, &currentDurability, &decayedDurability); err != nil {
+			return nil, scanned, fmt.Errorf("scan item: %w", err)
+		}
+
+		candidate, needsRepair := buildRepairCandidate(id, templateID, maxDurability, currentDurability, decayedDurability)
+		if needsRepair {
+			toRepair = append(toRepair, candidate)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("scan rows: %w", err)
+	}
+
+	return toRepair, scanned, nil
+}
+
+func validateRepairPlayerGearInput(playerID int64) error {
+	if globalDB == nil {
+		return fmt.Errorf("not connected")
+	}
+	if playerID == 0 {
+		return fmt.Errorf("player ID required")
+	}
+	return nil
+}
+
+type gearRepairRunResult struct {
+	repaired int
+	err      error
+}
+
+func runPlayerGearRepairs(ctx context.Context, toRepair []repairCandidate) gearRepairRunResult {
+	tx, err := globalDB.Begin(ctx)
+	if err != nil {
+		return gearRepairRunResult{err: fmt.Errorf("begin tx: %w", err)}
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	repaired := 0
+	for _, rc := range toRepair {
+		_, err := tx.Exec(ctx, `
+			UPDATE dune.items
+			SET stats = jsonb_set(
+				jsonb_set(stats,
+					'{FItemStackAndDurabilityStats,1,CurrentDurability}',
+					to_jsonb($2::float8), true),
+				'{FItemStackAndDurabilityStats,1,DecayedMaxDurability}',
+				to_jsonb($2::float8), true)
+			WHERE id = $1::bigint`, rc.id, rc.target)
+		if err != nil {
+			return gearRepairRunResult{
+				repaired: repaired,
+				err:      fmt.Errorf("repair item %d: %w", rc.id, err),
+			}
+		}
+		repaired++
+	}
+	if err := tx.Commit(ctx); err != nil {
+		// Keep the legacy response shape for commit failures: no repaired count.
+		return gearRepairRunResult{err: fmt.Errorf("commit: %w", err)}
+	}
+	return gearRepairRunResult{repaired: repaired}
+}
+
 func cmdRepairPlayerGear(playerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
-			return msgRepairGear{err: fmt.Errorf("not connected")}
-		}
-		if playerID == 0 {
-			return msgRepairGear{err: fmt.Errorf("player ID required")}
+		if err := validateRepairPlayerGearInput(playerID); err != nil {
+			return msgRepairGear{err: err}
 		}
 		ctx := context.Background()
 		if err := checkPlayerOffline(ctx, playerID); err != nil {
 			return msgRepairGear{err: err}
 		}
 
-		rows, err := globalDB.Query(ctx, `
-			SELECT i.id, i.template_id,
-			       (i.stats->'FItemStackAndDurabilityStats'->1->>'MaxDurability'),
-			       (i.stats->'FItemStackAndDurabilityStats'->1->>'CurrentDurability'),
-			       (i.stats->'FItemStackAndDurabilityStats'->1->>'DecayedMaxDurability')
-			FROM dune.items i
-			JOIN dune.inventories inv ON inv.id = i.inventory_id
-			WHERE inv.actor_id = $1::bigint
-			  AND inv.inventory_type = ANY($2::int[])
-			  AND i.stats ? 'FItemStackAndDurabilityStats'`,
-			playerID, repairGearInventoryTypes)
+		toRepair, scanned, err := loadPlayerGearRepairCandidates(ctx, playerID)
 		if err != nil {
-			return msgRepairGear{err: fmt.Errorf("scan items: %w", err)}
-		}
-		defer rows.Close()
-
-		type repairCandidate struct {
-			id     int64
-			target float64
-		}
-		var toRepair []repairCandidate
-		scanned := 0
-		for rows.Next() {
-			scanned++
-			var id int64
-			var templateID string
-			var maxStr, curStr, decayedStr pgtype.Text
-			if err := rows.Scan(&id, &templateID, &maxStr, &curStr, &decayedStr); err != nil {
-				return msgRepairGear{scanned: scanned, err: fmt.Errorf("scan item: %w", err)}
-			}
-
-			// Target priority: catalog (vehicle modules stored as items) → stats.MaxDurability → 100.
-			var target float64
-			if v, ok := itemMaxDurability(templateID); ok && v > 0 {
-				target = v
-			} else if maxStr.Valid {
-				if v, perr := strconv.ParseFloat(maxStr.String, 64); perr == nil && v > 0 {
-					target = v
-				} else {
-					target = 100.0
-				}
-			} else {
-				target = 100.0
-			}
-
-			cur := 0.0
-			if curStr.Valid {
-				cur, _ = strconv.ParseFloat(curStr.String, 64)
-			}
-			decayed := 0.0
-			if decayedStr.Valid {
-				decayed, _ = strconv.ParseFloat(decayedStr.String, 64)
-			}
-			if math.Abs(cur-target) < 0.01 && math.Abs(decayed-target) < 0.01 {
-				continue
-			}
-			toRepair = append(toRepair, repairCandidate{id: id, target: target})
-		}
-		if err := rows.Err(); err != nil {
-			return msgRepairGear{err: fmt.Errorf("scan rows: %w", err)}
+			return msgRepairGear{scanned: scanned, err: err}
 		}
 
-		tx, err := globalDB.Begin(ctx)
-		if err != nil {
-			return msgRepairGear{scanned: scanned, err: fmt.Errorf("begin tx: %w", err)}
+		run := runPlayerGearRepairs(ctx, toRepair)
+		if run.err != nil {
+			return msgRepairGear{repaired: run.repaired, scanned: scanned, err: run.err}
 		}
-		defer func() { _ = tx.Rollback(ctx) }()
-
-		repaired := 0
-		for _, rc := range toRepair {
-			_, err := tx.Exec(ctx, `
-				UPDATE dune.items
-				SET stats = jsonb_set(
-					jsonb_set(stats,
-						'{FItemStackAndDurabilityStats,1,CurrentDurability}',
-						to_jsonb($2::float8), true),
-					'{FItemStackAndDurabilityStats,1,DecayedMaxDurability}',
-					to_jsonb($2::float8), true)
-				WHERE id = $1::bigint`, rc.id, rc.target)
-			if err != nil {
-				return msgRepairGear{repaired: repaired, scanned: scanned, err: fmt.Errorf("repair item %d: %w", rc.id, err)}
-			}
-			repaired++
-		}
-		if err := tx.Commit(ctx); err != nil {
-			return msgRepairGear{scanned: scanned, err: fmt.Errorf("commit: %w", err)}
-		}
-		return msgRepairGear{repaired: repaired, scanned: scanned}
+		return msgRepairGear{repaired: run.repaired, scanned: scanned}
 	}
 }
 
-func cmdRepairVehicle(playerID, vehicleID int64) Cmd {
-	return func() Msg {
-		if globalDB == nil {
-			return msgRepairVehicle{err: fmt.Errorf("not connected")}
-		}
-		if playerID == 0 {
-			return msgRepairVehicle{err: fmt.Errorf("player ID required")}
-		}
-		ctx := context.Background()
-		if err := checkPlayerOffline(ctx, playerID); err != nil {
-			return msgRepairVehicle{err: err}
-		}
+func validateRepairVehicleInput(playerID int64) error {
+	if globalDB == nil {
+		return fmt.Errorf("not connected")
+	}
+	if playerID == 0 {
+		return fmt.Errorf("player ID required")
+	}
+	return nil
+}
 
-		rows, err := globalDB.Query(ctx, `
+type vehicleModule struct {
+	id         int64
+	templateID string
+}
+
+func loadVehicleModules(ctx context.Context, vehicleID int64) ([]vehicleModule, error) {
+	rows, err := globalDB.Query(ctx, `
 			SELECT id, template_id
 			FROM dune.vehicle_modules
 			WHERE vehicle_id = $1::bigint`, vehicleID)
-		if err != nil {
-			return msgRepairVehicle{err: fmt.Errorf("scan modules: %w", err)}
-		}
-		defer rows.Close()
+	if err != nil {
+		return nil, fmt.Errorf("scan modules: %w", err)
+	}
+	defer rows.Close()
 
-		type moduleRow struct {
-			id         int64
-			templateID string
+	var modules []vehicleModule
+	for rows.Next() {
+		var module vehicleModule
+		if err := rows.Scan(&module.id, &module.templateID); err != nil {
+			return nil, fmt.Errorf("scan module: %w", err)
 		}
-		var modules []moduleRow
-		for rows.Next() {
-			var m moduleRow
-			if err := rows.Scan(&m.id, &m.templateID); err != nil {
-				return msgRepairVehicle{err: fmt.Errorf("scan module: %w", err)}
-			}
-			modules = append(modules, m)
-		}
-		if err := rows.Err(); err != nil {
-			return msgRepairVehicle{err: err}
-		}
+		modules = append(modules, module)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return modules, nil
+}
 
-		total := len(modules)
-		repaired := 0
-		skipped := 0
-		for _, m := range modules {
-			target, ok := itemMaxDurability(m.templateID)
-			if !ok || target <= 0 {
-				skipped++
-				continue
-			}
-			// Both fields must be written — Current-only is clamped to surviving Decayed on reload.
-			_, err := globalDB.Exec(ctx, `
+type vehicleRepairSummary struct {
+	repaired int
+	skipped  int
+	total    int
+	err      error
+}
+
+func vehicleRepairTarget(templateID string) (float64, bool) {
+	target, ok := itemMaxDurability(templateID)
+	if !ok || target <= 0 {
+		return 0, false
+	}
+	return target, true
+}
+
+func runVehicleModuleRepairs(
+	modules []vehicleModule,
+	update func(module vehicleModule, target float64) error,
+) vehicleRepairSummary {
+	summary := vehicleRepairSummary{total: len(modules)}
+	for _, module := range modules {
+		target, ok := vehicleRepairTarget(module.templateID)
+		if !ok {
+			summary.skipped++
+			continue
+		}
+		if err := update(module, target); err != nil {
+			summary.err = fmt.Errorf("repair module %d: %w", module.id, err)
+			return summary
+		}
+		summary.repaired++
+	}
+	return summary
+}
+
+func updateVehicleModuleDurability(ctx context.Context, moduleID int64, target float64) error {
+	_, err := globalDB.Exec(ctx, `
 				UPDATE dune.vehicle_modules
 				SET stats = jsonb_set(
 					jsonb_set(stats,
@@ -3493,13 +4011,30 @@ func cmdRepairVehicle(playerID, vehicleID int64) Cmd {
 						to_jsonb($2::float8), true),
 					'{FVehicleModuleDurabilityStats,1,DecayedMaxDurability}',
 					to_jsonb($2::float8), true)
-				WHERE id = $1::bigint`, m.id, target)
-			if err != nil {
-				return msgRepairVehicle{repaired: repaired, skipped: skipped, total: total, err: fmt.Errorf("repair module %d: %w", m.id, err)}
-			}
-			repaired++
+				WHERE id = $1::bigint`, moduleID, target)
+	return err
+}
+
+func cmdRepairVehicle(playerID, vehicleID int64) Cmd {
+	return func() Msg {
+		if err := validateRepairVehicleInput(playerID); err != nil {
+			return msgRepairVehicle{err: err}
 		}
-		return msgRepairVehicle{repaired: repaired, skipped: skipped, total: total}
+		ctx := context.Background()
+		if err := checkPlayerOffline(ctx, playerID); err != nil {
+			return msgRepairVehicle{err: err}
+		}
+
+		modules, err := loadVehicleModules(ctx, vehicleID)
+		if err != nil {
+			return msgRepairVehicle{err: err}
+		}
+
+		summary := runVehicleModuleRepairs(modules, func(module vehicleModule, target float64) error {
+			// Both fields must be written — Current-only is clamped to surviving Decayed on reload.
+			return updateVehicleModuleDurability(ctx, module.id, target)
+		})
+		return msgRepairVehicle(summary)
 	}
 }
 

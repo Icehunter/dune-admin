@@ -22,6 +22,7 @@ Choose the provider that matches your setup:
 |----------|----------|-------|
 | **kubectl** | Server runs in k3s/K8s on a remote VM | [SETUP_KUBECTL.md](SETUP_KUBECTL.md) |
 | **docker** | Server runs as Docker containers (compose or standalone) | [SETUP_DOCKER.md](SETUP_DOCKER.md) |
+| **amp** | Server runs under CubeCoders AMP (host or podman-backed) | [SETUP_AMP.md](SETUP_AMP.md) |
 | **local** | Server runs on the same machine - AMP, LGSM, bare metal | [SETUP_LOCAL.md](SETUP_LOCAL.md) |
 
 ---
@@ -33,7 +34,7 @@ git clone https://github.com/Icehunter/dune-admin
 cd dune-admin
 
 make setup   # interactive wizard - detects provider, discovers config, writes ~/.dune-admin/config.yaml
-make build
+make build   # builds frontend + dune-admin binary
 ./dune-admin
 ```
 
@@ -43,11 +44,30 @@ See the provider guide above for provider-specific prerequisites (SSH key, Docke
 
 ---
 
+## One-command k8s deploy (external VM)
+
+If your cluster lives on a VM (example: `dune@192.168.0.72`), use the deploy scripts:
+
+```bash
+./deploy.sh
+```
+
+```powershell
+./deploy.ps1
+```
+
+These scripts handle kubeconfig pull, image build/import, manifest render/apply, rollout wait, and port-forward.
+They also auto-fix common deploy drift (embedded bot settings + UI asset presence checks) before opening access.
+
+For full options and troubleshooting, see [SETUP_KUBECTL.md](SETUP_KUBECTL.md).
+
+---
+
 ## Setup wizard
 
-`make setup` (or `go run . -setup`) runs an interactive wizard that:
+`make setup` (or `go run ./cmd/dune-admin -setup`) runs an interactive wizard that:
 
-1. Asks which control plane to use: `kubectl`, `docker`, or `local`
+1. Asks which control plane to use: `kubectl`, `docker`, `amp`, or `local`
 2. Collects the required settings for that provider
 3. Tests connectivity (SSH, Docker, DB)
 4. Writes `~/.dune-admin/config.yaml` (chmod 600, never committed)
@@ -69,7 +89,7 @@ Config is loaded in this order (first match wins for each field):
 
 | Env var | Flag | Default | Description |
 |---------|------|---------|-------------|
-| `CONTROL` | `-control` | *(auto)* | Control plane: `kubectl`, `docker`, or `local` |
+| `CONTROL` | `-control` | *(auto)* | Control plane: `kubectl`, `docker`, `amp`, or `local` |
 | `SSH_HOST` | `-host` | - | VM host:port - when set, all connections tunnel through SSH |
 | `SSH_USER` | `-user` | `dune` | SSH user |
 | `SSH_KEY` | `-key` | *(auto-detected)* | SSH private key path |
@@ -88,6 +108,17 @@ Config is loaded in this order (first match wins for each field):
 
 Provider-specific fields (`docker_gameserver`, `cmd_start`, etc.) have no env var equivalents and must be set via the wizard or config.yaml directly. See the provider guides for the full field list.
 
+### Market bot
+
+dune-admin now runs the market bot **embedded only** (`market_bot_enabled: true` in `config.yaml`).  
+UI lifecycle actions map to the in-process bot runtime:
+
+1. **Resume** (`start`)
+2. **Pause** (`stop`)
+3. **Reinitialize** (`restart`)
+
+Config edits in the Market tab apply directly to the embedded runtime config.
+
 ### SSH key lookup order
 
 When `SSH_KEY` / `-key` is not set, dune-admin checks these paths in order:
@@ -105,11 +136,14 @@ When `SSH_KEY` / `-key` is not set, dune-admin checks these paths in order:
 | Target | Description |
 |--------|-------------|
 | `make setup` | Run the interactive setup wizard |
-| `make build` | Build the Go binary |
+| `make build` | Build frontend + Go binary |
 | `make linux` | Cross-compile a Linux amd64 binary |
-| `make dev-server` | Run without building (`go run .`) |
+| `make dev` | Run backend + frontend in live mode (Air + Vite HMR) |
+| `make dev-server` | Run backend only without building (`go run ./cmd/dune-admin`) |
 | `make web` | Build the frontend only |
 | `make deploy-web` | Build + deploy frontend to Cloudflare Pages |
+| `make render-k8s` | Render `deploy/k8s/dune-admin.rendered.yaml` from `~/.dune-admin/config.yaml` |
+| `make k8s-dry-run` | Render and run `kubectl apply --dry-run=client` |
 | `make test` | Run tests |
 | `make verify` | Run all quality checks (fmt, vet, tests, vuln, gosec) |
 
@@ -120,7 +154,7 @@ When `SSH_KEY` / `-key` is not set, dune-admin checks these paths in order:
 The frontend can be deployed to Cloudflare Pages and pointed at a locally-running binary.
 
 ```bash
-cd web && npm ci && npm run build
+cd web && pnpm install && pnpm build
 wrangler pages deploy dist --project-name dune-admin
 ```
 

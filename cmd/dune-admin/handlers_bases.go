@@ -79,77 +79,56 @@ func handleListBases(w http.ResponseWriter, _ *http.Request) {
 	jsonOK(w, rows)
 }
 
-func handleExportBase(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil {
-		jsonErr(w, fmt.Errorf("invalid id"), 400)
-		return
-	}
-	if globalDB == nil {
-		jsonErr(w, fmt.Errorf("not connected"), 500)
-		return
-	}
-	ctx := context.Background()
+type rawBaseInstance struct {
+	buildingType  string
+	transform     []float32
+	ownerEntityID int64
+}
 
-	iRows, err := globalDB.Query(ctx, `
+type rawBasePlaceable struct {
+	buildingType string
+	location     string
+	rotation     string
+	properties   map[string]any
+}
+
+func parseBasePathID(id string) (int64, error) {
+	parsedID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid id")
+	}
+	return parsedID, nil
+}
+
+func queryBaseExportInstances(ctx context.Context, id int64) ([]rawBaseInstance, error) {
+	rows, err := globalDB.Query(ctx, `
 		SELECT building_type, transform, owner_entity_id
 		FROM dune.building_instances
 		WHERE building_id = $1`, id)
 	if err != nil {
-		jsonErr(w, fmt.Errorf("query instances: %w", err), 500)
-		return
+		return nil, fmt.Errorf("query instances: %w", err)
 	}
-	defer iRows.Close()
+	defer rows.Close()
 
-	type rawInstance struct {
-		btype         string
-		t             []float32
-		ownerEntityID int64
-	}
-	var raws []rawInstance
-	for iRows.Next() {
-		var ri rawInstance
-		if err := iRows.Scan(&ri.btype, &ri.t, &ri.ownerEntityID); err != nil {
+	raws := make([]rawBaseInstance, 0, 32)
+	for rows.Next() {
+		var ri rawBaseInstance
+		if err := rows.Scan(&ri.buildingType, &ri.transform, &ri.ownerEntityID); err != nil {
 			continue
 		}
-		if len(ri.t) < 7 {
+		if len(ri.transform) < 7 {
 			continue
 		}
 		raws = append(raws, ri)
 	}
-	if err := iRows.Err(); err != nil {
-		jsonErr(w, fmt.Errorf("read instances: %w", err), 500)
-		return
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read instances: %w", err)
 	}
-	if len(raws) == 0 {
-		jsonErr(w, fmt.Errorf("building %d not found or empty", id), 404)
-		return
-	}
+	return raws, nil
+}
 
-	ownerEntityID := raws[0].ownerEntityID
-
-	var sumX, sumY, sumZ float64
-	for _, ri := range raws {
-		sumX += float64(ri.t[0])
-		sumY += float64(ri.t[1])
-		sumZ += float64(ri.t[2])
-	}
-	n := float64(len(raws))
-	cx, cy, cz := sumX/n, sumY/n, sumZ/n
-
-	instances := make([]blueprintInstance, 0, len(raws))
-	for _, ri := range raws {
-		qx, qy, qz, qw := float64(ri.t[3]), float64(ri.t[4]), float64(ri.t[5]), float64(ri.t[6])
-		instances = append(instances, blueprintInstance{
-			BuildingType: ri.btype,
-			X:            float64(ri.t[0]) - cx,
-			Y:            float64(ri.t[1]) - cy,
-			Z:            float64(ri.t[2]) - cz,
-			Rotation:     quatToYaw(qx, qy, qz, qw),
-		})
-	}
-
-	pRows, err := globalDB.Query(ctx, `
+func queryBaseExportPlaceables(ctx context.Context, ownerEntityID int64) ([]rawBasePlaceable, error) {
+	rows, err := globalDB.Query(ctx, `
 		SELECT p.building_type,
 		       (a.transform).location::text,
 		       (a.transform).rotation::text,
@@ -158,83 +137,126 @@ func handleExportBase(w http.ResponseWriter, r *http.Request) {
 		JOIN dune.actors a ON a.id = p.id
 		WHERE p.owner_entity_id = $1`, ownerEntityID)
 	if err != nil {
-		jsonErr(w, fmt.Errorf("query placeables: %w", err), 500)
-		return
+		return nil, fmt.Errorf("query placeables: %w", err)
 	}
-	defer pRows.Close()
+	defer rows.Close()
 
-	var placeables []blueprintPlaceable
-	var pentashields []blueprintPentashield
-
-	for pRows.Next() {
-		var btype, locStr, rotStr string
-		var props map[string]any
-		if err := pRows.Scan(&btype, &locStr, &rotStr, &props); err != nil {
+	raws := make([]rawBasePlaceable, 0, 32)
+	for rows.Next() {
+		var rp rawBasePlaceable
+		if err := rows.Scan(&rp.buildingType, &rp.location, &rp.rotation, &rp.properties); err != nil {
 			continue
 		}
-		// Totem is base-specific (land claim anchor) — never export it.
-		if btype == "Totem_Placeable" {
-			continue
-		}
-		lx, ly, lz, locErr := parseVec3(locStr)
-		qx, qy, qz, qw, rotErr := parseVec4(rotStr)
-		if locErr != nil || rotErr != nil {
-			continue
-		}
-		rx, ry, rz := quatToEuler(qx, qy, qz, qw)
+		raws = append(raws, rp)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read placeables: %w", err)
+	}
+	return raws, nil
+}
 
-		if strings.Contains(btype, "PentashieldSurface") {
-			// Only include pentashield placeables if scale data is present;
-			// a zero scale means the server has no data and would crash on import.
-			scale := [3]int{0, 0, 0}
-			found := false
-			if props != nil {
-				if inner, ok := props[strings.TrimSuffix(btype, "_Placeable")+"_C"].(map[string]any); ok {
-					if sv, ok := inner["m_Scale"].([]any); ok && len(sv) >= 3 {
-						for i := range 3 {
-							if f, ok := sv[i].(float64); ok {
-								scale[i] = int(f)
-							}
-						}
-						found = true
-					}
-				}
-			}
-			if !found {
-				continue
-			}
-			idx := len(placeables)
-			placeables = append(placeables, blueprintPlaceable{
-				BuildingType: btype,
-				X:            lx - cx,
-				Y:            ly - cy,
-				Z:            lz - cz,
-				RX:           rx,
-				RY:           ry,
-				RZ:           rz,
-			})
-			pentashields = append(pentashields, blueprintPentashield{
-				PlaceableID: idx,
-				Scale:       scale,
-			})
-			continue
-		}
+func calculateBaseCentroid(raws []rawBaseInstance) (float64, float64, float64) {
+	var sumX, sumY, sumZ float64
+	for _, ri := range raws {
+		sumX += float64(ri.transform[0])
+		sumY += float64(ri.transform[1])
+		sumZ += float64(ri.transform[2])
+	}
+	n := float64(len(raws))
+	return sumX / n, sumY / n, sumZ / n
+}
 
-		placeables = append(placeables, blueprintPlaceable{
-			BuildingType: btype,
-			X:            lx - cx,
-			Y:            ly - cy,
-			Z:            lz - cz,
-			RX:           rx,
-			RY:           ry,
-			RZ:           rz,
+func buildBlueprintInstances(raws []rawBaseInstance, cx, cy, cz float64) []blueprintInstance {
+	instances := make([]blueprintInstance, 0, len(raws))
+	for _, ri := range raws {
+		qx, qy, qz, qw := float64(ri.transform[3]), float64(ri.transform[4]), float64(ri.transform[5]), float64(ri.transform[6])
+		instances = append(instances, blueprintInstance{
+			BuildingType: ri.buildingType,
+			X:            float64(ri.transform[0]) - cx,
+			Y:            float64(ri.transform[1]) - cy,
+			Z:            float64(ri.transform[2]) - cz,
+			Rotation:     quatToYaw(qx, qy, qz, qw),
 		})
 	}
-	if err := pRows.Err(); err != nil {
-		jsonErr(w, fmt.Errorf("read placeables: %w", err), 500)
-		return
-	}
+	return instances
+}
 
+func extractPentashieldScale(buildingType string, props map[string]any) ([3]int, bool) {
+	var scale [3]int
+	if props == nil {
+		return scale, false
+	}
+	inner, ok := props[strings.TrimSuffix(buildingType, "_Placeable")+"_C"].(map[string]any)
+	if !ok {
+		return scale, false
+	}
+	scaleValues, ok := inner["m_Scale"].([]any)
+	if !ok || len(scaleValues) < 3 {
+		return scale, false
+	}
+	for i := 0; i < 3; i++ {
+		value, ok := scaleValues[i].(float64)
+		if !ok {
+			return scale, false
+		}
+		scale[i] = int(value)
+	}
+	return scale, true
+}
+
+func convertExportPlaceable(raw rawBasePlaceable, cx, cy, cz float64, placeableID int) (blueprintPlaceable, *blueprintPentashield, bool) {
+	if raw.buildingType == "Totem_Placeable" {
+		return blueprintPlaceable{}, nil, false
+	}
+	lx, ly, lz, locErr := parseVec3(raw.location)
+	qx, qy, qz, qw, rotErr := parseVec4(raw.rotation)
+	if locErr != nil || rotErr != nil {
+		return blueprintPlaceable{}, nil, false
+	}
+	rx, ry, rz := quatToEuler(qx, qy, qz, qw)
+	placeable := blueprintPlaceable{
+		BuildingType: raw.buildingType,
+		X:            lx - cx,
+		Y:            ly - cy,
+		Z:            lz - cz,
+		RX:           rx,
+		RY:           ry,
+		RZ:           rz,
+	}
+	if !strings.Contains(raw.buildingType, "PentashieldSurface") {
+		return placeable, nil, true
+	}
+	scale, ok := extractPentashieldScale(raw.buildingType, raw.properties)
+	if !ok {
+		return blueprintPlaceable{}, nil, false
+	}
+	return placeable, &blueprintPentashield{PlaceableID: placeableID, Scale: scale}, true
+}
+
+func buildBlueprintPlaceables(raws []rawBasePlaceable, cx, cy, cz float64) ([]blueprintPlaceable, []blueprintPentashield) {
+	placeables := make([]blueprintPlaceable, 0, len(raws))
+	pentashields := make([]blueprintPentashield, 0, len(raws))
+	for _, raw := range raws {
+		nextID := len(placeables)
+		placeable, pentashield, ok := convertExportPlaceable(raw, cx, cy, cz, nextID)
+		if !ok {
+			continue
+		}
+		placeables = append(placeables, placeable)
+		if pentashield != nil {
+			pentashields = append(pentashields, *pentashield)
+		}
+	}
+	return placeables, pentashields
+}
+
+func writeExportBaseResponse(
+	w http.ResponseWriter,
+	id int64,
+	instances []blueprintInstance,
+	placeables []blueprintPlaceable,
+	pentashields []blueprintPentashield,
+) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="base_%d.json"`, id))
 	jsonOK(w, blueprintFile{
@@ -242,4 +264,38 @@ func handleExportBase(w http.ResponseWriter, r *http.Request) {
 		Placeables:   placeables,
 		Pentashields: pentashields,
 	})
+}
+
+func handleExportBase(w http.ResponseWriter, r *http.Request) {
+	id, err := parseBasePathID(r.PathValue("id"))
+	if err != nil {
+		jsonErr(w, err, 400)
+		return
+	}
+	if globalDB == nil {
+		jsonErr(w, fmt.Errorf("not connected"), 500)
+		return
+	}
+	ctx := context.Background()
+
+	rawInstances, err := queryBaseExportInstances(ctx, id)
+	if err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
+	if len(rawInstances) == 0 {
+		jsonErr(w, fmt.Errorf("building %d not found or empty", id), 404)
+		return
+	}
+
+	cx, cy, cz := calculateBaseCentroid(rawInstances)
+	instances := buildBlueprintInstances(rawInstances, cx, cy, cz)
+
+	rawPlaceables, err := queryBaseExportPlaceables(ctx, rawInstances[0].ownerEntityID)
+	if err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
+	placeables, pentashields := buildBlueprintPlaceables(rawPlaceables, cx, cy, cz)
+	writeExportBaseResponse(w, id, instances, placeables, pentashields)
 }

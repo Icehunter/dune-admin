@@ -283,6 +283,47 @@ func compactRawSections(result []RawSection) []RawSection {
 	return out
 }
 
+func storeINIEntry(line, cur string, sections map[string]map[string]string, counts map[string]map[string]int) {
+	rest := line
+	prefix := ""
+	if len(line) > 0 && (line[0] == '+' || line[0] == '-') {
+		prefix = string(line[0])
+		rest = line[1:]
+	}
+	eq := strings.Index(rest, "=")
+	if eq <= 0 {
+		return
+	}
+	baseKey := prefix + strings.TrimSpace(rest[:eq])
+	val := strings.TrimSpace(rest[eq+1:])
+	n := counts[cur][baseKey]
+	counts[cur][baseKey] = n + 1
+	storeKey := baseKey
+	if n > 0 {
+		storeKey = fmt.Sprintf("%s\x00%d", baseKey, n)
+	}
+	sections[cur][storeKey] = val
+}
+
+func applyINILine(line, cur string, sections map[string]map[string]string, counts map[string]map[string]int) string {
+	if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+		return cur
+	}
+	if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+		cur = line[1 : len(line)-1]
+		if sections[cur] == nil {
+			sections[cur] = map[string]string{}
+			counts[cur] = map[string]int{}
+		}
+		return cur
+	}
+	if cur == "" {
+		return cur
+	}
+	storeINIEntry(line, cur, sections, counts)
+	return cur
+}
+
 // parseINIRaw parses raw INI lines preserving +/- prefixes as part of the key
 // (e.g. "+ActiveMod=SomeMod" is stored as key "+ActiveMod"). Duplicate keys
 // (common for UE array entries like multiple "+ActiveMod=" lines) are stored
@@ -290,42 +331,10 @@ func compactRawSections(result []RawSection) []RawSection {
 // renderDuneAdminBlock strips the suffix when writing the file.
 func parseINIRaw(content string) map[string]map[string]string {
 	sections := map[string]map[string]string{}
-	counts := map[string]map[string]int{} // section → key → occurrence count
+	counts := map[string]map[string]int{}
 	var cur string
 	for _, raw := range strings.Split(content, "\n") {
-		line := strings.TrimSpace(raw)
-		if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			cur = line[1 : len(line)-1]
-			if sections[cur] == nil {
-				sections[cur] = map[string]string{}
-				counts[cur] = map[string]int{}
-			}
-			continue
-		}
-		if cur == "" {
-			continue
-		}
-		rest := line
-		prefix := ""
-		if len(line) > 0 && (line[0] == '+' || line[0] == '-') {
-			prefix = string(line[0])
-			rest = line[1:]
-		}
-		if eq := strings.Index(rest, "="); eq > 0 {
-			baseKey := prefix + strings.TrimSpace(rest[:eq])
-			val := strings.TrimSpace(rest[eq+1:])
-			n := counts[cur][baseKey]
-			counts[cur][baseKey] = n + 1
-			// First occurrence uses the plain key; subsequent ones get "\x00N" suffix.
-			storeKey := baseKey
-			if n > 0 {
-				storeKey = fmt.Sprintf("%s\x00%d", baseKey, n)
-			}
-			sections[cur][storeKey] = val
-		}
+		cur = applyINILine(strings.TrimSpace(raw), cur, sections, counts)
 	}
 	return sections
 }
@@ -653,27 +662,29 @@ func buildSchemaSettings(layerSources []layerSource) []ServerSetting {
 	return settings
 }
 
+func discoverSectionKeys(section string, keys map[string]string, seenKeys map[string]bool, out *[]discoveredKey) {
+	for key := range keys {
+		if strings.HasPrefix(key, "+") || strings.HasPrefix(key, "-") {
+			continue
+		}
+		composite := section + "|" + key
+		if seenKeys[composite] {
+			continue
+		}
+		seenKeys[composite] = true
+		*out = append(*out, discoveredKey{section: section, key: key})
+	}
+}
+
 func discoverUnknownSettings(layerSources []layerSource, schemaKeys map[string]bool) []discoveredKey {
 	seenKeys := make(map[string]bool, len(schemaKeys))
 	for k := range schemaKeys {
 		seenKeys[k] = true
 	}
-
 	discovered := make([]discoveredKey, 0, 32)
 	for _, src := range layerSources {
 		for section, keys := range src.ini {
-			for key := range keys {
-				// Skip array-prefix lines (+/-); they belong in raw sections.
-				if strings.HasPrefix(key, "+") || strings.HasPrefix(key, "-") {
-					continue
-				}
-				composite := section + "|" + key
-				if seenKeys[composite] {
-					continue
-				}
-				seenKeys[composite] = true
-				discovered = append(discovered, discoveredKey{section: section, key: key})
-			}
+			discoverSectionKeys(section, keys, seenKeys, &discovered)
 		}
 	}
 	sort.Slice(discovered, func(i, j int) bool {
@@ -880,37 +891,43 @@ func renderDuneAdminBlock(managed map[string]map[string]string) string {
 	}
 	sort.Strings(secs)
 	for _, sec := range secs {
-		b.WriteString("\n[" + sec + "]\n")
-		keys := make([]string, 0, len(managed[sec]))
-		for k := range managed[sec] {
-			keys = append(keys, k)
-		}
-		sort.Slice(keys, func(i, j int) bool {
-			baseI, idxI, dupI := managedKeyParts(keys[i])
-			baseJ, idxJ, dupJ := managedKeyParts(keys[j])
-			if baseI != baseJ {
-				return baseI < baseJ
-			}
-			if dupI != dupJ {
-				// The unsuffixed key sorts before duplicates.
-				return !dupI
-			}
-			if dupI && idxI != idxJ {
-				return idxI < idxJ
-			}
-			return keys[i] < keys[j]
-		})
-		for _, k := range keys {
-			// Strip the \x00N dedup suffix before writing — it is internal only.
-			displayKey := k
-			if idx := strings.IndexByte(k, '\x00'); idx >= 0 {
-				displayKey = k[:idx]
-			}
-			b.WriteString(displayKey + "=" + managed[sec][k] + "\n")
-		}
+		renderManagedSection(&b, sec, managed[sec])
 	}
 	b.WriteString("\n" + duneAdminEndMarker + "\n")
 	return b.String()
+}
+
+func sortedManagedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		baseI, idxI, dupI := managedKeyParts(keys[i])
+		baseJ, idxJ, dupJ := managedKeyParts(keys[j])
+		if baseI != baseJ {
+			return baseI < baseJ
+		}
+		if dupI != dupJ {
+			return !dupI
+		}
+		if dupI && idxI != idxJ {
+			return idxI < idxJ
+		}
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
+func renderManagedSection(b *strings.Builder, sec string, m map[string]string) {
+	b.WriteString("\n[" + sec + "]\n")
+	for _, k := range sortedManagedKeys(m) {
+		displayKey := k
+		if idx := strings.IndexByte(k, '\x00'); idx >= 0 {
+			displayKey = k[:idx]
+		}
+		b.WriteString(displayKey + "=" + m[k] + "\n")
+	}
 }
 
 // legacyHeaderSentinel matches the comment block emitted by the brief

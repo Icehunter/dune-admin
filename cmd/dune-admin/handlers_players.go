@@ -266,6 +266,27 @@ func resolveGiveItemsOnlinePath(
 	return true, flsID
 }
 
+func processOneGiveItem(ctx context.Context, playerID int64, item giveItemInput, online bool, flsID string, deps giveItemsDeps) (string, *skippedItem) {
+	if online && item.Quality == 0 {
+		if err := deps.checkCapacity(ctx, playerID, item.Template, item.Qty); err != nil {
+			return "", &skippedItem{Template: item.Template, Reason: err.Error()}
+		}
+		if err := deps.rmqAdd(flsID, item.Template, int(item.Qty), 1.0); err != nil {
+			return "", &skippedItem{Template: item.Template, Reason: err.Error()}
+		}
+		return item.Template, nil
+	}
+	msg, ok := deps.dbGive(playerID, item.Template, item.Qty, item.Quality)
+	if !ok || msg.err != nil {
+		reason := "internal error"
+		if ok && msg.err != nil {
+			reason = msg.err.Error()
+		}
+		return "", &skippedItem{Template: item.Template, Reason: reason}
+	}
+	return item.Template, nil
+}
+
 func processGiveItems(
 	ctx context.Context,
 	req giveItemsRequest,
@@ -276,28 +297,12 @@ func processGiveItems(
 	given := make([]string, 0, len(req.Items))
 	skipped := make([]skippedItem, 0)
 	for _, item := range req.Items {
-		if online && item.Quality == 0 {
-			if err := deps.checkCapacity(ctx, req.PlayerID, item.Template, item.Qty); err != nil {
-				skipped = append(skipped, skippedItem{Template: item.Template, Reason: err.Error()})
-				continue
-			}
-			if err := deps.rmqAdd(flsID, item.Template, int(item.Qty), 1.0); err != nil {
-				skipped = append(skipped, skippedItem{Template: item.Template, Reason: err.Error()})
-				continue
-			}
-			given = append(given, item.Template)
+		g, s := processOneGiveItem(ctx, req.PlayerID, item, online, flsID, deps)
+		if s != nil {
+			skipped = append(skipped, *s)
 			continue
 		}
-		msg, ok := deps.dbGive(req.PlayerID, item.Template, item.Qty, item.Quality)
-		if !ok || msg.err != nil {
-			reason := "internal error"
-			if ok && msg.err != nil {
-				reason = msg.err.Error()
-			}
-			skipped = append(skipped, skippedItem{Template: item.Template, Reason: reason})
-			continue
-		}
-		given = append(given, item.Template)
+		given = append(given, g)
 	}
 	return given, skipped
 }

@@ -42,10 +42,31 @@ dev-web:
 
 dev:
 	@set -e; \
-	trap 'kill $$AIR_PID $$VITE_PID 2>/dev/null || true' EXIT INT TERM; \
+	AIR_PID=; VITE_PID=; \
+	cleanup() { \
+		trap - EXIT INT TERM; \
+		[ -n "$$AIR_PID" ] && kill $$AIR_PID 2>/dev/null || true; \
+		[ -n "$$VITE_PID" ] && kill $$VITE_PID 2>/dev/null || true; \
+		[ -n "$$AIR_PID" ] && wait $$AIR_PID 2>/dev/null || true; \
+		[ -n "$$VITE_PID" ] && wait $$VITE_PID 2>/dev/null || true; \
+	}; \
+	trap 'cleanup' EXIT INT TERM; \
 	$(MAKE) dev-backend & AIR_PID=$$!; \
 	$(MAKE) dev-web & VITE_PID=$$!; \
-	wait $$AIR_PID $$VITE_PID
+	set +e; \
+	while kill -0 $$AIR_PID 2>/dev/null && kill -0 $$VITE_PID 2>/dev/null; do \
+		sleep 1; \
+	done; \
+	if ! kill -0 $$AIR_PID 2>/dev/null; then \
+		wait $$AIR_PID; status=$$?; \
+		kill $$VITE_PID 2>/dev/null || true; \
+		wait $$VITE_PID 2>/dev/null || true; \
+	else \
+		wait $$VITE_PID; status=$$?; \
+		kill $$AIR_PID 2>/dev/null || true; \
+		wait $$AIR_PID 2>/dev/null || true; \
+	fi; \
+	exit $$status
 
 setup:
 	go run $(CMD) -setup

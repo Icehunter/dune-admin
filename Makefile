@@ -33,7 +33,7 @@ install: go
 	install -m 0755 $(BIN) $(DESTDIR)$(PREFIX)/bin/dune-admin
 
 linux:
-	GOOS=linux GOARCH=amd64 go build -o dune-admin-linux $(CMD)
+	GOOS=linux GOARCH=amd64 $(GO) build -trimpath $(LDFLAGS) -o dune-admin-linux $(CMD)
 
 dev-server:
 	go run $(CMD)

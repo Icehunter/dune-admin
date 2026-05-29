@@ -111,7 +111,10 @@ func (c *localControl) brokerBase() string {
 	return "rabbitmqctl"
 }
 
-func (c *localControl) EvalOnGameBroker(_ context.Context, exec Executor, expr string) (string, error) {
+func (c *localControl) EvalOnGameBroker(ctx context.Context, exec Executor, expr string) (string, error) {
+	if c.kubectlEnabled(exec) {
+		return c.kubectlDelegate().EvalOnGameBroker(ctx, exec, expr)
+	}
 	out, err := exec.Exec(fmt.Sprintf("%s eval %s 2>&1", c.brokerBase(), shellQuote(expr)))
 	if err != nil {
 		return "", fmt.Errorf("rabbitmqctl eval: %w (output: %s)", err, strings.TrimSpace(out))

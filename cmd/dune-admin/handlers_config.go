@@ -8,11 +8,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// handleGetConfig returns the current config with the DB password masked.
+const masked = "••••••••"
+
+// handleGetConfig returns the current config with all secret fields masked.
 func handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	data, err := os.ReadFile(configPath())
 	if err != nil {
-		// No config file yet — return defaults derived from current globals.
 		jsonOK(w, buildCurrentConfig())
 		return
 	}
@@ -21,31 +22,63 @@ func handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("parse config: %w", err), 500)
 		return
 	}
-	if cfg.DBPass != "" {
-		cfg.DBPass = "••••••••"
-	}
+	maskSecrets(&cfg)
 	jsonOK(w, cfg)
 }
 
-// handleSaveConfig writes an updated config, then reconnects.
-func preserveMaskedDBPass(
+// maskSecrets replaces all secret fields with the display placeholder.
+func maskSecrets(cfg *appConfig) {
+	if cfg.DBPass != "" {
+		cfg.DBPass = masked
+	}
+	if cfg.BrokerPass != "" {
+		cfg.BrokerPass = masked
+	}
+	if cfg.BrokerJWTSecret != "" {
+		cfg.BrokerJWTSecret = masked
+	}
+	if cfg.MarketBotRemoteToken != "" {
+		cfg.MarketBotRemoteToken = masked
+	}
+}
+
+// preserveMaskedSecrets restores real secret values when the client sent back
+// the display placeholder. Falls back to loadedConfig when the file is
+// unreadable so in-memory secrets survive a mid-session config file move.
+func preserveMaskedSecrets(
 	cfg *appConfig,
 	readFile func(string) ([]byte, error),
 	path string,
-	fallback string,
 ) {
-	if cfg.DBPass != "••••••••" {
+	needsRestore := cfg.DBPass == masked ||
+		cfg.BrokerPass == masked ||
+		cfg.BrokerJWTSecret == masked ||
+		cfg.MarketBotRemoteToken == masked
+
+	if !needsRestore {
 		return
 	}
-	existing, err := readFile(path)
-	if err == nil {
-		var old appConfig
-		if yaml.Unmarshal(existing, &old) == nil && old.DBPass != "" {
-			cfg.DBPass = old.DBPass
-		}
+
+	old := loadedConfig
+	if data, err := readFile(path); err == nil {
+		_ = yaml.Unmarshal(data, &old)
 	}
-	if cfg.DBPass == "••••••••" {
-		cfg.DBPass = fallback
+	// dbPass global may differ from loadedConfig when set from env var
+	if old.DBPass == "" {
+		old.DBPass = dbPass
+	}
+
+	if cfg.DBPass == masked {
+		cfg.DBPass = old.DBPass
+	}
+	if cfg.BrokerPass == masked {
+		cfg.BrokerPass = old.BrokerPass
+	}
+	if cfg.BrokerJWTSecret == masked {
+		cfg.BrokerJWTSecret = old.BrokerJWTSecret
+	}
+	if cfg.MarketBotRemoteToken == masked {
+		cfg.MarketBotRemoteToken = old.MarketBotRemoteToken
 	}
 }
 
@@ -83,15 +116,13 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If the client sent back the masked placeholder, keep the existing password.
-	preserveMaskedDBPass(&cfg, os.ReadFile, configPath(), dbPass)
+	preserveMaskedSecrets(&cfg, os.ReadFile, configPath())
 
 	if err := writeConfigFile(cfg); err != nil {
 		jsonErr(w, err, 500)
 		return
 	}
 
-	// Apply the new values to globals so connectAll picks them up.
 	applyConfig(cfg)
 	resetRuntimeConnections()
 
@@ -111,7 +142,7 @@ func buildCurrentConfig() appConfig {
 		DBHost:           dbHost,
 		DBPort:           dbPort,
 		DBUser:           dbUser,
-		DBPass:           "••••••••",
+		DBPass:           masked,
 		DBName:           dbName,
 		DBSchema:         dbSchema,
 		Control:          controlPlane,

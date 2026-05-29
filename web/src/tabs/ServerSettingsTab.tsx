@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
-import { Button, ListBox, Select, Spinner, toast } from '@heroui/react'
+import { Button, ListBox, SearchField, Select, Spinner, toast } from '@heroui/react'
 import { api } from '../api/client'
 import type { ServerSetting, ServerSettingUpdate, RawSection } from '../api/client'
 import { PageHeader, Panel, SectionLabel, Icon } from '../dune-ui'
@@ -92,6 +92,30 @@ function shortSection(section: string) {
   // "/Script/DuneSandbox.BuildingSettings" → "BuildingSettings"
   const dot = section.lastIndexOf('.')
   return dot >= 0 ? section.slice(dot + 1) : section
+}
+
+// matchesSetting returns true when the lower-cased query appears in any of the
+// fields an admin would reasonably search by. Empty query matches everything.
+function matchesSetting(item: ServerSetting, q: string): boolean {
+  if (!q) return true
+  return (
+    item.label.toLowerCase().includes(q) ||
+    item.description.toLowerCase().includes(q) ||
+    item.key.toLowerCase().includes(q) ||
+    item.category.toLowerCase().includes(q) ||
+    shortSection(item.section).toLowerCase().includes(q)
+  )
+}
+
+// matchesRawSection matches on the INI section name or any contained key/value.
+function matchesRawSection(sections: RawSection[], q: string): boolean {
+  if (!q) return true
+  if (shortSection(sections[0].section).toLowerCase().includes(q)) return true
+  return sections.some(sec =>
+    sec.lines.some(l =>
+      l.key.toLowerCase().includes(q) || l.value.toLowerCase().includes(q),
+    ),
+  )
 }
 
 function SettingRow({
@@ -389,6 +413,7 @@ export default function ServerSettingsTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState<string | null>(null)
+  const [search, setSearch]   = useState('')
   const [showAll, setShowAll] = useState(() =>
     localStorage.getItem('serverSettings.showAll') === 'true'
   )
@@ -477,12 +502,20 @@ export default function ServerSettingsTab() {
     ? items
     : items.filter(item => item.layers.some(l => USER_SOURCES.has(l.source)))
 
+  const q = search.trim().toLowerCase()
+  const searching = q.length > 0
+
   // Partition into "common" (curated top-of-page list) vs "everything else"
   // (the categorised grid below). When the showAll toggle is off and a
   // common key has no user override, it's still surfaced — common settings
-  // are interesting even before they've been touched.
-  const commonItems = items.filter(item => COMMON_KEYS.has(`${item.section}|${item.key}`))
-  const advancedItems = visibleItems.filter(item => !COMMON_KEYS.has(`${item.section}|${item.key}`))
+  // are interesting even before they've been touched. An active search query
+  // filters all three groups (common / category / raw) down to matches.
+  const commonItems = items
+    .filter(item => COMMON_KEYS.has(`${item.section}|${item.key}`))
+    .filter(item => matchesSetting(item, q))
+  const advancedItems = visibleItems
+    .filter(item => !COMMON_KEYS.has(`${item.section}|${item.key}`))
+    .filter(item => matchesSetting(item, q))
   const categories = groupByCategory(advancedItems)
 
   const toggleCategory = (cat: string) => {
@@ -508,16 +541,33 @@ export default function ServerSettingsTab() {
   }
 
   // In "user settings" mode, hide raw panels whose entries are only from default files.
-  const visibleRawSections = showAll
+  // An active search query further narrows to sections matching the query.
+  const visibleRawSections = (showAll
     ? [...rawBySection.values()]
     : [...rawBySection.values()].filter(secs =>
         secs.some(s => USER_SOURCES.has(s.source))
       )
+  ).filter(secs => matchesRawSection(secs, q))
+
+  const hasResults =
+    commonItems.length > 0 || categories.length > 0 || visibleRawSections.length > 0
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
       <PageHeader title="Server Settings">
         <div className="flex items-center gap-2">
+          <SearchField
+            aria-label="Search settings"
+            className="w-56"
+            value={search}
+            onChange={setSearch}
+          >
+            <SearchField.Group>
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder="Search settings…" />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
           <Button size="sm" variant="ghost" onPress={load} isDisabled={loading || saving}>
             <Icon name="refresh-cw" />
           </Button>
@@ -544,6 +594,12 @@ export default function ServerSettingsTab() {
       </p>
 
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 pb-6 pr-1">
+
+        {searching && !hasResults && (
+          <div className="text-sm text-muted py-8 text-center">
+            No settings match “{search.trim()}”.
+          </div>
+        )}
 
         {/* Common Settings — curated subset, always visible at top */}
         {commonItems.length > 0 && (
@@ -578,7 +634,7 @@ export default function ServerSettingsTab() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-2">
               {categories.map(([cat, catItems]) => {
-                const isOpen = expandedCategory === cat
+                const isOpen = searching || expandedCategory === cat
                 const overrideCount = catItems.filter(i =>
                   i.layers.some(l => USER_SOURCES.has(l.source))
                 ).length
@@ -614,14 +670,16 @@ export default function ServerSettingsTab() {
                       <Panel className="col-span-full mt-1 mb-1">
                         <div className="flex items-center justify-between mb-2">
                           <SectionLabel>{cat}</SectionLabel>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onPress={() => toggleCategory(cat)}
-                            aria-label="Collapse category"
-                          >
-                            <Icon name="x" className="w-3.5 h-3.5" />
-                          </Button>
+                          {!searching && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onPress={() => toggleCategory(cat)}
+                              aria-label="Collapse category"
+                            >
+                              <Icon name="x" className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </div>
                         <div>
                           {catItems.map(item => (

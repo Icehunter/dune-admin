@@ -115,30 +115,66 @@ export type ServerSettingsResponse = {
   raw: RawSection[]
 }
 
+export const MASKED = '••••••••'
+
 export type AppConfig = {
+  // Control plane
   control: string
+  // SSH
   ssh_host: string
   ssh_user: string
   ssh_key: string
+  // Database
   db_host: string
   db_port: number
   db_user: string
-  db_pass: string
+  db_pass: string        // masked when non-empty
   db_name: string
   db_schema: string
+  // kubectl
   control_namespace: string
+  // docker
   docker_gameserver: string
   docker_broker_game: string
   docker_broker_admin: string
+  docker_db: string
+  // local shell commands
   cmd_start: string
   cmd_stop: string
   cmd_restart: string
   cmd_status: string
+  // Broker
   broker_game_addr: string
   broker_admin_addr: string
   broker_tls: boolean
+  broker_user: string
+  broker_pass: string        // masked when non-empty
+  broker_jwt_secret: string  // masked when non-empty
   broker_exec_prefix: string
+  // Server paths
   backup_dir: string
+  server_ini_dir: string
+  default_ini_dir: string
+  // AMP
+  amp_instance: string
+  amp_container: string
+  amp_user: string
+  amp_log_path: string
+  amp_use_container: boolean
+  amp_data_root: string
+  director_url: string
+  // Market bot
+  market_bot_enabled: boolean
+  market_bot_cache_db: string
+  market_bot_item_data: string
+  market_bot_state: string
+  market_bot_buy_interval: string   // duration string e.g. "5m0s"
+  market_bot_list_interval: string
+  market_bot_buy_threshold: number
+  market_bot_max_buys: number
+  market_bot_remote_url: string
+  market_bot_remote_token: string   // masked when non-empty
+  // Advanced
   listen_addr: string
   scrip_currency: number
 }

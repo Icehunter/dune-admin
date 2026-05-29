@@ -1699,6 +1699,12 @@ func cmdCompleteJourneyNode(accountID int64, nodeID string) Cmd {
 			return msgMutate{err: err}
 		}
 
+		svExtra, svErr := maybeGrantSpiceVision(ctx, accountID, nodeID)
+		if svErr != nil {
+			return msgMutate{err: svErr}
+		}
+		extra += svExtra
+
 		return msgMutate{ok: fmt.Sprintf("Completed %s + %d node(s)%s — takes effect on next login", nodeID, updated, extra)}
 	}
 }
@@ -2327,6 +2333,68 @@ func grantSkillBlocks(ctx context.Context, accountID int64, skillKeys []string) 
 		return ", no skill blocks needed (all already unlocked)", nil
 	}
 	return fmt.Sprintf(", unlocked %d skill block(s)", granted), nil
+}
+
+// spiceVisionEnableSQL sets FSpiceAddictionComponent.SpiceVisionEnabledStatus
+// to "FullyEnabled" on the player's DuneCharacter FGL entity. This is the
+// persistent flag the game reads to determine whether the player has unlocked
+// the Prescience state (3rd ability slot + spice-vision buff). In-game it is
+// written by the 4th Trial of Aql quest script, not by a journey tag — hence
+// it must be applied explicitly when admin-completing FindTheFremen.
+const spiceVisionEnableSQL = `
+	UPDATE dune.fgl_entities fe
+	SET components = jsonb_set(
+		fe.components,
+		ARRAY['FSpiceAddictionComponent','1','SpiceVisionEnabledStatus'],
+		'"FullyEnabled"'::jsonb,
+		true)
+	WHERE fe.entity_id = (
+		SELECT entity_id FROM dune.actor_fgl_entities
+		WHERE actor_id = $1 AND slot_name = 'DuneCharacter'
+	)
+	AND COALESCE(
+		fe.components->'FSpiceAddictionComponent'->1->>'SpiceVisionEnabledStatus',
+		''
+	) <> 'FullyEnabled'`
+
+// maybeGrantSpiceVision conditionally enables SpiceVision for the account
+// when nodeID is within the FindTheFremen quest. It is a thin wrapper so
+// cmdCompleteJourneyNode stays under the complexity gate.
+func maybeGrantSpiceVision(ctx context.Context, accountID int64, nodeID string) (string, error) {
+	if !nodeIDTriggersSpiceVision(nodeID) {
+		return "", nil
+	}
+	var pawnID int64
+	_ = globalDB.QueryRow(ctx,
+		`SELECT player_pawn_id FROM dune.player_state WHERE account_id = $1 LIMIT 1`,
+		accountID).Scan(&pawnID)
+	return grantSpiceVision(ctx, pawnID)
+}
+
+// nodeIDTriggersSpiceVision reports whether completing nodeID should also
+// enable SpiceVision (Prescience). Only DA_MQ_FindTheFremen and its subtree
+// warrant this — it is the quest that contains the 4th Trial of Aql.
+func nodeIDTriggersSpiceVision(nodeID string) bool {
+	const root = "DA_MQ_FindTheFremen"
+	return nodeID == root || len(nodeID) > len(root) && nodeID[:len(root)+1] == root+"."
+}
+
+// grantSpiceVision enables the Prescience / SpiceVision state on the player's
+// DuneCharacter FGL entity. It is idempotent — a no-op if already enabled.
+// Returns a short extra fragment for the caller's success message, or "" if
+// the pawn was not found or the flag was already set.
+func grantSpiceVision(ctx context.Context, pawnID int64) (string, error) {
+	if pawnID == 0 {
+		return ", spice vision skipped (no pawn yet)", nil
+	}
+	res, err := globalDB.Exec(ctx, spiceVisionEnableSQL, pawnID)
+	if err != nil {
+		return "", fmt.Errorf("grant spice vision: %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return "", nil
+	}
+	return ", enabled Prescience (SpiceVision)", nil
 }
 
 // allJourneyTags returns the union of every tag any journey node would emit

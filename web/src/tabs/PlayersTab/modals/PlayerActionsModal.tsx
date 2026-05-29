@@ -44,6 +44,25 @@ function useDebounce<T>(value: T, delay = 300): T {
   return debounced
 }
 
+function DebouncedSearchField({ onSearch, placeholder, className }: {
+  onSearch: (q: string) => void
+  placeholder?: string
+  className?: string
+}) {
+  const [value, setValue] = useState('')
+  const debounced = useDebounce(value)
+  useEffect(() => { onSearch(debounced) }, [debounced, onSearch])
+  return (
+    <SearchField aria-label="Search" className={className} value={value} onChange={setValue}>
+      <SearchField.Group>
+        <SearchField.SearchIcon />
+        <SearchField.Input placeholder={placeholder} />
+        <SearchField.ClearButton />
+      </SearchField.Group>
+    </SearchField>
+  )
+}
+
 export function PlayerActionsModal({ player, open, onClose }: Props) {
   const [section, setSection] = useState<ActionSection>('resources')
   const [busy, setBusy] = useState(false)
@@ -72,7 +91,6 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
   const [nodesLoaded, setNodesLoaded] = useState(false)
   const [nodesLoading, setNodesLoading] = useState(false)
   const [nodeSearch, setNodeSearch] = useState('')
-  const debouncedNodeSearch = useDebounce(nodeSearch)
   const [unlockFaction, setUnlockFaction] = useState('atreides')
   const [unlockPreset, setUnlockPreset] = useState('ch3_start')
 
@@ -174,7 +192,7 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
         .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
         .finally(() => setNodesLoading(false))
     }
-    if (section === 'progression' && !contractCatalogLoaded && open) {
+    if ((section === 'progression' || section === 'contracts') && !contractCatalogLoaded && open) {
       api.contracts.list()
         .then(c => { setContractCatalog(c); setContractCatalogLoaded(true); setContractCatalogError('') })
         .catch((e: unknown) => { setContractCatalogError(e instanceof Error ? e.message : String(e)); setContractCatalogLoaded(true) })
@@ -241,10 +259,10 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
   }
 
   const filteredNodes = useMemo(() => {
-    if (!debouncedNodeSearch) return nodes
-    const q = debouncedNodeSearch.toLowerCase()
+    if (!nodeSearch) return nodes
+    const q = nodeSearch.toLowerCase()
     return nodes.filter(n => n.node_id.toLowerCase().includes(q))
-  }, [nodes, debouncedNodeSearch])
+  }, [nodes, nodeSearch])
 
   const numInput = (val: number, set: (v: number) => void, min = 1, max = 9999999) => (
     <Input
@@ -699,8 +717,12 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                         </div>
                       </Panel>
                     </div>
+                  </div>
+                  )
+                })()}
 
-                    {/* Complete Contract(s) — fills remaining space, owns its scroll */}
+                {section === 'contracts' && (
+                  <div className="flex flex-col gap-3 flex-1 min-h-0 pr-1">
                     <Panel className="flex-1 min-h-0">
                       <div className="flex items-baseline gap-2">
                         <SectionLabel>Complete Contract(s)</SectionLabel>
@@ -734,13 +756,18 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                       )}
 
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Input
+                        <SearchField
                           aria-label="Filter contracts"
                           className="flex-1 min-w-48"
-                          placeholder="Filter contracts (e.g. Trainer_Mentat, Atre_Rank01)..."
                           value={contractSearch}
-                          onChange={e => setContractSearch(e.target.value)}
-                        />
+                          onChange={setContractSearch}
+                        >
+                          <SearchField.Group>
+                            <SearchField.SearchIcon />
+                            <SearchField.Input placeholder="Filter contracts (e.g. Trainer_Mentat, Atre_Rank01)..." />
+                            <SearchField.ClearButton />
+                          </SearchField.Group>
+                        </SearchField>
                         <Button size="sm" variant="secondary" isDisabled={busy || selectedContracts.length === 0}
                           onPress={() => run(
                             () => api.players.completeContracts(player.account_id, selectedContracts),
@@ -792,8 +819,7 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                       )}
                     </Panel>
                   </div>
-                  )
-                })()}
+                )}
 
                 {section === 'journey' && (
                   <div className="flex flex-col gap-3 flex-1 min-h-0 pr-1">
@@ -814,12 +840,10 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                           Wipe All
                         </Button>
                       </div>
-                      <Input
-                        aria-label="Filter journey nodes"
+                      <DebouncedSearchField
                         className="shrink-0"
                         placeholder="Filter nodes..."
-                        value={nodeSearch}
-                        onChange={e => setNodeSearch(e.target.value)}
+                        onSearch={setNodeSearch}
                       />
                     {nodesLoading ? (
                       <div className="flex justify-center py-8"><Spinner size="lg" /></div>

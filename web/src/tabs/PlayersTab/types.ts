@@ -1,7 +1,7 @@
 export type Sidebar = 'players' | 'currency' | 'factions' | 'specs' | 'online'
 
 export type ActionSection =
-  | 'resources' | 'specs' | 'progression' | 'journey' | 'admin' | 'tags' | 'history' | 'experimental'
+  | 'resources' | 'specs' | 'progression' | 'contracts' | 'journey' | 'admin' | 'tags' | 'history' | 'experimental'
 
 export type PlayerSortKey = 'id' | 'name' | 'class' | 'map' | 'faction_id'
 
@@ -26,6 +26,7 @@ export const ACTION_SECTIONS: { key: ActionSection; label: string }[] = [
   { key: 'resources',    label: 'Stats' },
   { key: 'specs',        label: 'Specs' },
   { key: 'progression',  label: 'Progression' },
+  { key: 'contracts',    label: 'Contracts' },
   { key: 'journey',      label: 'Journey' },
   { key: 'admin',        label: 'Admin' },
   { key: 'tags',         label: 'Tags' },

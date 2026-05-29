@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Show, SignInButton, UserButton, useAuth } from "@clerk/react";
-import { Button, Chip, InputGroup, TextField, Toast, Tabs } from "@heroui/react";
+import { Button, Chip, InputGroup, Modal, TextField, Toast, Tabs } from "@heroui/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useStatus } from "./hooks/useStatus";
 import BattlegroupTab from "./tabs/BattlegroupTab";
@@ -151,68 +151,111 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
         </div>
       </header>
 
-      {/* Backend config drawer */}
-      {showBackendConfig && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowBackendConfig(false);
-          }}
-        >
-          <div className="absolute top-[52px] right-4 w-[360px] bg-background border border-border rounded-lg p-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-accent">Backend URL</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                isIconOnly
-                aria-label="Close"
-                onPress={() => setShowBackendConfig(false)}
-              >
-                <Icon name="x" />
-              </Button>
-            </div>
+      {/* Settings modal */}
+      <Modal>
+        <Modal.Backdrop isOpen={showBackendConfig} onOpenChange={(v) => !v && setShowBackendConfig(false)}>
+          <Modal.Container size="sm" scroll="outside">
+            <Modal.Dialog>
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading className="text-accent">Settings</Modal.Heading>
+              </Modal.Header>
 
-            <p className="text-xs text-muted">
-              Current:{" "}
-              <span className="font-mono text-foreground">
-                {localStorage.getItem("dune_admin_backend") || "http://localhost:8080"}
-              </span>
-            </p>
+              <Modal.Body className="flex flex-col gap-4">
+                {/* About */}
+                {status && (
+                  <>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs font-medium text-muted uppercase tracking-wider">About</span>
+                      <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+                        {status.version && (
+                          <>
+                            <span className="text-muted">Version</span>
+                            <span className="font-mono text-foreground">v{status.version}</span>
+                          </>
+                        )}
+                        {status.commit && status.commit !== "unknown" && (
+                          <>
+                            <span className="text-muted">Commit</span>
+                            <span className="font-mono text-foreground">{status.commit}</span>
+                          </>
+                        )}
+                        {status.control && status.control !== "none" && (
+                          <>
+                            <span className="text-muted">Control</span>
+                            <span className="font-mono text-foreground">{status.control}</span>
+                          </>
+                        )}
+                        {status.build_time && status.build_time !== "unknown" && (
+                          <>
+                            <span className="text-muted">Built</span>
+                            <span className="font-mono text-foreground">
+                              {new Date(status.build_time).toLocaleString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="border-t border-border" />
+                  </>
+                )}
 
-            <TextField aria-label="Backend URL override">
-              <InputGroup className="w-full">
-                <InputGroup.Prefix>URL</InputGroup.Prefix>
-                <InputGroup.Input
-                  value={backendUrl}
-                  onChange={(e) => setBackendUrl(e.target.value)}
-                  placeholder="http://host:port"
-                  className="font-mono"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveAndReload();
+                {/* Backend URL override */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted uppercase tracking-wider">Backend URL Override</span>
+                    <p className="text-xs text-muted">
+                      Only needed when the UI is served from a different host than the backend
+                      (e.g. SSH tunnel or CDN deploy). Leave blank for the default single-binary setup.
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-muted">
+                    Current:{" "}
+                    <span className="font-mono text-foreground">
+                      {localStorage.getItem("dune_admin_backend") || "http://localhost:8080"}
+                    </span>
+                  </p>
+
+                  <TextField aria-label="Backend URL override">
+                    <InputGroup className="w-full">
+                      <InputGroup.Prefix>URL</InputGroup.Prefix>
+                      <InputGroup.Input
+                        value={backendUrl}
+                        onChange={(e) => setBackendUrl(e.target.value)}
+                        placeholder="http://host:port"
+                        className="font-mono"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveAndReload();
+                        }}
+                      />
+                    </InputGroup>
+                  </TextField>
+                </div>
+              </Modal.Body>
+
+              <Modal.Footer>
+                <Button size="sm" variant="outline" onPress={() => setShowBackendConfig(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onPress={() => {
+                    localStorage.removeItem("dune_admin_backend");
+                    window.location.reload();
                   }}
-                />
-              </InputGroup>
-            </TextField>
-
-            <div className="flex gap-2">
-              <Button size="sm" className="flex-1" onPress={saveAndReload}>
-                Save &amp; Reload
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onPress={() => {
-                  localStorage.removeItem("dune_admin_backend");
-                  window.location.reload();
-                }}
-              >
-                Reset
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+                >
+                  Reset URL
+                </Button>
+                <Button size="sm" onPress={saveAndReload}>
+                  Save &amp; Reload
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
 
       {/* Tabs */}
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">

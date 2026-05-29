@@ -43,6 +43,7 @@ docs/*
 !docs/amp-direct-connect/
 !docs/adr/
 !docs/plans/
+!docs/superpowers/
 
 # Local dev/testing artifacts
 local/

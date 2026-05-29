@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -233,10 +234,29 @@ func loadConfig() {
 			setEnvIfMissing("BROKER_JWT_SECRET", cfg.BrokerJWTSecret)
 			setEnvIfMissing("BACKUP_DIR", cfg.BackupDir)
 			setEnvIfMissing("SERVER_INI_DIR", cfg.ServerIniDir)
+			detectStaleEnvFile(".")
 			return
 		}
 	}
 	loadDotEnv()
+}
+
+// detectStaleEnvFile warns when a .env file exists in workDir alongside a
+// successfully-loaded config.yaml. A stale .env is ignored by dune-admin, but
+// values pre-exported into the process environment before startup (e.g. via a
+// shell that sourced the old file) can shadow config.yaml and silently break
+// features like market-bot control. Returns true when the file is detected.
+func detectStaleEnvFile(workDir string) bool {
+	if _, err := os.Stat(filepath.Join(workDir, ".env")); err != nil {
+		return false
+	}
+	log.Printf("[WARN] stale .env file found in %s", workDir)
+	log.Printf("[WARN] dune-admin is using %s — .env is ignored.", configPath())
+	log.Printf("[WARN] However, env vars pre-exported from .env before startup can")
+	log.Printf("[WARN] shadow config.yaml and silently break features (e.g. market-bot")
+	log.Printf("[WARN] control). Delete or rename .env and restart to be sure:")
+	log.Printf("[WARN]   mv %s %s.bak", filepath.Join(workDir, ".env"), filepath.Join(workDir, ".env"))
+	return true
 }
 
 func loadDotEnv() {

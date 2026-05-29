@@ -202,6 +202,13 @@ Then run the setup wizard:
 
 Prerequisites: Go 1.26+, Node 20.19+ or 22.12+, pnpm 10.28+, `make`.
 
+> **Windows note:** `make build` works from PowerShell or `cmd.exe` as long as
+> [GNU Make](https://gnuwin32.sourceforge.net/packages/make.htm) is installed (e.g.
+> `winget install GnuWin32.Make` or `choco install make`). The binary is named
+> `dune-admin.exe`. For `make dev`, `make verify`, and the `make version-*` targets,
+> run from a **Git Bash** shell (right-click the folder → "Git Bash Here") — those
+> recipes use POSIX shell features that cmd.exe can't run.
+
 ---
 
 ## Development

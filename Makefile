@@ -6,12 +6,22 @@
         version version-patch version-minor version-major
 
 # ── Build ─────────────────────────────────────────────────────────────────────
-BIN    := bin/dune-admin
 CMD    := ./cmd/dune-admin
 PKG    := ./...
 GO     := go
 PREFIX ?= /usr/local
 COGNIT_TARGET := $(if $(wildcard cmd/dune-admin),./cmd/dune-admin,.)
+
+# Windows produces .exe binaries. On Windows, bare `make` runs recipes under
+# cmd.exe, which lacks POSIX `mkdir -p` and `install` — so the `go` target
+# branches on OS below.
+ifeq ($(OS),Windows_NT)
+BIN       := bin/dune-admin.exe
+LOCAL_BIN := dune-admin.exe
+else
+BIN       := bin/dune-admin
+LOCAL_BIN := dune-admin
+endif
 
 VERSION    ?= $(shell cat VERSION 2>/dev/null || git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -23,9 +33,15 @@ build: web go
 
 # Build backend binary only.
 go:
+ifeq ($(OS),Windows_NT)
+	@if not exist bin mkdir bin
+	$(GO) build -trimpath $(LDFLAGS) -o $(BIN) $(CMD)
+	@copy /Y "bin\dune-admin.exe" "$(LOCAL_BIN)" >NUL
+else
 	@mkdir -p bin
 	$(GO) build -trimpath $(LDFLAGS) -o $(BIN) $(CMD)
-	install -m 0755 $(BIN) ./dune-admin
+	install -m 0755 $(BIN) ./$(LOCAL_BIN)
+endif
 
 # Install the binary system-wide.
 install: go

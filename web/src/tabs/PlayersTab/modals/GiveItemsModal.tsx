@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   Button, Header, Input, InputGroup, ListBox, Modal,
-  Select, Separator, Spinner, TextField, toast,
+  SearchField, Select, Separator, Spinner, TextField, toast,
 } from '@heroui/react'
 import { api } from '../../../api/client'
 import type { Player } from '../../../api/client'
@@ -144,15 +144,17 @@ export function GiveItemsModal({ player, open, onClose }: Props) {
                   <div className="flex items-center gap-3">
                     <TextField className="flex-1 min-w-0" aria-label="Template">
                       <div className="relative w-full">
-                        <InputGroup className="w-full">
-                          <InputGroup.Prefix>Template</InputGroup.Prefix>
-                          <InputGroup.Input
-                            className="flex-1 w-full"
-                            placeholder="Search templates..."
-                            value={query}
-                            onChange={e => { setQuery(e.target.value); setSelected('') }}
-                          />
-                        </InputGroup>
+                        <SearchField
+                          className="w-full"
+                          value={query}
+                          onChange={v => { setQuery(v); setSelected('') }}
+                        >
+                          <SearchField.Group>
+                            <SearchField.SearchIcon />
+                            <SearchField.Input placeholder="Search templates..." />
+                            <SearchField.ClearButton />
+                          </SearchField.Group>
+                        </SearchField>
                         {filtered.length > 0 && (
                           <div className="absolute z-50 w-full mt-1 rounded-[var(--radius)] border border-border bg-surface overflow-y-auto max-h-52">
                             {filtered.map(t => (

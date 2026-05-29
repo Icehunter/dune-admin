@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import {
-  Button, Chip, Input, ListBox, ListLayout, Modal, Select,
+  Button, Chip, Input, ListBox, ListLayout, Modal, SearchField, Select,
   Spinner, Virtualizer, toast,
 } from '@heroui/react'
 import { ConfirmDialog, DataTable, Panel, SectionLabel } from '../../../dune-ui'
@@ -1064,13 +1064,17 @@ export function PlayerActionsModal({ player, open, onClose }: Props) {
                         Drop {player.name} exactly on another character's current position. Live (TeleportToExact via RMQ) when {player.name} is online; written to DB at the target's partition if offline.
                       </div>
                       <div className="flex flex-col gap-2">
-                        <input
-                          type="text"
+                        <SearchField
                           value={targetSearch}
-                          onChange={e => setTargetSearch(e.target.value)}
-                          placeholder="Search by name…"
-                          className="w-full bg-surface border border-border rounded px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent/60"
-                        />
+                          onChange={setTargetSearch}
+                          className="w-full"
+                        >
+                          <SearchField.Group>
+                            <SearchField.SearchIcon />
+                            <SearchField.Input placeholder="Search by name…" aria-label="Search players" />
+                            <SearchField.ClearButton />
+                          </SearchField.Group>
+                        </SearchField>
                         <div className="flex items-end gap-3">
                           <Select
                             aria-label="Target player"

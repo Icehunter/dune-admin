@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Button, Spinner, toast } from '@heroui/react'
+import { Button, SearchField, Spinner, toast } from '@heroui/react'
 import { api } from '../../../api/client'
 import type { BotConfig, CatalogItem } from '../../../api/client'
 import { DataTable, type Column, Icon } from '../../../dune-ui'
@@ -76,12 +76,18 @@ export default function DisabledItemsManager({ config, onSaved }: Props) {
       <div className="flex gap-2 items-end">
         <div className="flex flex-col gap-0.5 flex-1">
           <label className="text-xs text-muted">Search items to disable</label>
-          <input
-            className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
-            placeholder="Search by name or template ID…"
+          <SearchField
+            aria-label="Search disabled items"
             value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+            onChange={setSearch}
+            className="w-full"
+          >
+            <SearchField.Group>
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder="Search by name or template ID…" />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
         </div>
         {saving && <Spinner size="sm" color="current" className="mb-2" />}
       </div>

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Button, Input, Spinner } from '@heroui/react'
+import { Button, SearchField, Spinner } from '@heroui/react'
 import type { Player } from '../../../api/client'
 import { DataTable, Icon, PageHeader, type Column } from '../../../dune-ui'
 import { PLAYER_COLUMNS, type PlayerSortKey } from '../types'
@@ -36,13 +36,18 @@ export function PlayersListView({ players, loading, onRefresh, onAction }: Props
   return (
     <>
       <PageHeader title={`Players (${filtered.length}${search ? ` / ${players.length}` : ''})`}>
-        <Input
+        <SearchField
           aria-label="Search players"
           className="w-72"
-          placeholder="Search..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+          onChange={setSearch}
+        >
+          <SearchField.Group>
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder="Search..." />
+            <SearchField.ClearButton />
+          </SearchField.Group>
+        </SearchField>
         <Button size="sm" variant="ghost" onPress={onRefresh} isDisabled={loading}>
           {loading
             ? <Spinner size="sm" color="current" />

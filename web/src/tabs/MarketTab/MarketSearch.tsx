@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { InputGroup, ListBox, Select, TextField, Button } from '@heroui/react'
+import { ListBox, SearchField, Select, Button } from '@heroui/react'
 import { Icon } from '../../dune-ui'
 
 export type MarketFilters = {
@@ -38,27 +38,18 @@ export default function MarketSearch({ filters, onChange, onReset }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <TextField aria-label="Search items" className="flex-1 min-w-[200px]">
-        <InputGroup>
-          <InputGroup.Prefix><Icon name="search" /></InputGroup.Prefix>
-          <InputGroup.Input
-            value={searchDraft}
-            onChange={e => setSearchDraft(e.target.value)}
-            placeholder="Search items…"
-          />
-          {searchDraft && (
-            <InputGroup.Suffix>
-              <button
-                className="text-muted hover:text-foreground px-1"
-                onClick={() => { setSearchDraft(''); onChange({ ...filters, search: '' }) }}
-                aria-label="Clear search"
-              >
-                <Icon name="x" />
-              </button>
-            </InputGroup.Suffix>
-          )}
-        </InputGroup>
-      </TextField>
+      <SearchField
+        aria-label="Search items"
+        className="flex-1 min-w-[200px]"
+        value={searchDraft}
+        onChange={setSearchDraft}
+      >
+        <SearchField.Group>
+          <SearchField.SearchIcon />
+          <SearchField.Input placeholder="Search items…" />
+          <SearchField.ClearButton />
+        </SearchField.Group>
+      </SearchField>
 
       <Select
         selectedKey={filters.owner || 'all'}

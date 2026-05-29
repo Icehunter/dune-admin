@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
-  Button, Chip, Input, InputGroup, Modal, Spinner, TextField, toast,
+  Button, Chip, Input, InputGroup, Modal, SearchField, Spinner, TextField, toast,
 } from '@heroui/react'
 import { api } from '../api/client'
 import type { InventoryItem } from '../api/client'
@@ -126,13 +126,18 @@ export default function StorageTab() {
           }
           width="w-72"
         >
-          <Input
+          <SearchField
             aria-label="Search containers"
-            placeholder="Search..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={setSearch}
             className="w-full"
-          />
+          >
+            <SearchField.Group>
+              <SearchField.SearchIcon />
+              <SearchField.Input placeholder="Search..." />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
         </SideNav>
 
         <div className="flex-1 flex flex-col gap-3 min-h-0">
@@ -304,15 +309,17 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
                   <div className="flex items-center gap-3 shrink-0">
                     <TextField className="flex-1 min-w-0" aria-label="Template">
                       <div className="relative w-full">
-                        <InputGroup className="w-full">
-                          <InputGroup.Prefix>Template</InputGroup.Prefix>
-                          <InputGroup.Input
-                            className="flex-1 w-full"
-                            placeholder="Search templates..."
-                            value={query}
-                            onChange={e => { setQuery(e.target.value); setSelected('') }}
-                          />
-                        </InputGroup>
+                        <SearchField
+                          className="w-full"
+                          value={query}
+                          onChange={v => { setQuery(v); setSelected('') }}
+                        >
+                          <SearchField.Group>
+                            <SearchField.SearchIcon />
+                            <SearchField.Input placeholder="Search templates..." />
+                            <SearchField.ClearButton />
+                          </SearchField.Group>
+                        </SearchField>
                         {filtered.length > 0 && (
                           <div className="absolute z-50 w-full mt-1 rounded-[var(--radius)] border border-border bg-surface overflow-y-auto max-h-52">
                             {filtered.map(t => (

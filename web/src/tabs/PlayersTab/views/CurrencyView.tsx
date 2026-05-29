@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Input } from '@heroui/react'
+import { SearchField } from '@heroui/react'
 import type { CurrencyRow } from '../../../api/client'
 import { DataTable, PageHeader, type Column } from '../../../dune-ui'
 
@@ -32,13 +32,18 @@ export function CurrencyView({ data, loading, controllerToName }: Props) {
   return (
     <>
       <PageHeader title={`Currency (${filtered.length}${search ? ` / ${data.length}` : ''})`}>
-        <Input
+        <SearchField
           aria-label="Search currency"
           className="w-72"
-          placeholder="Search..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+          onChange={setSearch}
+        >
+          <SearchField.Group>
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder="Search..." />
+            <SearchField.ClearButton />
+          </SearchField.Group>
+        </SearchField>
       </PageHeader>
 
       <DataTable<CurrencyRow, Key>

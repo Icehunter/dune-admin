@@ -13,10 +13,6 @@ import BotControlPanel from "./bot/BotControlPanel";
 
 const DEFAULT_FILTERS: MarketFilters = { search: "", category: "", owner: "" };
 
-// Set VITE_MARKET_BOT_ENABLED=true at build time to show the Bot Control button.
-// When absent (local dev, CDN deploy without a bot) the button is hidden entirely.
-const botEnabled = !!(import.meta.env.VITE_MARKET_BOT_ENABLED as string | undefined);
-
 export default function MarketTab() {
   const [items, setItems] = useState<MarketItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -25,6 +21,16 @@ export default function MarketTab() {
   const [selected, setSelected] = useState<MarketItem | null>(null);
   const [view, setView] = useState<MarketView>("table");
   const [botOpen, setBotOpen] = useState(false);
+  // Show Bot Control only when a bot is actually connected (embedded or remote),
+  // determined at runtime from the backend rather than a build-time flag.
+  const [botConnected, setBotConnected] = useState(false);
+
+  useEffect(() => {
+    api.marketBot
+      .status()
+      .then((s) => setBotConnected(s.mode !== "none"))
+      .catch(() => setBotConnected(false));
+  }, []);
 
   const load = useCallback(() => {
     Promise.resolve()
@@ -66,10 +72,14 @@ export default function MarketTab() {
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
       <PageHeader title="Market Board" subtitle="Browse active exchange listings from bot and player sellers.">
-        {botEnabled && (
+        {botConnected ? (
           <Button size="sm" variant="ghost" onPress={() => setBotOpen(true)}>
             <Icon name="bot" /> Bot Control
           </Button>
+        ) : (
+          <span className="hidden text-xs text-muted sm:inline">
+            No market bot connected — enable the built-in bot to manage it here
+          </span>
         )}
         <ViewToggle view={view} onChange={setView} />
         <Button size="sm" variant="ghost" onPress={load} isDisabled={loading}>

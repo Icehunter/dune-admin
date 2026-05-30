@@ -2,6 +2,8 @@
 package main
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -72,4 +74,55 @@ func TestNeedsUpdate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLatestRelease(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		fetcher := func(url string) ([]byte, error) {
+			if !strings.Contains(url, "releases/latest") {
+				t.Fatalf("unexpected URL: %s", url)
+			}
+			return []byte(`{"tag_name":"v0.16.0","html_url":"https://github.com/Icehunter/dune-admin/releases/tag/v0.16.0"}`), nil
+		}
+		tag, htmlURL, err := latestRelease(fetcher)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if tag != "v0.16.0" {
+			t.Errorf("tag = %q, want %q", tag, "v0.16.0")
+		}
+		if htmlURL == "" {
+			t.Error("htmlURL should not be empty")
+		}
+	})
+
+	t.Run("fetch_error", func(t *testing.T) {
+		fetcher := func(url string) ([]byte, error) {
+			return nil, fmt.Errorf("network error")
+		}
+		_, _, err := latestRelease(fetcher)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("invalid_json", func(t *testing.T) {
+		fetcher := func(url string) ([]byte, error) {
+			return []byte(`not json`), nil
+		}
+		_, _, err := latestRelease(fetcher)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("empty_tag", func(t *testing.T) {
+		fetcher := func(url string) ([]byte, error) {
+			return []byte(`{"tag_name":"","html_url":""}`), nil
+		}
+		_, _, err := latestRelease(fetcher)
+		if err == nil {
+			t.Fatal("expected error for empty tag_name")
+		}
+	})
 }

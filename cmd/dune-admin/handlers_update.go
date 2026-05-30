@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 )
 
@@ -30,6 +33,53 @@ func parseChecksum(content, artifact string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("checksum not found for %s", artifact)
+}
+
+const githubRepo = "Icehunter/dune-admin"
+
+// updateFetcher is the real HTTP fetcher used in production.
+// It is wired into handlers in server.go; the unused linter fires before those handlers exist.
+//
+//nolint:unused
+func updateFetcher(url string) ([]byte, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("User-Agent", "dune-admin/"+AppVersion)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("github API returned %d", resp.StatusCode)
+	}
+	return io.ReadAll(resp.Body)
+}
+
+type githubRelease struct {
+	TagName string `json:"tag_name"`
+	HTMLURL string `json:"html_url"`
+}
+
+// latestRelease fetches the tag and release page URL for the most recent GitHub release.
+// fetcher is injected so callers can substitute a mock in tests.
+func latestRelease(fetcher func(string) ([]byte, error)) (tag, htmlURL string, err error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", githubRepo)
+	body, err := fetcher(url)
+	if err != nil {
+		return "", "", fmt.Errorf("fetch latest release: %w", err)
+	}
+	var rel githubRelease
+	if err := json.Unmarshal(body, &rel); err != nil {
+		return "", "", fmt.Errorf("parse release JSON: %w", err)
+	}
+	if rel.TagName == "" {
+		return "", "", fmt.Errorf("empty tag_name in response")
+	}
+	return rel.TagName, rel.HTMLURL, nil
 }
 
 // Dev builds ("-dev" suffix or bare "dev") are never auto-updated.

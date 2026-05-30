@@ -26,12 +26,18 @@ WORKDIR /build
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG APP_VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG BUILD_TIME=unknown
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -ldflags="-s -w" -o dune-admin ./cmd/dune-admin
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
+    go build \
+    -ldflags="-s -w -X main.AppVersion=${APP_VERSION} -X main.GitCommit=${GIT_COMMIT} -X main.BuildTime=${BUILD_TIME}" \
+    -o dune-admin ./cmd/dune-admin
 
 # ── Runtime ───────────────────────────────────────────────────────────────────
 FROM --platform=$TARGETPLATFORM debian:bookworm-slim

@@ -110,7 +110,16 @@ kubectl get nodes
 
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
   echo "Building image: $IMAGE"
-  docker buildx build --platform linux/amd64 -f deploy/Dockerfile -t "$IMAGE" --load .
+  APP_VERSION="$(cat "$ROOT_DIR/VERSION" 2>/dev/null || echo "unknown")"
+  GIT_COMMIT="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
+  BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  docker buildx build \
+    --platform linux/amd64 \
+    -f deploy/Dockerfile \
+    --build-arg APP_VERSION="$APP_VERSION" \
+    --build-arg GIT_COMMIT="$GIT_COMMIT" \
+    --build-arg BUILD_TIME="$BUILD_TIME" \
+    -t "$IMAGE" --load .
 fi
 
 if [[ "$SKIP_IMAGE_IMPORT" -eq 0 ]]; then

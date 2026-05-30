@@ -89,7 +89,15 @@ kubectl get nodes
 
 if (-not $SkipBuild) {
   Invoke-Step "Building image $Image" {
-    docker buildx build --platform linux/amd64 -f deploy/Dockerfile -t $Image --load .
+    $AppVersion = if (Test-Path "$PSScriptRoot/VERSION") { Get-Content "$PSScriptRoot/VERSION" -Raw } else { "unknown" }
+    $AppVersion = $AppVersion.Trim()
+    $GitCommit = (git -C $PSScriptRoot rev-parse --short HEAD 2>$null) ?? "unknown"
+    $BuildTime = (Get-Date -AsUTC -Format "yyyy-MM-ddTHH:mm:ssZ")
+    docker buildx build --platform linux/amd64 -f deploy/Dockerfile `
+      --build-arg APP_VERSION=$AppVersion `
+      --build-arg GIT_COMMIT=$GitCommit `
+      --build-arg BUILD_TIME=$BuildTime `
+      -t $Image --load .
   }
 }
 

@@ -8,6 +8,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func TestConfigDirEnvOverride(t *testing.T) {
+	t.Setenv("DUNE_ADMIN_CONFIG_DIR", "/tmp/test-override")
+	got := configDir()
+	if got != "/tmp/test-override" {
+		t.Errorf("configDir() = %q, want %q", got, "/tmp/test-override")
+	}
+}
+
+func TestConfigDirDefault(t *testing.T) {
+	// Ensure no override is set for this test.
+	t.Setenv("DUNE_ADMIN_CONFIG_DIR", "")
+	got := configDir()
+	if got == "" || got == "/tmp/test-override" {
+		t.Errorf("configDir() = %q, expected a home-based path", got)
+	}
+}
+
 func TestPreserveMaskedSecrets(t *testing.T) {
 	t.Parallel()
 

@@ -180,6 +180,12 @@ func marketBotEnabled(cfg appConfig) bool {
 }
 
 func configDir() string {
+	// DUNE_ADMIN_CONFIG_DIR allows operators to redirect config to a writable
+	// path in environments where the home directory is read-only (e.g. K8s with
+	// a ConfigMap-mounted home dir, or containers with a read-only root fs).
+	if dir := os.Getenv("DUNE_ADMIN_CONFIG_DIR"); dir != "" {
+		return dir
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ".dune-admin"

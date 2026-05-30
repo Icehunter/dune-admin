@@ -74,6 +74,20 @@ spec:
       labels:
         app: dune-admin
     spec:
+      # Copy the ConfigMap config.yaml into a writable emptyDir so that
+      # handleSaveConfig can write back to /root/.dune-admin/config.yaml.
+      # Changes persist within the pod lifetime; update the ConfigMap for
+      # permanent changes (the init container re-seeds on every pod start).
+      initContainers:
+        - name: seed-config
+          image: busybox:latest
+          command: ['sh', '-c', 'cp /configmap/config.yaml /app-config/config.yaml']
+          volumeMounts:
+            - name: config-source
+              mountPath: /configmap
+              readOnly: true
+            - name: config-rw
+              mountPath: /app-config
       containers:
         - name: dune-admin
           image: ghcr.io/icehunter/dune-admin:latest
@@ -161,9 +175,8 @@ spec:
           volumeMounts:
             - name: market-bot-cache
               mountPath: /data
-            - name: config
-              mountPath: /root/.dune-admin/config.yaml
-              subPath: config.yaml
+            - name: config-rw
+              mountPath: /root/.dune-admin
           readinessProbe:
             httpGet:
               path: /api/v1/status
@@ -180,12 +193,14 @@ spec:
         - name: market-bot-cache
           persistentVolumeClaim:
             claimName: market-bot-cache
-        - name: config
+        - name: config-source
           configMap:
             name: dune-admin-config
             items:
               - key: config.yaml
                 path: config.yaml
+        - name: config-rw
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

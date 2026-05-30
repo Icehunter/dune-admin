@@ -296,7 +296,7 @@ cat <<EOF
       Group=$SERVICE_USER
       WorkingDirectory=$INSTALL_DIR
       ExecStart=$INSTALL_DIR/dune-admin
-      Restart=on-failure
+      Restart=always
       RestartSec=5s
 
       [Install]
@@ -309,6 +309,11 @@ cat <<EOF
       sudo journalctl -u dune-admin -f       # tail logs
 
     Browse to http://<this-host>:9090 (or whatever listen_addr you chose).
+
+    NOTE: Restart=always is required for in-app self-update (Settings → Check
+    for Updates). If you have an existing unit with Restart=on-failure, change
+    it and run: sudo systemctl daemon-reload && sudo systemctl restart dune-admin
+    Alternatively, use the CLI flag: dune-admin -update (then restart manually).
 
  ROLLBACK (if something is wrong):
 

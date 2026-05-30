@@ -1,11 +1,16 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -123,4 +128,47 @@ func needsUpdate(current, latest string) bool {
 	}
 	norm := strings.TrimPrefix(latest, "v")
 	return strings.TrimPrefix(current, "v") != norm && norm != ""
+}
+
+// verifySHA256 checks that data's SHA256 hex digest matches expected.
+func verifySHA256(data []byte, expected string) error {
+	h := sha256.Sum256(data)
+	got := hex.EncodeToString(h[:])
+	if got != strings.ToLower(expected) {
+		return fmt.Errorf("checksum mismatch: got %s, want %s", got, expected)
+	}
+	return nil
+}
+
+// extractBinaryFromTarGz reads r as a .tar.gz, finds the entry named binaryName
+// (matching the full name or the base component), writes it to dest with mode 0755.
+func extractBinaryFromTarGz(r io.Reader, binaryName, dest string) error {
+	gr, err := gzip.NewReader(r)
+	if err != nil {
+		return fmt.Errorf("open gzip: %w", err)
+	}
+	defer func() { _ = gr.Close() }()
+	tr := tar.NewReader(gr)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("read tar: %w", err)
+		}
+		if hdr.Name != binaryName && !strings.HasSuffix(hdr.Name, "/"+binaryName) {
+			continue
+		}
+		f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+		if err != nil {
+			return fmt.Errorf("create dest: %w", err)
+		}
+		if _, err := io.Copy(f, tr); err != nil {
+			_ = f.Close()
+			return fmt.Errorf("write binary: %w", err)
+		}
+		return f.Close()
+	}
+	return fmt.Errorf("binary %q not found in archive", binaryName)
 }

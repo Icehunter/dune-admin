@@ -2,10 +2,17 @@
 package main
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -189,6 +196,76 @@ func TestHandleUpdateCheck(t *testing.T) {
 		h(w, r)
 		if w.Code != http.StatusBadGateway {
 			t.Fatalf("status = %d, want 502", w.Code)
+		}
+	})
+}
+
+// buildFakeTarGz creates an in-memory .tar.gz containing one file at name with the given content.
+func buildFakeTarGz(t *testing.T, name string, content []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	hdr := &tar.Header{Name: name, Mode: 0755, Size: int64(len(content))}
+	if err := tw.WriteHeader(hdr); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write(content); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func TestExtractBinaryFromTarGz(t *testing.T) {
+	binaryContent := []byte("fake binary content")
+	archive := buildFakeTarGz(t, "dune-admin", binaryContent)
+
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "dune-admin")
+	if err := extractBinaryFromTarGz(bytes.NewReader(archive), "dune-admin", dest); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("read extracted file: %v", err)
+	}
+	if !bytes.Equal(got, binaryContent) {
+		t.Errorf("extracted content = %q, want %q", got, binaryContent)
+	}
+	info, _ := os.Stat(dest)
+	if info.Mode()&0111 == 0 {
+		t.Error("extracted binary should be executable")
+	}
+}
+
+func TestExtractBinaryFromTarGz_NotFound(t *testing.T) {
+	archive := buildFakeTarGz(t, "other-file", []byte("data"))
+	dir := t.TempDir()
+	err := extractBinaryFromTarGz(bytes.NewReader(archive), "dune-admin", filepath.Join(dir, "dune-admin"))
+	if err == nil {
+		t.Fatal("expected error when binary not found in archive")
+	}
+}
+
+func TestVerifySHA256(t *testing.T) {
+	data := []byte("hello world")
+	h := sha256.Sum256(data)
+	expected := hex.EncodeToString(h[:])
+
+	t.Run("valid", func(t *testing.T) {
+		if err := verifySHA256(data, expected); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	t.Run("mismatch", func(t *testing.T) {
+		if err := verifySHA256(data, "deadbeef"); err == nil {
+			t.Error("expected error for wrong checksum")
 		}
 	})
 }

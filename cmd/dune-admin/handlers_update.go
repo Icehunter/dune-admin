@@ -13,7 +13,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
+	"time"
 )
 
 // Darwin always ships a universal (fat) binary regardless of host arch.
@@ -221,4 +224,83 @@ func applyUpdate(tag, goos, goarch, currentBin string, fetcher func(string) ([]b
 
 	log.Printf("update: swapped binary to %s", tag)
 	return nil
+}
+
+type updateApplyRequest struct {
+	Force bool `json:"force"`
+}
+
+type updateApplyResponse struct {
+	Updated bool   `json:"updated"`
+	Version string `json:"version,omitempty"`
+	Message string `json:"message"`
+}
+
+// makeUpdateApplyHandler is the testable factory. In production pass:
+//   - checkFetcher / applyFetcher: updateFetcher
+//   - currentBin: result of os.Executable()
+//   - goos / goarch: runtime.GOOS / runtime.GOARCH
+//   - restart: func() { go scheduleRestart() }
+func makeUpdateApplyHandler(
+	checkFetcher, applyFetcher func(string) ([]byte, error),
+	currentBin, goos, goarch string,
+	restart func(),
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req updateApplyRequest
+		// Ignore decode errors — body is optional; force defaults to false.
+		_ = json.NewDecoder(r.Body).Decode(&req)
+
+		tag, _, err := latestRelease(checkFetcher)
+		if err != nil {
+			log.Printf("handleUpdateApply: check release: %v", err)
+			jsonErr(w, fmt.Errorf("could not reach GitHub"), http.StatusBadGateway)
+			return
+		}
+		if !req.Force && !needsUpdate(AppVersion, tag) {
+			jsonOK(w, updateApplyResponse{Updated: false, Message: "already on latest " + AppVersion})
+			return
+		}
+		if err := applyUpdate(tag, goos, goarch, currentBin, applyFetcher); err != nil {
+			log.Printf("handleUpdateApply: apply: %v", err)
+			jsonErr(w, fmt.Errorf("update failed: %w", err), http.StatusInternalServerError)
+			return
+		}
+		msg := "binary swapped; restarting…"
+		if req.Force {
+			msg = "reinstalled " + tag + "; restarting…"
+		}
+		jsonOK(w, updateApplyResponse{Updated: true, Version: tag, Message: msg})
+		restart()
+	}
+}
+
+// scheduleRestart sends SIGTERM to the current process after a short delay so
+// the HTTP response can flush. systemd (Restart=always) restarts with the new binary.
+//
+//nolint:unused
+func scheduleRestart() {
+	time.Sleep(500 * time.Millisecond)
+	p, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		log.Printf("update: cannot find self: %v", err)
+		return
+	}
+	if err := p.Signal(syscall.SIGTERM); err != nil {
+		log.Printf("update: SIGTERM failed: %v", err)
+	}
+}
+
+//nolint:unused
+func handleUpdateApply(w http.ResponseWriter, r *http.Request) {
+	exe, err := os.Executable()
+	if err != nil {
+		jsonErr(w, fmt.Errorf("cannot determine executable path"), http.StatusInternalServerError)
+		return
+	}
+	makeUpdateApplyHandler(
+		updateFetcher, updateFetcher,
+		exe, runtime.GOOS, runtime.GOARCH,
+		func() { go scheduleRestart() },
+	)(w, r)
 }

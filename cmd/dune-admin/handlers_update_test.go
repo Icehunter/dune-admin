@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -336,5 +337,81 @@ func TestApplyUpdate_ChecksumMismatch(t *testing.T) {
 	got, _ := os.ReadFile(currentBin)
 	if string(got) != "old" {
 		t.Error("original binary should be untouched after failed update")
+	}
+}
+
+func TestHandleUpdateApply(t *testing.T) {
+	// Build reusable test archive
+	fakeBinary := []byte("new binary")
+	archive := buildFakeTarGz(t, "dune-admin", fakeBinary)
+	h := sha256.Sum256(archive)
+	checksum := hex.EncodeToString(h[:])
+	artifact := artifactName("linux", "amd64")
+	checksumsTxt := checksum + "  " + artifact + "\n"
+
+	makeApplyFetcher := func() func(string) ([]byte, error) {
+		return func(url string) ([]byte, error) {
+			if strings.Contains(url, "checksums.txt") {
+				return []byte(checksumsTxt), nil
+			}
+			return archive, nil
+		}
+	}
+	makeCheckFetcher := func(tag string) func(string) ([]byte, error) {
+		return func(url string) ([]byte, error) {
+			return []byte(`{"tag_name":"` + tag + `","html_url":"https://x"}`), nil
+		}
+	}
+
+	tests := []struct {
+		name        string
+		appVersion  string
+		latestTag   string
+		body        string
+		wantUpdated bool
+	}{
+		{"normal_update", "0.15.0", "v0.16.0", "", true},
+		{"already_latest", "0.16.0", "v0.16.0", "", false},
+		{"force_reinstall", "0.16.0", "v0.16.0", `{"force":true}`, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			AppVersion = tt.appVersion
+
+			dir := t.TempDir()
+			currentBin := filepath.Join(dir, "dune-admin")
+			if err := os.WriteFile(currentBin, []byte("old"), 0755); err != nil {
+				t.Fatal(err)
+			}
+
+			var body io.Reader
+			if tt.body != "" {
+				body = strings.NewReader(tt.body)
+			} else {
+				body = http.NoBody
+			}
+
+			handler := makeUpdateApplyHandler(
+				makeCheckFetcher(tt.latestTag),
+				makeApplyFetcher(),
+				currentBin, "linux", "amd64",
+				func() {}, // no-op restart in tests
+			)
+			r := httptest.NewRequest("POST", "/api/v1/update/apply", body)
+			w := httptest.NewRecorder()
+			handler(w, r)
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200; body: %s", w.Code, w.Body.String())
+			}
+			var res updateApplyResponse
+			if err := json.NewDecoder(w.Body).Decode(&res); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if res.Updated != tt.wantUpdated {
+				t.Errorf("Updated = %v, want %v (message: %s)", res.Updated, tt.wantUpdated, res.Message)
+			}
+		})
 	}
 }

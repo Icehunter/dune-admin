@@ -21,7 +21,11 @@ function buildTree(categories: string[]): { items: Node[]; schematics: Node[] } 
 
   for (const cat of [...categories].sort()) {
     const isSchematic = cat.startsWith('schematics/')
-    const stripped = isSchematic ? cat : cat.replace(/^items\//, '')
+    // Strip the top-level prefix before splitting so we don't create a spurious
+    // "Schematics" parent node inside the schematics section (or "Items" inside items).
+    const stripped = isSchematic
+      ? cat.replace(/^schematics\//, '')
+      : cat.replace(/^items\//, '')
     const parts = stripped.split('/')
     const root = isSchematic ? schematicRoot : itemRoot
 

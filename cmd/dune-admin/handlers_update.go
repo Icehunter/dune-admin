@@ -258,7 +258,7 @@ func makeUpdateApplyHandler(
 		}
 		if err := applyUpdate(tag, goos, goarch, currentBin, applyFetcher); err != nil {
 			log.Printf("handleUpdateApply: apply: %v", err)
-			jsonErr(w, fmt.Errorf("update failed: %w", err), http.StatusInternalServerError)
+			jsonErr(w, fmt.Errorf("update failed"), http.StatusInternalServerError)
 			return
 		}
 		msg := "binary swapped; restarting…"

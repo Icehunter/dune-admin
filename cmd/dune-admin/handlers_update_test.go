@@ -368,11 +368,16 @@ func TestHandleUpdateApply(t *testing.T) {
 		appVersion  string
 		latestTag   string
 		body        string
+		checkErr    bool
+		applyErr    bool
 		wantUpdated bool
+		wantStatus  int
 	}{
-		{"normal_update", "0.15.0", "v0.16.0", "", true},
-		{"already_latest", "0.16.0", "v0.16.0", "", false},
-		{"force_reinstall", "0.16.0", "v0.16.0", `{"force":true}`, true},
+		{"normal_update", "0.15.0", "v0.16.0", "", false, false, true, http.StatusOK},
+		{"already_latest", "0.16.0", "v0.16.0", "", false, false, false, http.StatusOK},
+		{"force_reinstall", "0.16.0", "v0.16.0", `{"force":true}`, false, false, true, http.StatusOK},
+		{name: "github_unreachable", checkErr: true, wantStatus: http.StatusBadGateway, wantUpdated: false},
+		{name: "apply_failure", appVersion: "0.15.0", latestTag: "v0.16.0", applyErr: true, wantStatus: http.StatusInternalServerError, wantUpdated: false},
 	}
 
 	for _, tt := range tests {
@@ -392,9 +397,28 @@ func TestHandleUpdateApply(t *testing.T) {
 				body = http.NoBody
 			}
 
+			checkFetcher := makeCheckFetcher(tt.latestTag)
+			if tt.checkErr {
+				checkFetcher = func(url string) ([]byte, error) {
+					return nil, fmt.Errorf("network error")
+				}
+			}
+			applyFetcher := makeApplyFetcher()
+			if tt.applyErr {
+				applyFetcher = func(url string) ([]byte, error) {
+					if strings.Contains(url, "checksums.txt") {
+						// checksums.txt fetches fine, archive download fails
+						h2 := sha256.Sum256(archive)
+						ck := hex.EncodeToString(h2[:])
+						return []byte(ck + "  " + artifact + "\n"), nil
+					}
+					return nil, fmt.Errorf("download failed")
+				}
+			}
+
 			handler := makeUpdateApplyHandler(
-				makeCheckFetcher(tt.latestTag),
-				makeApplyFetcher(),
+				checkFetcher,
+				applyFetcher,
 				currentBin, "linux", "amd64",
 				func() {}, // no-op restart in tests
 			)
@@ -402,15 +426,17 @@ func TestHandleUpdateApply(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler(w, r)
 
-			if w.Code != http.StatusOK {
-				t.Fatalf("status = %d, want 200; body: %s", w.Code, w.Body.String())
+			if w.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d; body: %s", w.Code, tt.wantStatus, w.Body.String())
 			}
-			var res updateApplyResponse
-			if err := json.NewDecoder(w.Body).Decode(&res); err != nil {
-				t.Fatalf("decode: %v", err)
-			}
-			if res.Updated != tt.wantUpdated {
-				t.Errorf("Updated = %v, want %v (message: %s)", res.Updated, tt.wantUpdated, res.Message)
+			if tt.wantStatus == http.StatusOK {
+				var res updateApplyResponse
+				if err := json.NewDecoder(w.Body).Decode(&res); err != nil {
+					t.Fatalf("decode: %v", err)
+				}
+				if res.Updated != tt.wantUpdated {
+					t.Errorf("Updated = %v, want %v (message: %s)", res.Updated, tt.wantUpdated, res.Message)
+				}
 			}
 		})
 	}

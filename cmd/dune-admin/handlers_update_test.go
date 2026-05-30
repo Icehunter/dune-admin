@@ -3,6 +3,7 @@ package main
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
@@ -75,7 +76,13 @@ func TestNeedsUpdate(t *testing.T) {
 		{"0.15.2-dev", "0.15.2", false},
 		{"0.15.2-dev", "0.16.0", false},
 		{"dev", "0.16.0", false},
-		{"0.15.2", "", false}, // no release tag: treat as no update available
+		{"0.15.2", "", false},
+		// semver: running newer than latest must NOT trigger update
+		{"0.17.0", "v0.16.0", false},
+		{"1.0.0", "v0.99.0", false},
+		{"0.16.1", "v0.16.0", false},
+		// semver: patch bump only
+		{"0.15.2", "v0.15.3", true}, // no release tag: treat as no update available
 	}
 	for _, tt := range tests {
 		t.Run(tt.current+"->"+tt.latest, func(t *testing.T) {
@@ -221,6 +228,50 @@ func buildFakeTarGz(t *testing.T, name string, content []byte) []byte {
 		t.Fatal(err)
 	}
 	return buf.Bytes()
+}
+
+func buildFakeZip(t *testing.T, name string, content []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	f, err := zw.Create(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Write(content); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func TestExtractBinaryFromZip(t *testing.T) {
+	binaryContent := []byte("fake windows binary")
+	archive := buildFakeZip(t, "dune-admin.exe", binaryContent)
+
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "dune-admin.exe")
+	if err := extractBinaryFromZip(bytes.NewReader(archive), int64(len(archive)), "dune-admin.exe", dest); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("read extracted file: %v", err)
+	}
+	if !bytes.Equal(got, binaryContent) {
+		t.Errorf("extracted content = %q, want %q", got, binaryContent)
+	}
+}
+
+func TestExtractBinaryFromZip_NotFound(t *testing.T) {
+	archive := buildFakeZip(t, "other.exe", []byte("data"))
+	dir := t.TempDir()
+	err := extractBinaryFromZip(bytes.NewReader(archive), int64(len(archive)), "dune-admin.exe", filepath.Join(dir, "dune-admin.exe"))
+	if err == nil {
+		t.Fatal("expected error when binary not found in archive")
+	}
 }
 
 func TestExtractBinaryFromTarGz(t *testing.T) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
@@ -122,12 +123,37 @@ func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 // Dev builds ("-dev" suffix or bare "dev") are never auto-updated.
+// Uses semver ordering so a running binary newer than the latest release
+// (e.g. 0.17.0 vs published 0.16.0) is not offered as an "update".
 func needsUpdate(current, latest string) bool {
 	if strings.Contains(current, "-dev") || current == "dev" {
 		return false
 	}
-	norm := strings.TrimPrefix(latest, "v")
-	return strings.TrimPrefix(current, "v") != norm && norm != ""
+	cv := parseSemver(strings.TrimPrefix(current, "v"))
+	lv := parseSemver(strings.TrimPrefix(latest, "v"))
+	if lv[0] != cv[0] {
+		return lv[0] > cv[0]
+	}
+	if lv[1] != cv[1] {
+		return lv[1] > cv[1]
+	}
+	return lv[2] > cv[2]
+}
+
+// parseSemver parses "major.minor.patch" into [3]int, ignoring pre-release suffixes.
+func parseSemver(v string) [3]int {
+	var out [3]int
+	parts := strings.SplitN(v, ".", 3)
+	for i := 0; i < 3 && i < len(parts); i++ {
+		// strip any pre-release suffix on the patch component
+		p := strings.SplitN(parts[i], "-", 2)[0]
+		for _, c := range p {
+			if c >= '0' && c <= '9' {
+				out[i] = out[i]*10 + int(c-'0')
+			}
+		}
+	}
+	return out
 }
 
 // verifySHA256 checks that data's SHA256 hex digest matches expected.
@@ -173,6 +199,44 @@ func extractBinaryFromTarGz(r io.Reader, binaryName, dest string) error {
 	return fmt.Errorf("binary %q not found in archive", binaryName)
 }
 
+// extractBinaryFromZip reads a .zip from data, finds binaryName, writes it to dest with mode 0755.
+func extractBinaryFromZip(r io.ReaderAt, size int64, binaryName, dest string) error {
+	zr, err := zip.NewReader(r, size)
+	if err != nil {
+		return fmt.Errorf("open zip: %w", err)
+	}
+	for _, f := range zr.File {
+		if f.Name != binaryName && !strings.HasSuffix(f.Name, "/"+binaryName) {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			return fmt.Errorf("open zip entry: %w", err)
+		}
+		out, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+		if err != nil {
+			_ = rc.Close()
+			return fmt.Errorf("create dest: %w", err)
+		}
+		_, copyErr := io.Copy(out, rc)
+		_ = rc.Close()
+		if copyErr != nil {
+			_ = out.Close()
+			return fmt.Errorf("write binary: %w", copyErr)
+		}
+		return out.Close()
+	}
+	return fmt.Errorf("binary %q not found in zip archive", binaryName)
+}
+
+// extractBinary dispatches to the correct extractor based on the artifact file extension.
+func extractBinary(archiveData []byte, artifact, binaryName, dest string) error {
+	if strings.HasSuffix(artifact, ".zip") {
+		return extractBinaryFromZip(bytes.NewReader(archiveData), int64(len(archiveData)), binaryName, dest)
+	}
+	return extractBinaryFromTarGz(bytes.NewReader(archiveData), binaryName, dest)
+}
+
 // applyUpdate downloads the release archive for tag, verifies SHA256, backs up
 // the current binary to .prev, and atomically swaps in the new one.
 // Does NOT restart the process — the caller handles that.
@@ -201,7 +265,7 @@ func applyUpdate(tag, goos, goarch, currentBin string, fetcher func(string) ([]b
 	log.Printf("update: checksum verified")
 
 	tmp := currentBin + ".new"
-	if err := extractBinaryFromTarGz(bytes.NewReader(archiveData), filepath.Base(currentBin), tmp); err != nil {
+	if err := extractBinary(archiveData, artifact, filepath.Base(currentBin), tmp); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("extract binary: %w", err)
 	}

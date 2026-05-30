@@ -170,9 +170,16 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
     }
   }
 
-  // Keep the ref current so App.tsx footer button always calls the latest closure.
+  // Expose save to the parent footer button only after config has loaded.
+  // Clear the ref on unmount so a stale closure from a previous modal open
+  // cannot fire after the form has been removed from the tree.
   useEffect(() => {
-    if (saveRef) saveRef.current = save
+    if (saveRef && !loading) {
+      saveRef.current = save
+      return () => {
+        saveRef.current = null
+      }
+    }
   })
 
   if (loading) {

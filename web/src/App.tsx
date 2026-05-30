@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Show, SignInButton, UserButton, useAuth } from '@clerk/react'
-import { Button, Chip, Modal, Spinner, Toast, Tabs } from '@heroui/react'
+import { Button, Chip, Modal, Spinner, Toast, Tabs, toast } from '@heroui/react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStatus } from './hooks/useStatus'
 import SettingsConfigForm from './components/SettingsConfigForm'
@@ -106,10 +106,16 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
     setUpdateApplying(true)
     try {
       const result = await api.update.apply(force)
-      if (result.updated) setUpdateInfo(null)
+      if (result.updated) {
+        toast.success(`${force ? 'Reinstalled' : 'Updated to'} ${result.version ?? 'latest'}. Server is restarting…`)
+        setUpdateInfo(null)
+      }
+      else {
+        toast.info(result.message)
+      }
     }
-    catch {
-      // errors surface via the backend response body
+    catch (e) {
+      toast.danger(`Update failed: ${e instanceof Error ? e.message : String(e)}`)
     }
     finally {
       setUpdateApplying(false)
@@ -247,7 +253,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
                       )
                     : 'Check for Updates'}
                 </Button>
-                {updateInfo && (
+                {updateInfo && !updateInfo.needs_update && (
                   <Button
                     size="sm"
                     variant="ghost"

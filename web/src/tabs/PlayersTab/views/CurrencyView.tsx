@@ -6,9 +6,9 @@ import { DataTable, PageHeader, type Column } from '../../../dune-ui'
 type Key = 'player' | 'currency' | 'balance'
 
 const COLUMNS: Column<Key>[] = [
-  { key: 'player',   label: 'Player', isRowHeader: true },
+  { key: 'player', label: 'Player', isRowHeader: true },
   { key: 'currency', label: 'Currency' },
-  { key: 'balance',  label: 'Balance' },
+  { key: 'balance', label: 'Balance' },
 ]
 
 interface Props {
@@ -23,7 +23,7 @@ export function CurrencyView({ data, loading, controllerToName }: Props) {
   const filtered = useMemo(() => {
     if (!search) return data
     const q = search.toLowerCase()
-    return data.filter(r => {
+    return data.filter((r) => {
       const name = controllerToName.get(r.player_id) ?? ''
       return name.toLowerCase().includes(q) || String(r.player_id).includes(q)
     })
@@ -51,10 +51,10 @@ export function CurrencyView({ data, loading, controllerToName }: Props) {
         className="min-h-0 max-h-full"
         columns={COLUMNS}
         rows={filtered}
-        rowId={r => `${r.player_id}-${r.currency_id}`}
+        rowId={(r) => `${r.player_id}-${r.currency_id}`}
         initialSort={{ column: 'player', direction: 'ascending' }}
         sortValue={(r, k) => {
-          if (k === 'player')   return controllerToName.get(r.player_id) ?? `#${r.player_id}`
+          if (k === 'player') return controllerToName.get(r.player_id) ?? `#${r.player_id}`
           if (k === 'currency') return r.currency_id
           return r.balance
         }}
@@ -71,11 +71,14 @@ export function CurrencyView({ data, loading, controllerToName }: Props) {
                   {controllerToName.get(r.player_id) && (
                     <span className="font-semibold">{controllerToName.get(r.player_id)}</span>
                   )}
-                  <span className="font-mono text-muted text-[10px]">#{r.player_id}</span>
+                  <span className="font-mono text-muted text-[10px]">
+                    #
+                    {r.player_id}
+                  </span>
                 </span>
               )
             case 'currency': return <span className="font-mono text-muted">{r.currency_id}</span>
-            case 'balance':  return <span className="font-semibold">{r.balance.toLocaleString()}</span>
+            case 'balance': return <span className="font-semibold">{r.balance.toLocaleString()}</span>
           }
         }}
       />

@@ -29,19 +29,19 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
   const [buyPct, setBuyPct] = useState<number>(thresholdToPercent(config.buy_threshold))
 
   const set = <K extends keyof BotConfig>(key: K, val: BotConfig[K]) => {
-    setDraft(d => ({ ...d, [key]: val }))
+    setDraft((d) => ({ ...d, [key]: val }))
   }
 
   const setRarity = (key: string, val: number) => {
-    setDraft(d => ({ ...d, rarity_multipliers: { ...d.rarity_multipliers, [key]: val } }))
+    setDraft((d) => ({ ...d, rarity_multipliers: { ...d.rarity_multipliers, [key]: val } }))
   }
 
   const setVendor = (key: string, val: number) => {
-    setDraft(d => ({ ...d, vendor_multipliers: { ...d.vendor_multipliers, [key]: val } }))
+    setDraft((d) => ({ ...d, vendor_multipliers: { ...d.vendor_multipliers, [key]: val } }))
   }
 
   const setGrade = (idx: number, val: number) => {
-    setDraft(d => {
+    setDraft((d) => {
       const arr = [...d.grade_multipliers]
       arr[idx] = val
       return { ...d, grade_multipliers: arr }
@@ -76,14 +76,14 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
             <input
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
               value={draft.list_interval}
-              onChange={e => set('list_interval', e.target.value)}
+              onChange={(e) => set('list_interval', e.target.value)}
             />
           </Field>
           <Field label="Buy tick interval" hint="e.g. 5m">
             <input
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
               value={draft.buy_interval}
-              onChange={e => set('buy_interval', e.target.value)}
+              onChange={(e) => set('buy_interval', e.target.value)}
             />
           </Field>
         </div>
@@ -98,7 +98,7 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
               type="number"
               value={draft.max_buys}
-              onChange={e => set('max_buys', Number(e.target.value))}
+              onChange={(e) => set('max_buys', Number(e.target.value))}
             />
           </Field>
           <Field label="Listings per grade" hint="per item per quality level">
@@ -106,16 +106,19 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
               type="number"
               value={draft.listings_per_grade}
-              onChange={e => set('listings_per_grade', Number(e.target.value))}
+              onChange={(e) => set('listings_per_grade', Number(e.target.value))}
             />
           </Field>
           <Field label="Buy threshold" hint={`${buyPct}% of bot's reference price`}>
             <div className="flex items-center gap-2">
               <input
                 className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-20"
-                type="number" min={1} max={200} step={1}
+                type="number"
+                min={1}
+                max={200}
+                step={1}
                 value={buyPct}
-                onChange={e => setBuyPct(Number(e.target.value))}
+                onChange={(e) => setBuyPct(Number(e.target.value))}
               />
               <span className="text-sm text-muted">%</span>
             </div>
@@ -123,11 +126,15 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
         </div>
         <div className="flex flex-col gap-0.5 mt-1">
           <p className="text-xs text-muted">
-            <strong>Buy threshold:</strong> buys a listing only when its price is at or below this % of the bot's reference price.
+            <strong>Buy threshold:</strong>
+            {' '}
+            buys a listing only when its price is at or below this % of the bot's reference price.
             100% = match or below · 70% = 30%+ discount required · 110% = up to 10% above bot price.
           </p>
           <p className="text-xs text-muted">
-            <strong>Listings per grade:</strong> active listings maintained per item per quality grade (0 = Standard … 5 = Flawless).
+            <strong>Listings per grade:</strong>
+            {' '}
+            active listings maintained per item per quality grade (0 = Standard … 5 = Flawless).
             Stackables use grade 0 only. Example: 5 × 6 grades = up to 30 listings per gradeable item.
           </p>
         </div>
@@ -141,8 +148,11 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
             <Field key={i} label={GRADE_LABELS[i] ?? `Grade ${i}`} hint={`×${mult.toFixed(2)}`}>
               <input
                 className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-24"
-                type="number" step="0.05" min="0.01" value={mult}
-                onChange={e => setGrade(i, Number(e.target.value))}
+                type="number"
+                step="0.05"
+                min="0.01"
+                value={mult}
+                onChange={(e) => setGrade(i, Number(e.target.value))}
               />
             </Field>
           ))}
@@ -157,8 +167,11 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
             <Field key={rarity} label={capitalize(rarity)} hint={`×${(mult as number).toFixed(2)}`}>
               <input
                 className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-24"
-                type="number" step="0.1" min="0.01" value={mult}
-                onChange={e => setRarity(rarity, Number(e.target.value))}
+                type="number"
+                step="0.1"
+                min="0.01"
+                value={mult}
+                onChange={(e) => setRarity(rarity, Number(e.target.value))}
               />
             </Field>
           ))}
@@ -174,8 +187,11 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
               <Field key={rarity} label={capitalize(rarity)} hint={`×${(mult as number).toFixed(2)}`}>
                 <input
                   className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-24"
-                  type="number" step="0.1" min="0.01" value={mult}
-                  onChange={e => setVendor(rarity, Number(e.target.value))}
+                  type="number"
+                  step="0.1"
+                  min="0.01"
+                  value={mult}
+                  onChange={(e) => setVendor(rarity, Number(e.target.value))}
                 />
               </Field>
             ))}
@@ -192,12 +208,18 @@ function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: string, hint?: string, children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
       <label className="text-xs text-muted">
         {label}
-        {hint && <span className="text-muted/60 ml-1">({hint})</span>}
+        {hint && (
+          <span className="text-muted/60 ml-1">
+            (
+            {hint}
+            )
+          </span>
+        )}
       </label>
       {children}
     </div>

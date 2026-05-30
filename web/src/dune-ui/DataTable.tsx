@@ -19,22 +19,22 @@ export type Column<K extends string> = {
 type Props<T, K extends string> = {
   /** Accessibility label, required by React Aria. */
   'aria-label': string
-  columns: Column<K>[]
-  rows: T[]
+  'columns': Column<K>[]
+  'rows': T[]
   /** Stable id extractor for each row. */
-  rowId: (row: T) => string
+  'rowId': (row: T) => string
   /** Render the cell content for a given row + column key. */
-  renderCell: (row: T, key: K) => ReactNode
+  'renderCell': (row: T, key: K) => ReactNode
   /** Initial sort column + direction. */
-  initialSort?: { column: K; direction: 'ascending' | 'descending' }
+  'initialSort'?: { column: K, direction: 'ascending' | 'descending' }
   /** Custom value getter for sorting (defaults to renderCell-as-string). */
-  sortValue?: (row: T, key: K) => string | number | null | undefined
+  'sortValue'?: (row: T, key: K) => string | number | null | undefined
   /** Rendered when `rows` is empty. */
-  emptyState?: ReactNode
+  'emptyState'?: ReactNode
   /** Called when a row is clicked / activated. */
-  onRowAction?: (row: T) => void
+  'onRowAction'?: (row: T) => void
   /** Extra classes for the outer Table element. */
-  className?: string
+  'className'?: string
   /**
    * Opt into HeroUI's TableLayout virtualizer. Set when row count can be
    * large (>200). Only renders rows in the viewport; massive speedup for
@@ -45,8 +45,8 @@ type Props<T, K extends string> = {
    * Aria stores items in a WeakMap keyed by the row). Don't enable this if
    * your rows are primitives (strings/numbers).
    */
-  virtualized?: boolean
-  rowHeight?: number
+  'virtualized'?: boolean
+  'rowHeight'?: number
 }
 
 /**
@@ -75,7 +75,7 @@ export function DataTable<T, K extends string>({
   // React Aria requires at least one column with isRowHeader=true. If no
   // caller-supplied column has it, promote the first column.
   const cols = useMemo<Column<K>[]>(() => {
-    if (columns.some(c => c.isRowHeader)) return columns
+    if (columns.some((c) => c.isRowHeader)) return columns
     return columns.map((c, i) => i === 0 ? { ...c, isRowHeader: true } : c)
   }, [columns])
 
@@ -98,12 +98,14 @@ export function DataTable<T, K extends string>({
           aria-label={ariaLabel}
           sortDescriptor={sortDescriptor}
           onSortChange={setSortDescriptor}
-          {...(onRowAction ? {
-            onRowAction: (key) => {
-              const row = sorted.find(r => rowId(r) === String(key))
-              if (row) onRowAction(row)
-            }
-          } : {})}
+          {...(onRowAction
+            ? {
+                onRowAction: (key) => {
+                  const row = sorted.find((r) => rowId(r) === String(key))
+                  if (row) onRowAction(row)
+                },
+              }
+            : {})}
         >
           {/* React Aria collections require the `columns` prop + render-function
               pattern when the parent (Virtualizer/items) does its own
@@ -126,9 +128,11 @@ export function DataTable<T, K extends string>({
                       {sortable && (
                         <Icon
                           name={
-                            sortDirection === 'ascending'  ? 'chevron-up'   :
-                            sortDirection === 'descending' ? 'chevron-down' :
-                            'chevrons-up-down'
+                            sortDirection === 'ascending'
+                              ? 'chevron-up'
+                              : sortDirection === 'descending'
+                                ? 'chevron-down'
+                                : 'chevrons-up-down'
                           }
                           className={'size-3 shrink-0 ' + (sortDirection ? '' : 'opacity-30')}
                         />
@@ -139,36 +143,48 @@ export function DataTable<T, K extends string>({
               )
             }}
           </Table.Header>
-          {virtualized ? (
-            // Virtualizer-compatible Body: items-prop + render function so
-            // TableLayout can window the rows it actually paints.
-            // HeroUI types items as `object`; we cast to keep T generic
-            // (rows can be primitive types like strings in our usage).
-            <Table.Body
-              items={sorted as unknown as object[]}
-              renderEmptyState={emptyState ? () => <>{emptyState}</> : undefined}
-            >
-              {((row: T) => (
-                <Table.Row id={rowId(row)}>
-                  {cols.map(c => (
-                    <Table.Cell key={c.key}>{renderCell(row, c.key)}</Table.Cell>
-                  ))}
-                </Table.Row>
-              )) as unknown as (item: object) => ReactNode}
-            </Table.Body>
-          ) : (
-            <Table.Body
-              renderEmptyState={emptyState ? () => <>{emptyState}</> : undefined}
-            >
-              {sorted.map(row => (
-                <Table.Row key={rowId(row)} id={rowId(row)}>
-                  {cols.map(c => (
-                    <Table.Cell key={c.key}>{renderCell(row, c.key)}</Table.Cell>
-                  ))}
-                </Table.Row>
-              ))}
-            </Table.Body>
-          )}
+          {
+            virtualized
+              ? (
+                // Virtualizer-compatible Body: items-prop + render function so
+                // TableLayout can window the rows it actually paints.
+                // HeroUI types items as `object`; we cast to keep T generic
+                // (rows can be primitive types like strings in our usage).
+                  <Table.Body
+                    items={sorted as unknown as object[]}
+                    renderEmptyState={
+                      emptyState
+                        ? () => <>{emptyState}</>
+                        : undefined
+                    }
+                  >
+                    {((row: T) => (
+                      <Table.Row id={rowId(row)}>
+                        {cols.map((c) => (
+                          <Table.Cell key={c.key}>{renderCell(row, c.key)}</Table.Cell>
+                        ))}
+                      </Table.Row>
+                    )) as unknown as (item: object) => ReactNode}
+                  </Table.Body>
+                )
+              : (
+                  <Table.Body
+                    renderEmptyState={
+                      emptyState
+                        ? () => <>{emptyState}</>
+                        : undefined
+                    }
+                  >
+                    {sorted.map((row) => (
+                      <Table.Row key={rowId(row)} id={rowId(row)}>
+                        {cols.map((c) => (
+                          <Table.Cell key={c.key}>{renderCell(row, c.key)}</Table.Cell>
+                        ))}
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                )
+          }
         </Table.Content>
       </Table.ScrollContainer>
     </Table>

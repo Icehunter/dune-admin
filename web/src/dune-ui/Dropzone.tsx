@@ -30,9 +30,9 @@ export function Dropzone({
 
   const validateAndSelect = (f: File | undefined | null) => {
     if (!f) return
-    const exts = accept.split(',').map(x => x.trim().toLowerCase()).filter(Boolean)
+    const exts = accept.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean)
     if (exts.length > 0) {
-      const ok = exts.some(ext => f.name.toLowerCase().endsWith(ext))
+      const ok = exts.some((ext) => f.name.toLowerCase().endsWith(ext))
       if (!ok) {
         toast.warning(`Drop a ${accept} file`)
         return
@@ -52,16 +52,19 @@ export function Dropzone({
   return (
     <div
       className={
-        'rounded-[var(--radius)] flex flex-col items-center justify-center gap-2 text-sm cursor-pointer transition-all border-2 border-dashed ' +
-        (compact ? 'py-2 px-3' : 'py-6 px-4') + ' ' +
-        (dragging
+        'rounded-[var(--radius)] flex flex-col items-center justify-center gap-2 text-sm cursor-pointer transition-all border-2 border-dashed '
+        + (compact ? 'py-2 px-3' : 'py-6 px-4') + ' '
+        + (dragging
           ? 'border-warning bg-warning/10 text-warning'
-          : 'border-border bg-background text-muted hover:border-warning/60 hover:text-warning') +
-        ' ' + className
+          : 'border-border bg-background text-muted hover:border-warning/60 hover:text-warning')
+        + ' ' + className
       }
-      onDragOver={e => { e.preventDefault(); setDragging(true) }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        setDragging(true)
+      }}
       onDragLeave={() => setDragging(false)}
-      onDrop={e => {
+      onDrop={(e) => {
         e.preventDefault()
         setDragging(false)
         validateAndSelect(e.dataTransfer.files[0])
@@ -69,27 +72,43 @@ export function Dropzone({
       onClick={openPicker}
       role="button"
       tabIndex={0}
-      onKeyDown={e => {
+      onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           openPicker()
         }
       }}
     >
-      {uploading ? (
-        <span className="flex items-center gap-2"><Spinner size="sm" color="current" /> Uploading…</span>
-      ) : file ? (
-        <span className="flex flex-col items-center gap-0.5">
-          <span className="flex items-center gap-1.5 text-foreground">
-            <Icon name="file-check" /> <span className="font-mono">{file.name}</span>
-          </span>
-          <span className="text-xs text-muted">{(file.size / 1024).toFixed(1)} KB · click to replace</span>
-        </span>
-      ) : (
-        <span className="flex items-center gap-1.5">
-          <Icon name="upload" /> {prompt ?? `Drop or click to upload a ${accept} file`}
-        </span>
-      )}
+      {uploading
+        ? (
+            <span className="flex items-center gap-2">
+              <Spinner size="sm" color="current" />
+              {' '}
+              Uploading…
+            </span>
+          )
+        : file
+          ? (
+              <span className="flex flex-col items-center gap-0.5">
+                <span className="flex items-center gap-1.5 text-foreground">
+                  <Icon name="file-check" />
+                  {' '}
+                  <span className="font-mono">{file.name}</span>
+                </span>
+                <span className="text-xs text-muted">
+                  {(file.size / 1024).toFixed(1)}
+                  {' '}
+                  KB · click to replace
+                </span>
+              </span>
+            )
+          : (
+              <span className="flex items-center gap-1.5">
+                <Icon name="upload" />
+                {' '}
+                {prompt ?? `Drop or click to upload a ${accept} file`}
+              </span>
+            )}
     </div>
   )
 }

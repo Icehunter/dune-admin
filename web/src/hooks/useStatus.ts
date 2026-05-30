@@ -10,7 +10,8 @@ export function useStatus() {
       try {
         const s = await api.status()
         setStatus(s)
-      } catch {
+      }
+      catch {
         setStatus(null)
       }
     }

@@ -29,7 +29,7 @@ export default function BotLogViewer({ active = false }: Props) {
     if (timerRef.current) return
     timerRef.current = setInterval(() => {
       if (bufRef.current.length > 0) {
-        setLines(prev => {
+        setLines((prev) => {
           const combined = [...prev, ...bufRef.current]
           bufRef.current = []
           return combined.length > 5000 ? combined.slice(-5000) : combined
@@ -39,17 +39,27 @@ export default function BotLogViewer({ active = false }: Props) {
   }, [])
 
   const stopFlush = useCallback(() => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
   }, [])
 
   const connect = useCallback(() => {
-    if (wsRef.current) { wsRef.current.close(); wsRef.current = null }
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
     stopFlush()
     bufRef.current = []
     Promise.resolve()
-      .then(() => { setLines([]); setError(null); setConnState('connecting') })
+      .then(() => {
+        setLines([])
+        setError(null)
+        setConnState('connecting')
+      })
       .then(() => api.marketBot.logsReady())
-      .then(check => {
+      .then((check) => {
         if (!check.ready) {
           setError(check.reason ?? 'Log streaming not available')
           setConnState('error')
@@ -57,8 +67,13 @@ export default function BotLogViewer({ active = false }: Props) {
         }
         const ws = new WebSocket(`${getWsBase()}/market-bot/logs`)
         wsRef.current = ws
-        ws.onopen = () => { setConnState('connected'); startFlush() }
-        ws.onmessage = (e: MessageEvent) => { bufRef.current.push(e.data as string) }
+        ws.onopen = () => {
+          setConnState('connected')
+          startFlush()
+        }
+        ws.onmessage = (e: MessageEvent) => {
+          bufRef.current.push(e.data as string)
+        }
         ws.onerror = () => {
           setError('WebSocket connection failed — the log stream was interrupted.')
           setConnState('error')
@@ -66,13 +81,14 @@ export default function BotLogViewer({ active = false }: Props) {
         ws.onclose = (e) => {
           stopFlush()
           if (bufRef.current.length > 0) {
-            setLines(prev => [...prev, ...bufRef.current])
+            setLines((prev) => [...prev, ...bufRef.current])
             bufRef.current = []
           }
           if (e.code !== 1000 && e.code !== 1001) {
             setError(`Connection closed (code ${e.code})${e.reason ? ': ' + e.reason : ''}`)
             setConnState('error')
-          } else {
+          }
+          else {
             setConnState('idle')
           }
         }
@@ -84,9 +100,15 @@ export default function BotLogViewer({ active = false }: Props) {
   }, [startFlush, stopFlush])
 
   const disconnect = useCallback(() => {
-    if (wsRef.current) { wsRef.current.close(1000); wsRef.current = null }
+    if (wsRef.current) {
+      wsRef.current.close(1000)
+      wsRef.current = null
+    }
     stopFlush()
-    Promise.resolve().then(() => { setConnState('idle'); setError(null) })
+    Promise.resolve().then(() => {
+      setConnState('idle')
+      setError(null)
+    })
   }, [stopFlush])
 
   useEffect(() => {
@@ -95,7 +117,9 @@ export default function BotLogViewer({ active = false }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
 
-  useEffect(() => () => { disconnect() }, [disconnect])
+  useEffect(() => () => {
+    disconnect()
+  }, [disconnect])
 
   const stateLabel = {
     idle: '○ disconnected',
@@ -111,24 +135,37 @@ export default function BotLogViewer({ active = false }: Props) {
     error: 'text-danger',
   }[connState]
 
+  const clearLog = () => {
+    setLines([])
+    bufRef.current = []
+  }
+
   return (
     <div className="flex flex-col gap-2 h-full min-h-0">
       <div className="flex items-center gap-2 shrink-0 flex-wrap">
         <span className={`text-xs font-mono ${stateColor}`}>{stateLabel}</span>
         <div className="flex-1" />
         <Checkbox isSelected={autoScroll} onChange={setAutoScroll}>Auto-scroll</Checkbox>
-        {connState !== 'connected' ? (
-          <Button size="sm" variant="outline" onPress={connect} isDisabled={connState === 'connecting'}>
-            <Icon name="play" /> Connect
-          </Button>
-        ) : (
-          <Button size="sm" variant="danger-soft" onPress={disconnect}>
-            <Icon name="square" /> Stop
-          </Button>
-        )}
+        {connState !== 'connected'
+          ? (
+              <Button size="sm" variant="outline" onPress={connect} isDisabled={connState === 'connecting'}>
+                <Icon name="play" />
+                {' '}
+                Connect
+              </Button>
+            )
+          : (
+              <Button size="sm" variant="danger-soft" onPress={disconnect}>
+                <Icon name="square" />
+                {' '}
+                Stop
+              </Button>
+            )}
         {lines.length > 0 && (
-          <Button size="sm" variant="ghost" onPress={() => { setLines([]); bufRef.current = [] }}>
-            <Icon name="trash-2" /> Clear
+          <Button size="sm" variant="ghost" onPress={clearLog}>
+            <Icon name="trash-2" />
+            {' '}
+            Clear
           </Button>
         )}
       </div>

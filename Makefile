@@ -12,10 +12,11 @@ GO     := go
 PREFIX ?= /usr/local
 COGNIT_TARGET := $(if $(wildcard cmd/dune-admin),./cmd/dune-admin,.)
 
-# Windows produces .exe binaries. On Windows, bare `make` runs recipes under
-# cmd.exe, which lacks POSIX `mkdir -p` and `install` — so the `go` target
-# branches on OS below.
+# On Windows, Make defaults to cmd.exe which can't run POSIX recipes.
+# Force bash from Git for Windows so all targets work from any terminal.
 ifeq ($(OS),Windows_NT)
+SHELL     := cmd.exe
+.SHELLFLAGS := /C
 BIN       := bin/dune-admin.exe
 LOCAL_BIN := dune-admin.exe
 else
@@ -23,9 +24,15 @@ BIN       := bin/dune-admin
 LOCAL_BIN := dune-admin
 endif
 
+ifeq ($(OS),Windows_NT)
+VERSION    ?= $(shell type VERSION 2>NUL || echo dev)
+GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>NUL || echo unknown)
+BUILD_TIME ?= $(shell powershell -NoProfile -Command "[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')")
+else
 VERSION    ?= $(shell cat VERSION 2>/dev/null || git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME ?= $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+endif
 LDFLAGS    := -ldflags "-s -w -X main.AppVersion=$(VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.BuildTime=$(BUILD_TIME)"
 
 # Build frontend + backend binary with embedded SPA.
@@ -45,14 +52,24 @@ endif
 
 # Build backend binary with embedded frontend (requires make web first).
 go-embed:
+ifeq ($(OS),Windows_NT)
+	@if not exist bin mkdir bin
+	$(GO) build -trimpath $(LDFLAGS) -tags embed -o $(BIN) $(CMD)
+	@copy /Y "bin\dune-admin.exe" "$(LOCAL_BIN)" >NUL
+else
 	@mkdir -p bin
 	$(GO) build -trimpath $(LDFLAGS) -tags embed -o $(BIN) $(CMD)
 	install -m 0755 $(BIN) ./dune-admin
+endif
 
-# Install the binary system-wide.
+# Install the binary system-wide (Linux/macOS only).
 install: go
+ifeq ($(OS),Windows_NT)
+	@echo "Use 'make go' to build. Copy $(BIN) to your desired location manually."
+else
 	install -d $(DESTDIR)$(PREFIX)/bin
 	install -m 0755 $(BIN) $(DESTDIR)$(PREFIX)/bin/dune-admin
+endif
 
 linux:
 	GOOS=linux GOARCH=amd64 $(GO) build -trimpath $(LDFLAGS) -o dune-admin-linux $(CMD)
@@ -61,12 +78,22 @@ dev-server:
 	go run $(CMD)
 
 dev-backend:
+ifeq ($(OS),Windows_NT)
+	go tool github.com/air-verse/air -build.cmd "go build -o ./tmp/dune-admin.exe ./cmd/dune-admin" -build.bin "./tmp/dune-admin.exe" -build.full_bin "./tmp/dune-admin.exe"
+else
 	go tool github.com/air-verse/air
+endif
 
 dev-web:
 	cd web && pnpm dev
 
 dev:
+ifeq ($(OS),Windows_NT)
+	@start "dune-admin-backend" /MIN $(MAKE) dev-backend
+	-@cd web && node node_modules\vite\bin\vite.js
+	-@taskkill /F /FI "WINDOWTITLE eq dune-admin-backend*" >NUL 2>&1
+	-@taskkill /F /IM dune-admin.exe >NUL 2>&1
+else
 	@set -e; \
 	AIR_PID=; VITE_PID=; \
 	cleanup() { \
@@ -93,6 +120,7 @@ dev:
 		wait $$AIR_PID 2>/dev/null || true; \
 	fi; \
 	exit $$status
+endif
 
 setup:
 	go run $(CMD) -setup
@@ -101,8 +129,13 @@ setup:
 
 web:
 	cd web && pnpm install --frozen-lockfile && pnpm build
+ifeq ($(OS),Windows_NT)
+	@if exist cmd\dune-admin\dist rmdir /S /Q cmd\dune-admin\dist
+	@xcopy /E /I /Q web\dist cmd\dune-admin\dist >NUL
+else
 	rm -rf cmd/dune-admin/dist
 	cp -r web/dist cmd/dune-admin/dist
+endif
 
 deploy-web:
 	cd web && pnpm install --frozen-lockfile && pnpm build && wrangler pages deploy dist --project-name dune-admin
@@ -134,18 +167,31 @@ fmt:
 	gofmt -s -w .
 
 fmt-check:
+ifeq ($(OS),Windows_NT)
+	@powershell -NoProfile -Command "if (gofmt -l .) { Write-Host 'Code is not formatted. Run make fmt'; exit 1 }"
+else
 	@test -z "$$(gofmt -l .)" || (echo "Code is not formatted. Run 'make fmt'" && exit 1)
+endif
 
 vulncheck:
 	go tool golang.org/x/vuln/cmd/govulncheck $(PKG)
 
 gocognit:
 	@echo "Running code complexity analysis with gocognit..."
+ifeq ($(OS),Windows_NT)
+	@$(GO) tool github.com/uudashr/gocognit/cmd/gocognit -over 15 -ignore "_test|node_modules" $(COGNIT_TARGET) \
+		> %TEMP%\gocognit-out.txt 2>&1 || (exit /b 0)
+	@powershell -NoProfile -Command "\
+		$$ignore = (Get-Content .gocognit-ignore | Where-Object { $$_ -notmatch '^\s*#' -and $$_.Trim() } | ForEach-Object { ($$_ -split '\s+')[0] }); \
+		$$lines = Get-Content $$env:TEMP\gocognit-out.txt -ErrorAction SilentlyContinue | Where-Object { $$line = $$_; -not ($$ignore | Where-Object { $$line -like \"*$$_*\" }) }; \
+		if ($$lines) { $$lines | Write-Host; exit 1 }"
+else
 	@$(GO) tool github.com/uudashr/gocognit/cmd/gocognit -over 15 -ignore "_test|node_modules" $(COGNIT_TARGET) \
 		> /tmp/gocognit-out.txt 2>&1 || true; \
 	grep -v '^#' .gocognit-ignore | awk '{print $$1}' > /tmp/gocognit-ignore.txt; \
 	grep -v -F -f /tmp/gocognit-ignore.txt /tmp/gocognit-out.txt > /tmp/gocognit-new.txt || true; \
 	if [ -s /tmp/gocognit-new.txt ]; then cat /tmp/gocognit-new.txt; exit 1; fi
+endif
 
 gosec:
 	go tool github.com/securego/gosec/v2/cmd/gosec -severity high -confidence high $(PKG)
@@ -164,13 +210,13 @@ lint-md:
 	@npx -y markdownlint-cli2 --fix "**/*.md"
 
 verify:
-	@$(MAKE) fmt-check && \
-	$(MAKE) vet && \
-	$(MAKE) test-race && \
-	$(MAKE) vulncheck && \
-	$(MAKE) lint && \
-	$(MAKE) gocognit && \
-	echo "All verification checks passed!"
+	@$(MAKE) fmt-check
+	@$(MAKE) vet
+	@$(MAKE) test-race
+	@$(MAKE) vulncheck
+	@$(MAKE) lint
+	@$(MAKE) gocognit
+	@echo "All verification checks passed!"
 
 # ── Tools ─────────────────────────────────────────────────────────────────────
 

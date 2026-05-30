@@ -45,36 +45,59 @@ function mergeConfig(fetched: Record<string, unknown>): AppConfig {
 
 const inputCls = 'bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full font-mono placeholder:text-muted/50 focus:outline-none focus:border-accent/60'
 
-function F({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function F({ label, hint, children }: { label: string, hint?: string, children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs text-muted font-medium">
-        {label}{hint && <span className="opacity-60 font-normal"> ({hint})</span>}
+        {label}
+        {hint && (
+          <span className="opacity-60 font-normal">
+            {' '}
+            (
+            {hint}
+            )
+          </span>
+        )}
       </label>
       {children}
     </div>
   )
 }
 
-function TI({ value, onChange, placeholder, type = 'text' }: {
-  value: string | number; onChange: (v: string) => void; placeholder?: string; type?: string
-}) {
+interface TIProps {
+  value: string | number
+  onChange: (v: string) => void
+  placeholder?: string
+  type?: string
+}
+
+function TI({ value, onChange, placeholder, type = 'text' }: TIProps) {
   return (
-    <input type={type} value={value} onChange={e => onChange(e.target.value)}
-      placeholder={placeholder} className={inputCls} />
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={inputCls}
+    />
   )
 }
 
-function CB({ label, checked, onChange, hint }: {
-  label: string; checked: boolean; onChange: (v: boolean) => void; hint?: string
-}) {
+interface CBProps {
+  label: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  hint?: string
+}
+
+function CB({ label, checked, onChange, hint }: CBProps) {
   return (
     <div className="flex flex-col gap-0.5">
       <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-foreground">
         <input
           type="checkbox"
           checked={!!checked}
-          onChange={e => onChange(e.target.checked)}
+          onChange={(e) => onChange(e.target.checked)}
           className="accent-[var(--color-accent)] w-4 h-4 cursor-pointer"
         />
         {label}
@@ -99,13 +122,13 @@ export default function SettingsConfigForm() {
 
   useEffect(() => {
     api.config.get()
-      .then(c => setCfg(mergeConfig(c as Record<string, unknown>)))
-      .catch(e => toast.danger(`Could not load config: ${e instanceof Error ? e.message : String(e)}`))
+      .then((c) => setCfg(mergeConfig(c as Record<string, unknown>)))
+      .catch((e) => toast.danger(`Could not load config: ${e instanceof Error ? e.message : String(e)}`))
       .finally(() => setLoading(false))
   }, [])
 
   const set = (key: keyof AppConfig) => (v: string) =>
-    setCfg(prev => ({
+    setCfg((prev) => ({
       ...prev,
       [key]: key === 'db_port' || key === 'scrip_currency' || key === 'market_bot_max_buys'
         ? (Number(v) || 0)
@@ -115,16 +138,18 @@ export default function SettingsConfigForm() {
     }))
 
   const setBool = (key: keyof AppConfig) => (v: boolean) =>
-    setCfg(prev => ({ ...prev, [key]: v }))
+    setCfg((prev) => ({ ...prev, [key]: v }))
 
   const save = async () => {
     setSaving(true)
     try {
       await api.config.save(cfg)
       toast.success('Config saved — applying settings…')
-    } catch (e: unknown) {
+    }
+    catch (e: unknown) {
       toast.danger(`Save failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
+    }
+    finally {
       setSaving(false)
     }
   }
@@ -139,26 +164,41 @@ export default function SettingsConfigForm() {
   }
 
   const isKubectl = cfg.control === 'kubectl'
-  const isDocker  = cfg.control === 'docker'
-  const isLocal   = cfg.control === 'local'
-  const isAmp     = cfg.control === 'amp'
+  const isDocker = cfg.control === 'docker'
+  const isLocal = cfg.control === 'local'
+  const isAmp = cfg.control === 'amp'
 
   return (
     // Outer flex col: tabs + single save bar below
     <div className="flex flex-col flex-1 min-h-0 gap-0">
       <Tabs
         selectedKey={tab}
-        onSelectionChange={k => setTab(String(k))}
+        onSelectionChange={(k) => setTab(String(k))}
         className="flex flex-col flex-1 min-h-0"
       >
         {/* Tab bar — never scrolls */}
         <Tabs.ListContainer className="shrink-0">
           <Tabs.List aria-label="Config sections" className="gap-1">
-            <Tabs.Tab id="connection">Connection<Tabs.Indicator /></Tabs.Tab>
-            <Tabs.Tab id="control">Control<Tabs.Indicator /></Tabs.Tab>
-            <Tabs.Tab id="broker">Broker<Tabs.Indicator /></Tabs.Tab>
-            <Tabs.Tab id="marketbot">Market Bot<Tabs.Indicator /></Tabs.Tab>
-            <Tabs.Tab id="advanced">Advanced<Tabs.Indicator /></Tabs.Tab>
+            <Tabs.Tab id="connection">
+              Connection
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="control">
+              Control
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="broker">
+              Broker
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="marketbot">
+              Market Bot
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="advanced">
+              Advanced
+              <Tabs.Indicator />
+            </Tabs.Tab>
           </Tabs.List>
         </Tabs.ListContainer>
 
@@ -211,16 +251,31 @@ export default function SettingsConfigForm() {
             <div className="mt-1 flex flex-col gap-1">
               <Select
                 selectedKey={cfg.control || 'local'}
-                onSelectionChange={k => setCfg(prev => ({ ...prev, control: String(k) }))}
+                onSelectionChange={(k) => setCfg((prev) => ({ ...prev, control: String(k) }))}
                 className="w-64"
               >
-                <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
                 <Select.Popover>
                   <ListBox>
-                    <ListBox.Item id="kubectl" textValue="kubectl">kubectl — Kubernetes / k3s<ListBox.ItemIndicator /></ListBox.Item>
-                    <ListBox.Item id="docker" textValue="docker">docker — Docker containers<ListBox.ItemIndicator /></ListBox.Item>
-                    <ListBox.Item id="local" textValue="local">local — bare metal / LGSM / shell<ListBox.ItemIndicator /></ListBox.Item>
-                    <ListBox.Item id="amp" textValue="amp">amp — CubeCoders AMP<ListBox.ItemIndicator /></ListBox.Item>
+                    <ListBox.Item id="kubectl" textValue="kubectl">
+                      kubectl — Kubernetes / k3s
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                    <ListBox.Item id="docker" textValue="docker">
+                      docker — Docker containers
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                    <ListBox.Item id="local" textValue="local">
+                      local — bare metal / LGSM / shell
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                    <ListBox.Item id="amp" textValue="amp">
+                      amp — CubeCoders AMP
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
                   </ListBox>
                 </Select.Popover>
               </Select>
@@ -272,9 +327,12 @@ export default function SettingsConfigForm() {
                 <F label="AMP user"><TI value={cfg.amp_user} onChange={set('amp_user')} placeholder="amp" /></F>
                 <F label="Log path"><TI value={cfg.amp_log_path} onChange={set('amp_log_path')} placeholder="/logs" /></F>
                 <F label="Data root"><TI value={cfg.amp_data_root} onChange={set('amp_data_root')} placeholder="/AMP/duneawakening" /></F>
-                <CB label="Use container (podman exec)" checked={cfg.amp_use_container}
+                <CB
+                  label="Use container (podman exec)"
+                  checked={cfg.amp_use_container}
                   onChange={setBool('amp_use_container')}
-                  hint="Disable to run on host as the AMP user directly." />
+                  hint="Disable to run on host as the AMP user directly."
+                />
               </G2>
             </Panel>
           )}
@@ -312,9 +370,12 @@ export default function SettingsConfigForm() {
           <Panel>
             <SectionLabel>Mode</SectionLabel>
             <div className="mt-1">
-              <CB label="Enable embedded bot" checked={cfg.market_bot_enabled}
+              <CB
+                label="Enable embedded bot"
+                checked={cfg.market_bot_enabled}
                 onChange={setBool('market_bot_enabled')}
-                hint="Runs in-process alongside dune-admin. Toggling off stops it immediately on save." />
+                hint="Runs in-process alongside dune-admin. Toggling off stops it immediately on save."
+              />
             </div>
             <G2>
               <F label="Remote URL" hint="forward to standalone bot instead">
@@ -372,17 +433,34 @@ export default function SettingsConfigForm() {
           <Panel>
             <SectionLabel>Backend URL Override</SectionLabel>
             <p className="text-xs text-muted -mt-1">
-              Only needed when the UI is served from a different host (SSH tunnel, CDN). Leave blank for single-binary setup.
+              Only needed when the UI is served from a different host (SSH tunnel, CDN).
+              Leave blank for single-binary setup.
             </p>
             <G2>
               <F label="URL" hint="stored in browser, not server">
-                <TI value={backendUrl} onChange={v => { setBackendUrl(v); localStorage.setItem('dune_admin_backend', v) }}
-                  placeholder="http://host:port" />
+                <TI
+                  value={backendUrl}
+                  onChange={(v) => {
+                    setBackendUrl(v)
+                    localStorage.setItem('dune_admin_backend', v)
+                  }}
+                  placeholder="http://host:port"
+                />
               </F>
             </G2>
             <div className="flex gap-2 mt-1">
               <Button size="sm" onPress={() => window.location.reload()}>Apply & Reload</Button>
-              <Button size="sm" variant="outline" onPress={() => { setBackendUrl(''); localStorage.removeItem('dune_admin_backend'); window.location.reload() }}>Reset</Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onPress={() => {
+                  setBackendUrl('')
+                  localStorage.removeItem('dune_admin_backend')
+                  window.location.reload()
+                }}
+              >
+                Reset
+              </Button>
             </div>
           </Panel>
         </Tabs.Panel>
@@ -392,7 +470,21 @@ export default function SettingsConfigForm() {
       <div className="shrink-0 flex items-center justify-between pt-3 mt-1 border-t border-border">
         <p className="text-xs text-muted">Changes on all tabs are saved together.</p>
         <Button size="sm" onPress={save} isDisabled={saving}>
-          {saving ? <><Spinner size="sm" color="current" /> Saving…</> : <><Icon name="save" /> Save &amp; Apply</>}
+          {saving
+            ? (
+                <>
+                  <Spinner size="sm" color="current" />
+                  {' '}
+                  Saving…
+                </>
+              )
+            : (
+                <>
+                  <Icon name="save" />
+                  {' '}
+                  Save &amp; Apply
+                </>
+              )}
         </Button>
       </div>
     </div>

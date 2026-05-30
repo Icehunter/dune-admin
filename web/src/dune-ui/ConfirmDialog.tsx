@@ -11,7 +11,7 @@ type Props = {
 
 export function ConfirmDialog({ open, title, description, confirmLabel = 'Confirm', onConfirm, onCancel }: Props) {
   return (
-    <AlertDialog.Backdrop isOpen={open} onOpenChange={v => !v && onCancel()}>
+    <AlertDialog.Backdrop isOpen={open} onOpenChange={(v) => !v && onCancel()}>
       <AlertDialog.Container size="sm">
         <AlertDialog.Dialog>
           <AlertDialog.Header>

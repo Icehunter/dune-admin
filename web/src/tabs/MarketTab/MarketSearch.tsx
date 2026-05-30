@@ -53,23 +53,37 @@ export default function MarketSearch({ filters, onChange, onReset }: Props) {
 
       <Select
         selectedKey={filters.owner || 'all'}
-        onSelectionChange={k => set({ owner: k === 'all' ? '' : k as MarketFilters['owner'] })}
+        onSelectionChange={(k) => set({ owner: k === 'all' ? '' : k as MarketFilters['owner'] })}
         className="w-36"
         aria-label="Filter by seller"
       >
-        <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+        <Select.Trigger>
+          <Select.Value />
+          <Select.Indicator />
+        </Select.Trigger>
         <Select.Popover>
           <ListBox>
-            <ListBox.Item id="all" textValue="All sellers">All sellers<ListBox.ItemIndicator /></ListBox.Item>
-            <ListBox.Item id="bot" textValue="Bot only">Bot only<ListBox.ItemIndicator /></ListBox.Item>
-            <ListBox.Item id="player" textValue="Players only">Players only<ListBox.ItemIndicator /></ListBox.Item>
+            <ListBox.Item id="all" textValue="All sellers">
+              All sellers
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
+            <ListBox.Item id="bot" textValue="Bot only">
+              Bot only
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
+            <ListBox.Item id="player" textValue="Players only">
+              Players only
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
           </ListBox>
         </Select.Popover>
       </Select>
 
       {hasFilters && (
         <Button size="sm" variant="ghost" onPress={onReset}>
-          <Icon name="x" /> Clear
+          <Icon name="x" />
+          {' '}
+          Clear
         </Button>
       )}
     </div>

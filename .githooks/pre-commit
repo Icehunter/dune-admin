@@ -18,10 +18,11 @@ NC='\033[0m' # No Color
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
 HAS_GO_FILES=$(echo "$STAGED_FILES" | grep -E '\.go$' || true)
 HAS_MD_FILES=$(echo "$STAGED_FILES" | grep -E '\.md$' || true)
+HAS_TS_FILES=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx)$' || true)
 
 # Exit early if no relevant files are staged
-if [ -z "$HAS_GO_FILES" ] && [ -z "$HAS_MD_FILES" ]; then
-    echo -e "${GREEN}✓${NC} No Go or Markdown files staged, skipping checks"
+if [ -z "$HAS_GO_FILES" ] && [ -z "$HAS_MD_FILES" ] && [ -z "$HAS_TS_FILES" ]; then
+    echo -e "${GREEN}✓${NC} No Go, Markdown, or TypeScript files staged, skipping checks"
     exit 0
 fi
 
@@ -38,6 +39,9 @@ if [ -n "$HAS_GO_FILES" ]; then
 fi
 if [ -n "$HAS_MD_FILES" ]; then
     echo -e "${YELLOW}Markdown files staged:${NC} $(echo "$HAS_MD_FILES" | wc -l | tr -d ' ') file(s)"
+fi
+if [ -n "$HAS_TS_FILES" ]; then
+    echo -e "${YELLOW}TypeScript files staged:${NC} $(echo "$HAS_TS_FILES" | wc -l | tr -d ' ') file(s)"
 fi
 echo ""
 
@@ -90,6 +94,18 @@ if [ -n "$HAS_MD_FILES" ]; then
         echo -e "${GREEN}✓${NC} markdownlint passed"
     else
         echo -e "${RED}✗${NC} markdownlint failed"
+        cat /tmp/hook-output.txt
+        FAILED=1
+    fi
+fi
+
+# TypeScript checks (only if .ts/.tsx files are staged)
+if [ -n "$HAS_TS_FILES" ]; then
+    echo -e "${YELLOW}▶${NC} Running ESLint (TypeScript)..."
+    if (cd web && pnpm lint) > /tmp/hook-output.txt 2>&1; then
+        echo -e "${GREEN}✓${NC} ESLint passed"
+    else
+        echo -e "${RED}✗${NC} ESLint failed"
         cat /tmp/hook-output.txt
         FAILED=1
     fi

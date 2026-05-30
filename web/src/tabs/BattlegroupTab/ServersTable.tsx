@@ -15,7 +15,7 @@ export function ServersTable({ servers, isInitializing, emptyMessage }: Props) {
       className="min-h-0 max-h-full"
       columns={SERVER_COLUMNS}
       rows={servers}
-      rowId={s => `${s.map}-${s.dimension}-${s.partition}`}
+      rowId={(s) => `${s.map}-${s.dimension}-${s.partition}`}
       initialSort={{ column: 'map', direction: 'ascending' }}
       sortValue={(r, k) => k === 'ready' ? (r.ready ? 1 : 0) : (r[k] as string | number)}
       emptyState={emptyMessage && <div className="py-8 text-center text-muted">{emptyMessage}</div>}

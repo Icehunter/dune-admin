@@ -31,10 +31,11 @@ fi
 # Detect which file types are in the commits being pushed
 HAS_GO_FILES=$(echo "$CHANGED_FILES" | grep -E '\.go$' || true)
 HAS_MD_FILES=$(echo "$CHANGED_FILES" | grep -E '\.md$' || true)
+HAS_TS_FILES=$(echo "$CHANGED_FILES" | grep -E '\.(ts|tsx)$' || true)
 
 # Exit early if no relevant files in the push
-if [ -z "$HAS_GO_FILES" ] && [ -z "$HAS_MD_FILES" ]; then
-    echo -e "${GREEN}✓${NC} No Go or Markdown files in push, skipping checks"
+if [ -z "$HAS_GO_FILES" ] && [ -z "$HAS_MD_FILES" ] && [ -z "$HAS_TS_FILES" ]; then
+    echo -e "${GREEN}✓${NC} No Go, Markdown, or TypeScript files in push, skipping checks"
     exit 0
 fi
 
@@ -64,6 +65,10 @@ if [ -n "$HAS_MD_FILES" ]; then
     MD_COUNT=$(echo "$HAS_MD_FILES" | wc -l | tr -d ' ')
     echo -e "${YELLOW}Markdown files changed:${NC} ${MD_COUNT} file(s)"
 fi
+if [ -n "$HAS_TS_FILES" ]; then
+    TS_COUNT=$(echo "$HAS_TS_FILES" | wc -l | tr -d ' ')
+    echo -e "${YELLOW}TypeScript files changed:${NC} ${TS_COUNT} file(s)"
+fi
 echo ""
 
 # Track if any check fails
@@ -77,6 +82,9 @@ if [ -n "$HAS_GO_FILES" ]; then
 fi
 if [ -n "$HAS_MD_FILES" ]; then
     TOTAL_CHECKS=$((TOTAL_CHECKS + 1))  # markdownlint
+fi
+if [ -n "$HAS_TS_FILES" ]; then
+    TOTAL_CHECKS=$((TOTAL_CHECKS + 1))  # eslint
 fi
 CURRENT_CHECK=0
 
@@ -166,6 +174,11 @@ fi
 # Markdown checks (only if .md files are in the push)
 if [ -n "$HAS_MD_FILES" ]; then
     run_check "Running markdownlint" "make lint-md" || FAILED=1
+fi
+
+# TypeScript checks (only if .ts/.tsx files are in the push)
+if [ -n "$HAS_TS_FILES" ]; then
+    run_check "Running ESLint (TypeScript)" "(cd web && pnpm lint)" || FAILED=1
 fi
 
 # Summary

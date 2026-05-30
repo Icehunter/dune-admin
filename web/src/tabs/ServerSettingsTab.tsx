@@ -13,17 +13,17 @@ const CATEGORY_ORDER = [
 // category so the grid of category cards is scannable by glance. Unknown
 // categories fall back to "sliders".
 const CATEGORY_ICONS: Record<string, string> = {
-  'Survival':         'heart-pulse',
-  'Progression':      'trending-up',
-  'Harvesting':       'pickaxe',
-  'Building':         'home',
-  'Inventory':        'package',
+  'Survival': 'heart-pulse',
+  'Progression': 'trending-up',
+  'Harvesting': 'pickaxe',
+  'Building': 'home',
+  'Inventory': 'package',
   'Guilds & Economy': 'coins',
-  'Storm Cycle':      'wind',
-  'PvP & Security':   'shield',
-  'Spice':            'sparkles',
-  'Taxation':         'receipt',
-  'Sandworm':         'worm',
+  'Storm Cycle': 'wind',
+  'PvP & Security': 'shield',
+  'Spice': 'sparkles',
+  'Taxation': 'receipt',
+  'Sandworm': 'worm',
 }
 
 // COMMON_KEYS is the curated list of settings most admins want to touch
@@ -49,17 +49,17 @@ const COMMON_KEYS = new Set([
 ])
 
 const SOURCE_FILE: Record<string, string> = {
-  defaultGame:   'DefaultGame.ini',
+  defaultGame: 'DefaultGame.ini',
   defaultEngine: 'DefaultEngine.ini',
-  userGame:      'UserGame.ini',
-  userEngine:    'UserEngine.ini',
+  userGame: 'UserGame.ini',
+  userEngine: 'UserEngine.ini',
 }
 
 const LAYER_STYLE: Record<string, { cls: string }> = {
-  defaultGame:   { cls: 'text-muted/60' },
+  defaultGame: { cls: 'text-muted/60' },
   defaultEngine: { cls: 'text-muted/60' },
-  userEngine:    { cls: 'text-foreground/70' },
-  userGame:      { cls: 'text-warning' },
+  userEngine: { cls: 'text-foreground/70' },
+  userGame: { cls: 'text-warning' },
 }
 
 const SOURCE_PRIORITY = ['defaultGame', 'defaultEngine', 'userEngine', 'userGame'] as const
@@ -82,7 +82,7 @@ function groupByCategory(items: ServerSetting[]) {
 }
 
 function sourceLabel(s: string) {
-  const file  = SOURCE_FILE[s]
+  const file = SOURCE_FILE[s]
   const style = LAYER_STYLE[s]
   if (!file || !style) return null
   return { text: file, cls: style.cls }
@@ -99,11 +99,11 @@ function shortSection(section: string) {
 function matchesSetting(item: ServerSetting, q: string): boolean {
   if (!q) return true
   return (
-    item.label.toLowerCase().includes(q) ||
-    item.description.toLowerCase().includes(q) ||
-    item.key.toLowerCase().includes(q) ||
-    item.category.toLowerCase().includes(q) ||
-    shortSection(item.section).toLowerCase().includes(q)
+    item.label.toLowerCase().includes(q)
+    || item.description.toLowerCase().includes(q)
+    || item.key.toLowerCase().includes(q)
+    || item.category.toLowerCase().includes(q)
+    || shortSection(item.section).toLowerCase().includes(q)
   )
 }
 
@@ -111,8 +111,8 @@ function matchesSetting(item: ServerSetting, q: string): boolean {
 function matchesRawSection(sections: RawSection[], q: string): boolean {
   if (!q) return true
   if (shortSection(sections[0].section).toLowerCase().includes(q)) return true
-  return sections.some(sec =>
-    sec.lines.some(l =>
+  return sections.some((sec) =>
+    sec.lines.some((l) =>
       l.key.toLowerCase().includes(q) || l.value.toLowerCase().includes(q),
     ),
   )
@@ -130,9 +130,8 @@ function SettingRow({
   const display = item.type === 'bool'
     ? (/^(true|1|yes)$/i.test(rawDisplay) ? 'True' : /^(false|0|no)$/i.test(rawDisplay) ? 'False' : rawDisplay)
     : rawDisplay
-  const dirty    = pending !== undefined && rawDisplay !== item.current
-  const src      = sourceLabel(item.source)
-
+  const dirty = pending !== undefined && rawDisplay !== item.current
+  const src = sourceLabel(item.source)
 
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-border/40 last:border-0">
@@ -146,12 +145,15 @@ function SettingRow({
         {item.layers.length > 1 && (
           <div className="flex items-center gap-1 mt-1.5 flex-wrap">
             {item.layers.map((layer, i) => {
-              const style   = LAYER_STYLE[layer.source] ?? { cls: 'text-muted' }
+              const style = LAYER_STYLE[layer.source] ?? { cls: 'text-muted' }
               const isActive = i === item.layers.length - 1
               return (
                 <span key={layer.source} className="flex items-center gap-1">
                   <span className={`text-xs font-mono px-1.5 py-0.5 rounded border border-border/30 bg-surface/60 ${style.cls} ${isActive ? 'font-semibold' : 'opacity-50'}`}>
-                    {SOURCE_FILE[layer.source] ?? layer.source}: {trimFloat(layer.value)}{isActive ? ' ✓' : ''}
+                    {SOURCE_FILE[layer.source] ?? layer.source}
+                    :
+                    {trimFloat(layer.value)}
+                    {isActive ? ' ✓' : ''}
                   </span>
                   {i < item.layers.length - 1 && (
                     <span className="text-muted/30 text-xs select-none">→</span>
@@ -164,34 +166,45 @@ function SettingRow({
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        {item.type === 'bool' ? (
-          <Select selectedKey={display} onSelectionChange={k => onChange(String(k))} className="w-32">
-            <Select.Trigger className="h-7 text-xs">
-              <Select.Value /><Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <ListBox>
-                <ListBox.Item id="True"  textValue="True">True<ListBox.ItemIndicator /></ListBox.Item>
-                <ListBox.Item id="False" textValue="False">False<ListBox.ItemIndicator /></ListBox.Item>
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        ) : item.type === 'string' ? (
-          <input
-            type="text"
-            value={display}
-            onChange={e => onChange(e.target.value)}
-            className="w-40 bg-surface border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60"
-          />
-        ) : (
-          <input
-            type="number"
-            step={item.type === 'float' ? '0.01' : '1'}
-            value={display}
-            onChange={e => onChange(e.target.value)}
-            className="w-28 bg-surface border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60 text-right"
-          />
-        )}
+        {item.type === 'bool'
+          ? (
+              <Select selectedKey={display} onSelectionChange={(k) => onChange(String(k))} className="w-32">
+                <Select.Trigger className="h-7 text-xs">
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    <ListBox.Item id="True" textValue="True">
+                      True
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                    <ListBox.Item id="False" textValue="False">
+                      False
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                  </ListBox>
+                </Select.Popover>
+              </Select>
+            )
+          : item.type === 'string'
+            ? (
+                <input
+                  type="text"
+                  value={display}
+                  onChange={(e) => onChange(e.target.value)}
+                  className="w-40 bg-surface border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60"
+                />
+              )
+            : (
+                <input
+                  type="number"
+                  step={item.type === 'float' ? '0.01' : '1'}
+                  value={display}
+                  onChange={(e) => onChange(e.target.value)}
+                  className="w-28 bg-surface border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60 text-right"
+                />
+              )}
         {(item.source === 'userGame' || item.source === 'userEngine') && (
           <button
             onClick={onDelete}
@@ -207,7 +220,7 @@ function SettingRow({
 }
 
 function linesToText(lines: RawSection['lines']) {
-  return lines.map(l => `${l.prefix}${l.key}=${l.value}`).join('\n')
+  return lines.map((l) => `${l.prefix}${l.key}=${l.value}`).join('\n')
 }
 
 // Trim Go's 6-decimal float formatting: "500.000000" → "500", "0.300000" → "0.3"
@@ -218,13 +231,14 @@ function trimFloat(v: string): string {
 }
 
 function groupLinesByKey(lines: RawSection['lines']) {
-  const grouped: { key: string; lines: typeof lines }[] = []
+  const grouped: { key: string, lines: typeof lines }[] = []
   const seen = new Map<string, number>()
   for (const line of lines) {
     const idx = seen.get(line.key)
     if (idx !== undefined) {
       grouped[idx].lines.push(line)
-    } else {
+    }
+    else {
       seen.set(line.key, grouped.length)
       grouped.push({ key: line.key, lines: [line] })
     }
@@ -233,23 +247,23 @@ function groupLinesByKey(lines: RawSection['lines']) {
 }
 
 // One panel per INI section name, merging all source files that contain it.
-function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSaved: () => void }) {
+function RawSectionPanel({ sections, onSaved }: { sections: RawSection[], onSaved: () => void }) {
   const sectionName = sections[0].section
   // Find the active user-writable source for this section (userGame or userEngine).
-  const userSec = sections.find(s => s.source === 'userGame')
-               ?? sections.find(s => s.source === 'userEngine')
+  const userSec = sections.find((s) => s.source === 'userGame')
+    ?? sections.find((s) => s.source === 'userEngine')
 
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft]     = useState('')
-  const [saving, setSaving]   = useState(false)
+  const [draft, setDraft] = useState('')
+  const [saving, setSaving] = useState(false)
   const [collapsed, setCollapsed] = useState(true)
-  const textareaRef           = useRef<HTMLTextAreaElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const toggle = () => {
     // While editing, the header click stays a no-op so users don't lose
     // their draft by accident. Cancel first if they want to collapse.
     if (editing) return
-    setCollapsed(v => !v)
+    setCollapsed((v) => !v)
   }
 
   const startEdit = () => {
@@ -267,9 +281,11 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSave
       toast.success(`Saved to ${userSec ? SOURCE_FILE[userSec.source] : 'UserGame.ini'}`)
       setEditing(false)
       onSaved()
-    } catch (e: unknown) {
+    }
+    catch (e: unknown) {
       toast.danger(`Save failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
+    }
+    finally {
       setSaving(false)
     }
   }
@@ -280,9 +296,11 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSave
       await api.serverSettings.updateRaw(sectionName, '')
       toast.success(`Removed from ${userSec ? SOURCE_FILE[userSec.source] : 'UserGame.ini'}`)
       onSaved()
-    } catch (e: unknown) {
+    }
+    catch (e: unknown) {
       toast.danger(`Delete failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
+    }
+    finally {
       setSaving(false)
     }
   }
@@ -306,7 +324,7 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSave
           className="w-4 h-4 shrink-0 text-muted/70"
         />
         <SectionLabel>{shortSection(sectionName)}</SectionLabel>
-        {sorted.map(s => (
+        {sorted.map((s) => (
           <span key={s.source} className={`text-xs ${LAYER_STYLE[s.source]?.cls ?? 'text-muted'}`}>
             {SOURCE_FILE[s.source] ?? s.source}
           </span>
@@ -316,90 +334,95 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSave
         )}
         <div
           className="ml-auto flex items-center gap-1 min-w-[2rem]"
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
-          {editing ? (
-            <>
-              <Button size="sm" variant="ghost" onPress={cancel} isDisabled={saving}>Cancel</Button>
-              <Button size="sm" onPress={save} isDisabled={saving}>
-                {saving ? <Spinner size="sm" color="current" /> : 'Save'}
-              </Button>
-            </>
-          ) : !collapsed && (
-            <>
-              {userSec && (
-                <button
-                  onClick={deleteUserEntry}
-                  title={`Remove from ${SOURCE_FILE[userSec.source]}`}
-                  className="text-muted/50 hover:text-danger transition-colors"
-                  disabled={saving}
-                >
-                  <Icon name="trash-2" className="w-3.5 h-3.5" />
-                </button>
+          {editing
+            ? (
+                <>
+                  <Button size="sm" variant="ghost" onPress={cancel} isDisabled={saving}>Cancel</Button>
+                  <Button size="sm" onPress={save} isDisabled={saving}>
+                    {saving ? <Spinner size="sm" color="current" /> : 'Save'}
+                  </Button>
+                </>
+              )
+            : !collapsed && (
+                <>
+                  {userSec && (
+                    <button
+                      onClick={deleteUserEntry}
+                      title={`Remove from ${SOURCE_FILE[userSec.source]}`}
+                      className="text-muted/50 hover:text-danger transition-colors"
+                      disabled={saving}
+                    >
+                      <Icon name="trash-2" className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <Button size="sm" variant="ghost" onPress={startEdit} isDisabled={saving}>
+                    <Icon name="pencil" className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onPress={() => setCollapsed(true)}
+                    aria-label="Collapse section"
+                  >
+                    <Icon name="x" className="w-3.5 h-3.5" />
+                  </Button>
+                </>
               )}
-              <Button size="sm" variant="ghost" onPress={startEdit} isDisabled={saving}>
-                <Icon name="pencil" className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onPress={() => setCollapsed(true)}
-                aria-label="Collapse section"
-              >
-                <Icon name="x" className="w-3.5 h-3.5" />
-              </Button>
-            </>
-          )}
         </div>
       </div>
 
-      {!collapsed && (editing ? (
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          rows={Math.max(4, draft.split('\n').length + 1)}
-          className="w-full bg-surface border border-border rounded px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60 resize-y"
-          spellCheck={false}
-          placeholder="Key=Value or +Key=Value for array entries"
-        />
-      ) : (
-        <div className="flex flex-col gap-2">
-          {sorted.map(sec => {
-            const style   = LAYER_STYLE[sec.source] ?? { cls: 'text-muted' }
-            const isActive = sec.source === sorted[sorted.length - 1].source
-            return (
-              <div
-                key={sec.source}
-                className={multiSource ? `pl-2 border-l-2 ${isActive ? 'border-accent/40' : 'border-border/30'}` : ''}
-              >
-                {multiSource && (
-                  <span className={`text-xs ${style.cls} block mb-1`}>
-                    {SOURCE_FILE[sec.source] ?? sec.source}{isActive ? ' ✓' : ''}
-                  </span>
-                )}
-                <div className="flex flex-col gap-0.5">
-                  {groupLinesByKey(sec.lines).map(({ key, lines }) => (
-                    <div key={key} className="py-1 border-b border-border/30 last:border-0">
-                      <span className="text-xs font-mono text-muted">{key}</span>
-                      {lines.map((l, i) => (
-                        <div key={i} className="flex items-baseline gap-1.5 mt-0.5 ml-3">
-                          {l.prefix && (
-                            <span className={`text-xs font-mono w-3 shrink-0 ${l.prefix === '+' ? 'text-success' : 'text-danger'}`}>
-                              {l.prefix}
-                            </span>
-                          )}
-                          <span className={`text-xs font-mono break-all ${isActive ? 'text-foreground/80' : 'text-muted/50'}`}>{l.value}</span>
+      {!collapsed && (editing
+        ? (
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={Math.max(4, draft.split('\n').length + 1)}
+              className="w-full bg-surface border border-border rounded px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60 resize-y"
+              spellCheck={false}
+              placeholder="Key=Value or +Key=Value for array entries"
+            />
+          )
+        : (
+            <div className="flex flex-col gap-2">
+              {sorted.map((sec) => {
+                const style = LAYER_STYLE[sec.source] ?? { cls: 'text-muted' }
+                const isActive = sec.source === sorted[sorted.length - 1].source
+                return (
+                  <div
+                    key={sec.source}
+                    className={multiSource ? `pl-2 border-l-2 ${isActive ? 'border-accent/40' : 'border-border/30'}` : ''}
+                  >
+                    {multiSource && (
+                      <span className={`text-xs ${style.cls} block mb-1`}>
+                        {SOURCE_FILE[sec.source] ?? sec.source}
+                        {isActive ? ' ✓' : ''}
+                      </span>
+                    )}
+                    <div className="flex flex-col gap-0.5">
+                      {groupLinesByKey(sec.lines).map(({ key, lines }) => (
+                        <div key={key} className="py-1 border-b border-border/30 last:border-0">
+                          <span className="text-xs font-mono text-muted">{key}</span>
+                          {lines.map((l, i) => (
+                            <div key={i} className="flex items-baseline gap-1.5 mt-0.5 ml-3">
+                              {l.prefix && (
+                                <span className={`text-xs font-mono w-3 shrink-0 ${l.prefix === '+' ? 'text-success' : 'text-danger'}`}>
+                                  {l.prefix}
+                                </span>
+                              )}
+                              <span className={`text-xs font-mono break-all ${isActive ? 'text-foreground/80' : 'text-muted/50'}`}>{l.value}</span>
+                            </div>
+                          ))}
                         </div>
                       ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ))}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
     </Panel>
   )
 }
@@ -407,35 +430,48 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[]; onSave
 const USER_SOURCES = new Set(['userGame', 'userEngine'])
 
 export default function ServerSettingsTab() {
-  const [items, setItems]     = useState<ServerSetting[]>([])
-  const [raw, setRaw]         = useState<RawSection[]>([])
+  const [items, setItems] = useState<ServerSetting[]>([])
+  const [raw, setRaw] = useState<RawSection[]>([])
   const [pending, setPending] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving]   = useState(false)
-  const [error, setError]     = useState<string | null>(null)
-  const [search, setSearch]   = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
   const [showAll, setShowAll] = useState(() =>
-    localStorage.getItem('serverSettings.showAll') === 'true'
+    localStorage.getItem('serverSettings.showAll') === 'true',
   )
   const [expandedCategory, setExpandedCategory] = useState<string | null>(() =>
-    localStorage.getItem('serverSettings.expandedCategory') || null
+    localStorage.getItem('serverSettings.expandedCategory') || null,
   )
 
   const load = useCallback(() => {
     Promise.resolve()
-      .then(() => { setLoading(true); setError(null) })
+      .then(() => {
+        setLoading(true)
+        setError(null)
+      })
       .then(() => api.serverSettings.get())
-      .then(data => { setItems(data.settings ?? []); setRaw(data.raw ?? []); setPending(new Map()) })
+      .then((data) => {
+        setItems(data.settings ?? [])
+        setRaw(data.raw ?? [])
+        setPending(new Map())
+      })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
   const pendingKey = (item: ServerSetting) => `${item.section}|${item.key}`
 
   const handleChange = (item: ServerSetting, value: string) => {
-    setPending(prev => { const n = new Map(prev); n.set(pendingKey(item), value); return n })
+    setPending((prev) => {
+      const n = new Map(prev)
+      n.set(pendingKey(item), value)
+      return n
+    })
   }
 
   const handleDelete = async (item: ServerSetting) => {
@@ -443,7 +479,8 @@ export default function ServerSettingsTab() {
       await api.serverSettings.update([{ section: item.section, key: item.key, value: '' }])
       toast.success(`Removed from ${SOURCE_FILE[item.source] ?? item.source}`)
       load()
-    } catch (e: unknown) {
+    }
+    catch (e: unknown) {
       toast.danger(`Delete failed: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
@@ -460,9 +497,11 @@ export default function ServerSettingsTab() {
       const res = await api.serverSettings.update(updates)
       toast.success(res.ok)
       load()
-    } catch (e: unknown) {
+    }
+    catch (e: unknown) {
       toast.danger(`Save failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
+    }
+    finally {
       setSaving(false)
     }
   }
@@ -491,7 +530,7 @@ export default function ServerSettingsTab() {
     )
   }
 
-  const toggleShowAll = () => setShowAll(v => {
+  const toggleShowAll = () => setShowAll((v) => {
     localStorage.setItem('serverSettings.showAll', String(!v))
     return !v
   })
@@ -500,7 +539,7 @@ export default function ServerSettingsTab() {
   // from a user-controlled file (userGame / userEngine).
   const visibleItems = showAll
     ? items
-    : items.filter(item => item.layers.some(l => USER_SOURCES.has(l.source)))
+    : items.filter((item) => item.layers.some((l) => USER_SOURCES.has(l.source)))
 
   const q = search.trim().toLowerCase()
   const searching = q.length > 0
@@ -511,15 +550,15 @@ export default function ServerSettingsTab() {
   // are interesting even before they've been touched. An active search query
   // filters all three groups (common / category / raw) down to matches.
   const commonItems = items
-    .filter(item => COMMON_KEYS.has(`${item.section}|${item.key}`))
-    .filter(item => matchesSetting(item, q))
+    .filter((item) => COMMON_KEYS.has(`${item.section}|${item.key}`))
+    .filter((item) => matchesSetting(item, q))
   const advancedItems = visibleItems
-    .filter(item => !COMMON_KEYS.has(`${item.section}|${item.key}`))
-    .filter(item => matchesSetting(item, q))
+    .filter((item) => !COMMON_KEYS.has(`${item.section}|${item.key}`))
+    .filter((item) => matchesSetting(item, q))
   const categories = groupByCategory(advancedItems)
 
   const toggleCategory = (cat: string) => {
-    setExpandedCategory(prev => {
+    setExpandedCategory((prev) => {
       const next = prev === cat ? null : cat
       if (next === null) localStorage.removeItem('serverSettings.expandedCategory')
       else localStorage.setItem('serverSettings.expandedCategory', next)
@@ -544,13 +583,13 @@ export default function ServerSettingsTab() {
   // An active search query further narrows to sections matching the query.
   const visibleRawSections = (showAll
     ? [...rawBySection.values()]
-    : [...rawBySection.values()].filter(secs =>
-        secs.some(s => USER_SOURCES.has(s.source))
+    : [...rawBySection.values()].filter((secs) =>
+        secs.some((s) => USER_SOURCES.has(s.source)),
       )
-  ).filter(secs => matchesRawSection(secs, q))
+  ).filter((secs) => matchesRawSection(secs, q))
 
-  const hasResults =
-    commonItems.length > 0 || categories.length > 0 || visibleRawSections.length > 0
+  const hasResults
+    = commonItems.length > 0 || categories.length > 0 || visibleRawSections.length > 0
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
@@ -589,7 +628,14 @@ export default function ServerSettingsTab() {
       </PageHeader>
 
       <p className="text-xs text-muted shrink-0">
-        Changes are written to <span className="font-mono">UserGame.ini</span> or <span className="font-mono">UserEngine.ini</span>.
+        Changes are written to
+        {' '}
+        <span className="font-mono">UserGame.ini</span>
+        {' '}
+        or
+        {' '}
+        <span className="font-mono">UserEngine.ini</span>
+        .
         A server restart is required for them to take effect.
       </p>
 
@@ -597,7 +643,9 @@ export default function ServerSettingsTab() {
 
         {searching && !hasResults && (
           <div className="text-sm text-muted py-8 text-center">
-            No settings match “{search.trim()}”.
+            No settings match “
+            {search.trim()}
+            ”.
           </div>
         )}
 
@@ -609,12 +657,12 @@ export default function ServerSettingsTab() {
               The dozen or so knobs admins reach for most often. Everything else lives in the categories below.
             </div>
             <div>
-              {commonItems.map(item => (
+              {commonItems.map((item) => (
                 <SettingRow
                   key={`common|${item.section}|${item.key}`}
                   item={item}
                   pending={pending.get(pendingKey(item))}
-                  onChange={v => handleChange(item, v)}
+                  onChange={(v) => handleChange(item, v)}
                   onDelete={() => handleDelete(item)}
                 />
               ))}
@@ -635,8 +683,8 @@ export default function ServerSettingsTab() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-2">
               {categories.map(([cat, catItems]) => {
                 const isOpen = searching || expandedCategory === cat
-                const overrideCount = catItems.filter(i =>
-                  i.layers.some(l => USER_SOURCES.has(l.source))
+                const overrideCount = catItems.filter((i) =>
+                  i.layers.some((l) => USER_SOURCES.has(l.source)),
                 ).length
                 return (
                   <Fragment key={cat}>
@@ -655,9 +703,16 @@ export default function ServerSettingsTab() {
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">{cat}</div>
                         <div className="text-xs text-muted">
-                          {catItems.length} {catItems.length === 1 ? 'setting' : 'settings'}
+                          {catItems.length}
+                          {' '}
+                          {catItems.length === 1 ? 'setting' : 'settings'}
                           {overrideCount > 0 && (
-                            <span className="ml-1 text-warning">· {overrideCount} overridden</span>
+                            <span className="ml-1 text-warning">
+                              ·
+                              {overrideCount}
+                              {' '}
+                              overridden
+                            </span>
                           )}
                         </div>
                       </div>
@@ -682,12 +737,12 @@ export default function ServerSettingsTab() {
                           )}
                         </div>
                         <div>
-                          {catItems.map(item => (
+                          {catItems.map((item) => (
                             <SettingRow
                               key={`${item.section}|${item.key}`}
                               item={item}
                               pending={pending.get(pendingKey(item))}
-                              onChange={v => handleChange(item, v)}
+                              onChange={(v) => handleChange(item, v)}
                               onDelete={() => handleDelete(item)}
                             />
                           ))}
@@ -706,10 +761,12 @@ export default function ServerSettingsTab() {
           <div>
             <SectionLabel>Raw INI Sections</SectionLabel>
             <div className="text-xs text-muted mb-2">
-              Array entries (<code className="font-mono">+key=val</code>) and unrecognised keys, grouped by INI section.
+              Array entries (
+              <code className="font-mono">+key=val</code>
+              ) and unrecognised keys, grouped by INI section.
             </div>
             <div className="flex flex-col gap-3 mt-2">
-              {visibleRawSections.map(sections => (
+              {visibleRawSections.map((sections) => (
                 <RawSectionPanel
                   key={sections[0].section}
                   sections={sections}

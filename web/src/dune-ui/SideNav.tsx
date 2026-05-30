@@ -44,15 +44,15 @@ export function SideNav<K extends string>({
       )}
       {children && <div className="px-2 py-1.5 shrink-0">{children}</div>}
       <div className="overflow-y-auto flex-1 flex flex-col gap-0.5 p-1">
-        {items.map(item => {
+        {items.map((item) => {
           const isActive = item.key === active
           return (
             <button
               key={item.key}
               onClick={() => onSelect(item.key)}
               className={
-                'text-left px-3 py-2 rounded-[var(--radius)] text-sm transition-colors flex items-start gap-2 ' +
-                (isActive
+                'text-left px-3 py-2 rounded-[var(--radius)] text-sm transition-colors flex items-start gap-2 '
+                + (isActive
                   ? 'bg-accent text-accent-foreground font-semibold'
                   : 'text-foreground hover:bg-surface-hover')
               }

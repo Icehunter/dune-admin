@@ -22,10 +22,12 @@ export default function BotActions({ status, onRefresh }: Props) {
       const actionLabel = cmd === 'start' ? 'resume' : cmd === 'stop' ? 'pause' : 'reinitialize'
       toast.success(`Bot ${actionLabel}: ${res.output || 'ok'}`)
       setTimeout(onRefresh, 1500)
-    } catch (e: unknown) {
+    }
+    catch (e: unknown) {
       const actionLabel = cmd === 'start' ? 'resume' : cmd === 'stop' ? 'pause' : 'reinitialize'
       toast.danger(`Failed to ${actionLabel} bot: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
+    }
+    finally {
       setBusy(null)
     }
   }
@@ -37,9 +39,11 @@ export default function BotActions({ status, onRefresh }: Props) {
       const res = await api.marketBot.cleanup()
       toast.success(`Wiped ${res.orders_deleted} listings (${res.items_deleted} items)`)
       setTimeout(onRefresh, 1500)
-    } catch (e: unknown) {
+    }
+    catch (e: unknown) {
       toast.danger(`Cleanup failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
+    }
+    finally {
       setBusy(null)
     }
   }

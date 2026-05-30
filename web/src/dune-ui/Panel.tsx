@@ -13,9 +13,9 @@ export function Panel({ children, className = '' }: Props) {
   return (
     <div
       className={
-        'rounded-[var(--radius)] p-4 flex flex-col gap-2 ' +
-        'bg-surface-secondary border border-border dune-lift ' +
-        className
+        'rounded-[var(--radius)] p-4 flex flex-col gap-2 '
+        + 'bg-surface-secondary border border-border dune-lift '
+        + className
       }
     >
       {children}

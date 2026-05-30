@@ -5,15 +5,15 @@
  */
 export function phaseColor(phase: string): string {
   switch (phase?.toLowerCase()) {
-    case 'running':       return 'var(--success)'
+    case 'running': return 'var(--success)'
     case 'reconciling':
     case 'starting':
-    case 'initializing':  return 'var(--warning)'
+    case 'initializing': return 'var(--warning)'
     case 'stopping':
     case 'preshutdown':
-    case 'terminating':   return 'var(--danger)'
+    case 'terminating': return 'var(--danger)'
     case 'stopped':
-    case 'terminated':    return 'var(--muted)'
-    default:              return 'var(--muted)'
+    case 'terminated': return 'var(--muted)'
+    default: return 'var(--muted)'
   }
 }

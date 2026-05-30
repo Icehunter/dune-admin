@@ -25,8 +25,11 @@ export function useTableSort<T, K extends string>(
   }, [rows, sortKey, sortDir, getValue])
 
   const toggle = (key: K) => {
-    if (key === sortKey) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortKey(key); setSortDir('asc') }
+    if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
   }
 
   return { sorted, sortKey, sortDir, toggle }

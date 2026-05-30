@@ -29,13 +29,15 @@ const clerkAppearance = {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
-      {publishableKey ? (
-        <ClerkProvider publishableKey={publishableKey} afterSignOutUrl="/" appearance={clerkAppearance}>
-          <App />
-        </ClerkProvider>
-      ) : (
-        <App />
-      )}
+      {publishableKey
+        ? (
+            <ClerkProvider publishableKey={publishableKey} afterSignOutUrl="/" appearance={clerkAppearance}>
+              <App />
+            </ClerkProvider>
+          )
+        : (
+            <App />
+          )}
     </HashRouter>
   </StrictMode>,
 )

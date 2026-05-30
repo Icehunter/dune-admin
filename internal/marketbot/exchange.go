@@ -703,12 +703,16 @@ func (e *Exchange) ListTick(ctx context.Context, catalog []CatalogItem) {
 		orderExpiry = 999_999_999
 	}
 
-	// Load all current bot listings grouped by (template, grade).
+	// Load only non-expired bot listings grouped by (template, grade).
+	// Excluding expired rows means the bot refills those slots on this tick
+	// rather than counting them toward the quota while players see them as gone.
 	rows, err := e.db.Query(ctx, `
 		SELECT o.id, o.template_id, o.item_id, o.item_price, i.stack_size, o.quality_level
 		FROM dune.dune_exchange_orders o
 		JOIN dune.items i ON i.id = o.item_id
-		WHERE o.owner_id = $1 AND o.is_npc_order = TRUE`, e.ownerID)
+		WHERE o.owner_id = $1 AND o.is_npc_order = TRUE
+		  AND (o.expiration_time IS NULL OR o.expiration_time > $2)`,
+		e.ownerID, e.gameNow())
 	if err != nil {
 		log.Printf("load listings: %v", err)
 		return
@@ -992,28 +996,33 @@ func (e *Exchange) fetchMarketPrices(ctx context.Context, catalog []CatalogItem)
 	log.Printf("market prices: fetched %d items from real market", count)
 }
 
-// expireAndPurgeOrders uses server procs to expire and purge old orders.
+// expireBotOrders deletes bot NPC orders whose game-time expiry has passed.
+// It only touches rows owned by ownerID with is_npc_order = TRUE, so player
+// listings are never affected. Returns the delete error, if any.
+// gameNow <= 0 means the epoch is not yet known; nothing is deleted.
+func expireBotOrders(gameNow, ownerID int64, deleteFn func(ownerID, cutoff int64) error) error {
+	if gameNow <= 0 {
+		return nil
+	}
+	return deleteFn(ownerID, gameNow)
+}
+
+// expireAndPurgeOrders removes only the bot's own NPC listings that have
+// passed their game-time expiry. The game server's stored procs are NOT used
+// because they operate on all orders in the exchange and would expire player
+// listings that the bot has no business touching.
 func (e *Exchange) expireAndPurgeOrders(ctx context.Context) {
-	now := e.gameNow()
-	if now <= 0 {
-		return // game epoch not learned yet
-	}
-
-	// Expire old sell orders. completion_type=2 = expired.
-	// purge_time = now + 7 days (when fulfilled orders get deleted).
-	purgeTime := now + 7*24*3600
-	_, err := e.db.Exec(ctx,
-		`SELECT * FROM dune.dune_exchange_expire_orders($1, $2, $3, 2)`,
-		e.exchangeID, now, purgeTime)
+	err := expireBotOrders(e.gameNow(), e.ownerID, func(ownerID, cutoff int64) error {
+		_, err := e.db.Exec(ctx, `
+			DELETE FROM dune.dune_exchange_orders
+			WHERE owner_id = $1
+			  AND is_npc_order = TRUE
+			  AND expiration_time IS NOT NULL
+			  AND expiration_time < $2`,
+			ownerID, cutoff)
+		return err
+	})
 	if err != nil {
-		log.Printf("expire orders: %v", err)
-	}
-
-	// Purge completed/expired orders past their purge time.
-	_, err = e.db.Exec(ctx,
-		`SELECT * FROM dune.dune_exchange_purge_completed_orders($1, $2)`,
-		e.exchangeID, now)
-	if err != nil {
-		log.Printf("purge orders: %v", err)
+		log.Printf("expire bot orders: %v", err)
 	}
 }

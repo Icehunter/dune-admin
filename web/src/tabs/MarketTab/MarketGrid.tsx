@@ -2,23 +2,23 @@ import type { MarketItem } from '../../api/client'
 import { iconUrl, categoryColor, qualityLabel } from '../../utils/icons'
 
 const RARITY_BORDER: Record<string, string> = {
-  common:    'border-border',
-  uncommon:  'border-success/60',
-  rare:      'border-blue-500/60',
-  epic:      'border-purple-500/60',
+  common: 'border-border',
+  uncommon: 'border-success/60',
+  rare: 'border-blue-500/60',
+  epic: 'border-purple-500/60',
   legendary: 'border-amber-500/60',
-  unique:    'border-orange-500/60',
-  memento:   'border-rose-500/60',
+  unique: 'border-orange-500/60',
+  memento: 'border-rose-500/60',
 }
 
 const RARITY_TEXT: Record<string, string> = {
-  common:    'text-foreground',
-  uncommon:  'text-success',
-  rare:      'text-blue-400',
-  epic:      'text-purple-400',
+  common: 'text-foreground',
+  uncommon: 'text-success',
+  rare: 'text-blue-400',
+  epic: 'text-purple-400',
   legendary: 'text-amber-400',
-  unique:    'text-orange-400',
-  memento:   'text-rose-400',
+  unique: 'text-orange-400',
+  memento: 'text-rose-400',
 }
 
 type Props = {
@@ -34,7 +34,7 @@ export default function MarketGrid({ items, onSelect }: Props) {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 pb-3">
-        {items.map(item => {
+        {items.map((item) => {
           const key = `${item.template_id}:${item.quality}`
           const rarity = item.rarity?.toLowerCase()
           const border = RARITY_BORDER[rarity] ?? 'border-border'
@@ -52,18 +52,20 @@ export default function MarketGrid({ items, onSelect }: Props) {
                 className="w-full aspect-square flex items-center justify-center shrink-0"
                 style={{ background: img ? undefined : categoryColor(item.category) }}
               >
-                {img ? (
-                  <img
-                    src={img}
-                    alt={item.display_name}
-                    className="w-full h-full object-contain p-2"
-                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-                  />
-                ) : (
-                  <span className="text-3xl text-white/20 font-bold uppercase select-none">
-                    {item.display_name.charAt(0)}
-                  </span>
-                )}
+                {img
+                  ? (
+                      <img
+                        src={img}
+                        alt={item.display_name}
+                        className="w-full h-full object-contain p-2"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                      />
+                    )
+                  : (
+                      <span className="text-3xl text-white/20 font-bold uppercase select-none">
+                        {item.display_name.charAt(0)}
+                      </span>
+                    )}
               </div>
 
               {/* Card body */}
@@ -84,7 +86,8 @@ export default function MarketGrid({ items, onSelect }: Props) {
                     {item.lowest_price.toLocaleString()}
                   </span>
                   <span className="text-[10px] text-muted shrink-0">
-                    ×{item.total_stock.toLocaleString()}
+                    ×
+                    {item.total_stock.toLocaleString()}
                   </span>
                 </div>
               </div>

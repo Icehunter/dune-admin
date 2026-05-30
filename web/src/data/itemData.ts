@@ -19,9 +19,15 @@ export function getItemData(): Promise<ItemDataFile> {
   if (cache) return Promise.resolve(cache)
   if (fetchPromise) return fetchPromise
   fetchPromise = fetch('/item-data.json')
-    .then(r => r.json() as Promise<ItemDataFile>)
-    .then(data => { cache = data; return data })
-    .catch(() => { fetchPromise = null; return { items: {} } })
+    .then((r) => r.json() as Promise<ItemDataFile>)
+    .then((data) => {
+      cache = data
+      return data
+    })
+    .catch(() => {
+      fetchPromise = null
+      return { items: {} }
+    })
   return fetchPromise
 }
 

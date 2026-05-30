@@ -6,10 +6,10 @@ import { DataTable, PageHeader, type Column } from '../../../dune-ui'
 type Key = 'player' | 'faction' | 'reputation' | 'scrips'
 
 const COLUMNS: Column<Key>[] = [
-  { key: 'player',     label: 'Player', isRowHeader: true },
-  { key: 'faction',    label: 'Faction' },
+  { key: 'player', label: 'Player', isRowHeader: true },
+  { key: 'faction', label: 'Faction' },
   { key: 'reputation', label: 'Reputation' },
-  { key: 'scrips',     label: 'Scrips' },
+  { key: 'scrips', label: 'Scrips' },
 ]
 
 interface Props {
@@ -24,7 +24,7 @@ export function FactionsView({ data, loading, controllerToName }: Props) {
   const filtered = useMemo(() => {
     if (!search) return data
     const q = search.toLowerCase()
-    return data.filter(r => {
+    return data.filter((r) => {
       const name = controllerToName.get(r.actor_id) ?? ''
       return name.toLowerCase().includes(q) || String(r.actor_id).includes(q)
     })
@@ -52,11 +52,11 @@ export function FactionsView({ data, loading, controllerToName }: Props) {
         className="min-h-0 max-h-full"
         columns={COLUMNS}
         rows={filtered}
-        rowId={r => `${r.actor_id}-${r.faction_id}`}
+        rowId={(r) => `${r.actor_id}-${r.faction_id}`}
         initialSort={{ column: 'player', direction: 'ascending' }}
         sortValue={(r, k) => {
-          if (k === 'player')     return controllerToName.get(r.actor_id) ?? `#${r.actor_id}`
-          if (k === 'faction')    return r.faction_name
+          if (k === 'player') return controllerToName.get(r.actor_id) ?? `#${r.actor_id}`
+          if (k === 'faction') return r.faction_name
           if (k === 'reputation') return r.reputation
           return r.scrips
         }}
@@ -73,12 +73,15 @@ export function FactionsView({ data, loading, controllerToName }: Props) {
                   {controllerToName.get(r.actor_id) && (
                     <span className="font-semibold">{controllerToName.get(r.actor_id)}</span>
                   )}
-                  <span className="font-mono text-muted text-[10px]">#{r.actor_id}</span>
+                  <span className="font-mono text-muted text-[10px]">
+                    #
+                    {r.actor_id}
+                  </span>
                 </span>
               )
-            case 'faction':    return <span className="font-semibold">{r.faction_name}</span>
+            case 'faction': return <span className="font-semibold">{r.faction_name}</span>
             case 'reputation': return <span className="text-muted">{r.reputation.toLocaleString()}</span>
-            case 'scrips':     return <span className="text-muted">{r.scrips.toLocaleString()}</span>
+            case 'scrips': return <span className="text-muted">{r.scrips.toLocaleString()}</span>
           }
         }}
       />

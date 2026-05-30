@@ -5,14 +5,14 @@ import { DataTable, Icon, PageHeader, SideNav, type Column } from '../dune-ui'
 
 type Section = 'tables' | 'describe' | 'sample' | 'search' | 'sql'
 
-type TableData = { headers: string[]; rows: string[][] }
+type TableData = { headers: string[], rows: string[][] }
 
-const SECTIONS: { key: Section; label: string }[] = [
-  { key: 'tables',   label: 'Tables' },
+const SECTIONS: { key: Section, label: string }[] = [
+  { key: 'tables', label: 'Tables' },
   { key: 'describe', label: 'Describe' },
-  { key: 'sample',   label: 'Sample' },
-  { key: 'search',   label: 'Search Columns' },
-  { key: 'sql',      label: 'Run SQL' },
+  { key: 'sample', label: 'Sample' },
+  { key: 'search', label: 'Search Columns' },
+  { key: 'sql', label: 'Run SQL' },
 ]
 
 function ResultTable({ headers, rows }: TableData) {
@@ -26,7 +26,7 @@ function ResultTable({ headers, rows }: TableData) {
     key: `c${i}`,
     label: h,
   }))
-  type Row = { _id: string; values: string[] }
+  type Row = { _id: string, values: string[] }
   const items: Row[] = safeRows.map((r, i) => ({ _id: String(i), values: r ?? [] }))
   return (
     <DataTable<Row, string>
@@ -34,7 +34,7 @@ function ResultTable({ headers, rows }: TableData) {
       className="min-h-0 max-h-full"
       columns={columns}
       rows={items}
-      rowId={r => r._id}
+      rowId={(r) => r._id}
       initialSort={{ column: columns[0].key, direction: 'ascending' }}
       sortValue={(r, k) => {
         const idx = Number(k.slice(1))
@@ -71,45 +71,68 @@ export default function DatabaseTab() {
         const rows = await api.database.tables()
         setResult({
           headers: ['Table', 'Rows'],
-          rows: rows.map(r => [r.name, String(r.row_count)]),
+          rows: rows.map((r) => [r.name, String(r.row_count)]),
         })
-      } else if (active === 'describe') {
-        if (!tableInput.trim()) { toast.warning('Enter a table name'); return }
+      }
+      else if (active === 'describe') {
+        if (!tableInput.trim()) {
+          toast.warning('Enter a table name')
+          return
+        }
         const r = await api.database.describe(tableInput.trim())
         setResult({
           headers: ['Column', 'Type', 'Nullable'],
-          rows: r.columns.map(c => [c.name, c.data_type, c.nullable]),
+          rows: r.columns.map((c) => [c.name, c.data_type, c.nullable]),
         })
-      } else if (active === 'sample') {
-        if (!tableInput.trim()) { toast.warning('Enter a table name'); return }
+      }
+      else if (active === 'sample') {
+        if (!tableInput.trim()) {
+          toast.warning('Enter a table name')
+          return
+        }
         const r = await api.database.sample(tableInput.trim(), Number(limitInput) || 20)
         setResult({ headers: r.headers, rows: r.rows })
-      } else if (active === 'search') {
-        if (!searchInput.trim()) { toast.warning('Enter a search term'); return }
+      }
+      else if (active === 'search') {
+        if (!searchInput.trim()) {
+          toast.warning('Enter a search term')
+          return
+        }
         const r = await api.database.search(searchInput.trim())
         setResult({ headers: r.headers, rows: r.rows })
-      } else {
-        if (!sqlInput.trim()) { toast.warning('Enter a SQL query'); return }
+      }
+      else {
+        if (!sqlInput.trim()) {
+          toast.warning('Enter a SQL query')
+          return
+        }
         const r = await api.database.sql(sqlInput.trim())
         setSqlResult(r.result)
       }
-    } catch (e: unknown) {
+    }
+    catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       setError(msg)
       toast.danger(`Failed: ${msg}`)
-    } finally {
+    }
+    finally {
       setLoading(false)
     }
   }
 
-  const activeLabel = SECTIONS.find(s => s.key === active)?.label ?? ''
+  const activeLabel = SECTIONS.find((s) => s.key === active)?.label ?? ''
 
   return (
     <div className="flex gap-4 h-full min-h-0">
       <SideNav<Section>
         items={SECTIONS}
         active={active}
-        onSelect={k => { setActive(k); setResult(null); setSqlResult(null); setError(null) }}
+        onSelect={(k) => {
+          setActive(k)
+          setResult(null)
+          setSqlResult(null)
+          setError(null)
+        }}
         title="Database"
         width="w-60"
       />
@@ -126,9 +149,9 @@ export default function DatabaseTab() {
                 <InputGroup.Input
                   className="flex-1 w-full pl-2"
                   value={tableInput}
-                  onChange={e => setTableInput(e.target.value)}
+                  onChange={(e) => setTableInput(e.target.value)}
                   placeholder="actors"
-                  onKeyDown={e => e.key === 'Enter' && run()}
+                  onKeyDown={(e) => e.key === 'Enter' && run()}
                 />
               </InputGroup>
             </TextField>
@@ -138,15 +161,19 @@ export default function DatabaseTab() {
                   <InputGroup.Prefix>Limit</InputGroup.Prefix>
                   <InputGroup.Input
                     className="pl-2"
-                    type="number" min={1} max={1000}
+                    type="number"
+                    min={1}
+                    max={1000}
                     value={limitInput}
-                    onChange={e => setLimitInput(e.target.value)}
+                    onChange={(e) => setLimitInput(e.target.value)}
                   />
                 </InputGroup>
               </TextField>
             )}
             <Button onPress={run} isDisabled={loading} size="sm">
-              {loading ? <Spinner size="sm" color="current" /> : <Icon name="play" />} Run
+              {loading ? <Spinner size="sm" color="current" /> : <Icon name="play" />}
+              {' '}
+              Run
             </Button>
           </div>
         )}
@@ -159,14 +186,16 @@ export default function DatabaseTab() {
                 <InputGroup.Input
                   className="flex-1 w-full pl-2"
                   value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="player_id, faction..."
-                  onKeyDown={e => e.key === 'Enter' && run()}
+                  onKeyDown={(e) => e.key === 'Enter' && run()}
                 />
               </InputGroup>
             </TextField>
             <Button onPress={run} isDisabled={loading} size="sm">
-              {loading ? <Spinner size="sm" color="current" /> : <Icon name="search" />} Search
+              {loading ? <Spinner size="sm" color="current" /> : <Icon name="search" />}
+              {' '}
+              Search
             </Button>
           </div>
         )}
@@ -174,7 +203,9 @@ export default function DatabaseTab() {
         {active === 'tables' && (
           <div className="shrink-0">
             <Button onPress={run} isDisabled={loading} size="sm" variant="outline">
-              {loading ? <Spinner size="sm" color="current" /> : <Icon name="list" />} List Tables
+              {loading ? <Spinner size="sm" color="current" /> : <Icon name="list" />}
+              {' '}
+              List Tables
             </Button>
           </div>
         )}
@@ -184,7 +215,7 @@ export default function DatabaseTab() {
             <Label>SQL Query</Label>
             <textarea
               value={sqlInput}
-              onChange={e => setSqlInput(e.target.value)}
+              onChange={(e) => setSqlInput(e.target.value)}
               placeholder="SELECT * FROM dune.actors LIMIT 10;"
               rows={5}
               className="rounded-[var(--radius)] px-3 py-2 text-sm font-mono w-full resize-y outline-none border"
@@ -193,11 +224,13 @@ export default function DatabaseTab() {
                 color: 'var(--field-foreground)',
                 borderColor: 'var(--field-border)',
               }}
-              onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) run() }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) run() }}
             />
             <div className="flex items-center gap-3">
               <Button onPress={run} isDisabled={loading} size="sm">
-                {loading ? <Spinner size="sm" color="current" /> : <Icon name="play" />} Run Query
+                {loading ? <Spinner size="sm" color="current" /> : <Icon name="play" />}
+                {' '}
+                Run Query
               </Button>
               <span className="text-xs text-muted">Cmd/Ctrl+Enter to run</span>
             </div>
@@ -212,7 +245,9 @@ export default function DatabaseTab() {
 
         {error && !loading && (
           <div className="rounded-[var(--radius)] p-4 bg-danger/10 border border-danger/40 text-danger shrink-0">
-            <strong>Error:</strong> {error}
+            <strong>Error:</strong>
+            {' '}
+            {error}
           </div>
         )}
 

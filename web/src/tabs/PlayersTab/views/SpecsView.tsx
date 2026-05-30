@@ -7,9 +7,9 @@ type Key = 'player' | 'track' | 'xp' | 'level'
 
 const COLUMNS: Column<Key>[] = [
   { key: 'player', label: 'Player', isRowHeader: true },
-  { key: 'track',  label: 'Track' },
-  { key: 'xp',     label: 'XP' },
-  { key: 'level',  label: 'Level' },
+  { key: 'track', label: 'Track' },
+  { key: 'xp', label: 'XP' },
+  { key: 'level', label: 'Level' },
 ]
 
 interface Props {
@@ -24,7 +24,7 @@ export function SpecsView({ data, loading, controllerToName }: Props) {
   const filtered = useMemo(() => {
     if (!search) return data
     const q = search.toLowerCase()
-    return data.filter(r => {
+    return data.filter((r) => {
       const name = controllerToName.get(r.player_id) ?? ''
       return name.toLowerCase().includes(q) || String(r.player_id).includes(q)
     })
@@ -52,12 +52,12 @@ export function SpecsView({ data, loading, controllerToName }: Props) {
         className="min-h-0 max-h-full"
         columns={COLUMNS}
         rows={filtered}
-        rowId={r => `${r.player_id}-${r.track_type}`}
+        rowId={(r) => `${r.player_id}-${r.track_type}`}
         initialSort={{ column: 'player', direction: 'ascending' }}
         sortValue={(r, k) => {
           if (k === 'player') return controllerToName.get(r.player_id) ?? `#${r.player_id}`
-          if (k === 'track')  return r.track_type
-          if (k === 'xp')     return r.xp
+          if (k === 'track') return r.track_type
+          if (k === 'xp') return r.xp
           return r.level
         }}
         emptyState={
@@ -73,11 +73,14 @@ export function SpecsView({ data, loading, controllerToName }: Props) {
                   {controllerToName.get(r.player_id) && (
                     <span className="font-semibold">{controllerToName.get(r.player_id)}</span>
                   )}
-                  <span className="font-mono text-muted text-[10px]">#{r.player_id}</span>
+                  <span className="font-mono text-muted text-[10px]">
+                    #
+                    {r.player_id}
+                  </span>
                 </span>
               )
             case 'track': return <span className="font-semibold">{r.track_type}</span>
-            case 'xp':    return <span className="text-muted">{r.xp.toLocaleString()}</span>
+            case 'xp': return <span className="text-muted">{r.xp.toLocaleString()}</span>
             case 'level': return <span className="text-muted">{r.level}</span>
           }
         }}

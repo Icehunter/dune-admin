@@ -288,6 +288,10 @@ func spaHandler(distDir string) http.Handler {
 
 // spaHandlerFS serves an embedded http.FileSystem as a SPA, falling back to
 // index.html for any path that does not map to a real file.
+//
+// Note: we open index.html directly instead of routing through http.FileServer
+// because FileServer always 301-redirects "/index.html" → "/" which creates an
+// infinite redirect loop (ERR_TOO_MANY_REDIRECTS) in browsers.
 func spaHandlerFS(fsys http.FileSystem) http.Handler {
 	fileServer := http.FileServer(fsys)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -295,11 +299,18 @@ func spaHandlerFS(fsys http.FileSystem) http.Handler {
 			fileServer.ServeHTTP(w, r)
 			return
 		}
-		r2 := *r
-		r2URL := *r.URL
-		r2URL.Path = "/index.html"
-		r2.URL = &r2URL
-		fileServer.ServeHTTP(w, &r2)
+		f, err := fsys.Open("/index.html")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		defer func() { _ = f.Close() }()
+		fi, err := f.Stat()
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		http.ServeContent(w, r, "index.html", fi.ModTime(), f)
 	})
 }
 

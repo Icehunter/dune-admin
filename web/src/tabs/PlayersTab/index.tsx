@@ -45,20 +45,24 @@ export default function PlayersTab() {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { loadPlayers() }, [loadPlayers])
+  useEffect(() => {
+    loadPlayers()
+  }, [loadPlayers])
 
   const loadSideData = async (section: SidebarKey) => {
     setActive(section)
     if (section === 'players') return
     setSideLoading(true)
     try {
-      if (section === 'online')        setOnlineData(await api.players.online())
+      if (section === 'online') setOnlineData(await api.players.online())
       else if (section === 'currency') setCurrencyData(await api.players.currency())
       else if (section === 'factions') setFactionData(await api.players.factions())
-      else if (section === 'specs')    setSpecData(await api.players.specs())
-    } catch (e: unknown) {
+      else if (section === 'specs') setSpecData(await api.players.specs())
+    }
+    catch (e: unknown) {
       toast.danger(e instanceof Error ? e.message : String(e))
-    } finally {
+    }
+    finally {
       setSideLoading(false)
     }
   }
@@ -84,21 +88,21 @@ export default function PlayersTab() {
           its own scrolling via Table.ScrollContainer. NO overflow-hidden
           here — that would clip the Input's focus ring at the edge.       */}
       <div className="flex-1 flex flex-col gap-3 min-h-0">
-        {active === 'players'  && <PlayersListView players={players} loading={loading} onRefresh={loadPlayers} onAction={handleAction} />}
+        {active === 'players' && <PlayersListView players={players} loading={loading} onRefresh={loadPlayers} onAction={handleAction} />}
         {active === 'currency' && <CurrencyView data={currencyData} loading={sideLoading} controllerToName={controllerToName} />}
         {active === 'factions' && <FactionsView data={factionData} loading={sideLoading} controllerToName={controllerToName} />}
-        {active === 'specs'    && <SpecsView    data={specData}    loading={sideLoading} controllerToName={controllerToName} />}
-        {active === 'online'   && <OnlineView   data={onlineData}  loading={sideLoading} />}
+        {active === 'specs' && <SpecsView data={specData} loading={sideLoading} controllerToName={controllerToName} />}
+        {active === 'online' && <OnlineView data={onlineData} loading={sideLoading} />}
       </div>
 
       {selectedPlayer && (
-        <InventoryModal    player={selectedPlayer} open={showInventory}  onClose={() => setShowInventory(false)} />
+        <InventoryModal player={selectedPlayer} open={showInventory} onClose={() => setShowInventory(false)} />
       )}
       {selectedPlayer && (
-        <GiveItemsModal    player={selectedPlayer} open={showGiveItems}  onClose={() => setShowGiveItems(false)} />
+        <GiveItemsModal player={selectedPlayer} open={showGiveItems} onClose={() => setShowGiveItems(false)} />
       )}
       {selectedPlayer && (
-        <PlayerActionsModal player={selectedPlayer} open={showActions}    onClose={() => setShowActions(false)} />
+        <PlayerActionsModal player={selectedPlayer} open={showActions} onClose={() => setShowActions(false)} />
       )}
     </div>
   )

@@ -9,7 +9,8 @@ function sanitizeBackendBase(raw: string): string | null {
     const u = new URL(raw.trim())
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
     return `${u.origin}${u.pathname}`.replace(/\/$/, '')
-  } catch {
+  }
+  catch {
     return null
   }
 }
@@ -99,7 +100,7 @@ export type ServerSettingUpdate = {
 }
 
 export type RawLine = {
-  prefix: string  // '', '+', or '-'
+  prefix: string // '', '+', or '-'
   key: string
   value: string
 }
@@ -128,7 +129,7 @@ export type AppConfig = {
   db_host: string
   db_port: number
   db_user: string
-  db_pass: string        // masked when non-empty
+  db_pass: string // masked when non-empty
   db_name: string
   db_schema: string
   // kubectl
@@ -148,8 +149,8 @@ export type AppConfig = {
   broker_admin_addr: string
   broker_tls: boolean
   broker_user: string
-  broker_pass: string        // masked when non-empty
-  broker_jwt_secret: string  // masked when non-empty
+  broker_pass: string // masked when non-empty
+  broker_jwt_secret: string // masked when non-empty
   broker_exec_prefix: string
   // Server paths
   backup_dir: string
@@ -168,20 +169,20 @@ export type AppConfig = {
   market_bot_cache_db: string
   market_bot_item_data: string
   market_bot_state: string
-  market_bot_buy_interval: string   // duration string e.g. "5m0s"
-  market_bot_list_interval: string  // duration string e.g. "30m0s"
+  market_bot_buy_interval: string // duration string e.g. "5m0s"
+  market_bot_list_interval: string // duration string e.g. "30m0s"
   market_bot_buy_threshold: number
   market_bot_max_buys: number
   market_bot_remote_url: string
-  market_bot_remote_token: string   // masked when non-empty
+  market_bot_remote_token: string // masked when non-empty
   // Advanced
   listen_addr: string
   scrip_currency: number
 }
 
 export type Status = {
-  executor: string       // "ssh" | "local" | "none"
-  control: string        // "kubectl" | "docker" | "local" | "none"
+  executor: string // "ssh" | "local" | "none"
+  control: string // "kubectl" | "docker" | "local" | "none"
   ssh_connected: boolean
   db_connected: boolean
   ssh_host: string
@@ -192,26 +193,132 @@ export type Status = {
   commit?: string
   build_time?: string
 }
-export type Player = { id: number; account_id: number; controller_id: number; fls_id: string; name: string; class: string; map: string; faction_id: number; online_status: string }
-export type InventoryItem = { id: number; template_id: string; name: string; stack_size: number; quality: number; durability: string; max_durability: string }
-export type CurrencyRow = { player_id: number; currency_id: number; balance: number }
-export type FactionRep = { actor_id: number; faction_id: number; faction_name: string; reputation: number; scrips: number }
-export type SpecTrack = { player_id: number; track_type: string; xp: number; level: number }
-export type KeystoneRow = { id: number; track: string; name: string; level: number; cost: number }
-export type JourneyNode = { node_id: string; is_complete: boolean; is_revealed: boolean; has_pending_reward: boolean }
-export type BlueprintRow = { id: number; owner_name: string; item_id: number; pieces: number; placeables: number; name?: string }
-export type BaseRow = { id: number; name: string; pieces: number; placeables: number }
-export type LogPod = { namespace: string; name: string }
+export type Player = {
+  id: number
+  account_id: number
+  controller_id: number
+  fls_id: string
+  name: string
+  class: string
+  map: string
+  faction_id: number
+  online_status: string
+}
+export type InventoryItem = {
+  id: number
+  template_id: string
+  name: string
+  stack_size: number
+  quality: number
+  durability: string
+  max_durability: string
+}
+export type CurrencyRow = {
+  player_id: number
+  currency_id: number
+  balance: number
+}
+export type FactionRep = {
+  actor_id: number
+  faction_id: number
+  faction_name: string
+  reputation: number
+  scrips: number
+}
+export type SpecTrack = {
+  player_id: number
+  track_type: string
+  xp: number
+  level: number
+}
+export type KeystoneRow = {
+  id: number
+  track: string
+  name: string
+  level: number
+  cost: number
+}
+export type JourneyNode = {
+  node_id: string
+  is_complete: boolean
+  is_revealed: boolean
+  has_pending_reward: boolean
+}
+export type BlueprintRow = {
+  id: number
+  owner_name: string
+  item_id: number
+  pieces: number
+  placeables: number
+  name?: string
+}
+export type BaseRow = {
+  id: number
+  name: string
+  pieces: number
+  placeables: number
+}
+export type LogPod = {
+  namespace: string
+  name: string
+}
 export type MutateResult = { ok: string }
-export type BulkGiveResult = { given: string[]; skipped: { template: string; reason: string }[] }
+export type BulkGiveResult = {
+  given: string[]
+  skipped: { template: string, reason: string }[]
+}
 export type BGOutput = { output: string }
-export type VehicleRow = { id: number; class: string; map: string; chassis_durability: number; vehicle_name: string; is_recovered: boolean; is_backup: boolean }
-export type CheatEntry = { fls_id: string; cheat_type: string; event_time: string; character_name: string }
-export type GameEvent = { actor_id: number; universe_time: string; map: string; event_type: number; x: number; y: number; z: number; custom_data: string }
-export type DungeonRecord = { dungeon_id: string; difficulty: string; duration_ms: number; players_num: number; completion_id: number }
-export type TeleportLocation = { name: string; x: number; y: number; z: number }
-export type OnlineRow = { player_id: number; name: string; map: string; status: string; last_seen: string }
-export type BackupFile = { name: string; size_bytes: number; modified: string; has_yaml: boolean }
+export type VehicleRow = {
+  id: number
+  class: string
+  map: string
+  chassis_durability: number
+  vehicle_name: string
+  is_recovered: boolean
+  is_backup: boolean
+}
+export type CheatEntry = {
+  fls_id: string
+  cheat_type: string
+  event_time: string
+  character_name: string
+}
+export type GameEvent = {
+  actor_id: number
+  universe_time: string
+  map: string
+  event_type: number
+  x: number
+  y: number
+  z: number
+  custom_data: string
+}
+export type DungeonRecord = {
+  dungeon_id: string
+  difficulty: string
+  duration_ms: number
+  players_num: number
+  completion_id: number
+}
+export type TeleportLocation = {
+  name: string
+  x: number
+  y: number
+  z: number
+}
+export type OnlineRow = {
+  player_id: number
+  name: string
+  map: string
+  status: string
+  last_seen: string
+}
+export type BackupFile = {
+  name: string
+  size_bytes: number
+  modified: string
+  has_yaml: boolean
+}
 
 export type MarketItem = {
   template_id: string
@@ -283,7 +390,7 @@ export type BotStatus = {
   listing_count: number
   balance?: number
   error_count: number
-  error?: string        // set when running=false
+  error?: string // set when running=false
 }
 export type BotConfig = {
   list_interval: string
@@ -345,7 +452,7 @@ export const api = {
   serverSettings: {
     get: () => req<ServerSettingsResponse>('GET', '/server-settings'),
     update: (updates: ServerSettingUpdate[]) =>
-      req<{ ok: string; applied: number; cleared: number }>('PUT', '/server-settings', { updates }),
+      req<{ ok: string, applied: number, cleared: number }>('PUT', '/server-settings', { updates }),
     updateRaw: (section: string, lines: string) =>
       req<{ ok: string }>('PUT', '/server-settings/raw', { section, lines }),
   },
@@ -353,7 +460,7 @@ export const api = {
   battlegroup: {
     status: () => req<unknown>('GET', '/battlegroup/status'),
     exec: (cmd: string) => req<BGOutput>('POST', '/battlegroup/exec', { cmd }),
-    pods: () => req<{ pods: string[]; namespace: string }>('GET', '/battlegroup/pods'),
+    pods: () => req<{ pods: string[], namespace: string }>('GET', '/battlegroup/pods'),
     backupFiles: () => req<BackupFile[]>('GET', '/battlegroup/backup-files'),
     backupDownloadUrl: (file: string) => `${BASE}/battlegroup/backup-files/download?file=${encodeURIComponent(file)}`,
     backupUpload: async (file: File): Promise<{ name: string }> => {
@@ -363,7 +470,10 @@ export const api = {
       const headers: Record<string, string> = {}
       if (token) headers['Authorization'] = `Bearer ${token}`
       const res = await fetch(`${BASE}/battlegroup/backup-files/upload`, { method: 'POST', headers, body: form })
-      if (!res.ok) { const e = await res.json().catch(() => ({ error: res.statusText })); throw new ApiError(res.status, e.error) }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({ error: res.statusText }))
+        throw new ApiError(res.status, e.error)
+      }
       return res.json()
     },
     restore: (file: string) => req<BGOutput>('POST', '/battlegroup/restore', { file }),
@@ -375,12 +485,12 @@ export const api = {
     currency: () => req<CurrencyRow[]>('GET', '/players/currency'),
     factions: () => req<FactionRep[]>('GET', '/players/factions'),
     specs: () => req<SpecTrack[]>('GET', '/players/specs'),
-    templates: () => req<{id: string; name: string}[]>('GET', '/players/templates'),
+    templates: () => req<{ id: string, name: string }[]>('GET', '/players/templates'),
     inventory: (id: number) => req<InventoryItem[]>('GET', `/players/${id}/inventory`),
     journey: (accountId: number) => req<JourneyNode[]>('GET', `/players/${accountId}/journey`),
     giveItem: (player_id: number, template: string, qty: number, quality: number) =>
       req<MutateResult>('POST', '/players/give-item', { player_id, template, qty, quality }),
-    giveItems: (player_id: number, items: { template: string; qty: number; quality: number }[]) =>
+    giveItems: (player_id: number, items: { template: string, qty: number, quality: number }[]) =>
       req<BulkGiveResult>('POST', '/players/give-items', { player_id, items }),
     grantLive: (controller_id: number, template: string, amount: number) =>
       req<MutateResult>('POST', '/players/grant-live', { controller_id, template, amount }),
@@ -449,7 +559,7 @@ export const api = {
       req<MutateResult>('POST', '/players/delete-tutorials', { player_id }),
     wipeCodex: (account_id: number) =>
       req<MutateResult>('POST', '/players/wipe-codex', { account_id }),
-    charXPCurrent: (id: number) => req<{xp: number; level: number}>('GET', `/players/${id}/char-xp`),
+    charXPCurrent: (id: number) => req<{ xp: number, level: number }>('GET', `/players/${id}/char-xp`),
     specs_for: (id: number) => req<SpecTrack[]>('GET', `/players/${id}/specs`),
     keystones: (id: number) => req<KeystoneRow[]>('GET', `/players/${id}/keystones`),
     grantMaxSpec: (player_id: number, track_type: string) =>
@@ -465,18 +575,18 @@ export const api = {
     vehicles: (controller_id: number) => req<VehicleRow[]>('GET', `/players/${controller_id}/vehicles`),
     repairItem: (id: number) => req<MutateResult>('POST', '/players/repair-item', { id }),
     repairGear: (player_id: number) =>
-      req<{repaired: number; scanned: number}>('POST', '/players/repair-gear', { player_id }),
+      req<{ repaired: number, scanned: number }>('POST', '/players/repair-gear', { player_id }),
     repairVehicle: (vehicle_id: number, player_id: number) =>
-      req<{repaired: number; skipped: number; total: number}>('POST', '/players/repair-vehicle', { vehicle_id, player_id }),
+      req<{ repaired: number, skipped: number, total: number }>('POST', '/players/repair-vehicle', { vehicle_id, player_id }),
     refuelVehicle: (vehicle_id: number, player_id: number) =>
       req<MutateResult>('POST', '/players/refuel-vehicle', { vehicle_id, player_id }),
     partitions: () => req<TeleportLocation[]>('GET', '/players/partitions'),
     teleport: (fls_id: string, partition_label: string) =>
       req<MutateResult>('POST', '/players/teleport', { fls_id, partition_label }),
     position: (id: number) =>
-      req<{ partition_id: number; map: string; x: number; y: number; z: number }>('GET', `/players/${id}/position`),
+      req<{ partition_id: number, map: string, x: number, y: number, z: number }>('GET', `/players/${id}/position`),
     teleportToPlayer: (source_fls_id: string, target_id: number) =>
-      req<MutateResult & { path: string; x: number; y: number; z: number }>(
+      req<MutateResult & { path: string, x: number, y: number, z: number }>(
         'POST', '/players/teleport-to-player', { source_fls_id, target_id }),
     events: (id: number) => req<GameEvent[]>('GET', `/players/${id}/events`),
     dungeons: (id: number) => req<DungeonRecord[]>('GET', `/players/${id}/dungeons`),
@@ -494,12 +604,19 @@ export const api = {
       req<MutateResult>('POST', '/players/reset-progression', { fls_id }),
     setSkillModule: (fls_id: string, module: string, level: number) =>
       req<MutateResult>('POST', '/players/set-skill-module', { fls_id, module, level }),
-    spawnVehicle: (fls_id: string, class_name: string, x: number, y: number, z: number, options?: { rotation?: number; template_name?: string; persistent?: boolean; faction?: string }) =>
+    spawnVehicle: (
+      fls_id: string,
+      class_name: string,
+      x: number,
+      y: number,
+      z: number,
+      options?: { rotation?: number, template_name?: string, persistent?: boolean, faction?: string },
+    ) =>
       req<MutateResult>('POST', '/vehicles/spawn', { fls_id, class_name, x, y, z, ...options }),
   },
 
   broadcast: {
-    send: (texts: { Key: string; Title: string; Body: string }[], duration_sec = 30) =>
+    send: (texts: { Key: string, Title: string, Body: string }[], duration_sec = 30) =>
       req<MutateResult>('POST', '/broadcast', { texts, duration_sec }),
     shutdown: (shutdown_type: string, delay_minutes: number, cancel = false) =>
       req<MutateResult>('POST', '/broadcast/shutdown', { shutdown_type, delay_minutes, cancel }),
@@ -522,15 +639,15 @@ export const api = {
   },
 
   contracts: {
-    list: () => req<{id: string; alias: string; tag_count: number}[]>('GET', '/contracts'),
+    list: () => req<{ id: string, alias: string, tag_count: number }[]>('GET', '/contracts'),
   },
 
   database: {
-    tables: () => req<{name: string; row_count: number}[]>('GET', '/database/tables'),
-    describe: (table: string) => req<{table: string; columns: {name: string; data_type: string; nullable: string}[]}>('GET', `/database/describe?table=${encodeURIComponent(table)}`),
-    sample: (table: string, limit = 20) => req<{table: string; headers: string[]; rows: string[][]}>('GET', `/database/sample?table=${encodeURIComponent(table)}&limit=${limit}`),
-    search: (term: string) => req<{headers: string[]; rows: string[][]}>('GET', `/database/search?term=${encodeURIComponent(term)}`),
-    sql: (sql: string) => req<{result: string}>('POST', '/database/sql', { sql }),
+    tables: () => req<{ name: string, row_count: number }[]>('GET', '/database/tables'),
+    describe: (table: string) => req<{ table: string, columns: { name: string, data_type: string, nullable: string }[] }>('GET', `/database/describe?table=${encodeURIComponent(table)}`),
+    sample: (table: string, limit = 20) => req<{ table: string, headers: string[], rows: string[][] }>('GET', `/database/sample?table=${encodeURIComponent(table)}&limit=${limit}`),
+    search: (term: string) => req<{ headers: string[], rows: string[][] }>('GET', `/database/search?term=${encodeURIComponent(term)}`),
+    sql: (sql: string) => req<{ result: string }>('POST', '/database/sql', { sql }),
   },
 
   logs: {
@@ -539,11 +656,11 @@ export const api = {
   },
 
   storage: {
-    list: () => req<{id: number; name: string; class: string; map: string; item_count: number; item_templates: string[]; item_names: string[]; owner_name: string}[]>('GET', '/storage'),
+    list: () => req<{ id: number, name: string, class: string, map: string, item_count: number, item_templates: string[], item_names: string[], owner_name: string }[]>('GET', '/storage'),
     items: (id: number) => req<InventoryItem[]>('GET', `/storage/${id}/items`),
     giveItem: (id: number, template: string, qty: number, quality: number) =>
       req<MutateResult>('POST', `/storage/${id}/give-item`, { template, qty, quality }),
-    giveItems: (id: number, items: { template: string; qty: number; quality: number }[]) =>
+    giveItems: (id: number, items: { template: string, qty: number, quality: number }[]) =>
       req<BulkGiveResult>('POST', `/storage/${id}/give-items`, { items }),
   },
 
@@ -558,7 +675,7 @@ export const api = {
       fd.append('file', file)
       fd.append('player_id', String(player_id))
       return fetch(`${BASE}/blueprints/import`, { method: 'POST', headers, body: fd })
-        .then(r => r.json())
+        .then((r) => r.json())
     },
   },
 
@@ -570,11 +687,11 @@ export const api = {
   market: {
     items: (params?: MarketItemsParams) => {
       const q = new URLSearchParams()
-      if (params?.search)   q.set('search', params.search)
+      if (params?.search) q.set('search', params.search)
       if (params?.category) q.set('category', params.category)
       if (params?.tier != null) q.set('tier', String(params.tier))
-      if (params?.rarity)   q.set('rarity', params.rarity)
-      if (params?.owner)    q.set('owner', params.owner)
+      if (params?.rarity) q.set('rarity', params.rarity)
+      if (params?.owner) q.set('owner', params.owner)
       if (params?.page != null) q.set('page', String(params.page))
       if (params?.limit != null) q.set('limit', String(params.limit))
       const qs = q.toString()
@@ -598,7 +715,7 @@ export const api = {
     config: async () => normalizeBotConfig(await req<unknown>('GET', '/market-bot/config')),
     saveConfig: async (cfg: BotConfig) => normalizeBotConfig(await req<unknown>('PUT', '/market-bot/config', cfg)),
     lifecycle: (cmd: 'start' | 'stop' | 'restart') => req<{ output: string }>('POST', '/market-bot/exec', { cmd }),
-    cleanup: () => req<{ orders_deleted: number; items_deleted: number }>('POST', '/market-bot/cleanup'),
-    logsReady: () => req<{ ready: boolean; reason?: string; namespace?: string; name?: string }>('GET', '/market-bot/logs-ready'),
+    cleanup: () => req<{ orders_deleted: number, items_deleted: number }>('POST', '/market-bot/cleanup'),
+    logsReady: () => req<{ ready: boolean, reason?: string, namespace?: string, name?: string }>('GET', '/market-bot/logs-ready'),
   },
 }

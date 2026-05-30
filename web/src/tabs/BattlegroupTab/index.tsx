@@ -41,12 +41,14 @@ export default function BattlegroupTab() {
     Promise.resolve()
       .then(() => setStatusLoading(true))
       .then(() => api.battlegroup.status() as Promise<unknown>)
-      .then(res => setStatus(res as DetailedStatus))
+      .then((res) => setStatus(res as DetailedStatus))
       .catch((e: unknown) => toast.danger(`Status failed: ${e instanceof Error ? e.message : String(e)}`))
       .finally(() => setStatusLoading(false))
   }, [])
 
-  useEffect(() => { fetchStatus() }, [fetchStatus])
+  useEffect(() => {
+    fetchStatus()
+  }, [fetchStatus])
 
   // isInitializing tracks whether we're inside the post-start warning window.
   // We use a boolean state rather than computing from Date.now() in render (impure).
@@ -66,7 +68,10 @@ export default function BattlegroupTab() {
       setStartedAt(null)
       setIsInitializing(false)
     }, remaining)
-    return () => { clearTimeout(tStart); clearTimeout(tEnd) }
+    return () => {
+      clearTimeout(tStart)
+      clearTimeout(tEnd)
+    }
   }, [startedAt])
 
   const runCmd = async (action: ActionDef) => {
@@ -85,7 +90,8 @@ export default function BattlegroupTab() {
       }
       toast.success(`${action.label} completed`)
       fetchStatus()
-    } catch (e: unknown) {
+    }
+    catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       setCmdOutput(`Error: ${msg}`)
       setCmdDone(true)
@@ -114,13 +120,19 @@ export default function BattlegroupTab() {
         <Button size="sm" variant="ghost" onPress={fetchStatus} isDisabled={statusLoading}>
           {statusLoading
             ? <Spinner size="sm" color="current" />
-            : <><Icon name="refresh-cw" /> Refresh</>}
+            : (
+                <>
+                  <Icon name="refresh-cw" />
+                  {' '}
+                  Refresh
+                </>
+              )}
         </Button>
       </PageHeader>
 
       {bg && (
         <InfoCard>
-          <InfoCard.Item label="Phase"    value={bg.phase || '—'}    valueColor={phaseColor(bg.phase)} />
+          <InfoCard.Item label="Phase" value={bg.phase || '—'} valueColor={phaseColor(bg.phase)} />
           <InfoCard.Item label="Database" value={bg.database || '—'} valueColor={phaseColor(bg.database)} />
         </InfoCard>
       )}
@@ -133,24 +145,26 @@ export default function BattlegroupTab() {
       )}
 
       <div className="flex-1 min-h-0 flex flex-col">
-        {statusLoading && !status ? (
-          <div className="flex items-center gap-2 py-4 text-muted">
-            <Spinner size="sm" color="current" />
-            <span className="text-sm">Loading status...</span>
-          </div>
-        ) : (
-          <ServersTable
-            servers={servers}
-            isInitializing={isInitializing}
-            emptyMessage={status ? 'No game servers found.' : 'Click Refresh to load status.'}
-          />
-        )}
+        {statusLoading && !status
+          ? (
+              <div className="flex items-center gap-2 py-4 text-muted">
+                <Spinner size="sm" color="current" />
+                <span className="text-sm">Loading status...</span>
+              </div>
+            )
+          : (
+              <ServersTable
+                servers={servers}
+                isInitializing={isInitializing}
+                emptyMessage={status ? 'No game servers found.' : 'Click Refresh to load status.'}
+              />
+            )}
       </div>
 
       {/* ── Server Control ───────────────────────────────────────────── */}
       <SectionDivider title="Server Control" />
       <div className="flex flex-wrap gap-2 shrink-0">
-        {ACTIONS.map(action => (
+        {ACTIONS.map((action) => (
           <Button
             key={action.cmd}
             variant={action.danger ? 'danger-soft' : 'outline'}
@@ -174,31 +188,49 @@ export default function BattlegroupTab() {
         <div className="flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-3">
           <div className="text-xs font-semibold uppercase tracking-widest text-accent">Generic Message</div>
           <TextField aria-label="Title">
-            <Input placeholder="Title" value={broadcastTitle} onChange={e => setBroadcastTitle(e.target.value)} />
+            <Input placeholder="Title" value={broadcastTitle} onChange={(e) => setBroadcastTitle(e.target.value)} />
           </TextField>
           <TextField aria-label="Body">
-            <Input placeholder="Body" value={broadcastBody} onChange={e => setBroadcastBody(e.target.value)} />
+            <Input placeholder="Body" value={broadcastBody} onChange={(e) => setBroadcastBody(e.target.value)} />
           </TextField>
           <div className="flex items-center gap-2">
             <label className="text-xs text-muted shrink-0">Duration (s)</label>
             <Input
-              type="number" min={5} max={300} value={broadcastDuration}
-              onChange={e => setBroadcastDuration(Math.max(5, parseInt(e.target.value) || 30))}
-              className="w-20" aria-label="Duration"
+              type="number"
+              min={5}
+              max={300}
+              value={broadcastDuration}
+              onChange={(e) => setBroadcastDuration(Math.max(5, parseInt(e.target.value) || 30))}
+              className="w-20"
+              aria-label="Duration"
             />
             <div className="flex-1" />
-            <Button size="sm" isDisabled={broadcastBusy || !broadcastTitle}
+            <Button
+              size="sm"
+              isDisabled={broadcastBusy || !broadcastTitle}
               onPress={async () => {
                 setBroadcastBusy(true)
                 try {
                   await api.broadcast.send([{ Key: 'en', Title: broadcastTitle, Body: broadcastBody }], broadcastDuration)
                   toast.success('Broadcast sent')
-                  setBroadcastTitle(''); setBroadcastBody('')
-                } catch (e: unknown) {
+                  setBroadcastTitle('')
+                  setBroadcastBody('')
+                }
+                catch (e: unknown) {
                   toast.danger(e instanceof Error ? e.message : String(e))
-                } finally { setBroadcastBusy(false) }
-              }}>
-              {broadcastBusy ? <Spinner size="sm" color="current" /> : <><Icon name="megaphone" /> Send</>}
+                }
+                finally { setBroadcastBusy(false) }
+              }}
+            >
+              {broadcastBusy
+                ? <Spinner size="sm" color="current" />
+                : (
+                    <>
+                      <Icon name="megaphone" />
+                      {' '}
+                      Send
+                    </>
+                  )}
             </Button>
           </div>
         </div>
@@ -208,12 +240,18 @@ export default function BattlegroupTab() {
           <div className="text-xs font-semibold uppercase tracking-widest text-accent">Shutdown Broadcast</div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-muted shrink-0">Type</label>
-            <Select selectedKey={shutdownType} onSelectionChange={k => setShutdownType(String(k))} className="flex-1" aria-label="Shutdown type">
-              <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
+            <Select selectedKey={shutdownType} onSelectionChange={(k) => setShutdownType(String(k))} className="flex-1" aria-label="Shutdown type">
+              <Select.Trigger>
+                <Select.Value />
+                <Select.Indicator />
+              </Select.Trigger>
               <Select.Popover>
                 <ListBox>
-                  {['Restart', 'Maintenance', 'Update'].map(t => (
-                    <ListBox.Item key={t} id={t} textValue={t}>{t}<ListBox.ItemIndicator /></ListBox.Item>
+                  {['Restart', 'Maintenance', 'Update'].map((t) => (
+                    <ListBox.Item key={t} id={t} textValue={t}>
+                      {t}
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
                   ))}
                 </ListBox>
               </Select.Popover>
@@ -222,34 +260,58 @@ export default function BattlegroupTab() {
           <div className="flex items-center gap-2">
             <label className="text-xs text-muted shrink-0">Delay (min)</label>
             <Input
-              type="number" min={1} max={120} value={shutdownDelay}
-              onChange={e => setShutdownDelay(Math.max(1, parseInt(e.target.value) || 10))}
-              className="w-20" aria-label="Delay minutes"
+              type="number"
+              min={1}
+              max={120}
+              value={shutdownDelay}
+              onChange={(e) => setShutdownDelay(Math.max(1, parseInt(e.target.value) || 10))}
+              className="w-20"
+              aria-label="Delay minutes"
             />
           </div>
           <div className="flex gap-2 mt-auto">
-            <Button size="sm" variant="danger-soft" isDisabled={shutdownBusy}
+            <Button
+              size="sm"
+              variant="danger-soft"
+              isDisabled={shutdownBusy}
               onPress={async () => {
                 setShutdownBusy(true)
                 try {
                   await api.broadcast.shutdown(shutdownType, shutdownDelay)
                   toast.success(`Shutdown broadcast sent (${shutdownDelay} min)`)
-                } catch (e: unknown) {
+                }
+                catch (e: unknown) {
                   toast.danger(e instanceof Error ? e.message : String(e))
-                } finally { setShutdownBusy(false) }
-              }}>
-              {shutdownBusy ? <Spinner size="sm" color="current" /> : <><Icon name="triangle-alert" /> Broadcast</>}
+                }
+                finally { setShutdownBusy(false) }
+              }}
+            >
+              {shutdownBusy
+                ? <Spinner size="sm" color="current" />
+                : (
+                    <>
+                      <Icon name="triangle-alert" />
+                      {' '}
+                      Broadcast
+                    </>
+                  )}
             </Button>
-            <Button size="sm" variant="ghost" isDisabled={shutdownBusy}
+            <Button
+              size="sm"
+              variant="ghost"
+              isDisabled={shutdownBusy}
               onPress={async () => {
                 setShutdownBusy(true)
                 try {
                   await api.broadcast.shutdown(shutdownType, 0, true)
                   toast.success('Shutdown broadcast cancelled')
-                } catch (e: unknown) {
+                }
+                catch (e: unknown) {
                   toast.danger(e instanceof Error ? e.message : String(e))
-                } finally { setShutdownBusy(false) }
-              }}>
+                }
+                finally { setShutdownBusy(false) }
+              }}
+            >
               Cancel
             </Button>
           </div>
@@ -268,7 +330,10 @@ export default function BattlegroupTab() {
         cmdOutput={cmdOutput}
         cmdDone={cmdDone}
         lastBackupFile={lastBackupFile}
-        onClose={() => { setRunningCmd(null); setCmdOutput(null) }}
+        onClose={() => {
+          setRunningCmd(null)
+          setCmdOutput(null)
+        }}
       />
       <RestoreModal
         open={showRestore}
@@ -276,7 +341,7 @@ export default function BattlegroupTab() {
         backupFilesLoading={backupFilesLoading}
         setBackupFiles={setBackupFiles}
         onClose={() => setShowRestore(false)}
-        onRestoreComplete={output => {
+        onRestoreComplete={(output) => {
           setCmdOutput(output)
           setCmdDone(true)
           setRunningCmd('Restore')

@@ -10,12 +10,12 @@ type Props = {
 
 type Node = {
   label: string
-  path: string        // full path used for filtering
+  path: string // full path used for filtering
   displayPath: string // path used as tree key (items/ stripped)
   children: Node[]
 }
 
-function buildTree(categories: string[]): { items: Node[]; schematics: Node[] } {
+function buildTree(categories: string[]): { items: Node[], schematics: Node[] } {
   const itemRoot: Node[] = []
   const schematicRoot: Node[] = []
 
@@ -38,7 +38,7 @@ function buildTree(categories: string[]): { items: Node[]; schematics: Node[] } 
         ? (filterPath ? `${filterPath}/${part}` : `schematics/${part}`)
         : (filterPath ? `${filterPath}/${part}` : `items/${part}`)
 
-      let node = current.find(n => n.label === part)
+      let node = current.find((n) => n.label === part)
       if (!node) {
         node = { label: part, path: filterPath, displayPath, children: [] }
         current.push(node)
@@ -54,7 +54,7 @@ function formatLabel(label: string): string {
   return label
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase())
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function collectAncestorPaths(categories: string[], selected: string): Set<string> {
@@ -97,19 +97,24 @@ function TreeNode({ node, selected, depth, expanded, onToggle, onSelect }: TreeN
         style={{ paddingLeft: `${depth * 12}px` }}
       >
         {/* Expand/collapse toggle — only shown for nodes with children */}
-        {hasChildren ? (
-          <button
-            className="flex items-center justify-center w-5 h-5 shrink-0 text-muted hover:text-foreground transition-colors"
-            onClick={e => { e.stopPropagation(); onToggle(node.displayPath) }}
-            aria-label={isOpen ? 'Collapse' : 'Expand'}
-          >
-            <Icon name={isOpen ? 'chevron-down' : 'chevron-right'} />
-          </button>
-        ) : (
-          <span className="w-5 shrink-0 flex items-center justify-center">
-            <span className="w-1 h-1 rounded-full bg-border/60" />
-          </span>
-        )}
+        {hasChildren
+          ? (
+              <button
+                className="flex items-center justify-center w-5 h-5 shrink-0 text-muted hover:text-foreground transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggle(node.displayPath)
+                }}
+                aria-label={isOpen ? 'Collapse' : 'Expand'}
+              >
+                <Icon name={isOpen ? 'chevron-down' : 'chevron-right'} />
+              </button>
+            )
+          : (
+              <span className="w-5 shrink-0 flex items-center justify-center">
+                <span className="w-1 h-1 rounded-full bg-border/60" />
+              </span>
+            )}
 
         {/* Label button */}
         <button
@@ -117,7 +122,10 @@ function TreeNode({ node, selected, depth, expanded, onToggle, onSelect }: TreeN
             'flex-1 text-left py-1 pr-2 text-sm truncate',
             isExact ? 'text-accent font-medium' : isAncestor ? 'text-foreground/80' : 'text-muted',
           ].join(' ')}
-          onClick={() => { onSelect(node.path); if (hasChildren && !isOpen) onToggle(node.displayPath) }}
+          onClick={() => {
+            onSelect(node.path)
+            if (hasChildren && !isOpen) onToggle(node.displayPath)
+          }}
         >
           {formatLabel(node.label)}
         </button>
@@ -130,7 +138,7 @@ function TreeNode({ node, selected, depth, expanded, onToggle, onSelect }: TreeN
             className="absolute top-0 bottom-0 border-l border-border/30"
             style={{ left: `${depth * 12 + 10}px` }}
           />
-          {node.children.map(child => (
+          {node.children.map((child) => (
             <TreeNode
               key={child.displayPath}
               node={child}
@@ -162,7 +170,7 @@ export default function MarketSidebar({ categories, selected, onSelect }: Props)
   const [expanded, setExpanded] = useState<Set<string>>(defaultExpanded)
 
   const toggle = (displayPath: string) => {
-    setExpanded(prev => {
+    setExpanded((prev) => {
       const next = new Set(prev)
       if (next.has(displayPath)) next.delete(displayPath)
       else next.add(displayPath)
@@ -198,7 +206,7 @@ export default function MarketSidebar({ categories, selected, onSelect }: Props)
         All Items
       </Button>
 
-      {items.map(node => (
+      {items.map((node) => (
         <TreeNode
           key={node.displayPath}
           node={node}
@@ -216,7 +224,7 @@ export default function MarketSidebar({ categories, selected, onSelect }: Props)
           <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wider px-1 mb-0.5">
             Schematics
           </span>
-          {schematics.map(node => (
+          {schematics.map((node) => (
             <TreeNode
               key={node.displayPath}
               node={node}

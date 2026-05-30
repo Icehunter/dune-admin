@@ -7,10 +7,10 @@ import { OnlineBadge } from '../components/OnlineBadge'
 type Key = 'player' | 'status' | 'last_seen' | 'map'
 
 const COLUMNS: Column<Key>[] = [
-  { key: 'player',    label: 'Player', isRowHeader: true },
-  { key: 'status',    label: 'Status', sortable: false },
+  { key: 'player', label: 'Player', isRowHeader: true },
+  { key: 'status', label: 'Status', sortable: false },
   { key: 'last_seen', label: 'Last Seen' },
-  { key: 'map',       label: 'Map' },
+  { key: 'map', label: 'Map' },
 ]
 
 interface Props {
@@ -24,7 +24,7 @@ export function OnlineView({ data, loading }: Props) {
   const filtered = useMemo(() => {
     if (!search) return data
     const q = search.toLowerCase()
-    return data.filter(r =>
+    return data.filter((r) =>
       r.name.toLowerCase().includes(q) || String(r.player_id).includes(q),
     )
   }, [data, search])
@@ -51,7 +51,7 @@ export function OnlineView({ data, loading }: Props) {
         className="min-h-0 max-h-full"
         columns={COLUMNS}
         rows={filtered}
-        rowId={r => String(r.player_id)}
+        rowId={(r) => String(r.player_id)}
         initialSort={{ column: 'player', direction: 'ascending' }}
         sortValue={(r, k) => {
           if (k === 'player') return r.name
@@ -69,12 +69,15 @@ export function OnlineView({ data, loading }: Props) {
               return (
                 <span className="inline-flex flex-col">
                   <span className="font-semibold">{r.name}</span>
-                  <span className="font-mono text-muted text-[10px]">#{r.player_id}</span>
+                  <span className="font-mono text-muted text-[10px]">
+                    #
+                    {r.player_id}
+                  </span>
                 </span>
               )
-            case 'status':    return <OnlineBadge status={r.status} />
+            case 'status': return <OnlineBadge status={r.status} />
             case 'last_seen': return <span className="font-mono text-muted">{r.last_seen}</span>
-            case 'map':       return <span className="text-muted">{r.map}</span>
+            case 'map': return <span className="text-muted">{r.map}</span>
           }
         }}
       />

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-type CardProps = { children: ReactNode; className?: string }
+type CardProps = { children: ReactNode, className?: string }
 
 type ItemProps = {
   label: ReactNode
@@ -17,9 +17,9 @@ export function InfoCard({ children, className = '' }: CardProps) {
   return (
     <div
       className={
-        'flex items-center gap-6 rounded-[var(--radius)] px-4 py-3 text-sm shrink-0 ' +
-        'bg-surface border border-border/60 dune-lift ' +
-        className
+        'flex items-center gap-6 rounded-[var(--radius)] px-4 py-3 text-sm shrink-0 '
+        + 'bg-surface border border-border/60 dune-lift '
+        + className
       }
     >
       {children}

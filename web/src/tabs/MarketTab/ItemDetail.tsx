@@ -42,12 +42,19 @@ export default function ItemDetail({ item, onClose }: Props) {
   useEffect(() => {
     if (!item) return
     Promise.resolve()
-      .then(() => { setListings([]); setEntry(null); setLoading(true) })
+      .then(() => {
+        setListings([])
+        setEntry(null)
+        setLoading(true)
+      })
       .then(() => Promise.all([
         api.market.listings(item.template_id),
         getItemEntry(item.template_id),
       ]))
-      .then(([ls, e]) => { setListings(ls); setEntry(e) })
+      .then(([ls, e]) => {
+        setListings(ls)
+        setEntry(e)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [item])
@@ -74,7 +81,7 @@ export default function ItemDetail({ item, onClose }: Props) {
               src={img}
               alt=""
               className="w-8 h-8 object-contain shrink-0 rounded"
-              onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
             />
           )}
           <span className="font-semibold text-sm text-accent truncate">
@@ -101,31 +108,33 @@ export default function ItemDetail({ item, onClose }: Props) {
         {isArmor && (
           <Panel>
             <SectionLabel>Armor Stats</SectionLabel>
-            {isGradeable ? (
-              <>
-                <div className="text-xs text-muted mb-1">Armor Value by Quality</div>
-                <table className="w-full text-xs mb-2">
-                  <thead>
-                    <tr className="text-muted">
-                      {QUALITY_LABELS.map((ql, i) => (
-                        <th key={i} className="text-center pb-1 font-normal">{ql.slice(0, 3)}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      {qualityData.armor.map((mult, i) => (
-                        <td key={i} className="text-center font-mono text-foreground">
-                          {Math.round(entry!.armor_value! * mult)}
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              </>
-            ) : (
-              <Row label="Armor Value" value={String(entry!.armor_value)} />
-            )}
+            {isGradeable
+              ? (
+                  <>
+                    <div className="text-xs text-muted mb-1">Armor Value by Quality</div>
+                    <table className="w-full text-xs mb-2">
+                      <thead>
+                        <tr className="text-muted">
+                          {QUALITY_LABELS.map((ql, i) => (
+                            <th key={i} className="text-center pb-1 font-normal">{ql.slice(0, 3)}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          {qualityData.armor.map((mult, i) => (
+                            <td key={i} className="text-center font-mono text-foreground">
+                              {Math.round(entry!.armor_value! * mult)}
+                            </td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </>
+                )
+              : (
+                  <Row label="Armor Value" value={String(entry!.armor_value)} />
+                )}
             {entry?.mitigation && Object.keys(entry.mitigation).length > 0 && (
               <>
                 <div className="text-xs text-muted mt-1 mb-1">Resistances</div>
@@ -157,7 +166,8 @@ export default function ItemDetail({ item, onClose }: Props) {
                 <tr>
                   {qualityData.weapon_damage.map((mult, i) => (
                     <td key={i} className="text-center font-mono text-foreground">
-                      {mult.toFixed(2)}×
+                      {mult.toFixed(2)}
+                      ×
                     </td>
                   ))}
                 </tr>
@@ -168,46 +178,50 @@ export default function ItemDetail({ item, onClose }: Props) {
 
         <Panel>
           <SectionLabel>Active Listings</SectionLabel>
-          {loading ? (
-            <div className="flex justify-center py-4"><Spinner size="sm" /></div>
-          ) : listings.length === 0 ? (
-            <p className="text-xs text-muted">No active listings.</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {qualities.map(q => (
-                <div key={q}>
-                  <div className="text-xs font-medium text-muted mb-1">{qualityLabel(q)}</div>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-muted">
-                        <th className="text-left pb-1 font-normal">Seller</th>
-                        <th className="text-right pb-1 font-normal">Stock</th>
-                        <th className="text-right pb-1 font-normal">Price</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {byQuality[q].sort((a, b) => a.price - b.price).map(l => (
-                        <tr key={l.order_id} className="border-t border-border/40">
-                          <td className={`py-0.5 ${l.owner_type === 'bot' ? 'text-accent' : 'text-foreground'}`}>
-                            {l.owner_name}
-                          </td>
-                          <td className="py-0.5 text-right text-muted">{l.stock.toLocaleString()}</td>
-                          <td className="py-0.5 text-right font-mono">{l.price.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
-            </div>
-          )}
+          {loading
+            ? (
+                <div className="flex justify-center py-4"><Spinner size="sm" /></div>
+              )
+            : listings.length === 0
+              ? (
+                  <p className="text-xs text-muted">No active listings.</p>
+                )
+              : (
+                  <div className="flex flex-col gap-3">
+                    {qualities.map((q) => (
+                      <div key={q}>
+                        <div className="text-xs font-medium text-muted mb-1">{qualityLabel(q)}</div>
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-muted">
+                              <th className="text-left pb-1 font-normal">Seller</th>
+                              <th className="text-right pb-1 font-normal">Stock</th>
+                              <th className="text-right pb-1 font-normal">Price</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {byQuality[q].sort((a, b) => a.price - b.price).map((l) => (
+                              <tr key={l.order_id} className="border-t border-border/40">
+                                <td className={`py-0.5 ${l.owner_type === 'bot' ? 'text-accent' : 'text-foreground'}`}>
+                                  {l.owner_name}
+                                </td>
+                                <td className="py-0.5 text-right text-muted">{l.stock.toLocaleString()}</td>
+                                <td className="py-0.5 text-right font-mono">{l.price.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                )}
         </Panel>
       </div>
     </div>
   )
 }
 
-function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Row({ label, value, accent }: { label: string, value: string, accent?: boolean }) {
   return (
     <div className="flex items-center justify-between text-xs py-0.5">
       <span className="text-muted">{label}</span>

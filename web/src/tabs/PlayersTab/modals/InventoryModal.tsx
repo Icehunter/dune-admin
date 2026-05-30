@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Button, Chip, Modal, Spinner, toast } from '@heroui/react'
 import { api } from '../../../api/client'
 import type { Player, InventoryItem, VehicleRow } from '../../../api/client'
-import { DataTable, type Column } from '../../../dune-ui'
+import { DataTable, Panel, SectionLabel, type Column } from '../../../dune-ui'
 
 type ItemKey = 'template' | 'stack' | 'quality' | 'durability' | 'actions'
 type VehicleKey = 'class' | 'location' | 'chassis' | 'name' | 'type' | 'actions'
@@ -156,9 +156,9 @@ export function InventoryModal({ player, open, onClose }: Props) {
                 : (
                     <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden">
                       {/* Items — fills remaining space and owns its own scroll */}
-                      <div className="flex-1 min-h-0 flex flex-col gap-2">
+                      <Panel className="flex-1 min-h-0 overflow-hidden">
                         <div className="shrink-0 flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-accent">Items</h3>
+                          <SectionLabel>Items</SectionLabel>
                           <Button size="sm" variant="ghost" onPress={handleRepairAllGear}>Repair gear</Button>
                         </div>
                         <DataTable<InventoryItem, ItemKey>
@@ -208,12 +208,12 @@ export function InventoryModal({ player, open, onClose }: Props) {
                             }
                           }}
                         />
-                      </div>
+                      </Panel>
 
                       {/* Vehicles — fixed ~4-row window, scrolls independently */}
-                      <div className="shrink-0 flex flex-col gap-2">
+                      <Panel className="shrink-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold text-accent">Vehicles</h3>
+                          <SectionLabel>Vehicles</SectionLabel>
                           {vehiclesLoading && <Spinner size="sm" color="current" />}
                         </div>
                         <DataTable<VehicleRow, VehicleKey>
@@ -262,7 +262,7 @@ export function InventoryModal({ player, open, onClose }: Props) {
                             }
                           }}
                         />
-                      </div>
+                      </Panel>
                     </div>
                   )}
             </Modal.Body>

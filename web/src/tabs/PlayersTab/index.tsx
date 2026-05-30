@@ -1,46 +1,36 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { toast } from '@heroui/react'
+import { SearchField, Spinner, toast } from '@heroui/react'
 import { api } from '../../api/client'
-import type {
-  Player, CurrencyRow, FactionRep, SpecTrack, OnlineRow,
-} from '../../api/client'
-
-import { Sidebar } from './Sidebar'
-import type { Sidebar as SidebarKey } from './types'
-import { PlayersListView } from './views/PlayersListView'
-import { CurrencyView } from './views/CurrencyView'
-import { FactionsView } from './views/FactionsView'
-import { SpecsView } from './views/SpecsView'
-import { OnlineView } from './views/OnlineView'
+import type { Player } from '../../api/client'
+import { PageHeader } from '../../dune-ui'
+import { PlayerCard } from './components/PlayerCard'
+import { PlayerDetailPanel } from './components/PlayerDetailPanel'
+import { StatusDot } from './components/StatusDot'
 import { InventoryModal } from './modals/InventoryModal'
 import { GiveItemsModal } from './modals/GiveItemsModal'
 import { PlayerActionsModal } from './modals/PlayerActionsModal'
 
-export default function PlayersTab() {
-  const [active, setActive] = useState<SidebarKey>('players')
+const MAX_VISIBLE = 5
 
-  // Main player list
+export default function PlayersTab() {
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(false)
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<Player | null>(null)
 
-  // Side data
-  const [currencyData, setCurrencyData] = useState<CurrencyRow[]>([])
-  const [factionData, setFactionData] = useState<FactionRep[]>([])
-  const [specData, setSpecData] = useState<SpecTrack[]>([])
-  const [onlineData, setOnlineData] = useState<OnlineRow[]>([])
-  const [sideLoading, setSideLoading] = useState(false)
-
-  // Selection + modals
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
   const [showInventory, setShowInventory] = useState(false)
-  const [showGiveItems, setShowGiveItems] = useState(false)
+  const [showGive, setShowGive] = useState(false)
   const [showActions, setShowActions] = useState(false)
+  const [modalPlayer, setModalPlayer] = useState<Player | null>(null)
 
   const loadPlayers = useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.players.list())
-      .then(setPlayers)
+      .then((list) => {
+        setPlayers(list)
+        setSelected((prev) => prev ?? list[0] ?? null)
+      })
       .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false))
   }, [])
@@ -49,60 +39,104 @@ export default function PlayersTab() {
     loadPlayers()
   }, [loadPlayers])
 
-  const loadSideData = async (section: SidebarKey) => {
-    setActive(section)
-    if (section === 'players') return
-    setSideLoading(true)
-    try {
-      if (section === 'online') setOnlineData(await api.players.online())
-      else if (section === 'currency') setCurrencyData(await api.players.currency())
-      else if (section === 'factions') setFactionData(await api.players.factions())
-      else if (section === 'specs') setSpecData(await api.players.specs())
-    }
-    catch (e: unknown) {
-      toast.danger(e instanceof Error ? e.message : String(e))
-    }
-    finally {
-      setSideLoading(false)
-    }
-  }
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    const list = q
+      ? players.filter((p) =>
+          p.name.toLowerCase().includes(q)
+          || p.class.toLowerCase().includes(q)
+          || p.map.toLowerCase().includes(q),
+        )
+      : players
+    return list.slice(0, MAX_VISIBLE)
+  }, [players, search])
 
-  const controllerToName = useMemo(() => {
-    const m = new Map<number, string>()
-    for (const p of players) m.set(p.controller_id, p.name)
-    return m
-  }, [players])
+  const onlineCount = useMemo(
+    () => players.filter((p) => p.online_status === 'Online').length,
+    [players],
+  )
 
-  const handleAction = (player: Player, action: 'inventory' | 'give' | 'actions') => {
-    setSelectedPlayer(player)
+  const openModal = (player: Player, action: 'inventory' | 'give' | 'actions') => {
+    setModalPlayer(player)
     if (action === 'inventory') setShowInventory(true)
-    else if (action === 'give') setShowGiveItems(true)
+    else if (action === 'give') setShowGive(true)
     else setShowActions(true)
   }
 
   return (
-    <div className="flex gap-4 h-full min-h-0">
-      <Sidebar active={active} onSelect={loadSideData} />
+    <div className="flex flex-col gap-4 h-full min-h-0 px-1">
+      <PageHeader title="Players" onRefresh={loadPlayers} loading={loading}>
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <StatusDot status={onlineCount > 0 ? 'Online' : 'Offline'} />
+          {onlineCount}
+          {' online'}
+        </div>
+      </PageHeader>
 
-      {/* Main view region: flex column, min-h-0 so the Table inside can own
-          its own scrolling via Table.ScrollContainer. NO overflow-hidden
-          here — that would clip the Input's focus ring at the edge.       */}
-      <div className="flex-1 flex flex-col gap-3 min-h-0">
-        {active === 'players' && <PlayersListView players={players} loading={loading} onRefresh={loadPlayers} onAction={handleAction} />}
-        {active === 'currency' && <CurrencyView data={currencyData} loading={sideLoading} controllerToName={controllerToName} />}
-        {active === 'factions' && <FactionsView data={factionData} loading={sideLoading} controllerToName={controllerToName} />}
-        {active === 'specs' && <SpecsView data={specData} loading={sideLoading} controllerToName={controllerToName} />}
-        {active === 'online' && <OnlineView data={onlineData} loading={sideLoading} />}
+      <div className="flex flex-col gap-2 shrink-0 min-h-0">
+        <SearchField
+          aria-label="Search players"
+          className="w-full"
+          value={search}
+          onChange={setSearch}
+        >
+          <SearchField.Group>
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder="Filter players..." />
+            <SearchField.ClearButton />
+          </SearchField.Group>
+        </SearchField>
+
+        {loading && players.length === 0
+          ? <div className="flex justify-center py-4"><Spinner size="sm" /></div>
+          : filtered.length === 0
+            ? <p className="text-muted text-sm text-center py-2">No players found</p>
+            : (
+                <div className={filtered.length > 3 ? 'flex flex-col gap-2 overflow-y-auto max-h-48' : 'flex flex-col gap-2'}>
+                  {filtered.map((p) => (
+                    <PlayerCard
+                      key={p.id}
+                      player={p}
+                      selected={selected?.id === p.id}
+                      onSelect={setSelected}
+                      onAction={openModal}
+                    />
+                  ))}
+                </div>
+              )}
+
+        {players.length > MAX_VISIBLE && !search && (
+          <p className="text-muted text-xs text-center">
+            {'Showing '}
+            {MAX_VISIBLE}
+            {' of '}
+            {players.length}
+            {' — use search to filter'}
+          </p>
+        )}
       </div>
 
-      {selectedPlayer && (
-        <InventoryModal player={selectedPlayer} open={showInventory} onClose={() => setShowInventory(false)} />
-      )}
-      {selectedPlayer && (
-        <GiveItemsModal player={selectedPlayer} open={showGiveItems} onClose={() => setShowGiveItems(false)} />
-      )}
-      {selectedPlayer && (
-        <PlayerActionsModal player={selectedPlayer} open={showActions} onClose={() => setShowActions(false)} />
+      {selected
+        ? (
+            <div className="flex flex-col gap-1 overflow-y-auto flex-1 min-h-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-accent">{selected.name}</span>
+                <StatusDot status={selected.online_status} />
+                <span className="text-muted text-xs">{selected.online_status}</span>
+              </div>
+              <PlayerDetailPanel player={selected} />
+            </div>
+          )
+        : (
+            <p className="text-muted text-sm text-center py-8">Select a player above</p>
+          )}
+
+      {modalPlayer && (
+        <>
+          <InventoryModal player={modalPlayer} open={showInventory} onClose={() => setShowInventory(false)} />
+          <GiveItemsModal player={modalPlayer} open={showGive} onClose={() => setShowGive(false)} />
+          <PlayerActionsModal player={modalPlayer} open={showActions} onClose={() => setShowActions(false)} />
+        </>
       )}
     </div>
   )

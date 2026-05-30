@@ -300,6 +300,46 @@ export type DungeonRecord = {
   players_num: number
   completion_id: number
 }
+export type PlayerStats = {
+  solaris_balance: number
+  scrip_balance: number
+  solaris_earned: number
+  solaris_spent: number
+  pois_discovered: number
+  story_milestones: number
+  max_faction_tier: number
+  char_xp: number
+  skill_points: number
+  total_playtime_secs: number
+  session_count: number
+  avg_session_secs: number
+  last_seen: string | null
+}
+
+export type SolarisPoint = {
+  time: string
+  balance: number
+}
+
+export type SessionRecord = {
+  started_at: string
+  ended_at: string
+  duration_secs: number
+}
+
+export type StatSnapshot = {
+  account_id: number
+  snapped_at: string
+  char_xp: number | null
+  skill_points: number | null
+  intel_points: number | null
+  combat_xp: number | null
+  crafting_xp: number | null
+  gathering_xp: number | null
+  exploration_xp: number | null
+  sabotage_xp: number | null
+}
+
 export type TeleportLocation = {
   name: string
   x: number
@@ -603,6 +643,10 @@ export const api = {
         'POST', '/players/teleport-to-player', { source_fls_id, target_id }),
     events: (id: number) => req<GameEvent[]>('GET', `/players/${id}/events`),
     dungeons: (id: number) => req<DungeonRecord[]>('GET', `/players/${id}/dungeons`),
+    stats: (id: number) => req<PlayerStats>('GET', `/players/${id}/stats`),
+    solarisHistory: (id: number) => req<SolarisPoint[]>('GET', `/players/${id}/solaris-history`),
+    sessionHistory: (id: number) => req<SessionRecord[]>('GET', `/players/${id}/session-history`),
+    statSnapshots: (id: number) => req<StatSnapshot[]>('GET', `/players/${id}/stat-snapshot-history`),
     kick: (fls_id: string) =>
       req<MutateResult>('POST', '/players/kick', { fls_id }),
     fillWater: (fls_id: string, water_amount = 1000000) =>

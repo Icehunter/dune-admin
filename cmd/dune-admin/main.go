@@ -679,6 +679,9 @@ func main() {
 
 	connectAndPrimeTemplates(alreadyConnected)
 
+	sessionCancel := startSessionTracking()
+	defer sessionCancel()
+
 	if cancel := startEmbeddedMarketBotIfEnabled(loadedConfig); cancel != nil {
 		globalBotCancel = cancel
 		defer func() {

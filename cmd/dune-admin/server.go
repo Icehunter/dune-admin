@@ -163,6 +163,10 @@ func startServer(addr string) {
 	mux.HandleFunc("POST /api/v1/players/teleport-to-player", handleTeleportToPlayer)
 	mux.HandleFunc("GET /api/v1/players/{id}/events", handleGetPlayerEvents)
 	mux.HandleFunc("GET /api/v1/players/{id}/dungeons", handleGetPlayerDungeons)
+	mux.HandleFunc("GET /api/v1/players/{id}/stats", handleGetPlayerStats)
+	mux.HandleFunc("GET /api/v1/players/{id}/solaris-history", handleGetSolarisHistory)
+	mux.HandleFunc("GET /api/v1/players/{id}/session-history", handleGetSessionHistory)
+	mux.HandleFunc("GET /api/v1/players/{id}/stat-snapshot-history", handleGetStatSnapshotHistory)
 
 	// ── database ──────────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/v1/database/tables", handleDBTables)

@@ -173,6 +173,21 @@ spec:
     requests:
       storage: 1Gi
 ---
+# Persistent volume for the dune-admin binary and frontend assets.
+# seed-binary init container populates this on first deploy; subsequent restarts
+# use whatever binary is in the PVC, including binaries placed by self-update.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dune-admin-app
+  namespace: dune-admin
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -188,6 +203,36 @@ spec:
       labels:
         app: dune-admin
     spec:
+      initContainers:
+        - name: seed-binary
+          image: ghcr.io/icehunter/dune-admin:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -f /app/dune-admin ]; then
+                echo "Seeding dune-admin binary and assets from image..."
+                cp /usr/local/share/dune-admin-seed/dune-admin /app/
+                cp /usr/local/share/dune-admin-seed/tags-data.json /usr/local/share/dune-admin-seed/item-data.json /app/
+                cp -r /usr/local/share/dune-admin-seed/dist /app/dist
+                chmod 0755 /app/dune-admin
+                echo "Seed complete."
+              else
+                echo "Binary already present — skipping seed."
+              fi
+          volumeMounts:
+            - name: app-rw
+              mountPath: /app
+        - name: seed-config
+          image: busybox:latest
+          command: ['sh', '-c', 'cp /configmap/config.yaml /app-config/config.yaml']
+          volumeMounts:
+            - name: config-source
+              mountPath: /configmap
+              readOnly: true
+            - name: config-rw
+              mountPath: /app-config
       containers:
         - name: dune-admin
           image: ghcr.io/icehunter/dune-admin:latest
@@ -267,11 +312,12 @@ spec:
                   name: dune-admin-secrets
                   key: BROKER_JWT_SECRET
           volumeMounts:
+            - name: app-rw
+              mountPath: /app
             - name: market-bot-cache
               mountPath: /data
-            - name: config
-              mountPath: /root/.dune-admin/config.yaml
-              subPath: config.yaml
+            - name: config-rw
+              mountPath: /root/.dune-admin
           readinessProbe:
             httpGet:
               path: /api/v1/status
@@ -285,15 +331,20 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 30
       volumes:
+        - name: app-rw
+          persistentVolumeClaim:
+            claimName: dune-admin-app
         - name: market-bot-cache
           persistentVolumeClaim:
             claimName: market-bot-cache
-        - name: config
+        - name: config-source
           configMap:
             name: dune-admin-config
             items:
               - key: config.yaml
                 path: config.yaml
+        - name: config-rw
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

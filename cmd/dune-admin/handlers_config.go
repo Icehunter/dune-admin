@@ -125,7 +125,6 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	applyConfig(cfg)
-	applyMarketBotConfig(cfg)
 	resetRuntimeConnections()
 
 	// Reconnect is best-effort — config is already written to disk.
@@ -134,6 +133,10 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	if err := connectAll(); err != nil {
 		log.Printf("handleSaveConfig: reconnect after save: %v", err)
 	}
+
+	// Apply the market bot config AFTER connectAll so the bot gets the
+	// freshly-established globalDB rather than the old (closed) pool.
+	applyMarketBotConfig(cfg)
 	handleStatus(w, r)
 }
 
@@ -211,6 +214,8 @@ func applyConfig(cfg appConfig) {
 	brokerGameAddr = cfg.BrokerGameAddr
 	brokerAdminAddr = cfg.BrokerAdminAddr
 	brokerTLS = cfg.BrokerTLS
+	brokerUser = cfg.BrokerUser
+	brokerPass = cfg.BrokerPass
 	backupDir = cfg.BackupDir
 	loadedConfig = cfg
 }

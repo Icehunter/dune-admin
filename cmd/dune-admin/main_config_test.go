@@ -83,7 +83,7 @@ func TestPreserveMaskedSecrets(t *testing.T) {
 }
 
 func TestHandleGetConfigMasksSecrets(t *testing.T) {
-	t.Parallel()
+	// Not parallel: mutates package-level dbPass global.
 	orig := dbPass
 	dbPass = "supersecret"
 	t.Cleanup(func() { dbPass = orig })

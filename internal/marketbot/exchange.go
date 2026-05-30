@@ -173,20 +173,39 @@ func NewExchange(db *pgxpool.Pool, cachePath string, catalog []CatalogItem, cfg 
 	return ex, nil
 }
 
+// epochSentinelCutoff is the exclusive upper bound for expiration_time values
+// used in epoch detection. Sentinel listings are created with
+// expiration_time = 999_999_999 when the epoch is unknown; these must be
+// excluded so they cannot corrupt the epoch calculation.
+const epochSentinelCutoff = int64(999_999_999)
+
 func (e *Exchange) learnGameEpoch(ctx context.Context) {
 	// Use the bot's own listings to learn the epoch — the bot always places orders
 	// with expiration_time = gameNow + orderExpirySecs, so the offset is exact.
 	// Using player listings was unsafe: players can list for durations other than
 	// 24h, causing gameNow to be computed too far in the future and
 	// expireAndPurgeOrders to incorrectly expire active player listings.
-	var ref int64
-	err := e.db.QueryRow(ctx, `
-		SELECT expiration_time FROM dune.dune_exchange_orders
-		WHERE owner_id = $1
-		  AND is_npc_order = TRUE
-		  AND expiration_time IS NOT NULL
-		  AND expiration_time < 1000000000
-		ORDER BY expiration_time DESC LIMIT 1`, e.ownerID).Scan(&ref)
+	//
+	// Sentinel listings placed before the epoch was known carry
+	// expiration_time = 999_999_999. Exclude them via epochSentinelCutoff so
+	// they cannot produce a bogus near-1e9 game time.
+	applyLearnedEpoch(e, func() (int64, error) {
+		var ref int64
+		err := e.db.QueryRow(ctx, `
+			SELECT expiration_time FROM dune.dune_exchange_orders
+			WHERE owner_id = $1
+			  AND is_npc_order = TRUE
+			  AND expiration_time IS NOT NULL
+			  AND expiration_time < $2
+			ORDER BY expiration_time DESC LIMIT 1`, e.ownerID, epochSentinelCutoff).Scan(&ref)
+		return ref, err
+	})
+}
+
+// applyLearnedEpoch updates the Exchange epoch from the value returned by
+// fetchRef. Extracted so epoch-learning logic can be tested without a live DB.
+func applyLearnedEpoch(e *Exchange, fetchRef func() (int64, error)) {
+	ref, err := fetchRef()
 	if err != nil || ref == 0 {
 		return
 	}

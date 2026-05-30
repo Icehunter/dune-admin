@@ -49,9 +49,6 @@ func parseChecksum(content, artifact string) (string, error) {
 const githubRepo = "Icehunter/dune-admin"
 
 // updateFetcher is the real HTTP fetcher used in production.
-// It is wired into handlers in server.go; the unused linter fires before those handlers exist.
-//
-//nolint:unused
 func updateFetcher(url string) ([]byte, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -120,8 +117,6 @@ func makeUpdateCheckHandler(fetcher func(string) ([]byte, error)) http.HandlerFu
 }
 
 // handleUpdateCheck is the production handler wired into the HTTP mux in server.go.
-//
-//nolint:unused
 func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	makeUpdateCheckHandler(updateFetcher)(w, r)
 }
@@ -277,8 +272,6 @@ func makeUpdateApplyHandler(
 
 // scheduleRestart sends SIGTERM to the current process after a short delay so
 // the HTTP response can flush. systemd (Restart=always) restarts with the new binary.
-//
-//nolint:unused
 func scheduleRestart() {
 	time.Sleep(500 * time.Millisecond)
 	p, err := os.FindProcess(os.Getpid())
@@ -291,7 +284,6 @@ func scheduleRestart() {
 	}
 }
 
-//nolint:unused
 func handleUpdateApply(w http.ResponseWriter, r *http.Request) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -303,4 +295,47 @@ func handleUpdateApply(w http.ResponseWriter, r *http.Request) {
 		exe, runtime.GOOS, runtime.GOARCH,
 		func() { go scheduleRestart() },
 	)(w, r)
+}
+
+// checkForUpdate returns a human-readable message about update availability.
+// Used by the -update and -reinstall CLI flags.
+func checkForUpdate(fetcher func(string) ([]byte, error)) (string, error) {
+	tag, htmlURL, err := latestRelease(fetcher)
+	if err != nil {
+		return "", err
+	}
+	if !needsUpdate(AppVersion, tag) {
+		return fmt.Sprintf("dune-admin %s is up to date", AppVersion), nil
+	}
+	return fmt.Sprintf("update available: %s → %s\n%s", AppVersion, tag, htmlURL), nil
+}
+
+// runSelfUpdate is the CLI entry point for -update and -reinstall flags.
+// force=true reinstalls even when already on the latest version.
+func runSelfUpdate(force bool) {
+	tag, htmlURL, err := latestRelease(updateFetcher)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "update check failed: %v\n", err)
+		os.Exit(1)
+	}
+	if !force && !needsUpdate(AppVersion, tag) {
+		fmt.Printf("dune-admin %s is up to date\n", AppVersion)
+		return
+	}
+	if force && !needsUpdate(AppVersion, tag) {
+		fmt.Printf("Reinstalling %s (current: %s)…\n", tag, AppVersion)
+	} else {
+		fmt.Printf("Update available: %s → %s\n%s\n", AppVersion, tag, htmlURL)
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cannot determine executable path: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Applying %s…\n", tag)
+	if err := applyUpdate(tag, runtime.GOOS, runtime.GOARCH, exe, updateFetcher); err != nil {
+		fmt.Fprintf(os.Stderr, "update failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Done. Restart the service to run the new binary:\n  sudo systemctl restart dune-admin\n")
 }

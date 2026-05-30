@@ -83,6 +83,8 @@ func startServer(addr string) {
 	mux.HandleFunc("POST /api/v1/reconnect", handleReconnect)
 	mux.HandleFunc("GET /api/v1/config", handleGetConfig)
 	mux.HandleFunc("POST /api/v1/config", handleSaveConfig)
+	mux.HandleFunc("GET /api/v1/update/check", handleUpdateCheck)
+	mux.HandleFunc("POST /api/v1/update/apply", handleUpdateApply)
 
 	// ── server settings (UserGame.ini / UserOverrides.ini) ────────────────
 	mux.HandleFunc("GET /api/v1/server-settings", handleGetServerSettings)

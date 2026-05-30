@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import { Button, ListBox, SearchField, Select, Spinner, toast } from '@heroui/react'
 import { api } from '../api/client'
-import type { ServerSetting, ServerSettingUpdate, RawSection } from '../api/client'
+import type { ServerSetting, ServerSettingUpdate, RawSection, UpdateCheckResult } from '../api/client'
 import { PageHeader, Panel, SectionLabel, Icon } from '../dune-ui'
 
 const CATEGORY_ORDER = [
@@ -443,6 +443,9 @@ export default function ServerSettingsTab() {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(() =>
     localStorage.getItem('serverSettings.expandedCategory') || null,
   )
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null)
+  const [updateChecking, setUpdateChecking] = useState(false)
+  const [updateApplying, setUpdateApplying] = useState(false)
 
   const load = useCallback(() => {
     Promise.resolve()
@@ -503,6 +506,39 @@ export default function ServerSettingsTab() {
     }
     finally {
       setSaving(false)
+    }
+  }
+
+  const checkUpdate = async () => {
+    setUpdateChecking(true)
+    try {
+      setUpdateInfo(await api.update.check())
+    }
+    catch (e) {
+      toast.danger(`Update check failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    finally {
+      setUpdateChecking(false)
+    }
+  }
+
+  const applyUpdate = async (force = false) => {
+    setUpdateApplying(true)
+    try {
+      const result = await api.update.apply(force)
+      if (result.updated) {
+        toast.success(`${force ? 'Reinstalled' : 'Updated to'} ${result.version ?? 'latest'}. Server is restarting…`)
+        setUpdateInfo(null)
+      }
+      else {
+        toast.info(result.message)
+      }
+    }
+    catch (e) {
+      toast.danger(`Update failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    finally {
+      setUpdateApplying(false)
     }
   }
 
@@ -626,6 +662,34 @@ export default function ServerSettingsTab() {
           </Button>
         </div>
       </PageHeader>
+
+      <Panel>
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <SectionLabel>Software Update</SectionLabel>
+            {updateInfo && (
+              <div className="text-xs text-muted mt-0.5">
+                {updateInfo.needs_update
+                  ? `v${updateInfo.latest} available (current: v${updateInfo.current})`
+                  : `v${updateInfo.current} — up to date`}
+              </div>
+            )}
+          </div>
+          {updateInfo?.needs_update && (
+            <Button size="sm" onPress={() => applyUpdate()} isDisabled={updateApplying}>
+              {updateApplying ? <Spinner size="sm" color="current" /> : `Update to ${updateInfo.latest}`}
+            </Button>
+          )}
+          {updateInfo && !updateInfo.needs_update && (
+            <Button size="sm" variant="ghost" onPress={() => applyUpdate(true)} isDisabled={updateApplying}>
+              {updateApplying ? <Spinner size="sm" color="current" /> : 'Reinstall'}
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onPress={checkUpdate} isDisabled={updateChecking || updateApplying}>
+            {updateChecking ? <Spinner size="sm" color="current" /> : 'Check for Updates'}
+          </Button>
+        </div>
+      </Panel>
 
       <p className="text-xs text-muted shrink-0">
         Changes are written to

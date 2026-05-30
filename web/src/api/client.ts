@@ -437,6 +437,19 @@ export type ProgressionPreset = {
   nodes: string[]
 }
 
+export interface UpdateCheckResult {
+  current: string
+  latest: string
+  needs_update: boolean
+  release_url?: string
+}
+
+export interface UpdateApplyResult {
+  updated: boolean
+  version?: string
+  message: string
+}
+
 export const api = {
   status: () => req<Status>('GET', '/status'),
   reconnect: () => req<Status>('POST', '/reconnect'),
@@ -717,5 +730,10 @@ export const api = {
     lifecycle: (cmd: 'start' | 'stop' | 'restart') => req<{ output: string }>('POST', '/market-bot/exec', { cmd }),
     cleanup: () => req<{ orders_deleted: number, items_deleted: number }>('POST', '/market-bot/cleanup'),
     logsReady: () => req<{ ready: boolean, reason?: string, namespace?: string, name?: string }>('GET', '/market-bot/logs-ready'),
+  },
+
+  update: {
+    check: () => req<UpdateCheckResult>('GET', '/update/check'),
+    apply: (force?: boolean) => req<UpdateApplyResult>('POST', '/update/apply', force ? { force: true } : undefined),
   },
 }

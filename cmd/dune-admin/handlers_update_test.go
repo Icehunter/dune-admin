@@ -269,3 +269,72 @@ func TestVerifySHA256(t *testing.T) {
 		}
 	})
 }
+
+func TestApplyUpdate(t *testing.T) {
+	fakeBinary := []byte("#!/bin/sh\necho new-binary")
+	archive := buildFakeTarGz(t, "dune-admin", fakeBinary)
+
+	h := sha256.Sum256(archive)
+	checksum := hex.EncodeToString(h[:])
+	artifact := artifactName("linux", "amd64")
+	checksumsTxt := checksum + "  " + artifact + "\n"
+
+	dir := t.TempDir()
+	currentBin := filepath.Join(dir, "dune-admin")
+	if err := os.WriteFile(currentBin, []byte("old binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	fetcher := func(url string) ([]byte, error) {
+		if strings.Contains(url, "checksums.txt") {
+			return []byte(checksumsTxt), nil
+		}
+		return archive, nil
+	}
+
+	if err := applyUpdate("v0.16.0", "linux", "amd64", currentBin, fetcher); err != nil {
+		t.Fatalf("applyUpdate error: %v", err)
+	}
+
+	got, err := os.ReadFile(currentBin)
+	if err != nil {
+		t.Fatalf("read new binary: %v", err)
+	}
+	if !bytes.Equal(got, fakeBinary) {
+		t.Errorf("new binary content = %q, want %q", got, fakeBinary)
+	}
+	if _, err := os.Stat(currentBin + ".prev"); os.IsNotExist(err) {
+		t.Error(".prev backup should exist after update")
+	}
+}
+
+func TestApplyUpdate_ChecksumMismatch(t *testing.T) {
+	archive := buildFakeTarGz(t, "dune-admin", []byte("binary"))
+	artifact := artifactName("linux", "amd64")
+	checksumsTxt := "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef  " + artifact + "\n"
+
+	dir := t.TempDir()
+	currentBin := filepath.Join(dir, "dune-admin")
+	if err := os.WriteFile(currentBin, []byte("old"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	fetcher := func(url string) ([]byte, error) {
+		if strings.Contains(url, "checksums.txt") {
+			return []byte(checksumsTxt), nil
+		}
+		return archive, nil
+	}
+
+	err := applyUpdate("v0.16.0", "linux", "amd64", currentBin, fetcher)
+	if err == nil {
+		t.Fatal("expected checksum mismatch error")
+	}
+	if !strings.Contains(err.Error(), "checksum") {
+		t.Errorf("error should mention checksum: %v", err)
+	}
+	got, _ := os.ReadFile(currentBin)
+	if string(got) != "old" {
+		t.Error("original binary should be untouched after failed update")
+	}
+}

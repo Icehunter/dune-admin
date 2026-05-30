@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
@@ -11,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -171,4 +173,52 @@ func extractBinaryFromTarGz(r io.Reader, binaryName, dest string) error {
 		return f.Close()
 	}
 	return fmt.Errorf("binary %q not found in archive", binaryName)
+}
+
+// applyUpdate downloads the release archive for tag, verifies SHA256, backs up
+// the current binary to .prev, and atomically swaps in the new one.
+// Does NOT restart the process — the caller handles that.
+func applyUpdate(tag, goos, goarch, currentBin string, fetcher func(string) ([]byte, error)) error {
+	artifact := artifactName(goos, goarch)
+	base := fmt.Sprintf("https://github.com/%s/releases/download/%s", githubRepo, tag)
+
+	cksumData, err := fetcher(base + "/checksums.txt")
+	if err != nil {
+		return fmt.Errorf("fetch checksums: %w", err)
+	}
+	expectedSum, err := parseChecksum(string(cksumData), artifact)
+	if err != nil {
+		return fmt.Errorf("find checksum for %s: %w", artifact, err)
+	}
+
+	log.Printf("update: downloading %s %s", artifact, tag)
+	archiveData, err := fetcher(base + "/" + artifact)
+	if err != nil {
+		return fmt.Errorf("download archive: %w", err)
+	}
+
+	if err := verifySHA256(archiveData, expectedSum); err != nil {
+		return err
+	}
+	log.Printf("update: checksum verified")
+
+	tmp := currentBin + ".new"
+	if err := extractBinaryFromTarGz(bytes.NewReader(archiveData), filepath.Base(currentBin), tmp); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("extract binary: %w", err)
+	}
+
+	prev := currentBin + ".prev"
+	if err := os.Rename(currentBin, prev); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("backup current binary: %w", err)
+	}
+
+	if err := os.Rename(tmp, currentBin); err != nil {
+		_ = os.Rename(prev, currentBin) // best-effort rollback
+		return fmt.Errorf("swap binary: %w", err)
+	}
+
+	log.Printf("update: swapped binary to %s", tag)
+	return nil
 }

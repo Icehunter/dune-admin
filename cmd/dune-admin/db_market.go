@@ -7,11 +7,21 @@ import (
 )
 
 // schematicCategory returns the effective category for a template ID.
-// Items whose template ID ends with "_Schematic" are reclassified under "schematics/<type>"
-// where <type> is only the first path segment after "items/" (e.g. "weapons", "utility").
+// Schematics (detected by is_schematic flag or naming conventions) are
+// reclassified under "schematics/<type>" where <type> is only the first
+// path segment after "items/" (e.g. "weapons", "utility").
 // Using a single sub-level prevents mirroring the full items tree under schematics/.
-func schematicCategory(templateID, baseCategory string) string {
-	if !strings.HasSuffix(strings.ToLower(templateID), "_schematic") {
+//
+// Naming patterns covered:
+//   - T6_Lasgun_Schematic  (suffix _Schematic — regular schematics)
+//   - Schematic_UniqueXxx  (prefix Schematic_ — unique/named schematics)
+//   - ChoamHeavyLasgunSchematic (suffix Schematic, no underscore)
+func schematicCategory(templateID, baseCategory string, isSchematic bool) string {
+	lc := strings.ToLower(templateID)
+	if !isSchematic &&
+		!strings.HasSuffix(lc, "_schematic") &&
+		!strings.HasPrefix(lc, "schematic_") &&
+		!strings.HasSuffix(lc, "schematic") {
 		return baseCategory
 	}
 	rest := strings.TrimPrefix(baseCategory, "items/")
@@ -80,9 +90,9 @@ func cmdFetchMarketItems() Msg {
 			continue
 		}
 		rule, _ := itemRuleLookup(tmpl)
-		cat := schematicCategory(tmpl, rule.Category)
+		cat := schematicCategory(tmpl, rule.Category, rule.IsSchematic)
 		name := itemNameLookup(tmpl)
-		if strings.HasSuffix(strings.ToLower(tmpl), "_schematic") {
+		if cat == "schematics" || strings.HasPrefix(cat, "schematics/") {
 			name += " (Schematic)"
 		}
 		items = append(items, marketItem{

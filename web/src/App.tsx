@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Show, SignInButton, UserButton, useAuth } from "@clerk/react";
-import { Button, Chip, InputGroup, Modal, TextField, Toast, Tabs } from "@heroui/react";
+import { Button, Chip, Modal, Toast, Tabs } from "@heroui/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useStatus } from "./hooks/useStatus";
+import SettingsConfigForm from "./components/SettingsConfigForm";
 import BattlegroupTab from "./tabs/BattlegroupTab";
 import PlayersTab from "./tabs/PlayersTab";
 import DatabaseTab from "./tabs/DatabaseTab";
@@ -63,7 +64,6 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [showBackendConfig, setShowBackendConfig] = useState(false);
-  const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem("dune_admin_backend") || "");
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,10 +82,6 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
       .catch(() => {});
   }, []);
 
-  const saveAndReload = () => {
-    localStorage.setItem("dune_admin_backend", backendUrl.trim());
-    window.location.reload();
-  };
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
@@ -151,105 +147,35 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
         </div>
       </header>
 
-      {/* Settings modal */}
+      {/* Settings modal — structure mirrors BotControlPanel */}
       <Modal>
         <Modal.Backdrop isOpen={showBackendConfig} onOpenChange={(v) => !v && setShowBackendConfig(false)}>
-          <Modal.Container size="sm" scroll="outside">
-            <Modal.Dialog>
+          <Modal.Container size="cover" scroll="outside">
+            <Modal.Dialog className="h-[92vh] flex flex-col">
               <Modal.CloseTrigger />
               <Modal.Header>
-                <Modal.Heading className="text-accent">Settings</Modal.Heading>
+                <div className="flex items-baseline gap-6 flex-wrap">
+                  <Modal.Heading className="text-accent">Settings</Modal.Heading>
+                  {status && (
+                    <div className="flex items-center gap-4 text-xs text-muted">
+                      {status.version && <span className="font-mono">v{status.version}</span>}
+                      {status.control && status.control !== "none" && <span>{status.control}</span>}
+                      {status.commit && status.commit !== "unknown" && (
+                        <span className="font-mono opacity-60">{status.commit}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </Modal.Header>
 
-              <Modal.Body className="flex flex-col gap-4">
-                {/* About */}
-                {status && (
-                  <>
-                    <div className="flex flex-col gap-2">
-                      <span className="text-xs font-medium text-muted uppercase tracking-wider">About</span>
-                      <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
-                        {status.version && (
-                          <>
-                            <span className="text-muted">Version</span>
-                            <span className="font-mono text-foreground">v{status.version}</span>
-                          </>
-                        )}
-                        {status.commit && status.commit !== "unknown" && (
-                          <>
-                            <span className="text-muted">Commit</span>
-                            <span className="font-mono text-foreground">{status.commit}</span>
-                          </>
-                        )}
-                        {status.control && status.control !== "none" && (
-                          <>
-                            <span className="text-muted">Control</span>
-                            <span className="font-mono text-foreground">{status.control}</span>
-                          </>
-                        )}
-                        {status.build_time && status.build_time !== "unknown" && (
-                          <>
-                            <span className="text-muted">Built</span>
-                            <span className="font-mono text-foreground">
-                              {new Date(status.build_time).toLocaleString()}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="border-t border-border" />
-                  </>
-                )}
-
-                {/* Backend URL override */}
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-muted uppercase tracking-wider">Backend URL Override</span>
-                    <p className="text-xs text-muted">
-                      Only needed when the UI is served from a different host than the backend
-                      (e.g. SSH tunnel or CDN deploy). Leave blank for the default single-binary setup.
-                    </p>
-                  </div>
-
-                  <p className="text-xs text-muted">
-                    Current:{" "}
-                    <span className="font-mono text-foreground">
-                      {localStorage.getItem("dune_admin_backend") || "http://localhost:8080"}
-                    </span>
-                  </p>
-
-                  <TextField aria-label="Backend URL override">
-                    <InputGroup className="w-full">
-                      <InputGroup.Prefix>URL</InputGroup.Prefix>
-                      <InputGroup.Input
-                        value={backendUrl}
-                        onChange={(e) => setBackendUrl(e.target.value)}
-                        placeholder="http://host:port"
-                        className="font-mono"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") saveAndReload();
-                        }}
-                      />
-                    </InputGroup>
-                  </TextField>
-                </div>
+              {/* Body scrolls; form fills it with its own internal tab scroll */}
+              <Modal.Body className="flex flex-col overflow-y-auto flex-1 min-h-0 pr-1">
+                {showBackendConfig && <SettingsConfigForm />}
               </Modal.Body>
 
               <Modal.Footer>
                 <Button size="sm" variant="outline" onPress={() => setShowBackendConfig(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onPress={() => {
-                    localStorage.removeItem("dune_admin_backend");
-                    window.location.reload();
-                  }}
-                >
-                  Reset URL
-                </Button>
-                <Button size="sm" onPress={saveAndReload}>
-                  Save &amp; Reload
+                  Close
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>

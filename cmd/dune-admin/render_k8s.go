@@ -20,13 +20,6 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-func durationOr(d, def time.Duration) time.Duration {
-	if d > 0 {
-		return d
-	}
-	return def
-}
-
 func yamlScalar(s string) string {
 	b, err := yaml.Marshal(s)
 	if err != nil {
@@ -87,8 +80,8 @@ func renderK8SManifest(outPath string) error {
 	dbSchemaVal := firstNonEmpty(dbSchema, loadedConfig.DBSchema, "dune")
 	dbPassVal := firstNonEmpty(dbPass, loadedConfig.DBPass, "replace-me")
 
-	buyInt := durationOr(loadedConfig.MarketBotBuyInt, 5*time.Minute)
-	listInt := durationOr(loadedConfig.MarketBotListInt, 30*time.Minute)
+	buyInt := parseDurString(loadedConfig.MarketBotBuyInt, 5*time.Minute)
+	listInt := parseDurString(loadedConfig.MarketBotListInt, 30*time.Minute)
 	cacheDB := firstNonEmpty(loadedConfig.MarketBotCacheDB, "/data/market-bot-cache.db")
 	itemData := firstNonEmpty(loadedConfig.MarketBotItemData, "/app/item-data.json")
 	buyThreshold := loadedConfig.MarketBotThresh

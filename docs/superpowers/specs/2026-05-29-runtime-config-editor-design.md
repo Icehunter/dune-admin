@@ -65,6 +65,7 @@ Modal size changes from `sm` to `cover` with `scroll="outside"` to accommodate t
 **Location:** `web/src/components/SettingsConfigForm.tsx`
 
 **Responsibilities:**
+
 - Fetch config via `api.config.get()` on mount; display a spinner while loading
 - Render all config sections as `Panel` components from `dune-ui`
 - Filter visible fields via a `SearchField` above the panels
@@ -73,6 +74,7 @@ Modal size changes from `sm` to `cover` with `scroll="outside"` to accommodate t
 **Props:** none — fully self-contained
 
 **State:**
+
 - `config: AppConfig | null` — current form values
 - `loading: boolean` — initial fetch in progress
 - `saving: boolean` — save in progress
@@ -89,6 +91,7 @@ The `SearchField` filters fields client-side by matching the query string agains
 Each field renders: label + input + short `text-muted text-xs` description below.
 
 ### Panel: Database
+
 | Field | yaml key | Description |
 |---|---|---|
 | Host | `db_host` | PostgreSQL host the game database is running on |
@@ -99,6 +102,7 @@ Each field renders: label + input + short `text-muted text-xs` description below
 | Schema | `db_schema` | Postgres schema prefix (typically `dune`) |
 
 ### Panel: SSH
+
 Always visible. Filling in `ssh_host` enables SSH tunnelling for all DB connections and executor commands.
 
 | Field | yaml key | Description |
@@ -108,6 +112,7 @@ Always visible. Filling in `ssh_host` enables SSH tunnelling for all DB connecti
 | Private key | `ssh_key` | Absolute path to the private key file on this machine |
 
 ### Panel: Control Plane
+
 | Field | yaml key | Description |
 |---|---|---|
 | Control | `control` | How dune-admin manages the game server: `kubectl`, `docker`, `local`, or `amp` |
@@ -115,11 +120,13 @@ Always visible. Filling in `ssh_host` enables SSH tunnelling for all DB connecti
 Conditional sub-fields rendered below based on the selected `control` value:
 
 **kubectl:**
+
 | Field | yaml key | Description |
 |---|---|---|
 | Namespace | `control_namespace` | Kubernetes namespace where the Dune workloads run |
 
 **docker:**
+
 | Field | yaml key | Description |
 |---|---|---|
 | Game server | `docker_gameserver` | Container name for the game server process |
@@ -128,6 +135,7 @@ Conditional sub-fields rendered below based on the selected `control` value:
 | Database | `docker_db` | Container name for the PostgreSQL instance |
 
 **local:**
+
 | Field | yaml key | Description |
 |---|---|---|
 | Start command | `cmd_start` | Shell command to start the game server |
@@ -136,6 +144,7 @@ Conditional sub-fields rendered below based on the selected `control` value:
 | Status command | `cmd_status` | Shell command to query server status |
 
 **amp:**
+
 | Field | yaml key | Description |
 |---|---|---|
 | Instance | `amp_instance` | ampinstmgr instance name, e.g. `DuneAwakening01` |
@@ -146,6 +155,7 @@ Conditional sub-fields rendered below based on the selected `control` value:
 | Data root | `amp_data_root` | Per-game data root inside the container (default `/AMP/duneawakening`) |
 
 ### Panel: Broker
+
 Optional. Leave all fields blank to disable broker features (capture, notifications).
 
 | Field | yaml key | Description |
@@ -159,6 +169,7 @@ Optional. Leave all fields blank to disable broker features (capture, notificati
 | Exec prefix | `broker_exec_prefix` | Prepended to all rabbitmqctl calls, e.g. `podman exec AMP_DuneAwakening01` |
 
 ### Panel: Market Bot
+
 | Field | yaml key | Description |
 |---|---|---|
 | Enabled | `market_bot_enabled` | Run the market bot in-process alongside dune-admin |
@@ -173,6 +184,7 @@ Optional. Leave all fields blank to disable broker features (capture, notificati
 | Max buys | `market_bot_max_buys` | Maximum concurrent buy orders the bot will place |
 
 ### Panel: Advanced
+
 | Field | yaml key | Description |
 |---|---|---|
 | Listen address ⚠ | `listen_addr` | HTTP listen address — requires a full server restart to change (e.g. `:8080`) |
@@ -201,6 +213,7 @@ Masked fields (`db_pass`, `broker_pass`, `broker_jwt_secret`, `market_bot_remote
 ### `handlers_config.go`
 
 Extend `preserveMaskedDBPass` (or extract a shared helper) to also preserve:
+
 - `BrokerPass` when the client sends `"••••••••"`
 - `BrokerJWTSecret` when the client sends `"••••••••"`
 - `MarketBotRemoteToken` when the client sends `"••••••••"`
@@ -210,6 +223,7 @@ Extend `preserveMaskedDBPass` (or extract a shared helper) to also preserve:
 ### Tests
 
 Add/extend `main_config_test.go` (or equivalent) with table-driven tests for:
+
 - Masked `BrokerPass` is preserved on save (not overwritten with placeholder)
 - Masked `BrokerJWTSecret` is preserved on save
 - Masked `MarketBotRemoteToken` is preserved on save

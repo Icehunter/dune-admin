@@ -190,7 +190,7 @@ func handleMarketCategories(w http.ResponseWriter, r *http.Request) {
 		if rule.Category == "" {
 			continue
 		}
-		cat := schematicCategory(templateID, rule.Category)
+		cat := schematicCategory(templateID, rule.Category, rule.IsSchematic)
 		if !seen[cat] {
 			seen[cat] = true
 			categories = append(categories, cat)

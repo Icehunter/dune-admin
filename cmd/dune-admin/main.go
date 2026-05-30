@@ -82,113 +82,90 @@ var (
 )
 
 // appConfig mirrors the fields written to ~/.dune-admin/config.yaml.
+// json tags match yaml tags so the /api/v1/config endpoint speaks snake_case
+// to the frontend without needing a separate DTO.
 type appConfig struct {
 	// Transport — SSH fields. If ssh_host is set all commands + TCP connections
 	// tunnel through SSH. If omitted everything runs/connects locally.
-	SSHHost string `yaml:"ssh_host"`
-	SSHUser string `yaml:"ssh_user"`
-	SSHKey  string `yaml:"ssh_key"`
+	SSHHost string `yaml:"ssh_host" json:"ssh_host"`
+	SSHUser string `yaml:"ssh_user" json:"ssh_user"`
+	SSHKey  string `yaml:"ssh_key"  json:"ssh_key"`
 
 	// Database — always required.
-	DBHost   string `yaml:"db_host"`
-	DBPort   int    `yaml:"db_port"`
-	DBUser   string `yaml:"db_user"`
-	DBPass   string `yaml:"db_pass"`
-	DBName   string `yaml:"db_name"`
-	DBSchema string `yaml:"db_schema"`
+	DBHost   string `yaml:"db_host"   json:"db_host"`
+	DBPort   int    `yaml:"db_port"   json:"db_port"`
+	DBUser   string `yaml:"db_user"   json:"db_user"`
+	DBPass   string `yaml:"db_pass"   json:"db_pass"`
+	DBName   string `yaml:"db_name"   json:"db_name"`
+	DBSchema string `yaml:"db_schema" json:"db_schema"`
 
-	// Control plane: "kubectl" | "docker" | "local"
-	// Defaults to "kubectl" when ssh_host is set, "local" otherwise.
-	Control string `yaml:"control"`
+	// Control plane: "kubectl" | "docker" | "local" | "amp"
+	Control string `yaml:"control" json:"control"`
 
 	// kubectl-specific
-	ControlNamespace string `yaml:"control_namespace"`
+	ControlNamespace string `yaml:"control_namespace" json:"control_namespace"`
 
 	// docker-specific — container names
-	DockerGameserver  string `yaml:"docker_gameserver"`
-	DockerBrokerGame  string `yaml:"docker_broker_game"`
-	DockerBrokerAdmin string `yaml:"docker_broker_admin"`
-	DockerDB          string `yaml:"docker_db"`
+	DockerGameserver  string `yaml:"docker_gameserver"  json:"docker_gameserver"`
+	DockerBrokerGame  string `yaml:"docker_broker_game"  json:"docker_broker_game"`
+	DockerBrokerAdmin string `yaml:"docker_broker_admin" json:"docker_broker_admin"`
+	DockerDB          string `yaml:"docker_db"           json:"docker_db"`
 
 	// local-specific — configurable shell commands
-	CmdStart   string `yaml:"cmd_start"`
-	CmdStop    string `yaml:"cmd_stop"`
-	CmdRestart string `yaml:"cmd_restart"`
-	CmdStatus  string `yaml:"cmd_status"`
+	CmdStart   string `yaml:"cmd_start"   json:"cmd_start"`
+	CmdStop    string `yaml:"cmd_stop"    json:"cmd_stop"`
+	CmdRestart string `yaml:"cmd_restart" json:"cmd_restart"`
+	CmdStatus  string `yaml:"cmd_status"  json:"cmd_status"`
 
 	// Broker — optional; if set, notifications and capture are available.
-	BrokerGameAddr  string `yaml:"broker_game_addr"`
-	BrokerAdminAddr string `yaml:"broker_admin_addr"`
-	BrokerTLS       bool   `yaml:"broker_tls"`
-	BrokerUser      string `yaml:"broker_user"`
-	BrokerPass      string `yaml:"broker_pass"`
+	BrokerGameAddr  string `yaml:"broker_game_addr"  json:"broker_game_addr"`
+	BrokerAdminAddr string `yaml:"broker_admin_addr" json:"broker_admin_addr"`
+	BrokerTLS       bool   `yaml:"broker_tls"        json:"broker_tls"`
+	BrokerUser      string `yaml:"broker_user"       json:"broker_user"`
+	BrokerPass      string `yaml:"broker_pass"       json:"broker_pass"`
 	// BrokerJWTSecret is the base64-encoded HMAC key used to re-sign
 	// ServiceAuthTokens for CaptureJWT. Optional override for the baked-in
 	// default signing key (captureJWTSecretB64).
-	BrokerJWTSecret string `yaml:"broker_jwt_secret"`
+	BrokerJWTSecret string `yaml:"broker_jwt_secret"  json:"broker_jwt_secret"`
 	// BrokerExecPrefix is prepended to all rabbitmqctl calls. Use when the
 	// broker runs inside a container that isn't managed by the docker control
 	// plane — e.g. "podman exec AMP_MehDune01" or "docker exec my-broker".
-	BrokerExecPrefix string `yaml:"broker_exec_prefix"`
+	BrokerExecPrefix string `yaml:"broker_exec_prefix" json:"broker_exec_prefix"`
 
 	// Backups — optional path accessed via the executor.
-	BackupDir string `yaml:"backup_dir"`
+	BackupDir string `yaml:"backup_dir" json:"backup_dir"`
 
 	// ServerIniDir is the directory containing UserGame.ini and UserOverrides.ini.
-	// e.g. /home/amp/.ampdata/instances/DuneAwakening01/duneawakening/server/state
-	ServerIniDir string `yaml:"server_ini_dir"`
-
+	ServerIniDir string `yaml:"server_ini_dir"  json:"server_ini_dir"`
 	// DefaultIniDir is a local or remote path that contains DefaultGame.ini and
-	// DefaultEngine.ini — the base layer of the INI hierarchy. When set, these
-	// files are read from here instead of being searched relative to ServerIniDir.
-	// Example: /path/to/game/Config
-	DefaultIniDir string `yaml:"default_ini_dir"`
+	// DefaultEngine.ini — the base layer of the INI hierarchy.
+	DefaultIniDir string `yaml:"default_ini_dir" json:"default_ini_dir"`
 
-	ScripCurrency int    `yaml:"scrip_currency"`
-	ListenAddr    string `yaml:"listen_addr"`
+	ScripCurrency int    `yaml:"scrip_currency" json:"scrip_currency"`
+	ListenAddr    string `yaml:"listen_addr"    json:"listen_addr"`
 
 	// AMP-specific — used when Control == "amp" (CubeCoders AMP w/ podman).
-	// AmpInstance is the ampinstmgr instance name (e.g. "MehDune01").
-	// AmpContainer is the podman container name (default "AMP_<instance>").
-	// AmpUser is the OS user that runs AMP (default "amp"); used both for
-	// sudo elevation of file writes and for podman exec invocations.
-	// AmpLogPath is the in-container log directory.
-	// DirectorURL is the optional Battlegroup Director URL — if set, the HTTP
-	// router proxies /director/ to it (works in any control mode).
-	AmpInstance  string `yaml:"amp_instance"`
-	AmpContainer string `yaml:"amp_container"`
-	AmpUser      string `yaml:"amp_user"`
-	AmpLogPath   string `yaml:"amp_log_path"`
-	// AmpUseContainer toggles between the two AMP topologies. When true (default,
-	// matching CubeCoders' containerised template), commands are wrapped in
-	// `podman exec`. When false, AMP runs the game server natively on the host
-	// as the AMP user; the same operations run directly via sudo.
-	AmpUseContainer *bool `yaml:"amp_use_container"`
-	// AmpDataRoot is the per-game data root inside the AMP container (or on
-	// the host in native mode). Defaults to /AMP/duneawakening — the
-	// CubeCoders Dune Awakening module convention. The rabbitmqctl wrapper
-	// derives loader, escript, broker-runtime, and erlang-cookie paths from
-	// this. Override for other AMP game modules whose layout differs.
-	AmpDataRoot string `yaml:"amp_data_root"`
-	DirectorURL string `yaml:"director_url"`
+	AmpInstance     string `yaml:"amp_instance"      json:"amp_instance"`
+	AmpContainer    string `yaml:"amp_container"     json:"amp_container"`
+	AmpUser         string `yaml:"amp_user"          json:"amp_user"`
+	AmpLogPath      string `yaml:"amp_log_path"      json:"amp_log_path"`
+	AmpUseContainer *bool  `yaml:"amp_use_container" json:"amp_use_container"`
+	AmpDataRoot     string `yaml:"amp_data_root"     json:"amp_data_root"`
+	DirectorURL     string `yaml:"director_url"      json:"director_url"`
 
 	// ── Embedded market bot ────────────────────────────────────────────────
 	// MarketBotEnabled starts the market bot as an in-process goroutine.
-	// Pointer so we can distinguish "unset" (default-on for backward compat
-	// with upgrades that pre-date this key) from "explicitly false".
-	MarketBotEnabled  *bool         `yaml:"market_bot_enabled"`
-	MarketBotCacheDB  string        `yaml:"market_bot_cache_db"`
-	MarketBotItemData string        `yaml:"market_bot_item_data"`
-	MarketBotState    string        `yaml:"market_bot_state"` // path to persisted runtime state JSON
-	MarketBotBuyInt   time.Duration `yaml:"market_bot_buy_interval"`
-	MarketBotListInt  time.Duration `yaml:"market_bot_list_interval"`
-	MarketBotThresh   float64       `yaml:"market_bot_buy_threshold"`
-	MarketBotMaxBuys  int           `yaml:"market_bot_max_buys"`
-	// Remote market bot proxy: when set, dune-admin forwards /api/v1/market-bot/*
-	// to the given URL instead of running an embedded bot.
-	// Set market_bot_enabled: false alongside this.
-	MarketBotRemoteURL   string `yaml:"market_bot_remote_url"`
-	MarketBotRemoteToken string `yaml:"market_bot_remote_token"`
+	// Pointer so we can distinguish "unset" (default-on) from "explicitly false".
+	MarketBotEnabled     *bool   `yaml:"market_bot_enabled"   json:"market_bot_enabled"`
+	MarketBotCacheDB     string  `yaml:"market_bot_cache_db"  json:"market_bot_cache_db"`
+	MarketBotItemData    string  `yaml:"market_bot_item_data" json:"market_bot_item_data"`
+	MarketBotState       string  `yaml:"market_bot_state"     json:"market_bot_state"`
+	MarketBotBuyInt      string  `yaml:"market_bot_buy_interval"  json:"market_bot_buy_interval"`
+	MarketBotListInt     string  `yaml:"market_bot_list_interval" json:"market_bot_list_interval"`
+	MarketBotThresh      float64 `yaml:"market_bot_buy_threshold" json:"market_bot_buy_threshold"`
+	MarketBotMaxBuys     int     `yaml:"market_bot_max_buys"      json:"market_bot_max_buys"`
+	MarketBotRemoteURL   string  `yaml:"market_bot_remote_url"   json:"market_bot_remote_url"`
+	MarketBotRemoteToken string  `yaml:"market_bot_remote_token" json:"market_bot_remote_token"`
 }
 
 // marketBotEnabled returns the effective bot-enabled flag. Missing yaml key →
@@ -634,8 +611,8 @@ func startEmbeddedMarketBotIfEnabled(cfg appConfig) context.CancelFunc {
 		CacheDB:      cacheDB,
 		StatePath:    statePath,
 		ItemDataPath: itemDataForBot,
-		BuyInterval:  cfg.MarketBotBuyInt,
-		ListInterval: cfg.MarketBotListInt,
+		BuyInterval:  parseDurString(cfg.MarketBotBuyInt, 5*time.Minute),
+		ListInterval: parseDurString(cfg.MarketBotListInt, 30*time.Minute),
 		BuyThreshold: cfg.MarketBotThresh,
 		MaxBuys:      cfg.MarketBotMaxBuys,
 	})
@@ -677,8 +654,13 @@ func main() {
 
 	connectAndPrimeTemplates(alreadyConnected)
 
-	if botCancel := startEmbeddedMarketBotIfEnabled(loadedConfig); botCancel != nil {
-		defer botCancel()
+	if cancel := startEmbeddedMarketBotIfEnabled(loadedConfig); cancel != nil {
+		globalBotCancel = cancel
+		defer func() {
+			if globalBotCancel != nil {
+				globalBotCancel()
+			}
+		}()
 	}
 
 	if loadedConfig.MarketBotRemoteURL != "" {
@@ -691,6 +673,10 @@ func main() {
 // embeddedBot holds the live market bot instance when market_bot_enabled=true.
 // Nil when bot is disabled.
 var embeddedBot *marketbot.Instance
+
+// globalBotCancel cancels the embedded bot's context, stopping it cleanly.
+// Set by startEmbeddedMarketBotIfEnabled; nil when no bot is running.
+var globalBotCancel context.CancelFunc
 
 // remoteBotProxy forwards /api/v1/market-bot/* to a remote bot when set.
 // Takes precedence when embeddedBot is nil.

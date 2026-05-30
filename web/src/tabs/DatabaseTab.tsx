@@ -111,7 +111,7 @@ export default function DatabaseTab() {
         active={active}
         onSelect={k => { setActive(k); setResult(null); setSqlResult(null); setError(null) }}
         title="Database"
-        width="w-44"
+        width="w-60"
       />
 
       <div className="flex-1 flex flex-col gap-3 min-h-0 overflow-hidden">
@@ -124,7 +124,7 @@ export default function DatabaseTab() {
               <InputGroup className="w-full">
                 <InputGroup.Prefix>Table dune.</InputGroup.Prefix>
                 <InputGroup.Input
-                  className="flex-1 w-full"
+                  className="flex-1 w-full pl-2"
                   value={tableInput}
                   onChange={e => setTableInput(e.target.value)}
                   placeholder="actors"
@@ -137,6 +137,7 @@ export default function DatabaseTab() {
                 <InputGroup>
                   <InputGroup.Prefix>Limit</InputGroup.Prefix>
                   <InputGroup.Input
+                    className="pl-2"
                     type="number" min={1} max={1000}
                     value={limitInput}
                     onChange={e => setLimitInput(e.target.value)}
@@ -156,7 +157,7 @@ export default function DatabaseTab() {
               <InputGroup className="w-full">
                 <InputGroup.Prefix>Search</InputGroup.Prefix>
                 <InputGroup.Input
-                  className="flex-1 w-full"
+                  className="flex-1 w-full pl-2"
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
                   placeholder="player_id, faction..."

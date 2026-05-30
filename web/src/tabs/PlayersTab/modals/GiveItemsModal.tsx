@@ -175,6 +175,7 @@ export function GiveItemsModal({ player, open, onClose }: Props) {
                       <InputGroup>
                         <InputGroup.Prefix>Qty</InputGroup.Prefix>
                         <InputGroup.Input
+                          className="pl-2"
                           type="number" min={1} value={qty}
                           onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
                         />
@@ -184,6 +185,7 @@ export function GiveItemsModal({ player, open, onClose }: Props) {
                       <InputGroup>
                         <InputGroup.Prefix>Quality</InputGroup.Prefix>
                         <InputGroup.Input
+                          className="pl-2"
                           type="number" min={0} value={quality}
                           onChange={e => setQuality(Math.max(0, parseInt(e.target.value) || 0))}
                         />

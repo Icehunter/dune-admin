@@ -124,7 +124,7 @@ export default function StorageTab() {
               {loading ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
             </Button>
           }
-          width="w-72"
+          width="w-60"
         >
           <SearchField
             aria-label="Search containers"
@@ -340,6 +340,7 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
                       <InputGroup>
                         <InputGroup.Prefix>Qty</InputGroup.Prefix>
                         <InputGroup.Input
+                          className="pl-2"
                           type="number" min={1} value={qty}
                           onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
                         />
@@ -349,6 +350,7 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
                       <InputGroup>
                         <InputGroup.Prefix>Quality</InputGroup.Prefix>
                         <InputGroup.Input
+                          className="pl-2"
                           type="number" min={0} value={quality}
                           onChange={e => setQuality(Math.max(0, parseInt(e.target.value) || 0))}
                         />

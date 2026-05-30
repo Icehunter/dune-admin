@@ -163,13 +163,13 @@ export type AppConfig = {
   amp_use_container: boolean
   amp_data_root: string
   director_url: string
-  // Market bot
+  // Market bot (startup config — tuning is managed in the Bot Control panel)
   market_bot_enabled: boolean
   market_bot_cache_db: string
   market_bot_item_data: string
   market_bot_state: string
   market_bot_buy_interval: string   // duration string e.g. "5m0s"
-  market_bot_list_interval: string
+  market_bot_list_interval: string  // duration string e.g. "30m0s"
   market_bot_buy_threshold: number
   market_bot_max_buys: number
   market_bot_remote_url: string

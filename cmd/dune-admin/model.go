@@ -67,6 +67,7 @@ type itemRule struct {
 	Tier          int      `json:"tier"`
 	Rarity        string   `json:"rarity"`
 	Category      string   `json:"category"`
+	IsSchematic   bool     `json:"is_schematic"`
 	MaxDurability *float64 `json:"max_durability,omitempty"`
 	Icon          *string  `json:"icon"`
 }

@@ -174,17 +174,23 @@ func NewExchange(db *pgxpool.Pool, cachePath string, catalog []CatalogItem, cfg 
 }
 
 func (e *Exchange) learnGameEpoch(ctx context.Context) {
+	// Use the bot's own listings to learn the epoch — the bot always places orders
+	// with expiration_time = gameNow + orderExpirySecs, so the offset is exact.
+	// Using player listings was unsafe: players can list for durations other than
+	// 24h, causing gameNow to be computed too far in the future and
+	// expireAndPurgeOrders to incorrectly expire active player listings.
 	var ref int64
 	err := e.db.QueryRow(ctx, `
 		SELECT expiration_time FROM dune.dune_exchange_orders
-		WHERE is_npc_order = FALSE
+		WHERE owner_id = $1
+		  AND is_npc_order = TRUE
 		  AND expiration_time IS NOT NULL
 		  AND expiration_time < 1000000000
-		ORDER BY expiration_time DESC LIMIT 1`).Scan(&ref)
+		ORDER BY expiration_time DESC LIMIT 1`, e.ownerID).Scan(&ref)
 	if err != nil || ref == 0 {
 		return
 	}
-	gameNow := ref - int64(24*3600)
+	gameNow := ref - orderExpirySecs
 	epoch := time.Now().Unix() - gameNow
 	if e.gameEpochUnix == epoch {
 		return

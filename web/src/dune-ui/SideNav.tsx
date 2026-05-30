@@ -17,7 +17,7 @@ type Props<K extends string> = {
   title?: ReactNode
   /** Action element rendered next to the title (e.g. a refresh button). */
   titleAction?: ReactNode
-  /** Width of the side nav. Defaults to 14rem (w-56). */
+  /** Width of the side nav. Defaults to 240px (w-60). */
   width?: string
   children?: ReactNode
 }
@@ -31,10 +31,11 @@ type Props<K extends string> = {
  * banners) between the title and the list.
  */
 export function SideNav<K extends string>({
-  items, active, onSelect, title, titleAction, width = 'w-56', children,
+  items, active, onSelect, title, titleAction, width, children,
 }: Props<K>) {
+  const w = width ?? 'w-60'
   return (
-    <div className={`${width} shrink-0 flex flex-col rounded-[var(--radius)] bg-surface border border-border/60 dune-lift overflow-hidden`}>
+    <div className={`${w} shrink-0 flex flex-col rounded-[var(--radius)] bg-surface border border-border/60 dune-lift overflow-hidden`}>
       {(title || titleAction) && (
         <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 shrink-0 bg-gradient-to-b from-[#2a1d0c] to-transparent">
           {title && <span className="text-xs font-semibold uppercase tracking-widest text-accent">{title}</span>}

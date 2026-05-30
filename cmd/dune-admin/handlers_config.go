@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -124,11 +125,14 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	applyConfig(cfg)
+	applyMarketBotConfig(cfg)
 	resetRuntimeConnections()
 
+	// Reconnect is best-effort — config is already written to disk.
+	// If reconnect fails (e.g. SSH not yet reachable), the file is still
+	// saved and will take effect on the next restart or manual reconnect.
 	if err := connectAll(); err != nil {
-		jsonErr(w, fmt.Errorf("reconnect failed: %w", err), 500)
-		return
+		log.Printf("handleSaveConfig: reconnect after save: %v", err)
 	}
 	handleStatus(w, r)
 }
@@ -153,6 +157,36 @@ func buildCurrentConfig() appConfig {
 		BackupDir:        backupDir,
 		ListenAddr:       listenAddr,
 		ScripCurrency:    scripCurrencyID,
+	}
+}
+
+// applyMarketBotConfig stops or starts the embedded market bot to match the
+// new config. Called after applyConfig so loadedConfig is already updated.
+func applyMarketBotConfig(cfg appConfig) {
+	wantEnabled := marketBotEnabled(cfg)
+	botRunning := embeddedBot != nil
+
+	if botRunning && !wantEnabled {
+		log.Printf("config: market_bot_enabled set to false — stopping embedded bot")
+		if globalBotCancel != nil {
+			globalBotCancel()
+			globalBotCancel = nil
+		}
+		embeddedBot = nil
+	}
+
+	if !botRunning && wantEnabled {
+		log.Printf("config: market_bot_enabled set to true — starting embedded bot")
+		if cancel := startEmbeddedMarketBotIfEnabled(cfg); cancel != nil {
+			globalBotCancel = cancel
+		}
+	}
+
+	// Update remote proxy from new config.
+	if cfg.MarketBotRemoteURL != "" {
+		remoteBotProxy = newRemoteBotClient(cfg.MarketBotRemoteURL, cfg.MarketBotRemoteToken)
+	} else {
+		remoteBotProxy = nil
 	}
 }
 

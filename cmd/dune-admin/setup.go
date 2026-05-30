@@ -581,13 +581,6 @@ func runMarketBotSetup(ask func(string, string) string, ok func(string), cfg *ap
 	cfg.MarketBotCacheDB = ask("Bot cache database path", filepath.Join(configDir(), "market-bot-cache.db"))
 	cfg.MarketBotItemData = ask("Bot item-data.json path (optional)", "")
 
-	parseDur := func(input string, fallback time.Duration) time.Duration {
-		d, err := time.ParseDuration(strings.TrimSpace(input))
-		if err != nil || d <= 0 {
-			return fallback
-		}
-		return d
-	}
 	parseFloat := func(input string, fallback float64) float64 {
 		v, err := strconv.ParseFloat(strings.TrimSpace(input), 64)
 		if err != nil || v <= 0 {
@@ -603,8 +596,8 @@ func runMarketBotSetup(ask func(string, string) string, ok func(string), cfg *ap
 		return v
 	}
 
-	cfg.MarketBotBuyInt = parseDur(ask("Buy tick interval", "5m"), 5*time.Minute)
-	cfg.MarketBotListInt = parseDur(ask("List tick interval", "30m"), 30*time.Minute)
+	cfg.MarketBotBuyInt = ask("Buy tick interval", "5m")
+	cfg.MarketBotListInt = ask("List tick interval", "30m")
 	cfg.MarketBotThresh = parseFloat(ask("Buy threshold multiplier", "1.05"), 1.05)
 	cfg.MarketBotMaxBuys = parseInt(ask("Max buys per tick", "50"), 50)
 	ok("Embedded market bot configured")

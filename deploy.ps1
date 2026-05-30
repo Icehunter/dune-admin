@@ -121,9 +121,11 @@ if (-not (Test-Path $Manifest)) {
 }
 
 $manifestText = Get-Content -Path $Manifest -Raw
-$patched = [regex]::Replace($manifestText, '(?m)^(\s*image:\s*).*$', "`$1$Image", 1)
+# Patch all image: fields that reference a dune-admin image (main container
+# and seed-binary init container both need the same locally-built image tag).
+$patched = [regex]::Replace($manifestText, '(?m)^(\s*image:\s*)(?:ghcr\.io/icehunter/dune-admin|dune-admin)\S*$', "`$1$Image")
 if ($patched -eq $manifestText) {
-  throw "No image: field found to patch in manifest"
+  throw "No dune-admin image: field found to patch in manifest"
 }
 
 $dbHostOverride = ""

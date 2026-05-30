@@ -50,6 +50,14 @@ COPY --from=go-builder /build/dune-admin .
 COPY --from=go-builder /build/tags-data.json /build/item-data.json ./
 COPY --from=web-builder /build/web/dist ./dist
 
+# Seed directory for the K8s host-mount pattern. Lives outside /app so that a
+# PVC mounted at /app doesn't hide it. The init container copies from here into
+# the PVC on first deploy; subsequent restarts skip the copy and use whatever
+# binary is already in the PVC (updated in-place by the self-update flow).
+RUN mkdir -p /usr/local/share/dune-admin-seed && \
+    cp dune-admin tags-data.json item-data.json /usr/local/share/dune-admin-seed/ && \
+    cp -r dist /usr/local/share/dune-admin-seed/dist
+
 EXPOSE 8080
 
 ENTRYPOINT ["./dune-admin"]

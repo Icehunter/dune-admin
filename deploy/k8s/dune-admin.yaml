@@ -59,6 +59,22 @@ spec:
     requests:
       storage: 1Gi
 ---
+# Persistent volume for the dune-admin binary and frontend assets.
+# The init container seeds this from the image on first deploy; subsequent
+# restarts skip the seed and use whatever binary is in the PVC — including
+# binaries downloaded by the self-update flow.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dune-admin-app
+  namespace: dune-admin
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -74,11 +90,35 @@ spec:
       labels:
         app: dune-admin
     spec:
-      # Copy the ConfigMap config.yaml into a writable emptyDir so that
-      # handleSaveConfig can write back to /root/.dune-admin/config.yaml.
-      # Changes persist within the pod lifetime; update the ConfigMap for
-      # permanent changes (the init container re-seeds on every pod start).
+      # Two init containers run before the main container:
+      #   seed-binary: copies the binary + assets from the image into the app
+      #     PVC on first deploy (skipped when the PVC already has a binary,
+      #     e.g. after a self-update). Self-update writes to /app/dune-admin
+      #     on the PVC; the next restart uses that binary without re-seeding.
+      #   seed-config: copies the ConfigMap config.yaml into a writable emptyDir
+      #     so that handleSaveConfig can write back. Changes persist within the
+      #     pod lifetime; update the ConfigMap for permanent config changes.
       initContainers:
+        - name: seed-binary
+          image: ghcr.io/icehunter/dune-admin:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -f /app/dune-admin ]; then
+                echo "Seeding dune-admin binary and assets from image..."
+                cp /usr/local/share/dune-admin-seed/dune-admin /app/
+                cp /usr/local/share/dune-admin-seed/tags-data.json /usr/local/share/dune-admin-seed/item-data.json /app/
+                cp -r /usr/local/share/dune-admin-seed/dist /app/dist
+                chmod 0755 /app/dune-admin
+                echo "Seed complete."
+              else
+                echo "Binary already present — skipping seed (self-updated binary in use)."
+              fi
+          volumeMounts:
+            - name: app-rw
+              mountPath: /app
         - name: seed-config
           image: busybox:latest
           command: ['sh', '-c', 'cp /configmap/config.yaml /app-config/config.yaml']
@@ -173,6 +213,8 @@ spec:
                   key: MARKET_BOT_REMOTE_TOKEN
                   optional: true
           volumeMounts:
+            - name: app-rw
+              mountPath: /app
             - name: market-bot-cache
               mountPath: /data
             - name: config-rw
@@ -190,6 +232,9 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 30
       volumes:
+        - name: app-rw
+          persistentVolumeClaim:
+            claimName: dune-admin-app
         - name: market-bot-cache
           persistentVolumeClaim:
             claimName: market-bot-cache

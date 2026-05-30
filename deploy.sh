@@ -154,7 +154,7 @@ fi
 
 awk -v image="$IMAGE" -v dbhost="$db_host_override" '
   BEGIN { image_changed = 0 }
-  /^[[:space:]]*image:[[:space:]]*/ && image_changed == 0 {
+  /^[[:space:]]*image:[[:space:]]*(ghcr\.io\/icehunter\/dune-admin|dune-admin)/ {
     sub(/image:.*/, "image: " image)
     image_changed = 1
   }

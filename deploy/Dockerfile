@@ -44,6 +44,11 @@ FROM --platform=$TARGETPLATFORM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates kubernetes-client postgresql-client && rm -rf /var/lib/apt/lists/*
 
+# Expose the build-time version so the seed-binary init container can compare
+# the image version against what's already in the PVC.
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
+
 WORKDIR /app
 
 COPY --from=go-builder /build/dune-admin .
@@ -51,9 +56,9 @@ COPY --from=go-builder /build/tags-data.json /build/item-data.json ./
 COPY --from=web-builder /build/web/dist ./dist
 
 # Seed directory for the K8s host-mount pattern. Lives outside /app so that a
-# PVC mounted at /app doesn't hide it. The init container copies from here into
-# the PVC on first deploy; subsequent restarts skip the copy and use whatever
-# binary is already in the PVC (updated in-place by the self-update flow).
+# PVC mounted at /app doesn't hide it. The init container re-seeds when the
+# image version differs from the stamp in the PVC, so new image deploys always
+# update the binary while pod restarts after a self-update keep the newer binary.
 RUN mkdir -p /usr/local/share/dune-admin-seed && \
     cp dune-admin tags-data.json item-data.json /usr/local/share/dune-admin-seed/ && \
     cp -r dist /usr/local/share/dune-admin-seed/dist

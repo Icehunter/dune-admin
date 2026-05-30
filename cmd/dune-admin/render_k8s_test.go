@@ -32,6 +32,7 @@ func TestRenderK8SManifest(t *testing.T) {
 		{"seed-binary init container exists", "name: seed-binary", true},
 		{"seed-config init container exists", "name: seed-config", true},
 		{"seed-binary copies from seed dir", "/usr/local/share/dune-admin-seed/dune-admin", true},
+		{"seed-binary uses version stamp", ".image-version", true},
 		{"seed-config copies config.yaml", "cp /configmap/config.yaml /app-config/config.yaml", true},
 
 		// Writable mounts

@@ -180,24 +180,53 @@ func NewExchange(db *pgxpool.Pool, cachePath string, catalog []CatalogItem, cfg 
 const epochSentinelCutoff = int64(999_999_999)
 
 func (e *Exchange) learnGameEpoch(ctx context.Context) {
-	// Use the bot's own listings to learn the epoch — the bot always places orders
-	// with expiration_time = gameNow + orderExpirySecs, so the offset is exact.
-	// Using player listings was unsafe: players can list for durations other than
-	// 24h, causing gameNow to be computed too far in the future and
-	// expireAndPurgeOrders to incorrectly expire active player listings.
+	// Two-tier epoch detection:
 	//
-	// Sentinel listings placed before the epoch was known carry
-	// expiration_time = 999_999_999. Exclude them via epochSentinelCutoff so
-	// they cannot produce a bogus near-1e9 game time.
+	// Tier 1 — bot's own non-sentinel listings (accurate: the bot always places
+	// orders with expiration_time = gameNow + orderExpirySecs, so the offset is
+	// exact). Sentinel listings (expiration_time = 999_999_999) are excluded via
+	// epochSentinelCutoff so they cannot produce a bogus near-1e9 game time.
+	//
+	// Tier 2 — player listings (is_npc_order = FALSE). Used as a bootstrap
+	// fallback when the only bot listings are sentinels (fresh install or cache
+	// cleared). Players always have real expiration times. Using player listings
+	// was historically unsafe as sole source because players may list for
+	// durations other than 24 h, but as a fallback it is acceptable — the epoch
+	// will self-correct once the bot places its first non-sentinel listing.
+	applyLearnedEpochTwoTier(e,
+		func() (int64, error) {
+			var ref int64
+			err := e.db.QueryRow(ctx, `
+				SELECT expiration_time FROM dune.dune_exchange_orders
+				WHERE owner_id = $1
+				  AND is_npc_order = TRUE
+				  AND expiration_time IS NOT NULL
+				  AND expiration_time < $2
+				ORDER BY expiration_time DESC LIMIT 1`, e.ownerID, epochSentinelCutoff).Scan(&ref)
+			return ref, err
+		},
+		func() (int64, error) {
+			var ref int64
+			err := e.db.QueryRow(ctx, `
+				SELECT expiration_time FROM dune.dune_exchange_orders
+				WHERE is_npc_order = FALSE
+				  AND expiration_time IS NOT NULL
+				ORDER BY expiration_time DESC LIMIT 1`).Scan(&ref)
+			return ref, err
+		},
+	)
+}
+
+// applyLearnedEpochTwoTier updates the Exchange epoch using a two-tier strategy:
+// fetchBotRef queries the bot's own non-sentinel listings (tier 1, accurate);
+// fetchPlayerRef queries player listings as a bootstrap fallback (tier 2).
+// Tier 2 is only consulted when tier 1 returns no rows or an error.
+func applyLearnedEpochTwoTier(e *Exchange, fetchBotRef, fetchPlayerRef func() (int64, error)) {
 	applyLearnedEpoch(e, func() (int64, error) {
-		var ref int64
-		err := e.db.QueryRow(ctx, `
-			SELECT expiration_time FROM dune.dune_exchange_orders
-			WHERE owner_id = $1
-			  AND is_npc_order = TRUE
-			  AND expiration_time IS NOT NULL
-			  AND expiration_time < $2
-			ORDER BY expiration_time DESC LIMIT 1`, e.ownerID, epochSentinelCutoff).Scan(&ref)
+		ref, err := fetchBotRef()
+		if (err != nil || ref == 0) && fetchPlayerRef != nil {
+			return fetchPlayerRef()
+		}
 		return ref, err
 	})
 }

@@ -61,6 +61,52 @@ func TestApplyMarketBotConfig_StartRequiresDB(t *testing.T) {
 	}
 }
 
+// TestStopEmbeddedMarketBot_CancelsAndClearsGlobals verifies that
+// stopEmbeddedMarketBot cancels the running bot's goroutines and clears both
+// embeddedBot and globalBotCancel so the old (closed) DB pool is released.
+// This is the prerequisite step before resetRuntimeConnections in handleSaveConfig.
+func TestStopEmbeddedMarketBot_CancelsAndClearsGlobals(t *testing.T) {
+	// Not parallel: mutates package-level embeddedBot / globalBotCancel.
+	origBot := embeddedBot
+	origCancel := globalBotCancel
+	t.Cleanup(func() { embeddedBot = origBot; globalBotCancel = origCancel })
+
+	cancelled := false
+	globalBotCancel = func() { cancelled = true }
+	embeddedBot = new(marketbot.Instance)
+
+	stopEmbeddedMarketBot()
+
+	if !cancelled {
+		t.Error("stopEmbeddedMarketBot should call globalBotCancel")
+	}
+	if embeddedBot != nil {
+		t.Error("stopEmbeddedMarketBot should set embeddedBot = nil")
+	}
+	if globalBotCancel != nil {
+		t.Error("stopEmbeddedMarketBot should set globalBotCancel = nil")
+	}
+}
+
+// TestStopEmbeddedMarketBot_NoopWhenNotRunning verifies that stopEmbeddedMarketBot
+// is safe to call when no bot is running (nil embeddedBot).
+func TestStopEmbeddedMarketBot_NoopWhenNotRunning(t *testing.T) {
+	// Not parallel: mutates package-level embeddedBot / globalBotCancel.
+	origBot := embeddedBot
+	origCancel := globalBotCancel
+	t.Cleanup(func() { embeddedBot = origBot; globalBotCancel = origCancel })
+
+	embeddedBot = nil
+	globalBotCancel = nil
+
+	// Should not panic.
+	stopEmbeddedMarketBot()
+
+	if embeddedBot != nil {
+		t.Error("embeddedBot should remain nil")
+	}
+}
+
 // TestApplyConfig_SetsBrokerCredentials verifies that applyConfig copies broker
 // credentials into the package-level globals so hot-apply works without restart.
 func TestApplyConfig_SetsBrokerCredentials(t *testing.T) {

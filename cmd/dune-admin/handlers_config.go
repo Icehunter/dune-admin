@@ -97,6 +97,20 @@ func writeConfigFile(cfg appConfig) error {
 	return nil
 }
 
+// stopEmbeddedMarketBot cancels the running embedded bot (if any) and clears
+// embeddedBot and globalBotCancel. Call this before resetRuntimeConnections so
+// the bot releases its reference to the old (about-to-be-closed) globalDB pool.
+func stopEmbeddedMarketBot() {
+	if embeddedBot == nil {
+		return
+	}
+	if globalBotCancel != nil {
+		globalBotCancel()
+		globalBotCancel = nil
+	}
+	embeddedBot = nil
+}
+
 func resetRuntimeConnections() {
 	if globalDB != nil {
 		globalDB.Close()
@@ -125,6 +139,12 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	applyConfig(cfg)
+
+	// Stop the running bot (if any) before closing the DB pool.
+	// A running bot holds a reference to globalDB; if we close the pool first
+	// the bot's next tick will use a closed pool and panic or error.
+	stopEmbeddedMarketBot()
+
 	resetRuntimeConnections()
 
 	// Reconnect is best-effort — config is already written to disk.
@@ -136,6 +156,7 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 
 	// Apply the market bot config AFTER connectAll so the bot gets the
 	// freshly-established globalDB rather than the old (closed) pool.
+	// applyMarketBotConfig will restart the bot (if enabled) with the new pool.
 	applyMarketBotConfig(cfg)
 	handleStatus(w, r)
 }

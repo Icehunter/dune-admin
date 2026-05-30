@@ -30,9 +30,9 @@ const EMPTY: AppConfig = {
 }
 
 // Pointer-backed boolean fields in the Go config: null means "use server
-// default" (effectively true). If the API returns null for these, do NOT
-// substitute the EMPTY default of false — leave them at null so the form
-// shows the real server default rather than silently overwriting it on save.
+// default" (effectively true). If the API returns null for these, coerce to
+// true so the checkbox reflects the real server default rather than silently
+// inheriting EMPTY's false and overwriting the default-on value on save.
 const pointerBoolFields = new Set<keyof AppConfig>(['amp_use_container', 'market_bot_enabled'])
 
 function mergeConfig(fetched: Record<string, unknown>): AppConfig {

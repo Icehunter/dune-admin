@@ -1,6 +1,7 @@
 package marketbot
 
 import (
+	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -8,6 +9,25 @@ import (
 
 	"github.com/jackc/pgx/v5"
 )
+
+// newTestExchange returns an Exchange with a temporary file-based SQLite cache
+// suitable for unit tests that exercise epoch learning (which writes to e.cache).
+func newTestExchange(t *testing.T) *Exchange {
+	t.Helper()
+	dbPath := filepath.Join(t.TempDir(), "test-cache.db")
+	cache, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open test sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = cache.Close() })
+	if _, err := cache.Exec(`CREATE TABLE IF NOT EXISTS metadata (
+		key   TEXT    PRIMARY KEY,
+		value INTEGER NOT NULL
+	)`); err != nil {
+		t.Fatalf("init metadata table: %v", err)
+	}
+	return &Exchange{cache: cache}
+}
 
 func TestEnsureCachePathCreatesParentDirectories(t *testing.T) {
 	root := t.TempDir()
@@ -104,6 +124,89 @@ func TestApplyLearnedEpoch_SkipsOnZeroRef(t *testing.T) {
 	})
 	if ex.gameEpochUnix != 99 {
 		t.Errorf("gameEpochUnix changed on zero ref: got %d, want 99", ex.gameEpochUnix)
+	}
+}
+
+// TestLearnGameEpoch_FallsBackToPlayerListingsOnBootstrap verifies the two-tier
+// epoch detection strategy:
+//  1. First tries bot's own non-sentinel listings (fast, accurate path).
+//  2. Falls back to player listings when no qualifying bot listings exist.
+//
+// This covers the bootstrap case: on a fresh install or after cache clearing,
+// the only bot listings are sentinel listings (expiration_time = 999_999_999).
+// The first tier returns no rows, so the second tier (player listings) must be
+// tried so the bot can bootstrap the epoch from real player expirations.
+func TestLearnGameEpoch_FallsBackToPlayerListingsOnBootstrap(t *testing.T) {
+	t.Parallel()
+
+	// On bootstrap: bot has only sentinel listings — tier 1 returns no rows.
+	// Player listing provides a real expiration_time.
+	const playerExpiry = int64(1_800_000)
+
+	ex := newTestExchange(t)
+	ex.gameEpochUnix = 0
+	calls := 0
+	applyLearnedEpochTwoTier(ex,
+		func() (int64, error) {
+			calls++
+			return 0, pgx.ErrNoRows // no non-sentinel bot listings
+		},
+		func() (int64, error) {
+			calls++
+			return playerExpiry, nil // player listing found
+		},
+	)
+
+	if calls != 2 {
+		t.Errorf("expected 2 fetch calls (tier1 miss + tier2 hit), got %d", calls)
+	}
+	if ex.gameEpochUnix == 0 {
+		t.Error("gameEpochUnix should have been updated from player listing fallback")
+	}
+}
+
+// TestLearnGameEpoch_UsesBotListingsWhenAvailable verifies that when the bot has
+// non-sentinel listings, tier 1 succeeds and tier 2 is never called.
+func TestLearnGameEpoch_UsesBotListingsWhenAvailable(t *testing.T) {
+	t.Parallel()
+
+	const botExpiry = int64(1_900_000)
+
+	ex := newTestExchange(t)
+	ex.gameEpochUnix = 0
+	tier2Called := false
+	applyLearnedEpochTwoTier(ex,
+		func() (int64, error) {
+			return botExpiry, nil // bot has a real listing
+		},
+		func() (int64, error) {
+			tier2Called = true
+			return 0, pgx.ErrNoRows
+		},
+	)
+
+	if tier2Called {
+		t.Error("tier 2 (player listing fallback) should not be called when tier 1 succeeds")
+	}
+	if ex.gameEpochUnix == 0 {
+		t.Error("gameEpochUnix should have been updated from bot listing")
+	}
+}
+
+// TestLearnGameEpoch_BothTiersMissDoesNotUpdate verifies that when both tiers
+// return no rows, the epoch is left unchanged (no spurious zero write).
+func TestLearnGameEpoch_BothTiersMissDoesNotUpdate(t *testing.T) {
+	t.Parallel()
+
+	ex := newTestExchange(t)
+	ex.gameEpochUnix = 42
+	applyLearnedEpochTwoTier(ex,
+		func() (int64, error) { return 0, pgx.ErrNoRows },
+		func() (int64, error) { return 0, pgx.ErrNoRows },
+	)
+
+	if ex.gameEpochUnix != 42 {
+		t.Errorf("gameEpochUnix changed unexpectedly: got %d, want 42", ex.gameEpochUnix)
 	}
 }
 

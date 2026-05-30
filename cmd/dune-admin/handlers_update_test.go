@@ -2,7 +2,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -123,6 +126,69 @@ func TestLatestRelease(t *testing.T) {
 		_, _, err := latestRelease(fetcher)
 		if err == nil {
 			t.Fatal("expected error for empty tag_name")
+		}
+	})
+}
+
+func TestHandleUpdateCheck(t *testing.T) {
+	t.Run("update_available", func(t *testing.T) {
+		AppVersion = "0.15.2"
+		fetcher := func(url string) ([]byte, error) {
+			return []byte(`{"tag_name":"v0.16.0","html_url":"https://github.com/Icehunter/dune-admin/releases/tag/v0.16.0"}`), nil
+		}
+		h := makeUpdateCheckHandler(fetcher)
+		r := httptest.NewRequest("GET", "/api/v1/update/check", nil)
+		w := httptest.NewRecorder()
+		h(w, r)
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", w.Code)
+		}
+		var res updateCheckResponse
+		if err := json.NewDecoder(w.Body).Decode(&res); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		if !res.NeedsUpdate {
+			t.Error("NeedsUpdate should be true")
+		}
+		if res.Latest != "v0.16.0" {
+			t.Errorf("Latest = %q, want %q", res.Latest, "v0.16.0")
+		}
+		if res.Current != "0.15.2" {
+			t.Errorf("Current = %q, want %q", res.Current, "0.15.2")
+		}
+	})
+
+	t.Run("already_up_to_date", func(t *testing.T) {
+		AppVersion = "0.15.2"
+		fetcher := func(url string) ([]byte, error) {
+			return []byte(`{"tag_name":"v0.15.2","html_url":"https://github.com/Icehunter/dune-admin/releases/tag/v0.15.2"}`), nil
+		}
+		h := makeUpdateCheckHandler(fetcher)
+		r := httptest.NewRequest("GET", "/api/v1/update/check", nil)
+		w := httptest.NewRecorder()
+		h(w, r)
+		if w.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", w.Code)
+		}
+		var res updateCheckResponse
+		if err := json.NewDecoder(w.Body).Decode(&res); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		if res.NeedsUpdate {
+			t.Error("NeedsUpdate should be false when already on latest")
+		}
+	})
+
+	t.Run("fetch_error_returns_502", func(t *testing.T) {
+		fetcher := func(url string) ([]byte, error) {
+			return nil, fmt.Errorf("network error")
+		}
+		h := makeUpdateCheckHandler(fetcher)
+		r := httptest.NewRequest("GET", "/api/v1/update/check", nil)
+		w := httptest.NewRecorder()
+		h(w, r)
+		if w.Code != http.StatusBadGateway {
+			t.Fatalf("status = %d, want 502", w.Code)
 		}
 	})
 }

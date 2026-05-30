@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -80,6 +81,39 @@ func latestRelease(fetcher func(string) ([]byte, error)) (tag, htmlURL string, e
 		return "", "", fmt.Errorf("empty tag_name in response")
 	}
 	return rel.TagName, rel.HTMLURL, nil
+}
+
+type updateCheckResponse struct {
+	Current     string `json:"current"`
+	Latest      string `json:"latest"`
+	NeedsUpdate bool   `json:"needs_update"`
+	ReleaseURL  string `json:"release_url,omitempty"`
+}
+
+// makeUpdateCheckHandler returns a handler wired to the given fetcher.
+// Pass updateFetcher in production; inject a stub in tests.
+func makeUpdateCheckHandler(fetcher func(string) ([]byte, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tag, htmlURL, err := latestRelease(fetcher)
+		if err != nil {
+			log.Printf("handleUpdateCheck: %v", err)
+			jsonErr(w, fmt.Errorf("could not reach GitHub"), http.StatusBadGateway)
+			return
+		}
+		jsonOK(w, updateCheckResponse{
+			Current:     AppVersion,
+			Latest:      tag,
+			NeedsUpdate: needsUpdate(AppVersion, tag),
+			ReleaseURL:  htmlURL,
+		})
+	}
+}
+
+// handleUpdateCheck is the production handler wired into the HTTP mux in server.go.
+//
+//nolint:unused
+func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
+	makeUpdateCheckHandler(updateFetcher)(w, r)
 }
 
 // Dev builds ("-dev" suffix or bare "dev") are never auto-updated.

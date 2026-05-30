@@ -211,17 +211,17 @@ spec:
             - sh
             - -c
             - |
-              STORED=$(cat /app/.image-version 2>/dev/null || echo "")
-              if [ ! -f /app/dune-admin ] || [ "$APP_VERSION" != "$STORED" ]; then
-                echo "Seeding dune-admin binary and assets (image: $APP_VERSION, stored: $STORED)..."
+              STORED=$(cat /app/.image-build-time 2>/dev/null || echo "")
+              if [ ! -f /app/dune-admin ] || [ "$IMAGE_BUILD_TIME" != "$STORED" ]; then
+                echo "Seeding dune-admin binary and assets (built: $IMAGE_BUILD_TIME)..."
                 cp /usr/local/share/dune-admin-seed/dune-admin /app/
                 cp /usr/local/share/dune-admin-seed/tags-data.json /usr/local/share/dune-admin-seed/item-data.json /app/
                 cp -r /usr/local/share/dune-admin-seed/dist /app/dist
                 chmod 0755 /app/dune-admin
-                echo "$APP_VERSION" > /app/.image-version
+                echo "$IMAGE_BUILD_TIME" > /app/.image-build-time
                 echo "Seed complete."
               else
-                echo "PVC already at image version $APP_VERSION — skipping seed."
+                echo "PVC already has this build ($IMAGE_BUILD_TIME) — skipping seed."
               fi
           volumeMounts:
             - name: app-rw

@@ -44,10 +44,11 @@ FROM --platform=$TARGETPLATFORM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates kubernetes-client postgresql-client && rm -rf /var/lib/apt/lists/*
 
-# Expose the build-time version so the seed-binary init container can compare
-# the image version against what's already in the PVC.
-ARG APP_VERSION=dev
-ENV APP_VERSION=${APP_VERSION}
+# Expose build time so the seed-binary init container can stamp the PVC.
+# BUILD_TIME is set to $(date -u) by deploy.sh on every run, so every deploy
+# triggers a re-seed regardless of whether version or commit changed.
+ARG BUILD_TIME=unknown
+ENV IMAGE_BUILD_TIME=${BUILD_TIME}
 
 WORKDIR /app
 

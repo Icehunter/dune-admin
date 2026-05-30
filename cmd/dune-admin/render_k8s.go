@@ -211,13 +211,15 @@ spec:
             - sh
             - -c
             - |
+              set -e
               STORED=$(cat /app/.image-build-time 2>/dev/null || echo "")
               if [ ! -f /app/dune-admin ] || [ "$IMAGE_BUILD_TIME" != "$STORED" ]; then
                 echo "Seeding dune-admin binary and assets (built: $IMAGE_BUILD_TIME)..."
-                cp /usr/local/share/dune-admin-seed/dune-admin /app/
                 cp /usr/local/share/dune-admin-seed/tags-data.json /usr/local/share/dune-admin-seed/item-data.json /app/
-                cp -r /usr/local/share/dune-admin-seed/dist /app/dist
-                chmod 0755 /app/dune-admin
+                rm -rf /app/dist && cp -r /usr/local/share/dune-admin-seed/dist /app/dist
+                cp /usr/local/share/dune-admin-seed/dune-admin /app/.dune-admin.new
+                chmod 0755 /app/.dune-admin.new
+                mv /app/.dune-admin.new /app/dune-admin
                 echo "$IMAGE_BUILD_TIME" > /app/.image-build-time
                 echo "Seed complete."
               else

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Show, SignInButton, UserButton, useAuth } from '@clerk/react'
-import { Button, Chip, Modal, Toast, Tabs } from '@heroui/react'
+import { Button, Chip, Modal, Spinner, Toast, Tabs } from '@heroui/react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStatus } from './hooks/useStatus'
 import SettingsConfigForm from './components/SettingsConfigForm'
@@ -14,6 +14,8 @@ import StorageTab from './tabs/StorageTab'
 import ServerSettingsTab from './tabs/ServerSettingsTab'
 import MarketTab from './tabs/MarketTab'
 import { Icon } from './dune-ui'
+import { api } from './api/client'
+import type { UpdateCheckResult } from './api/client'
 
 const TAB_IDS = [
   'battlegroup',
@@ -65,6 +67,11 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
   const navigate = useNavigate()
   const [showBackendConfig, setShowBackendConfig] = useState(false)
   const [latestVersion, setLatestVersion] = useState<string | null>(null)
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null)
+  const [updateChecking, setUpdateChecking] = useState(false)
+  const [updateApplying, setUpdateApplying] = useState(false)
+  const [formSaving, setFormSaving] = useState(false)
+  const formSaveRef = useRef<(() => Promise<void>) | null>(null)
 
   useEffect(() => {
     const seg = location.pathname.replace(/^\//, '').split('/')[0]
@@ -81,6 +88,33 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
       .then((d) => setLatestVersion(d.tag_name || null))
       .catch(() => {})
   }, [])
+
+  const checkUpdate = async () => {
+    setUpdateChecking(true)
+    try {
+      setUpdateInfo(await api.update.check())
+    }
+    catch {
+      // silently ignore — user can retry
+    }
+    finally {
+      setUpdateChecking(false)
+    }
+  }
+
+  const applyUpdate = async (force = false) => {
+    setUpdateApplying(true)
+    try {
+      const result = await api.update.apply(force)
+      if (result.updated) setUpdateInfo(null)
+    }
+    catch {
+      // errors surface via the backend response body
+    }
+    finally {
+      setUpdateApplying(false)
+    }
+  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
@@ -99,10 +133,14 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
             <span className="text-xs text-muted">{status.db_host}</span>
           )}
           {status?.version && (
-            <span className="text-xs text-muted">
+            <button
+              className="text-xs text-muted hover:text-foreground cursor-pointer bg-transparent border-0 p-0"
+              onClick={() => setShowBackendConfig(true)}
+              title="Open Settings"
+            >
               v
               {status.version}
-            </span>
+            </button>
           )}
           {latestVersion && status?.version && isNewer(latestVersion, status.version) && (
             <a
@@ -186,11 +224,86 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
 
               {/* Body scrolls; form fills it with its own internal tab scroll */}
               <Modal.Body className="flex flex-col overflow-y-auto flex-1 min-h-0 pr-1">
-                {showBackendConfig && <SettingsConfigForm />}
+                {showBackendConfig && (
+                  <SettingsConfigForm saveRef={formSaveRef} onSavingChange={setFormSaving} />
+                )}
               </Modal.Body>
 
-              <Modal.Footer>
-                <Button size="sm" variant="outline" onPress={() => setShowBackendConfig(false)}>
+              <Modal.Footer className="flex items-center gap-2">
+                {/* Left: update controls — fixed positions so buttons don't shift */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onPress={checkUpdate}
+                  isDisabled={updateChecking || updateApplying}
+                >
+                  {updateChecking
+                    ? (
+                        <>
+                          <Spinner size="sm" color="current" />
+                          {' '}
+                          Checking…
+                        </>
+                      )
+                    : 'Check for Updates'}
+                </Button>
+                {updateInfo && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onPress={() => applyUpdate(true)}
+                    isDisabled={updateApplying}
+                  >
+                    {updateApplying ? <Spinner size="sm" color="current" /> : 'Reinstall'}
+                  </Button>
+                )}
+                {updateInfo?.needs_update && (
+                  <Button size="sm" onPress={() => applyUpdate()} isDisabled={updateApplying}>
+                    {updateApplying
+                      ? <Spinner size="sm" color="current" />
+                      : (
+                          <span className="font-mono text-xs">
+                            v
+                            {updateInfo.current}
+                            {' → '}
+                            v
+                            {updateInfo.latest.replace(/^v/, '')}
+                          </span>
+                        )}
+                  </Button>
+                )}
+
+                {/* Spacer */}
+                <span className="flex-1" />
+
+                {/* Right: save + close */}
+                <span className="text-xs text-muted">Changes on all tabs are saved together.</span>
+                <Button
+                  size="sm"
+                  onPress={() => formSaveRef.current?.()}
+                  isDisabled={formSaving}
+                >
+                  {formSaving
+                    ? (
+                        <>
+                          <Spinner size="sm" color="current" />
+                          {' '}
+                          Saving…
+                        </>
+                      )
+                    : (
+                        <>
+                          <Icon name="save" />
+                          {' '}
+                          Save & Apply
+                        </>
+                      )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="tertiary"
+                  onPress={() => setShowBackendConfig(false)}
+                >
                   Close
                 </Button>
               </Modal.Footer>

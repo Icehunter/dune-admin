@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type MutableRefObject } from 'react'
 import { Button, Select, ListBox, Spinner, Tabs, toast } from '@heroui/react'
 import { api, MASKED } from '../api/client'
 import type { AppConfig } from '../api/client'
 import { Panel, SectionLabel } from '../dune-ui'
-import { Icon } from '../dune-ui'
 
 // ── defaults (all empty — never show fake values) ─────────────────────────────
 
@@ -126,10 +125,14 @@ function G2({ children }: { children: React.ReactNode }) {
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export default function SettingsConfigForm() {
+interface Props {
+  saveRef?: MutableRefObject<(() => Promise<void>) | null>
+  onSavingChange?: (saving: boolean) => void
+}
+
+export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
   const [cfg, setCfg] = useState<AppConfig>(EMPTY)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState('connection')
   const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem('dune_admin_backend') || '')
 
@@ -154,7 +157,7 @@ export default function SettingsConfigForm() {
     setCfg((prev) => ({ ...prev, [key]: v }))
 
   const save = async () => {
-    setSaving(true)
+    onSavingChange?.(true)
     try {
       await api.config.save(cfg)
       toast.success('Config saved — applying settings…')
@@ -163,9 +166,14 @@ export default function SettingsConfigForm() {
       toast.danger(`Save failed: ${e instanceof Error ? e.message : String(e)}`)
     }
     finally {
-      setSaving(false)
+      onSavingChange?.(false)
     }
   }
+
+  // Keep the ref current so App.tsx footer button always calls the latest closure.
+  useEffect(() => {
+    if (saveRef) saveRef.current = save
+  })
 
   if (loading) {
     return (
@@ -479,27 +487,6 @@ export default function SettingsConfigForm() {
         </Tabs.Panel>
       </Tabs>
 
-      {/* Single save bar — shared across all tabs, always visible */}
-      <div className="shrink-0 flex items-center justify-between pt-3 mt-1 border-t border-border">
-        <p className="text-xs text-muted">Changes on all tabs are saved together.</p>
-        <Button size="sm" onPress={save} isDisabled={saving}>
-          {saving
-            ? (
-                <>
-                  <Spinner size="sm" color="current" />
-                  {' '}
-                  Saving…
-                </>
-              )
-            : (
-                <>
-                  <Icon name="save" />
-                  {' '}
-                  Save &amp; Apply
-                </>
-              )}
-        </Button>
-      </div>
     </div>
   )
 }

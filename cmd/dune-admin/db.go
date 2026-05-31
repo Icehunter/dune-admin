@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -1195,27 +1197,117 @@ func resolveScripCurrencyID(ctx context.Context) (int16, error) {
 	return 0, fmt.Errorf("multiple non-solaris currency IDs found (%s); pass -scripcurrency", formatCurrencyIDs(ids))
 }
 
-// factionPlayerComponentRepSQL updates ReputationAmount inside
-// actors.properties.FactionPlayerComponent.m_FactionDataArray for the matching
-// faction name. set_player_faction_reputation only updates the table; the
-// in-game faction UI reads rank from this jsonb component, so any rep write
-// that needs to be reflected in-game must also run this update.
-// $1 = controller actor id, $2 = faction name ("Atreides"/"Harkonnen"),
-// $3 = new ReputationAmount.
-const factionPlayerComponentRepSQL = `
-	UPDATE dune.actors a
+// factionDataEntry mirrors one element of
+// actors.properties.FactionPlayerComponent.m_FactionDataArray — the cache the
+// in-game faction UI reads for rank display and per-territory vendor gating.
+// Shape verified live: {"Faction":{"Name":...},"timestamp":<float>,"ReputationAmount":<int>}.
+type factionDataEntry struct {
+	Faction          factionDataName `json:"Faction"`
+	Timestamp        float64         `json:"timestamp"`
+	ReputationAmount int32           `json:"ReputationAmount"`
+}
+
+type factionDataName struct {
+	Name string `json:"Name"`
+}
+
+// greatHouseFactions are the two houses the in-game faction rank/vendor system
+// tracks. m_FactionDataArray always lists both so each territory's vendor reads
+// its own house's standing (a missing house reads as 0). Verified in-game:
+// Arrakeen reads the Atreides entry, Harko Village reads the Harkonnen one.
+var greatHouseFactions = []struct {
+	id   int16
+	name string
+}{
+	{1, "Atreides"},
+	{2, "Harkonnen"},
+}
+
+// buildFactionDataArray produces the canonical m_FactionDataArray from the
+// player's per-faction reputation. It always emits both great houses (missing
+// → 0) and ignores non-great-house factions (None=3, Smuggler=4).
+func buildFactionDataArray(reps map[int16]int32, ts float64) []factionDataEntry {
+	out := make([]factionDataEntry, 0, len(greatHouseFactions))
+	for _, h := range greatHouseFactions {
+		out = append(out, factionDataEntry{
+			Faction:          factionDataName{Name: h.name},
+			Timestamp:        ts,
+			ReputationAmount: reps[h.id],
+		})
+	}
+	return out
+}
+
+// factionComponentExecer is the minimal surface writeFactionComponent needs —
+// satisfied by *pgxpool.Pool and pgx.Tx (and stubbed in tests).
+type factionComponentExecer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+// factionComponentDB adds row reads for syncFactionComponent.
+type factionComponentDB interface {
+	factionComponentExecer
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// factionComponentRebuildSQL replaces m_FactionDataArray wholesale. The previous
+// per-element update no-oped silently when the array was empty (the state of
+// every fresh character) — the bug that made faction unlocks display as rank
+// "Outsider" in-game despite correct rep/alignment/tags in the DB.
+const factionComponentRebuildSQL = `
+	UPDATE dune.actors
 	SET properties = jsonb_set(
-		a.properties,
-		ARRAY['FactionPlayerComponent','m_FactionDataArray', (sub.idx - 1)::text, 'ReputationAmount'],
-		to_jsonb($3::int))
-	FROM (
-		SELECT ord AS idx
-		FROM dune.actors aa,
-		     jsonb_array_elements(aa.properties->'FactionPlayerComponent'->'m_FactionDataArray')
-		         WITH ORDINALITY AS arr(elem, ord)
-		WHERE aa.id = $1 AND elem->'Faction'->>'Name' = $2
-	) sub
-	WHERE a.id = $1`
+		properties, '{FactionPlayerComponent,m_FactionDataArray}', $1::jsonb, true)
+	WHERE id = $2`
+
+// writeFactionComponent rebuilds the controller actor's m_FactionDataArray.
+// Returns an error if no row was updated — turning the old silent no-op into a
+// loud failure so a misleading success can never be reported again.
+func writeFactionComponent(ctx context.Context, exec factionComponentExecer, controllerID int64, arr []factionDataEntry) error {
+	payload, err := json.Marshal(arr)
+	if err != nil {
+		return fmt.Errorf("marshal faction data array: %w", err)
+	}
+	tag, err := exec.Exec(ctx, factionComponentRebuildSQL, payload, controllerID)
+	if err != nil {
+		return fmt.Errorf("rebuild FactionPlayerComponent: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("controller actor %d not found; FactionPlayerComponent not updated", controllerID)
+	}
+	return nil
+}
+
+// syncFactionComponent reads the controller's current great-house reputation and
+// rebuilds m_FactionDataArray to match. Call after any
+// set_player_faction_reputation so the in-game rank/vendor UI reflects the DB.
+// Accepts *pgxpool.Pool or a pgx.Tx.
+func syncFactionComponent(ctx context.Context, db factionComponentDB, controllerID int64) error {
+	rows, err := db.Query(ctx, `
+		SELECT faction_id, reputation_amount
+		FROM dune.player_faction_reputation
+		WHERE actor_id = $1 AND faction_id IN (1, 2)`, controllerID)
+	if err != nil {
+		return fmt.Errorf("read faction reputation: %w", err)
+	}
+	defer rows.Close()
+
+	reps := make(map[int16]int32, 2)
+	for rows.Next() {
+		var fid int16
+		var rep int32
+		if err := rows.Scan(&fid, &rep); err != nil {
+			return fmt.Errorf("scan faction reputation: %w", err)
+		}
+		reps[fid] = rep
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate faction reputation: %w", err)
+	}
+
+	arr := buildFactionDataArray(reps, float64(time.Now().UnixNano())/1e9)
+	return writeFactionComponent(ctx, db, controllerID, arr)
+}
 
 func applyFactionRepDelta(ctx context.Context, actorID int64, factionID int16, delta int32) msgMutate {
 	// Route through set_player_faction_reputation which handles tier tags correctly.
@@ -1239,8 +1331,7 @@ func applyFactionRepDelta(ctx context.Context, actorID int64, factionID int16, d
 	if err != nil {
 		return msgMutate{err: fmt.Errorf("set_player_faction_reputation: %w", err)}
 	}
-	if _, err = globalDB.Exec(ctx, factionPlayerComponentRepSQL,
-		actorID, factionDisplayName(factionID), newRep); err != nil {
+	if err = syncFactionComponent(ctx, globalDB, actorID); err != nil {
 		return msgMutate{err: fmt.Errorf("update FactionPlayerComponent rep: %w", err)}
 	}
 
@@ -1322,13 +1413,20 @@ func cmdSetFactionTier(actorID int64, factionID int16, tier int) Cmd {
 			rep++
 		}
 		ctx := context.Background()
-		_, err := globalDB.Exec(ctx, `SELECT dune.set_player_faction_reputation($1, $2, $3)`,
-			actorID, factionID, rep)
-		if err != nil {
+		// Align the player to this house first (Gap 1): set-tier on an unaligned
+		// character previously wrote rep with no player_faction row, so the game
+		// treated them as unaligned. change_player_faction upserts alignment and
+		// fires pg_notify('faction_notify_channel'). neutral_faction_id = 3 ("None").
+		if _, err := globalDB.Exec(ctx,
+			`SELECT dune.change_player_faction($1::bigint, $2::smallint, 3::smallint, NOW()::timestamp)`,
+			actorID, factionID); err != nil {
+			return msgMutate{err: fmt.Errorf("change_player_faction: %w", err)}
+		}
+		if _, err := globalDB.Exec(ctx, `SELECT dune.set_player_faction_reputation($1, $2, $3)`,
+			actorID, factionID, rep); err != nil {
 			return msgMutate{err: fmt.Errorf("set_player_faction_reputation: %w", err)}
 		}
-		if _, err = globalDB.Exec(ctx, factionPlayerComponentRepSQL,
-			actorID, factionDisplayName(factionID), rep); err != nil {
+		if err := syncFactionComponent(ctx, globalDB, actorID); err != nil {
 			return msgMutate{err: fmt.Errorf("update FactionPlayerComponent rep: %w", err)}
 		}
 		fName := factionDisplayName(factionID)
@@ -1780,13 +1878,14 @@ func applyTagsWithTierBump(ctx context.Context, accountID int64, tags []string) 
 			controllerID, fid, rep); err != nil {
 			return "", fmt.Errorf("bump %s rep: %w", faction, err)
 		}
-		if _, err := globalDB.Exec(ctx, factionPlayerComponentRepSQL,
-			controllerID, faction, rep); err != nil {
-			return "", fmt.Errorf("bump %s FactionPlayerComponent: %w", faction, err)
-		}
 		bumped++
 	}
 	if bumped > 0 {
+		// Rebuild the component once from the now-updated rep table (Gap 2 fix:
+		// the old per-faction update no-oped on an empty m_FactionDataArray).
+		if err := syncFactionComponent(ctx, globalDB, controllerID); err != nil {
+			return "", fmt.Errorf("sync FactionPlayerComponent: %w", err)
+		}
 		extra += fmt.Sprintf(", bumped rep for %d faction(s)", bumped)
 	}
 	return extra, nil
@@ -2751,7 +2850,6 @@ func applyProgressionUnlock(
 	accountID, controllerID int64,
 	flsID string,
 	factionID int16,
-	factionName string,
 	targetTier int,
 	journeyNodes, allTags []string,
 ) error {
@@ -2790,8 +2888,7 @@ func applyProgressionUnlock(
 		controllerID, factionID, targetRep); err != nil {
 		return fmt.Errorf("set faction rep: %w", err)
 	}
-	if _, err = tx.Exec(ctx, factionPlayerComponentRepSQL,
-		controllerID, factionName, targetRep); err != nil {
+	if err = syncFactionComponent(ctx, tx, controllerID); err != nil {
 		return fmt.Errorf("update FactionPlayerComponent rep: %w", err)
 	}
 
@@ -2914,7 +3011,6 @@ func cmdProgressionUnlock(actorID int64, faction, preset string) Cmd {
 			controllerID,
 			flsID,
 			cfg.factionID,
-			factionName,
 			targetTier,
 			journeyNodes,
 			allTags,

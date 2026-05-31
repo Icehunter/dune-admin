@@ -352,8 +352,8 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
 
       {/* Body: grouped left sidebar + content. All tabs stay mounted (inactive
           hidden) so per-tab state and isActive auto-refresh behavior persist. */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
-        <nav className="w-60 shrink-0 flex flex-col gap-3 p-3 overflow-y-auto">
+      <div className="flex-1 flex gap-4 p-4 overflow-hidden min-h-0">
+        <nav className="w-60 shrink-0 flex flex-col gap-3 overflow-y-auto">
           {NAV_GROUPS.map((group) => (
             <SideNav
               key={group.title}
@@ -406,7 +406,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
 // state and the isActive auto-refresh contract when switching via the sidebar.
 function TabPane({ active, children }: { active: boolean, children: ReactNode }) {
   return (
-    <div className={`h-full min-h-0 p-4 ${active ? 'flex flex-col' : 'hidden'}`}>
+    <div className={`h-full min-h-0 ${active ? 'flex flex-col' : 'hidden'}`}>
       {children}
     </div>
   )

@@ -57,13 +57,13 @@ export default function WelcomePackageTab() {
   }, [])
 
   useEffect(() => {
-    load()
+    void load()
   }, [load])
 
-  const addItem = () => setItems(xs => [...xs, { template: '', qty: 1, quality: 0 }])
-  const removeItem = (i: number) => setItems(xs => xs.filter((_, idx) => idx !== i))
+  const addItem = () => setItems((xs) => [...xs, { template: '', qty: 1, quality: 0 }])
+  const removeItem = (i: number) => setItems((xs) => xs.filter((_, idx) => idx !== i))
   const setItem = (i: number, patch: Partial<WelcomePackageItem>) =>
-    setItems(xs => xs.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
+    setItems((xs) => xs.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
 
   const save = async () => {
     setSaving(true)
@@ -115,7 +115,17 @@ export default function WelcomePackageTab() {
         subtitle="Auto-grants a configured item package to every player once, on first login."
       >
         <Button size="sm" variant="ghost" onPress={load} isDisabled={loading}>
-          {loading ? <Spinner size="sm" color="current" /> : (<><Icon name="refresh-cw" /> Refresh</>)}
+          {loading
+            ? (
+                <Spinner size="sm" color="current" />
+              )
+            : (
+                <>
+                  <Icon name="refresh-cw" />
+                  {' '}
+                  Refresh
+                </>
+              )}
         </Button>
       </PageHeader>
 
@@ -126,7 +136,7 @@ export default function WelcomePackageTab() {
           <input
             type="checkbox"
             checked={enabled}
-            onChange={e => setEnabled(e.target.checked)}
+            onChange={(e) => setEnabled(e.target.checked)}
             className="h-4 w-4 accent-accent"
           />
           <span className="text-sm text-foreground">Enabled</span>
@@ -137,7 +147,7 @@ export default function WelcomePackageTab() {
 
         <div className="grid grid-cols-2 gap-3 mt-3 max-w-md">
           <Field label="Package version" hint="bump to re-issue to everyone">
-            <input className={`${INPUT_CLS} w-full`} value={version} onChange={e => setVersion(e.target.value)} />
+            <input className={`${INPUT_CLS} w-full`} value={version} onChange={(e) => setVersion(e.target.value)} />
           </Field>
           <Field label="Scan interval (seconds)" hint="min 5s">
             <input
@@ -145,7 +155,7 @@ export default function WelcomePackageTab() {
               type="number"
               min={5}
               value={scanSecs}
-              onChange={e => setScanSecs(Number(e.target.value))}
+              onChange={(e) => setScanSecs(Number(e.target.value))}
             />
           </Field>
         </div>
@@ -169,13 +179,12 @@ export default function WelcomePackageTab() {
               <p className="text-xs text-muted">No items yet. Add at least one to enable the package.</p>
             )}
             {items.map((it, i) => (
-              // eslint-disable-next-line react/no-array-index-key
               <div key={i} className="flex items-center gap-2">
                 <input
                   className={`${INPUT_CLS} flex-1`}
-                  placeholder="Item template (e.g. PlantFiber)"
+                  placeholder="Item template (e.g. AluminiumBar)"
                   value={it.template}
-                  onChange={e => setItem(i, { template: e.target.value })}
+                  onChange={(e) => setItem(i, { template: e.target.value })}
                 />
                 <input
                   className={`${INPUT_CLS} w-20`}
@@ -183,7 +192,7 @@ export default function WelcomePackageTab() {
                   min={1}
                   title="Quantity"
                   value={it.qty}
-                  onChange={e => setItem(i, { qty: Number(e.target.value) })}
+                  onChange={(e) => setItem(i, { qty: Number(e.target.value) })}
                 />
                 <input
                   className={`${INPUT_CLS} w-20`}
@@ -191,7 +200,7 @@ export default function WelcomePackageTab() {
                   min={0}
                   title="Quality (0 = base, live RMQ grant)"
                   value={it.quality}
-                  onChange={e => setItem(i, { quality: Number(e.target.value) })}
+                  onChange={(e) => setItem(i, { quality: Number(e.target.value) })}
                 />
                 <Button size="sm" variant="ghost" onPress={() => removeItem(i)} aria-label="Remove item">
                   <Icon name="trash-2" />
@@ -203,10 +212,30 @@ export default function WelcomePackageTab() {
 
         <div className="flex items-center gap-2 mt-4">
           <Button size="sm" variant="secondary" onPress={save} isDisabled={saving}>
-            {saving ? <Spinner size="sm" color="current" /> : (<><Icon name="save" /> Save</>)}
+            {saving
+              ? (
+                  <Spinner size="sm" color="current" />
+                )
+              : (
+                  <>
+                    <Icon name="save" />
+                    {' '}
+                    Save
+                  </>
+                )}
           </Button>
           <Button size="sm" variant="outline" onPress={runNow} isDisabled={running}>
-            {running ? <Spinner size="sm" color="current" /> : (<><Icon name="play" /> Run now</>)}
+            {running
+              ? (
+                  <Spinner size="sm" color="current" />
+                )
+              : (
+                  <>
+                    <Icon name="play" />
+                    {' '}
+                    Run now
+                  </>
+                )}
           </Button>
         </div>
       </Panel>
@@ -222,7 +251,7 @@ export default function WelcomePackageTab() {
           className="min-h-0 max-h-full mt-1"
           columns={GRANT_COLUMNS}
           rows={grants}
-          rowId={g => `${g.fls_id}:${g.package_version}:${g.account_id}`}
+          rowId={(g) => `${g.fls_id}:${g.package_version}:${g.account_id}`}
           initialSort={{ column: 'updated', direction: 'descending' }}
           sortValue={(g, k) => {
             switch (k) {
@@ -279,7 +308,13 @@ function Field({ label, hint, children }: { label: string, hint?: string, childr
     <div className="flex flex-col gap-0.5">
       <label className="text-xs text-muted">
         {label}
-        {hint && <span className="text-muted/60 ml-1">{`(${hint})`}</span>}
+        {hint && (
+          <span className="text-muted/60 ml-1">
+            (
+            {hint}
+            )
+          </span>
+        )}
       </label>
       {children}
     </div>

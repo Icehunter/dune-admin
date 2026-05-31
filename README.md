@@ -148,6 +148,22 @@ Config edits in the Market tab apply directly to the live runtime config. A full
 
 See [ADR 0002](docs/adr/0002-embed-market-bot-as-library.md) and [ADR 0004](docs/adr/0004-in-process-bot-lifecycle.md) for the design rationale.
 
+### Welcome Kits
+
+An opt-in feature that auto-grants a configured item package to every player **once, on first login**. Manage it in the **Welcome Kits** tab, or in `config.yaml`:
+
+```yaml
+welcome_package_enabled: true
+welcome_package_scan_interval_secs: 30
+welcome_package_active_version: v1
+welcome_packages:
+  - version: v1
+    items:
+      - { template: AluminiumBar, qty: 5, quality: 0 }
+```
+
+dune-admin keeps a library of named packages plus an active-version pointer. An in-process scanner grants the active package once per `(player, version)`, tracked in a persistent SQLite ledger at `~/.dune-admin/welcome-package.db` (so a restart never re-grants). Bumping the active version re-issues to everyone. It defaults **off** — it mutates every player's inventory — and delivers items through the same live-RMQ + DB-fallback path as manual give-items.
+
 ### SSH key lookup order
 
 When `SSH_KEY` / `-key` is not set, dune-admin checks these paths in order:
@@ -162,17 +178,32 @@ When `SSH_KEY` / `-key` is not set, dune-admin checks these paths in order:
 
 ## Tabs
 
+Tabs are organised into a grouped left sidebar.
+
+**Operations**
+
 | Tab | What it does |
 |-----|--------------|
 | **Battlegroup** | Start/stop game-server pods; stream container logs; manage backups |
-| **Players** | Browse players; view/edit inventory, specs, currency, XP, faction rep; journey nodes; teleport; history |
-| **Database** | Run raw SQL against the game DB; browse tables |
 | **Logs** | Stream live logs; view cheat detection events |
-| **Blueprints** | View all unlockable blueprint definitions |
-| **Bases** | Browse and export player base placements |
+| **Database** | Run raw SQL against the game DB; browse tables |
+| **Server Settings** | Edit UE5 server settings; writes go to `UserGame.ini` in a managed block |
+
+**Player World**
+
+| Tab | What it does |
+|-----|--------------|
+| **Players** | Browse players; view/edit inventory, specs, currency, XP, faction rep; journey nodes; teleport; session history |
 | **Storage** | Browse server-side storage containers |
-| **Server** | Edit UE5 server settings; writes go to `UserGame.ini` in a managed block |
-| **Market** | View live market listings; control the embedded market bot |
+| **Bases** | Browse and export player base placements |
+| **Blueprints** | View all unlockable blueprint definitions |
+
+**Economy**
+
+| Tab | What it does |
+|-----|--------------|
+| **Market Bot** | View live market listings; control the embedded market bot |
+| **Welcome Kits** | Auto-grant a configured item package to every player once, on first login |
 
 ---
 

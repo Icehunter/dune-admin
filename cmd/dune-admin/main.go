@@ -180,10 +180,13 @@ type appConfig struct {
 	// Auto-grants a configured item package to every player once, on first
 	// login. Defaults OFF — it mutates every player's inventory, so it must be
 	// explicitly opted into. Bump the version to re-issue to everyone.
-	WelcomePackageEnabled  *bool                `yaml:"welcome_package_enabled"            json:"welcome_package_enabled"`
-	WelcomePackageVersion  string               `yaml:"welcome_package_version"            json:"welcome_package_version"`
-	WelcomePackageScanSecs int                  `yaml:"welcome_package_scan_interval_secs" json:"welcome_package_scan_interval_secs"`
-	WelcomePackageItems    []welcomePackageItem `yaml:"welcome_package_items"              json:"welcome_package_items"`
+	WelcomePackageEnabled       *bool            `yaml:"welcome_package_enabled"            json:"welcome_package_enabled"`
+	WelcomePackageScanSecs      int              `yaml:"welcome_package_scan_interval_secs" json:"welcome_package_scan_interval_secs"`
+	WelcomePackageActiveVersion string           `yaml:"welcome_package_active_version"     json:"welcome_package_active_version"`
+	WelcomePackages             []welcomePackage `yaml:"welcome_packages"                   json:"welcome_packages"`
+	// Legacy pre-library fields, migrated into WelcomePackages on load.
+	WelcomePackageVersion string               `yaml:"welcome_package_version,omitempty" json:"welcome_package_version,omitempty"`
+	WelcomePackageItems   []welcomePackageItem `yaml:"welcome_package_items,omitempty"   json:"welcome_package_items,omitempty"`
 }
 
 // marketBotEnabled returns the effective bot-enabled flag. Missing yaml key →
@@ -216,11 +219,24 @@ func startWelcomePackageScanner(cfg appConfig) context.CancelFunc {
 	}
 	welcomeStoreDB = store
 
+	packages := cfg.WelcomePackages
+	active := cfg.WelcomePackageActiveVersion
+	// Migrate a legacy single-package config into the library on first load.
+	if len(packages) == 0 && len(cfg.WelcomePackageItems) > 0 {
+		v := cfg.WelcomePackageVersion
+		if v == "" {
+			v = "v1"
+		}
+		packages = []welcomePackage{{Version: v, Items: cfg.WelcomePackageItems}}
+		if active == "" {
+			active = v
+		}
+	}
 	setWelcomeRuntime(buildWelcomeRuntime(
 		welcomePackageEnabled(cfg),
-		cfg.WelcomePackageVersion,
+		active,
 		cfg.WelcomePackageScanSecs,
-		cfg.WelcomePackageItems,
+		packages,
 	))
 
 	ctx, cancel := context.WithCancel(context.Background())

@@ -121,11 +121,36 @@ func welcomeGrantViaGiveItems(ctx context.Context, pawnID int64, flsID string, i
 
 // ── live runtime config (updatable via the API without a restart) ───────────
 
+// welcomePackage is one named, versioned item set in the library. The operator
+// can keep several and pick which one is active (granted).
+type welcomePackage struct {
+	Version string               `yaml:"version" json:"version"`
+	Items   []welcomePackageItem `yaml:"items"   json:"items"`
+}
+
 type welcomePackageRuntime struct {
-	enabled  bool
-	version  string
-	items    []welcomePackageItem
-	interval time.Duration
+	enabled       bool
+	interval      time.Duration
+	activeVersion string
+	packages      []welcomePackage
+}
+
+// active returns the package matching activeVersion, if present.
+func (rt welcomePackageRuntime) active() (welcomePackage, bool) {
+	i := findPackage(rt.packages, rt.activeVersion)
+	if i < 0 {
+		return welcomePackage{}, false
+	}
+	return rt.packages[i], true
+}
+
+func findPackage(packages []welcomePackage, version string) int {
+	for i, p := range packages {
+		if p.Version == version {
+			return i
+		}
+	}
+	return -1
 }
 
 var (
@@ -149,15 +174,22 @@ func getWelcomeRuntime() welcomePackageRuntime {
 // buildWelcomeRuntime normalizes raw config (version default, interval clamp)
 // into a runtime value. Shared by startup and the config API so both apply the
 // same defaults.
-func buildWelcomeRuntime(enabled bool, version string, scanSecs int, items []welcomePackageItem) welcomePackageRuntime {
-	if strings.TrimSpace(version) == "" {
-		version = "v1"
+func buildWelcomeRuntime(enabled bool, activeVersion string, scanSecs int, packages []welcomePackage) welcomePackageRuntime {
+	if packages == nil {
+		packages = []welcomePackage{}
+	}
+	// Default the active version to the first package when unset or unknown.
+	if findPackage(packages, activeVersion) < 0 {
+		activeVersion = ""
+		if len(packages) > 0 {
+			activeVersion = packages[0].Version
+		}
 	}
 	interval := time.Duration(scanSecs) * time.Second
 	if interval < welcomeMinScanInterval {
 		interval = welcomeDefaultScanInterval
 	}
-	return welcomePackageRuntime{enabled: enabled, version: version, items: items, interval: interval}
+	return welcomePackageRuntime{enabled: enabled, interval: interval, activeVersion: activeVersion, packages: packages}
 }
 
 const welcomeMinScanInterval = 5 * time.Second
@@ -189,10 +221,14 @@ func welcomePackageScanTick(ctx context.Context) {
 	if !rt.enabled || welcomeStoreDB == nil {
 		return
 	}
-	if err := validateWelcomeItems(rt.items); err != nil {
-		return // nothing valid to grant yet; stay quiet
+	pkg, ok := rt.active()
+	if !ok {
+		return // no active package selected
 	}
-	g, f, _, err := welcomePackageScanOnce(ctx, rt.version, rt.items, welcomeScanDeps{
+	if err := validateWelcomeItems(pkg.Items); err != nil {
+		return // active package has nothing valid to grant yet; stay quiet
+	}
+	g, f, _, err := welcomePackageScanOnce(ctx, pkg.Version, pkg.Items, welcomeScanDeps{
 		listAccounts: listWelcomeOnlineAccounts,
 		grant:        welcomeGrantViaGiveItems,
 		store:        welcomeStoreDB,
@@ -202,6 +238,6 @@ func welcomePackageScanTick(ctx context.Context) {
 		return
 	}
 	if g > 0 || f > 0 {
-		log.Printf("welcome-package: granted=%d failed=%d version=%q", g, f, rt.version)
+		log.Printf("welcome-package: granted=%d failed=%d version=%q", g, f, pkg.Version)
 	}
 }

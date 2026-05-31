@@ -7,33 +7,57 @@ import (
 
 func TestBuildWelcomeRuntime(t *testing.T) {
 	t.Parallel()
+	pkgs := []welcomePackage{{Version: "v1"}, {Version: "v2"}}
 	tests := []struct {
 		name         string
 		enabled      bool
-		version      string
+		active       string
 		scanSecs     int
-		wantVersion  string
+		packages     []welcomePackage
+		wantActive   string
 		wantInterval time.Duration
 	}{
-		{"defaults version + interval", true, "", 0, "v1", welcomeDefaultScanInterval},
-		{"interval below floor is clamped", true, "v2", 1, "v2", welcomeDefaultScanInterval},
-		{"explicit interval respected", false, "season3", 120, "season3", 120 * time.Second},
-		{"min interval honored", true, "v1", 5, "v1", 5 * time.Second},
+		{"defaults active to first package", true, "", 0, pkgs, "v1", welcomeDefaultScanInterval},
+		{"unknown active falls back to first", true, "vX", 0, pkgs, "v1", welcomeDefaultScanInterval},
+		{"explicit active respected", true, "v2", 120, pkgs, "v2", 120 * time.Second},
+		{"interval below floor is clamped", false, "v1", 1, pkgs, "v1", welcomeDefaultScanInterval},
+		{"min interval honored", true, "v2", 5, pkgs, "v2", 5 * time.Second},
+		{"no packages → empty active", true, "", 60, nil, "", 60 * time.Second},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			rt := buildWelcomeRuntime(tt.enabled, tt.version, tt.scanSecs, nil)
+			rt := buildWelcomeRuntime(tt.enabled, tt.active, tt.scanSecs, tt.packages)
 			if rt.enabled != tt.enabled {
 				t.Fatalf("enabled: want %v, got %v", tt.enabled, rt.enabled)
 			}
-			if rt.version != tt.wantVersion {
-				t.Fatalf("version: want %q, got %q", tt.wantVersion, rt.version)
+			if rt.activeVersion != tt.wantActive {
+				t.Fatalf("activeVersion: want %q, got %q", tt.wantActive, rt.activeVersion)
 			}
 			if rt.interval != tt.wantInterval {
 				t.Fatalf("interval: want %v, got %v", tt.wantInterval, rt.interval)
 			}
 		})
+	}
+}
+
+func TestWelcomeRuntimeActive(t *testing.T) {
+	t.Parallel()
+	rt := buildWelcomeRuntime(true, "v2", 30, []welcomePackage{
+		{Version: "v1", Items: []welcomePackageItem{{Template: "A", Qty: 1}}},
+		{Version: "v2", Items: []welcomePackageItem{{Template: "B", Qty: 2}}},
+	})
+	p, ok := rt.active()
+	if !ok {
+		t.Fatal("expected an active package")
+	}
+	if p.Version != "v2" || len(p.Items) != 1 || p.Items[0].Template != "B" {
+		t.Fatalf("active package wrong: %+v", p)
+	}
+
+	empty := buildWelcomeRuntime(true, "", 30, nil)
+	if _, ok := empty.active(); ok {
+		t.Fatal("expected no active package when library is empty")
 	}
 }

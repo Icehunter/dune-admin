@@ -10,25 +10,26 @@ import (
 )
 
 // welcomeConfigResponse is the shape returned by the config endpoints and
-// consumed by the WelcomePackage tab.
+// consumed by the WelcomePackage tab. It carries the whole package library plus
+// the active-version pointer.
 type welcomeConfigResponse struct {
-	Enabled          bool                 `json:"enabled"`
-	Version          string               `json:"version"`
-	ScanIntervalSecs int                  `json:"scan_interval_secs"`
-	Items            []welcomePackageItem `json:"items"`
+	Enabled          bool             `json:"enabled"`
+	ScanIntervalSecs int              `json:"scan_interval_secs"`
+	ActiveVersion    string           `json:"active_version"`
+	Packages         []welcomePackage `json:"packages"`
 }
 
 func currentWelcomeConfig() welcomeConfigResponse {
 	rt := getWelcomeRuntime()
-	items := rt.items
-	if items == nil {
-		items = []welcomePackageItem{}
+	pkgs := rt.packages
+	if pkgs == nil {
+		pkgs = []welcomePackage{}
 	}
 	return welcomeConfigResponse{
 		Enabled:          rt.enabled,
-		Version:          rt.version,
 		ScanIntervalSecs: int(rt.interval / time.Second),
-		Items:            items,
+		ActiveVersion:    rt.activeVersion,
+		Packages:         pkgs,
 	}
 }
 
@@ -56,16 +57,22 @@ func handlePutWelcomeConfig(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, http.StatusBadRequest)
 		return
 	}
-	// Only require a valid item list when enabling — an operator can save a
-	// disabled draft with an empty list.
+
+	rt := buildWelcomeRuntime(req.Enabled, req.ActiveVersion, req.ScanIntervalSecs, req.Packages)
+
+	// Only require a valid active package when enabling — an operator can save a
+	// disabled draft (e.g. no packages yet, or a half-built one).
 	if req.Enabled {
-		if err := validateWelcomeItems(req.Items); err != nil {
+		pkg, ok := rt.active()
+		if !ok {
+			jsonErr(w, fmt.Errorf("select an active package version before enabling"), http.StatusBadRequest)
+			return
+		}
+		if err := validateWelcomeItems(pkg.Items); err != nil {
 			jsonErr(w, err, http.StatusBadRequest)
 			return
 		}
 	}
-
-	rt := buildWelcomeRuntime(req.Enabled, req.Version, req.ScanIntervalSecs, req.Items)
 
 	// Persist the welcome fields onto the in-memory config and write it back.
 	// loadedConfig holds real (unmasked) secrets, so writing it preserves every
@@ -73,9 +80,12 @@ func handlePutWelcomeConfig(w http.ResponseWriter, r *http.Request) {
 	cfg := loadedConfig
 	enabled := rt.enabled
 	cfg.WelcomePackageEnabled = &enabled
-	cfg.WelcomePackageVersion = rt.version
 	cfg.WelcomePackageScanSecs = int(rt.interval / time.Second)
-	cfg.WelcomePackageItems = req.Items
+	cfg.WelcomePackageActiveVersion = rt.activeVersion
+	cfg.WelcomePackages = req.Packages
+	// Clear the legacy single-package fields so they can't shadow the library.
+	cfg.WelcomePackageVersion = ""
+	cfg.WelcomePackageItems = nil
 	if err := writeConfigFile(cfg); err != nil {
 		jsonErr(w, err, http.StatusInternalServerError)
 		return
@@ -163,11 +173,16 @@ func handleRunWelcomePackage(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	rt := getWelcomeRuntime()
-	if err := validateWelcomeItems(rt.items); err != nil {
+	pkg, ok := rt.active()
+	if !ok {
+		jsonErr(w, fmt.Errorf("no active package selected"), http.StatusBadRequest)
+		return
+	}
+	if err := validateWelcomeItems(pkg.Items); err != nil {
 		jsonErr(w, err, http.StatusBadRequest)
 		return
 	}
-	g, f, s, err := welcomePackageScanOnce(context.Background(), rt.version, rt.items, welcomeScanDeps{
+	g, f, s, err := welcomePackageScanOnce(context.Background(), pkg.Version, pkg.Items, welcomeScanDeps{
 		listAccounts: listWelcomeOnlineAccounts,
 		grant:        welcomeGrantViaGiveItems,
 		store:        welcomeStoreDB,

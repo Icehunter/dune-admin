@@ -456,11 +456,16 @@ export interface WelcomePackageItem {
   quality: number
 }
 
+export interface WelcomePackage {
+  version: string
+  items: WelcomePackageItem[]
+}
+
 export interface WelcomePackageConfig {
   enabled: boolean
-  version: string
   scan_interval_secs: number
-  items: WelcomePackageItem[]
+  active_version: string
+  packages: WelcomePackage[]
 }
 
 export interface WelcomeGrantRecord {

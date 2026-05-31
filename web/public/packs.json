@@ -492,7 +492,7 @@
         },
         {
           "template": "BuggyLocomotion_3",
-          "qty": 1,
+          "qty": 4,
           "quality": 0
         },
         {
@@ -574,7 +574,7 @@
         },
         {
           "template": "BuggyLocomotion_4",
-          "qty": 1,
+          "qty": 4,
           "quality": 0
         },
         {
@@ -661,7 +661,7 @@
         },
         {
           "template": "BuggyLocomotion_5",
-          "qty": 1,
+          "qty": 4,
           "quality": 0
         },
         {
@@ -692,11 +692,6 @@
           "quality": 0
         },
         {
-          "template": "BuggyBoost_7",
-          "qty": 1,
-          "quality": 0
-        },
-        {
           "template": "BuggyBoost_Unique_LessHeat_6",
           "qty": 1,
           "quality": 0
@@ -707,17 +702,7 @@
           "quality": 0
         },
         {
-          "template": "BuggyChassis_7",
-          "qty": 1,
-          "quality": 0
-        },
-        {
           "template": "BuggyEngine_6",
-          "qty": 1,
-          "quality": 0
-        },
-        {
-          "template": "BuggyEngine_7",
           "qty": 1,
           "quality": 0
         },
@@ -742,17 +727,7 @@
           "quality": 0
         },
         {
-          "template": "BuggyHullBack_7",
-          "qty": 1,
-          "quality": 0
-        },
-        {
           "template": "BuggyHullBackExtra_6",
-          "qty": 1,
-          "quality": 0
-        },
-        {
-          "template": "BuggyHullBackExtra_7",
           "qty": 1,
           "quality": 0
         },
@@ -762,17 +737,7 @@
           "quality": 0
         },
         {
-          "template": "BuggyHullFront_7",
-          "qty": 1,
-          "quality": 0
-        },
-        {
           "template": "BuggyInventory_6",
-          "qty": 1,
-          "quality": 0
-        },
-        {
-          "template": "BuggyInventory_7",
           "qty": 1,
           "quality": 0
         },
@@ -788,12 +753,7 @@
         },
         {
           "template": "BuggyLocomotion_6",
-          "qty": 1,
-          "quality": 0
-        },
-        {
-          "template": "BuggyLocomotion_7",
-          "qty": 1,
+          "qty": 4,
           "quality": 0
         },
         {
@@ -823,6 +783,11 @@
       "category": "Buggy",
       "tier": 0,
       "items": [
+        {
+          "template": "BuggyBoost_0",
+          "qty": 1,
+          "quality": 0
+        },
         {
           "template": "BuggyChassis_0",
           "qty": 1,
@@ -854,13 +819,18 @@
           "quality": 0
         },
         {
+          "template": "BuggyInventory_0",
+          "qty": 1,
+          "quality": 0
+        },
+        {
           "template": "BuggyLauncher_0",
           "qty": 1,
           "quality": 0
         },
         {
           "template": "BuggyLocomotion_0",
-          "qty": 1,
+          "qty": 4,
           "quality": 0
         },
         {
@@ -1356,7 +1326,7 @@
         },
         {
           "template": "SandbikeLocomotion_0",
-          "qty": 1,
+          "qty": 3,
           "quality": 0
         },
         {
@@ -1418,7 +1388,7 @@
         },
         {
           "template": "SandbikeLocomotion_2",
-          "qty": 1,
+          "qty": 3,
           "quality": 0
         },
         {
@@ -1475,7 +1445,7 @@
         },
         {
           "template": "SandbikeLocomotion_3",
-          "qty": 1,
+          "qty": 3,
           "quality": 0
         },
         {
@@ -1527,7 +1497,7 @@
         },
         {
           "template": "SandbikeLocomotion_4",
-          "qty": 1,
+          "qty": 3,
           "quality": 0
         },
         {
@@ -1579,7 +1549,7 @@
         },
         {
           "template": "SandbikeLocomotion_5",
-          "qty": 1,
+          "qty": 3,
           "quality": 0
         },
         {
@@ -1600,11 +1570,6 @@
           "quality": 0
         },
         {
-          "template": "SandbikeBoost_7",
-          "qty": 1,
-          "quality": 0
-        },
-        {
           "template": "SandbikeBoost_Unique_LessHeat_6",
           "qty": 1,
           "quality": 0
@@ -1615,17 +1580,7 @@
           "quality": 0
         },
         {
-          "template": "SandbikeChassis_7",
-          "qty": 1,
-          "quality": 0
-        },
-        {
           "template": "SandbikeEngine_6",
-          "qty": 1,
-          "quality": 0
-        },
-        {
-          "template": "SandbikeEngine_7",
           "qty": 1,
           "quality": 0
         },
@@ -1650,28 +1605,8 @@
           "quality": 0
         },
         {
-          "template": "SandbikeHull_7",
-          "qty": 1,
-          "quality": 0
-        },
-        {
-          "template": "SandbikeInventory_7",
-          "qty": 1,
-          "quality": 0
-        },
-        {
           "template": "SandbikeLocomotion_6",
-          "qty": 1,
-          "quality": 0
-        },
-        {
-          "template": "SandbikeLocomotion_7",
-          "qty": 1,
-          "quality": 0
-        },
-        {
-          "template": "SandbikeScanner_7",
-          "qty": 1,
+          "qty": 3,
           "quality": 0
         },
         {
@@ -1718,7 +1653,7 @@
         },
         {
           "template": "SandbikeLocomotion_1",
-          "qty": 1,
+          "qty": 3,
           "quality": 0
         },
         {
@@ -1817,7 +1752,7 @@
         },
         {
           "template": "TreadwheelLocomotion_4",
-          "qty": 1,
+          "qty": 2,
           "quality": 0
         },
         {
@@ -1864,7 +1799,7 @@
         },
         {
           "template": "TreadwheelLocomotion_5",
-          "qty": 1,
+          "qty": 2,
           "quality": 0
         },
         {
@@ -1916,7 +1851,7 @@
         },
         {
           "template": "TreadwheelLocomotion_6",
-          "qty": 1,
+          "qty": 2,
           "quality": 0
         },
         {

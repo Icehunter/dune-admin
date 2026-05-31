@@ -144,7 +144,7 @@ export default function WelcomePackageTab() {
   return (
     <div className="flex flex-col h-full gap-3 min-h-0 overflow-auto">
       <PageHeader
-        title="Welcome Package"
+        title="Welcome Kits"
         subtitle="Auto-grants a configured item package to every player once, on first login."
       >
         <Button size="sm" variant="ghost" onPress={load} isDisabled={loading}>

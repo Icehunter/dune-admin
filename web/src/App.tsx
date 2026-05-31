@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { Show, SignInButton, UserButton, useAuth } from '@clerk/react'
-import { Button, Chip, Modal, Spinner, Toast, Tabs, toast } from '@heroui/react'
+import { Button, Chip, Modal, Spinner, Toast, toast } from '@heroui/react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStatus } from './hooks/useStatus'
 import SettingsConfigForm from './components/SettingsConfigForm'
@@ -14,7 +14,7 @@ import StorageTab from './tabs/StorageTab'
 import ServerSettingsTab from './tabs/ServerSettingsTab'
 import MarketTab from './tabs/MarketTab'
 import WelcomePackageTab from './tabs/WelcomePackageTab'
-import { Icon } from './dune-ui'
+import { Icon, SideNav } from './dune-ui'
 import { api } from './api/client'
 import type { UpdateCheckResult } from './api/client'
 
@@ -37,6 +37,36 @@ function currentTabFromPath(pathname: string): TabId {
   const seg = pathname.replace(/^\//, '').split('/')[0]
   return (TAB_IDS as readonly string[]).includes(seg) ? (seg as TabId) : DEFAULT_TAB
 }
+
+// Left-sidebar navigation, grouped to mirror the product's structure
+// (operator tooling today; a Player Portal group lands here later).
+const NAV_GROUPS: { title: string, items: { key: TabId, label: string }[] }[] = [
+  {
+    title: 'Operations',
+    items: [
+      { key: 'battlegroup', label: 'Battlegroup' },
+      { key: 'logs', label: 'Logs' },
+      { key: 'database', label: 'Database' },
+      { key: 'server', label: 'Server Settings' },
+    ],
+  },
+  {
+    title: 'Player World',
+    items: [
+      { key: 'players', label: 'Players' },
+      { key: 'storage', label: 'Storage' },
+      { key: 'bases', label: 'Bases' },
+      { key: 'blueprints', label: 'Blueprints' },
+    ],
+  },
+  {
+    title: 'Economy',
+    items: [
+      { key: 'market', label: 'Market' },
+      { key: 'welcome', label: 'Welcome Kits' },
+    ],
+  },
+]
 
 const hasClerk = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -320,89 +350,64 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
         </Modal.Backdrop>
       </Modal>
 
-      {/* Tabs */}
-      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        <Tabs
-          selectedKey={currentTab}
-          onSelectionChange={(k) => navigate(`/${k}`)}
-          className="flex-1 flex flex-col overflow-hidden min-h-0"
-        >
-          <Tabs.ListContainer className="px-4 pt-2 shrink-0">
-            <Tabs.List aria-label="Admin sections" className="gap-1">
-              <Tabs.Tab id="battlegroup">
-                Battlegroup
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="players">
-                Players
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="database">
-                Database
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="logs">
-                Logs
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="blueprints">
-                Blueprints
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="bases">
-                Bases
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="storage">
-                Storage
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="server">
-                Server
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="market">
-                Market
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="welcome">
-                Welcome
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            </Tabs.List>
-          </Tabs.ListContainer>
-          <Tabs.Panel id="battlegroup" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+      {/* Body: grouped left sidebar + content. All tabs stay mounted (inactive
+          hidden) so per-tab state and isActive auto-refresh behavior persist. */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        <nav className="w-60 shrink-0 flex flex-col gap-3 p-3 overflow-y-auto">
+          {NAV_GROUPS.map((group) => (
+            <SideNav
+              key={group.title}
+              width="w-full"
+              title={group.title}
+              items={group.items}
+              active={currentTab}
+              onSelect={(k) => navigate(`/${k}`)}
+            />
+          ))}
+        </nav>
+        <main className="flex-1 overflow-hidden min-h-0">
+          <TabPane active={currentTab === 'battlegroup'}>
             <BattlegroupTab isActive={currentTab === 'battlegroup'} />
-          </Tabs.Panel>
-          <Tabs.Panel id="players" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+          </TabPane>
+          <TabPane active={currentTab === 'players'}>
             <PlayersTab isActive={currentTab === 'players'} />
-          </Tabs.Panel>
-          <Tabs.Panel id="database" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+          </TabPane>
+          <TabPane active={currentTab === 'database'}>
             <DatabaseTab />
-          </Tabs.Panel>
-          <Tabs.Panel id="logs" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+          </TabPane>
+          <TabPane active={currentTab === 'logs'}>
             <LogsTab />
-          </Tabs.Panel>
-          <Tabs.Panel id="blueprints" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+          </TabPane>
+          <TabPane active={currentTab === 'blueprints'}>
             <BlueprintsTab isSignedIn={isSignedIn} />
-          </Tabs.Panel>
-          <Tabs.Panel id="bases" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+          </TabPane>
+          <TabPane active={currentTab === 'bases'}>
             <BasesTab isSignedIn={isSignedIn} />
-          </Tabs.Panel>
-          <Tabs.Panel id="storage" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+          </TabPane>
+          <TabPane active={currentTab === 'storage'}>
             <StorageTab />
-          </Tabs.Panel>
-          <Tabs.Panel id="server" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+          </TabPane>
+          <TabPane active={currentTab === 'server'}>
             <ServerSettingsTab />
-          </Tabs.Panel>
-          <Tabs.Panel id="market" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+          </TabPane>
+          <TabPane active={currentTab === 'market'}>
             <MarketTab />
-          </Tabs.Panel>
-          <Tabs.Panel id="welcome" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+          </TabPane>
+          <TabPane active={currentTab === 'welcome'}>
             <WelcomePackageTab />
-          </Tabs.Panel>
-        </Tabs>
+          </TabPane>
+        </main>
       </div>
+    </div>
+  )
+}
+
+// TabPane keeps every tab mounted and toggles visibility, preserving in-tab
+// state and the isActive auto-refresh contract when switching via the sidebar.
+function TabPane({ active, children }: { active: boolean, children: ReactNode }) {
+  return (
+    <div className={`h-full min-h-0 p-4 ${active ? 'flex flex-col' : 'hidden'}`}>
+      {children}
     </div>
   )
 }

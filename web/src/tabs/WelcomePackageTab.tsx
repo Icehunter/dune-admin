@@ -165,7 +165,7 @@ export default function WelcomePackageTab() {
       <Panel>
         <SectionLabel>Configuration</SectionLabel>
 
-        <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
+        <label className="flex items-center gap-2 mt-1 cursor-pointer select-none w-fit">
           <input
             type="checkbox"
             checked={enabled}
@@ -173,15 +173,16 @@ export default function WelcomePackageTab() {
             className="h-4 w-4 accent-accent"
           />
           <span className="text-sm text-foreground">Enabled</span>
-          <span className="text-xs text-muted">
-            — grants the active package to online players who haven't received that version.
-          </span>
         </label>
+        <p className="text-xs text-muted mt-1">
+          Grants the active package to online players who haven't received that version.
+        </p>
 
-        <div className="grid grid-cols-2 gap-3 mt-3 max-w-md">
-          <Field label="Active version (granted)" hint="what players receive">
+        <div className="flex flex-wrap items-end gap-4 mt-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted">Active version</label>
             <select
-              className={`${INPUT_CLS} w-full`}
+              className={`${INPUT_CLS} w-48`}
               value={activeVersion}
               onChange={(e) => setActiveVersion(e.target.value)}
             >
@@ -190,48 +191,50 @@ export default function WelcomePackageTab() {
                 <option key={p.version} value={p.version}>{p.version}</option>
               ))}
             </select>
-          </Field>
-          <Field label="Scan interval (seconds)" hint="min 5s">
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted">Scan interval (sec)</label>
             <input
-              className={`${INPUT_CLS} w-full`}
+              className={`${INPUT_CLS} w-28`}
               type="number"
               min={5}
               value={scanSecs}
               onChange={(e) => setScanSecs(Number(e.target.value))}
             />
-          </Field>
+          </div>
         </div>
       </Panel>
 
       <Panel>
         <SectionLabel>Packages</SectionLabel>
 
-        <div className="flex flex-wrap items-end gap-3 mt-1">
-          <Field label="Editing version">
-            <select
-              className={`${INPUT_CLS} w-44`}
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-            >
-              <option value="">— select —</option>
-              {packages.map((p) => (
-                <option key={p.version} value={p.version}>
-                  {p.version}
-                  {p.version === activeVersion ? ' (active)' : ''}
-                </option>
-              ))}
-            </select>
-          </Field>
+        <div className="flex flex-col gap-3 mt-1">
+          <div className="flex items-end gap-3">
+            <Field label="Editing version">
+              <select
+                className={`${INPUT_CLS} w-44`}
+                value={selected}
+                onChange={(e) => setSelected(e.target.value)}
+              >
+                <option value="">— select —</option>
+                {packages.map((p) => (
+                  <option key={p.version} value={p.version}>
+                    {p.version}
+                    {p.version === activeVersion ? ' (active)' : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {selected && (
+              <Button size="sm" variant="ghost" onPress={() => deleteVersion(selected)}>
+                <Icon name="trash-2" />
+                {' '}
+                Delete version
+              </Button>
+            )}
+          </div>
 
-          {selected && (
-            <Button size="sm" variant="ghost" onPress={() => deleteVersion(selected)}>
-              <Icon name="trash-2" />
-              {' '}
-              Delete version
-            </Button>
-          )}
-
-          <div className="flex items-end gap-2 ml-auto">
+          <div className="flex items-end gap-2">
             <Field label="New version name">
               <input
                 className={`${INPUT_CLS} w-40`}

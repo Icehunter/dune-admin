@@ -1,6 +1,6 @@
 # dune-admin
 
-Web-based admin panel for a Dune Awakening private server. Works against any deployment topology — CubeCoders AMP with podman, k3s/k8s over SSH, Docker containers, or a bare-metal install.
+Web-based admin panel for a Dune Awakening private server. Works against any deployment topology — CubeCoders AMP (podman or docker), k3s/k8s over SSH, Docker containers, or a bare-metal install.
 
 ---
 
@@ -37,7 +37,7 @@ Pick the provider that matches your game-server topology. Each guide covers prer
 
 | Provider | Use when | Guide |
 |----------|----------|-------|
-| **amp** | Game server runs under CubeCoders AMP (host or podman container) | [SETUP_AMP.md](SETUP_AMP.md) |
+| **amp** | Game server runs under CubeCoders AMP (host, or a podman/docker container) | [SETUP_AMP.md](SETUP_AMP.md) |
 | **kubectl** | Game server runs in k3s/K8s on a remote VM | [SETUP_KUBECTL.md](SETUP_KUBECTL.md) |
 | **docker** | Game server runs as Docker containers (compose or standalone) | [SETUP_DOCKER.md](SETUP_DOCKER.md) |
 | **local** | Game server runs on the same machine — bare metal, LGSM, custom | [SETUP_LOCAL.md](SETUP_LOCAL.md) |

@@ -1,6 +1,6 @@
 # Provider: amp (CubeCoders AMP)
 
-Use this provider when your Dune server is managed by AMP (`ampinstmgr`) and RabbitMQ/Postgres live in the AMP stack (host-native or podman-backed).
+Use this provider when your Dune server is managed by AMP (`ampinstmgr`) and RabbitMQ/Postgres live in the AMP stack (host-native, or in a podman- or docker-backed container). Set `amp_container_runtime` to match (`podman` default, or `docker`).
 
 ```
 dune-admin
@@ -15,7 +15,7 @@ dune-admin
 |-------------|-------|
 | **Go 1.21+** | `brew install go` or <https://go.dev/dl/> |
 | **AMP host access** | Run dune-admin on the AMP host, or set `ssh_host` to run remotely over SSH |
-| **Sudoers grant** | dune-admin user must run `ampinstmgr`, `podman`, and `tee` as AMP user without prompts |
+| **Sudoers grant** | dune-admin user must run `ampinstmgr`, the container runtime (`podman`, or `docker` when `amp_container_runtime: docker`), and `tee` as AMP user without prompts |
 
 Example sudoers entry (adjust user/path names as needed):
 
@@ -97,4 +97,4 @@ External market-bot mode is removed; use embedded mode for AMP deployments.
 
 **INI changes fail** — verify `server_ini_dir` and that AMP user owns `UserGame.ini` / `UserEngine.ini`.
 
-**Broker commands fail** — set `broker_exec_prefix` to the exact `podman exec` wrapper used on your AMP host.
+**Broker commands fail** — set `broker_exec_prefix` to the exact `podman exec` (or `docker exec`) wrapper used on your AMP host.

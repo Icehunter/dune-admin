@@ -315,6 +315,8 @@ spec:
                 secretKeyRef:
                   name: dune-admin-secrets
                   key: BROKER_JWT_SECRET
+            - name: DUNE_ADMIN_SESSIONS_DB
+              value: /data/sessions.db
           volumeMounts:
             - name: app-rw
               mountPath: /app

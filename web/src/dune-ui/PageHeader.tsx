@@ -1,25 +1,50 @@
 import type { ReactNode } from 'react'
+import { Button, Spinner } from '@heroui/react'
+import { Icon } from './Icon'
 
 type Props = {
   title: ReactNode
   /** Optional descriptive subtitle below the title. */
   subtitle?: ReactNode
-  /** Action buttons / controls rendered on the right. */
+  /** When provided, a refresh button is rendered in the action slot. */
+  onRefresh?: () => void
+  /** Shows a spinner in the refresh button while true. */
+  loading?: boolean
+  /** Seconds until next auto-refresh — shown as a dim countdown beside "Refresh". */
+  countdown?: number
+  /** Additional action buttons / controls rendered on the right. */
   children?: ReactNode
 }
 
-/**
- * Top-of-page header: amber title (text-base) on the left, action slot on the
- * right. Matches the BattlegroupTab "Black Lagoon (sh-…) ↻ Refresh" pattern.
- */
-export function PageHeader({ title, subtitle, children }: Props) {
+export function PageHeader({ title, subtitle, onRefresh, loading, countdown, children }: Props) {
   return (
     <div className="flex items-start justify-between gap-3 shrink-0 border-b border-[#4e3411]/60 pb-3 mb-1">
       <div className="flex-1 min-w-0">
         <h2 className="text-base font-semibold text-accent truncate">{title}</h2>
         {subtitle && <p className="text-sm text-muted mt-0.5">{subtitle}</p>}
       </div>
-      {children && <div className="flex items-center gap-2 shrink-0">{children}</div>}
+      {(onRefresh != null || children) && (
+        <div className="flex items-center gap-2 shrink-0">
+          {children}
+          {onRefresh != null && (
+            <Button size="sm" variant="ghost" onPress={onRefresh} isDisabled={loading}>
+              {loading
+                ? <Spinner size="sm" color="current" />
+                : (
+                    <>
+                      {countdown != null && (
+                        <span className="w-7 text-right tabular-nums text-muted/60 text-xs">
+                          {countdown}
+                          s
+                        </span>
+                      )}
+                      <Icon name="refresh-cw" />
+                    </>
+                  )}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

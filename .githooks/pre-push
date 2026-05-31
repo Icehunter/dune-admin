@@ -84,7 +84,7 @@ if [ -n "$HAS_MD_FILES" ]; then
     TOTAL_CHECKS=$((TOTAL_CHECKS + 1))  # markdownlint
 fi
 if [ -n "$HAS_TS_FILES" ]; then
-    TOTAL_CHECKS=$((TOTAL_CHECKS + 1))  # eslint
+    TOTAL_CHECKS=$((TOTAL_CHECKS + 2))  # eslint + tsc
 fi
 CURRENT_CHECK=0
 
@@ -179,6 +179,7 @@ fi
 # TypeScript checks (only if .ts/.tsx files are in the push)
 if [ -n "$HAS_TS_FILES" ]; then
     run_check "Running ESLint (TypeScript)" "(cd web && pnpm lint)" || FAILED=1
+    run_check "TypeScript type check (tsc --noEmit)" "make tsc" || FAILED=1
 fi
 
 # Summary

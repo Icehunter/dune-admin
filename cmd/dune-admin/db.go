@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -12,7 +13,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // ── journey-node fetch cache ────────────────────────────────────────────────
@@ -1226,27 +1229,117 @@ func resolveScripCurrencyID(ctx context.Context) (int16, error) {
 	return 0, fmt.Errorf("multiple non-solaris currency IDs found (%s); pass -scripcurrency", formatCurrencyIDs(ids))
 }
 
-// factionPlayerComponentRepSQL updates ReputationAmount inside
-// actors.properties.FactionPlayerComponent.m_FactionDataArray for the matching
-// faction name. set_player_faction_reputation only updates the table; the
-// in-game faction UI reads rank from this jsonb component, so any rep write
-// that needs to be reflected in-game must also run this update.
-// $1 = controller actor id, $2 = faction name ("Atreides"/"Harkonnen"),
-// $3 = new ReputationAmount.
-const factionPlayerComponentRepSQL = `
-	UPDATE dune.actors a
+// factionDataEntry mirrors one element of
+// actors.properties.FactionPlayerComponent.m_FactionDataArray — the cache the
+// in-game faction UI reads for rank display and per-territory vendor gating.
+// Shape verified live: {"Faction":{"Name":...},"timestamp":<float>,"ReputationAmount":<int>}.
+type factionDataEntry struct {
+	Faction          factionDataName `json:"Faction"`
+	Timestamp        float64         `json:"timestamp"`
+	ReputationAmount int32           `json:"ReputationAmount"`
+}
+
+type factionDataName struct {
+	Name string `json:"Name"`
+}
+
+// greatHouseFactions are the two houses the in-game faction rank/vendor system
+// tracks. m_FactionDataArray always lists both so each territory's vendor reads
+// its own house's standing (a missing house reads as 0). Verified in-game:
+// Arrakeen reads the Atreides entry, Harko Village reads the Harkonnen one.
+var greatHouseFactions = []struct {
+	id   int16
+	name string
+}{
+	{1, "Atreides"},
+	{2, "Harkonnen"},
+}
+
+// buildFactionDataArray produces the canonical m_FactionDataArray from the
+// player's per-faction reputation. It always emits both great houses (missing
+// → 0) and ignores non-great-house factions (None=3, Smuggler=4).
+func buildFactionDataArray(reps map[int16]int32, ts float64) []factionDataEntry {
+	out := make([]factionDataEntry, 0, len(greatHouseFactions))
+	for _, h := range greatHouseFactions {
+		out = append(out, factionDataEntry{
+			Faction:          factionDataName{Name: h.name},
+			Timestamp:        ts,
+			ReputationAmount: reps[h.id],
+		})
+	}
+	return out
+}
+
+// factionComponentExecer is the minimal surface writeFactionComponent needs —
+// satisfied by *pgxpool.Pool and pgx.Tx (and stubbed in tests).
+type factionComponentExecer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+// factionComponentDB adds row reads for syncFactionComponent.
+type factionComponentDB interface {
+	factionComponentExecer
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// factionComponentRebuildSQL replaces m_FactionDataArray wholesale. The previous
+// per-element update no-oped silently when the array was empty (the state of
+// every fresh character) — the bug that made faction unlocks display as rank
+// "Outsider" in-game despite correct rep/alignment/tags in the DB.
+const factionComponentRebuildSQL = `
+	UPDATE dune.actors
 	SET properties = jsonb_set(
-		a.properties,
-		ARRAY['FactionPlayerComponent','m_FactionDataArray', (sub.idx - 1)::text, 'ReputationAmount'],
-		to_jsonb($3::int))
-	FROM (
-		SELECT ord AS idx
-		FROM dune.actors aa,
-		     jsonb_array_elements(aa.properties->'FactionPlayerComponent'->'m_FactionDataArray')
-		         WITH ORDINALITY AS arr(elem, ord)
-		WHERE aa.id = $1 AND elem->'Faction'->>'Name' = $2
-	) sub
-	WHERE a.id = $1`
+		properties, '{FactionPlayerComponent,m_FactionDataArray}', $1::jsonb, true)
+	WHERE id = $2`
+
+// writeFactionComponent rebuilds the controller actor's m_FactionDataArray.
+// Returns an error if no row was updated — turning the old silent no-op into a
+// loud failure so a misleading success can never be reported again.
+func writeFactionComponent(ctx context.Context, exec factionComponentExecer, controllerID int64, arr []factionDataEntry) error {
+	payload, err := json.Marshal(arr)
+	if err != nil {
+		return fmt.Errorf("marshal faction data array: %w", err)
+	}
+	tag, err := exec.Exec(ctx, factionComponentRebuildSQL, payload, controllerID)
+	if err != nil {
+		return fmt.Errorf("rebuild FactionPlayerComponent: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("controller actor %d not found; FactionPlayerComponent not updated", controllerID)
+	}
+	return nil
+}
+
+// syncFactionComponent reads the controller's current great-house reputation and
+// rebuilds m_FactionDataArray to match. Call after any
+// set_player_faction_reputation so the in-game rank/vendor UI reflects the DB.
+// Accepts *pgxpool.Pool or a pgx.Tx.
+func syncFactionComponent(ctx context.Context, db factionComponentDB, controllerID int64) error {
+	rows, err := db.Query(ctx, `
+		SELECT faction_id, reputation_amount
+		FROM dune.player_faction_reputation
+		WHERE actor_id = $1 AND faction_id IN (1, 2)`, controllerID)
+	if err != nil {
+		return fmt.Errorf("read faction reputation: %w", err)
+	}
+	defer rows.Close()
+
+	reps := make(map[int16]int32, 2)
+	for rows.Next() {
+		var fid int16
+		var rep int32
+		if err := rows.Scan(&fid, &rep); err != nil {
+			return fmt.Errorf("scan faction reputation: %w", err)
+		}
+		reps[fid] = rep
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate faction reputation: %w", err)
+	}
+
+	arr := buildFactionDataArray(reps, float64(time.Now().UnixNano())/1e9)
+	return writeFactionComponent(ctx, db, controllerID, arr)
+}
 
 func applyFactionRepDelta(ctx context.Context, actorID int64, factionID int16, delta int32) msgMutate {
 	// Route through set_player_faction_reputation which handles tier tags correctly.
@@ -1270,8 +1363,7 @@ func applyFactionRepDelta(ctx context.Context, actorID int64, factionID int16, d
 	if err != nil {
 		return msgMutate{err: fmt.Errorf("set_player_faction_reputation: %w", err)}
 	}
-	if _, err = globalDB.Exec(ctx, factionPlayerComponentRepSQL,
-		actorID, factionDisplayName(factionID), newRep); err != nil {
+	if err = syncFactionComponent(ctx, globalDB, actorID); err != nil {
 		return msgMutate{err: fmt.Errorf("update FactionPlayerComponent rep: %w", err)}
 	}
 
@@ -1353,13 +1445,20 @@ func cmdSetFactionTier(actorID int64, factionID int16, tier int) Cmd {
 			rep++
 		}
 		ctx := context.Background()
-		_, err := globalDB.Exec(ctx, `SELECT dune.set_player_faction_reputation($1, $2, $3)`,
-			actorID, factionID, rep)
-		if err != nil {
+		// Align the player to this house first (Gap 1): set-tier on an unaligned
+		// character previously wrote rep with no player_faction row, so the game
+		// treated them as unaligned. change_player_faction upserts alignment and
+		// fires pg_notify('faction_notify_channel'). neutral_faction_id = 3 ("None").
+		if _, err := globalDB.Exec(ctx,
+			`SELECT dune.change_player_faction($1::bigint, $2::smallint, 3::smallint, NOW()::timestamp)`,
+			actorID, factionID); err != nil {
+			return msgMutate{err: fmt.Errorf("change_player_faction: %w", err)}
+		}
+		if _, err := globalDB.Exec(ctx, `SELECT dune.set_player_faction_reputation($1, $2, $3)`,
+			actorID, factionID, rep); err != nil {
 			return msgMutate{err: fmt.Errorf("set_player_faction_reputation: %w", err)}
 		}
-		if _, err = globalDB.Exec(ctx, factionPlayerComponentRepSQL,
-			actorID, factionDisplayName(factionID), rep); err != nil {
+		if err := syncFactionComponent(ctx, globalDB, actorID); err != nil {
 			return msgMutate{err: fmt.Errorf("update FactionPlayerComponent rep: %w", err)}
 		}
 		fName := factionDisplayName(factionID)
@@ -1811,13 +1910,14 @@ func applyTagsWithTierBump(ctx context.Context, accountID int64, tags []string) 
 			controllerID, fid, rep); err != nil {
 			return "", fmt.Errorf("bump %s rep: %w", faction, err)
 		}
-		if _, err := globalDB.Exec(ctx, factionPlayerComponentRepSQL,
-			controllerID, faction, rep); err != nil {
-			return "", fmt.Errorf("bump %s FactionPlayerComponent: %w", faction, err)
-		}
 		bumped++
 	}
 	if bumped > 0 {
+		// Rebuild the component once from the now-updated rep table (Gap 2 fix:
+		// the old per-faction update no-oped on an empty m_FactionDataArray).
+		if err := syncFactionComponent(ctx, globalDB, controllerID); err != nil {
+			return "", fmt.Errorf("sync FactionPlayerComponent: %w", err)
+		}
 		extra += fmt.Sprintf(", bumped rep for %d faction(s)", bumped)
 	}
 	return extra, nil
@@ -2782,7 +2882,6 @@ func applyProgressionUnlock(
 	accountID, controllerID int64,
 	flsID string,
 	factionID int16,
-	factionName string,
 	targetTier int,
 	journeyNodes, allTags []string,
 ) error {
@@ -2821,8 +2920,7 @@ func applyProgressionUnlock(
 		controllerID, factionID, targetRep); err != nil {
 		return fmt.Errorf("set faction rep: %w", err)
 	}
-	if _, err = tx.Exec(ctx, factionPlayerComponentRepSQL,
-		controllerID, factionName, targetRep); err != nil {
+	if err = syncFactionComponent(ctx, tx, controllerID); err != nil {
 		return fmt.Errorf("update FactionPlayerComponent rep: %w", err)
 	}
 
@@ -2945,7 +3043,6 @@ func cmdProgressionUnlock(actorID int64, faction, preset string) Cmd {
 			controllerID,
 			flsID,
 			cfg.factionID,
-			factionName,
 			targetTier,
 			journeyNodes,
 			allTags,
@@ -4666,4 +4763,309 @@ func cmdListBases() Msg {
 		return msgBaseList{err: err}
 	}
 	return msgBaseList{rows: out}
+}
+
+// ── player stats ─────────────────────────────────────────────────────────────
+
+// cmdFetchOnlineAccountIDs returns the account IDs of all players currently
+// marked Online in player_state. Used by the session poller.
+func cmdFetchOnlineAccountIDs(ctx context.Context, pool *pgxpool.Pool) ([]int64, error) {
+	rows, err := pool.Query(ctx, `SELECT account_id FROM dune.player_state WHERE online_status = 'Online'`)
+	if err != nil {
+		return nil, fmt.Errorf("fetch online account ids: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan account id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+type playerPgStats struct {
+	SolarisBal      int64      `json:"solaris_balance"`
+	ScripBal        int64      `json:"scrip_balance"`
+	SolarisEarned   int64      `json:"solaris_earned"`
+	SolarisSpent    int64      `json:"solaris_spent"`
+	POIsDiscovered  int        `json:"pois_discovered"`
+	StoryMilestones int        `json:"story_milestones"`
+	MaxFactionTier  int        `json:"max_faction_tier"`
+	CharXP          int64      `json:"char_xp"`
+	SkillPoints     int        `json:"skill_points"`
+	LastSeen        *time.Time `json:"last_seen"`
+}
+
+// cmdFetchPlayerPgStats gathers all Postgres-derived stats for a player.
+//
+// Economy uses two queries:
+//  1. Current balances from player_virtual_currency_balances (always works).
+//  2. Earned/spent totals from event_log, derived via a balance-match CTE:
+//     the most recent solaris_balance in the event_log is matched against the
+//     current balance to identify the player's hex FLS entity ID. This works
+//     as long as the live balance equals the last logged balance.
+func cmdFetchPlayerPgStats(ctx context.Context, pool *pgxpool.Pool, accountID int64) (playerPgStats, error) {
+	var stats playerPgStats
+
+	// Current currency balances via player_controller_id.
+	rows, err := pool.Query(ctx, `
+		SELECT pvc.currency_id, pvc.balance
+		FROM dune.player_virtual_currency_balances pvc
+		JOIN dune.player_state ps ON ps.player_controller_id = pvc.player_controller_id
+		WHERE ps.account_id = $1
+	`, accountID)
+	if err != nil {
+		return stats, fmt.Errorf("fetch currency for account %d: %w", accountID, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int16
+		var bal int64
+		if err := rows.Scan(&cid, &bal); err != nil {
+			return stats, fmt.Errorf("scan currency: %w", err)
+		}
+		switch cid {
+		case 0:
+			stats.SolarisBal = bal
+		case 1:
+			stats.ScripBal = bal
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return stats, fmt.Errorf("iterate currency: %w", err)
+	}
+
+	// Earned/spent totals from event_log, joined directly via dune.accounts."user"
+	// which stores the hex PlayFab entity ID used as event_log.meta->>'fls_id'.
+	row := pool.QueryRow(ctx, `
+		SELECT
+			COALESCE(SUM(CASE WHEN COALESCE((el.meta->>'solaris_delta')::float, 0) > 0
+			                  THEN (el.meta->>'solaris_delta')::float ELSE 0 END), 0)::bigint,
+			COALESCE(SUM(CASE WHEN COALESCE((el.meta->>'solaris_delta')::float, 0) < 0
+			                  THEN ABS((el.meta->>'solaris_delta')::float) ELSE 0 END), 0)::bigint
+		FROM dune.event_log el
+		JOIN dune.accounts ac ON ac."user" = el.meta->>'fls_id'
+		WHERE ac.id = $1 AND el.meta->>'solaris_delta' IS NOT NULL
+	`, accountID)
+	if err := row.Scan(&stats.SolarisEarned, &stats.SolarisSpent); err != nil {
+		return stats, fmt.Errorf("fetch solaris earned/spent for account %d: %w", accountID, err)
+	}
+
+	// Tag-derived stats: POIs discovered, story milestones, max faction tier.
+	row = pool.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE tag LIKE 'Exploration.POI.%'),
+			COUNT(*) FILTER (WHERE tag LIKE 'BigMoments.%.Complete'),
+			COALESCE(MAX(
+				CASE WHEN tag ~ '^Faction\.[^.]+\.Tier[0-9]+$'
+				     THEN CAST(SUBSTRING(tag FROM '[0-9]+$') AS INTEGER)
+				     ELSE NULL END
+			), 0)
+		FROM dune.player_tags
+		WHERE account_id = $1
+	`, accountID)
+	if err := row.Scan(&stats.POIsDiscovered, &stats.StoryMilestones, &stats.MaxFactionTier); err != nil {
+		return stats, fmt.Errorf("fetch tag stats for account %d: %w", accountID, err)
+	}
+
+	// Character XP and total skill points from FLevelComponent — joined via pawn_id.
+	row = pool.QueryRow(ctx, `
+		SELECT
+			COALESCE((fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint, 0),
+			COALESCE((fe.components->'FLevelComponent'->1->>'TotalSkillPoints')::int, 0)
+		FROM dune.fgl_entities fe
+		JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
+		JOIN dune.player_state ps ON ps.player_pawn_id = afe.actor_id
+		WHERE afe.slot_name = 'DuneCharacter' AND ps.account_id = $1
+	`, accountID)
+	if err := row.Scan(&stats.CharXP, &stats.SkillPoints); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return stats, fmt.Errorf("fetch char xp for account %d: %w", accountID, err)
+	}
+
+	// Last seen: most recent avatar activity timestamp.
+	var lastSeen pgtype.Timestamptz
+	row = pool.QueryRow(ctx, `SELECT last_avatar_activity FROM dune.player_state WHERE account_id = $1`, accountID)
+	if err := row.Scan(&lastSeen); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return stats, fmt.Errorf("fetch last seen for account %d: %w", accountID, err)
+	}
+	if lastSeen.Valid {
+		t := lastSeen.Time
+		stats.LastSeen = &t
+	}
+
+	return stats, nil
+}
+
+// solarisRaw is an intermediate scan target before cumulative sums are applied.
+type solarisRaw struct {
+	Time    string
+	Balance int64
+	Delta   int64
+}
+
+type solarisPoint struct {
+	Time      string `json:"time"`
+	Balance   int64  `json:"balance"`
+	CumEarned int64  `json:"cum_earned"`
+	CumSpent  int64  `json:"cum_spent"`
+}
+
+// accumulateSolarisPoints converts raw (time, balance, delta) rows into points
+// with monotonically-increasing cumulative earned and spent totals.
+func accumulateSolarisPoints(raws []solarisRaw) []solarisPoint {
+	out := make([]solarisPoint, 0, len(raws))
+	var cumEarned, cumSpent int64
+	for _, r := range raws {
+		if r.Delta > 0 {
+			cumEarned += r.Delta
+		} else if r.Delta < 0 {
+			cumSpent += -r.Delta
+		}
+		out = append(out, solarisPoint{
+			Time:      r.Time,
+			Balance:   r.Balance,
+			CumEarned: cumEarned,
+			CumSpent:  cumSpent,
+		})
+	}
+	return out
+}
+
+// cmdFetchSolarisHistory returns timestamped solaris balance snapshots for a
+// player, joined directly via dune.accounts."user" = event_log.meta->>'fls_id'.
+// Returns at most 500 points with cumulative earned/spent in ascending order.
+func cmdFetchSolarisHistory(ctx context.Context, pool *pgxpool.Pool, accountID int64) ([]solarisPoint, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT
+			to_char(el.event_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+			ROUND((el.meta->>'solaris_balance')::float)::bigint,
+			COALESCE(ROUND((el.meta->>'solaris_delta')::float)::bigint, 0)
+		FROM dune.event_log el
+		JOIN dune.accounts ac ON ac."user" = el.meta->>'fls_id'
+		WHERE ac.id = $1 AND el.meta->>'solaris_balance' IS NOT NULL
+		ORDER BY el.event_time ASC
+		LIMIT 500
+	`, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch solaris history for account %d: %w", accountID, err)
+	}
+	defer rows.Close()
+
+	var raws []solarisRaw
+	for rows.Next() {
+		var r solarisRaw
+		if err := rows.Scan(&r.Time, &r.Balance, &r.Delta); err != nil {
+			return nil, fmt.Errorf("scan solaris point: %w", err)
+		}
+		raws = append(raws, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate solaris history for account %d: %w", accountID, err)
+	}
+	out := accumulateSolarisPoints(raws)
+	if len(out) == 0 {
+		out = []solarisPoint{}
+	}
+	return out, nil
+}
+
+// cmdFetchPlayerSnapshot queries the current stat values for one player from
+// Postgres. Returns a statSnapshot ready to write to SQLite.
+func cmdFetchPlayerSnapshot(ctx context.Context, pool *pgxpool.Pool, accountID int64, snappedAt string) (statSnapshot, error) {
+	snap := statSnapshot{AccountID: accountID, SnappedAt: snappedAt}
+
+	// Character XP and skill points from FLevelComponent.
+	row := pool.QueryRow(ctx, `
+		SELECT
+			(fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint,
+			(fe.components->'FLevelComponent'->1->>'TotalSkillPoints')::int
+		FROM dune.fgl_entities fe
+		JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
+		JOIN dune.player_state ps ON ps.player_pawn_id = afe.actor_id
+		WHERE afe.slot_name = 'DuneCharacter' AND ps.account_id = $1
+	`, accountID)
+	var charXP int64
+	var sp int
+	if err := row.Scan(&charXP, &sp); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return snap, fmt.Errorf("fetch char xp snapshot for account %d: %w", accountID, err)
+	} else if err == nil {
+		snap.CharXP = &charXP
+		snap.SkillPoints = &sp
+	}
+
+	// Intel points from TechKnowledgePlayerComponent on the pawn actor.
+	row = pool.QueryRow(ctx, `
+		SELECT (a.properties->'TechKnowledgePlayerComponent'->>'m_TechKnowledgePoints')::int
+		FROM dune.actors a
+		JOIN dune.player_state ps ON ps.player_pawn_id = a.id
+		WHERE ps.account_id = $1 AND a.properties ? 'TechKnowledgePlayerComponent'
+	`, accountID)
+	var intel int
+	if err := row.Scan(&intel); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return snap, fmt.Errorf("fetch intel snapshot for account %d: %w", accountID, err)
+	} else if err == nil {
+		snap.IntelPoints = &intel
+	}
+
+	// Spec track XPs — NULL for players not in specialization_tracks.
+	rows, err := pool.Query(ctx, `
+		SELECT track_type::text, xp_amount
+		FROM dune.specialization_tracks st
+		JOIN dune.player_state ps ON ps.player_controller_id = st.player_id
+		WHERE ps.account_id = $1
+	`, accountID)
+	if err != nil {
+		return snap, fmt.Errorf("fetch spec snapshot for account %d: %w", accountID, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var track string
+		var xp int
+		if err := rows.Scan(&track, &xp); err != nil {
+			return snap, fmt.Errorf("scan spec track: %w", err)
+		}
+		xpCopy := xp
+		switch track {
+		case "Combat":
+			snap.CombatXP = &xpCopy
+		case "Crafting":
+			snap.CraftingXP = &xpCopy
+		case "Gathering":
+			snap.GatheringXP = &xpCopy
+		case "Exploration":
+			snap.ExplorationXP = &xpCopy
+		case "Sabotage":
+			snap.SabotageXP = &xpCopy
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return snap, fmt.Errorf("iterate spec tracks for account %d: %w", accountID, err)
+	}
+
+	snap.SolarisBalance, err = fetchSolarisBalance(ctx, pool, accountID)
+	if err != nil {
+		return snap, err
+	}
+	return snap, nil
+}
+
+func fetchSolarisBalance(ctx context.Context, pool *pgxpool.Pool, accountID int64) (*int64, error) {
+	var bal int64
+	err := pool.QueryRow(ctx, `
+		SELECT pvc.balance
+		FROM dune.player_virtual_currency_balances pvc
+		JOIN dune.player_state ps ON ps.player_controller_id = pvc.player_controller_id
+		WHERE ps.account_id = $1 AND pvc.currency_id = 0
+	`, accountID).Scan(&bal)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("fetch solaris snapshot for account %d: %w", accountID, err)
+	}
+	return &bal, nil
 }

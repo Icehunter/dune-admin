@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { Button, Input, Select, ListBox, Spinner, toast, TextField } from '@heroui/react'
 import { api } from '../../api/client'
 import type { BackupFile } from '../../api/client'
@@ -11,7 +12,9 @@ import { ConfirmDialog } from './modals/ConfirmDialog'
 import { CommandOutputModal } from './modals/CommandOutputModal'
 import { RestoreModal } from './modals/RestoreModal'
 
-export default function BattlegroupTab() {
+const POLL_MS = 30_000
+
+export default function BattlegroupTab({ isActive = false }: { isActive?: boolean }) {
   const [status, setStatus] = useState<DetailedStatus | null>(null)
   const [statusLoading, setStatusLoading] = useState(false)
 
@@ -49,6 +52,8 @@ export default function BattlegroupTab() {
   useEffect(() => {
     fetchStatus()
   }, [fetchStatus])
+
+  const { countdown, refresh: refreshStatus } = useAutoRefresh(fetchStatus, POLL_MS, isActive)
 
   // isInitializing tracks whether we're inside the post-start warning window.
   // We use a boolean state rather than computing from Date.now() in render (impure).
@@ -117,14 +122,18 @@ export default function BattlegroupTab() {
 
       {/* ── Overview ─────────────────────────────────────────────────── */}
       <PageHeader title={bg ? `${bg.title} (${bg.name})` : 'Battlegroup Status'}>
-        <Button size="sm" variant="ghost" onPress={fetchStatus} isDisabled={statusLoading}>
+        <Button size="sm" variant="ghost" onPress={refreshStatus} isDisabled={statusLoading}>
           {statusLoading
             ? <Spinner size="sm" color="current" />
             : (
                 <>
+                  {isActive && (
+                    <span className="w-7 text-right tabular-nums text-muted/60 text-xs">
+                      {countdown}
+                      s
+                    </span>
+                  )}
                   <Icon name="refresh-cw" />
-                  {' '}
-                  Refresh
                 </>
               )}
         </Button>

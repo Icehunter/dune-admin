@@ -372,10 +372,10 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
             </Tabs.List>
           </Tabs.ListContainer>
           <Tabs.Panel id="battlegroup" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
-            <BattlegroupTab />
+            <BattlegroupTab isActive={currentTab === 'battlegroup'} />
           </Tabs.Panel>
           <Tabs.Panel id="players" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
-            <PlayersTab />
+            <PlayersTab isActive={currentTab === 'players'} />
           </Tabs.Panel>
           <Tabs.Panel id="database" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
             <DatabaseTab />

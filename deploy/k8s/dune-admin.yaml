@@ -212,6 +212,8 @@ spec:
                   name: dune-admin-secrets
                   key: MARKET_BOT_REMOTE_TOKEN
                   optional: true
+            - name: DUNE_ADMIN_SESSIONS_DB
+              value: /data/sessions.db
           volumeMounts:
             - name: app-rw
               mountPath: /app

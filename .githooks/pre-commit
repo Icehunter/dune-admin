@@ -109,6 +109,15 @@ if [ -n "$HAS_TS_FILES" ]; then
         cat /tmp/hook-output.txt
         FAILED=1
     fi
+
+    echo -e "${YELLOW}▶${NC} Running TypeScript type check (tsc --noEmit)..."
+    if make tsc > /tmp/hook-output.txt 2>&1; then
+        echo -e "${GREEN}✓${NC} TypeScript type check passed"
+    else
+        echo -e "${RED}✗${NC} TypeScript type check failed"
+        cat /tmp/hook-output.txt
+        FAILED=1
+    fi
 fi
 
 echo ""

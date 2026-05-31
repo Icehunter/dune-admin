@@ -1,5 +1,3 @@
-export type Sidebar = 'players' | 'currency' | 'factions' | 'specs' | 'online'
-
 export type ActionSection
   = | 'resources' | 'specs' | 'progression' | 'contracts' | 'journey' | 'admin' | 'tags' | 'history' | 'experimental'
 
@@ -13,14 +11,6 @@ export type PacksData = {
     items: { template: string, qty: number, quality: number }[]
   }>
 }
-
-export const SIDEBAR_ITEMS: { key: Sidebar, label: string }[] = [
-  { key: 'players', label: 'Players' },
-  { key: 'online', label: 'Online State' },
-  { key: 'currency', label: 'Currency' },
-  { key: 'factions', label: 'Factions' },
-  { key: 'specs', label: 'Specs / XP' },
-]
 
 export const ACTION_SECTIONS: { key: ActionSection, label: string }[] = [
   { key: 'resources', label: 'Stats' },

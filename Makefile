@@ -1,7 +1,7 @@
 .PHONY: build web go go-embed linux dev dev-server dev-backend dev-web setup deploy-web \
         render-k8s render-k8s-stdout k8s-dry-run \
         vulncheck gosec pnpm-audit \
-        test test-race vet fmt fmt-check \
+        test test-race vet fmt fmt-check tsc \
         tools docs verify \
         version version-patch version-minor version-major
 
@@ -198,6 +198,9 @@ gosec:
 
 pnpm-audit:
 	cd web && pnpm audit --audit-level=high
+
+tsc:
+	cd web && pnpm exec tsc --noEmit
 
 lint:
 	@$(MAKE) lint-go

@@ -175,6 +175,15 @@ type appConfig struct {
 	MarketBotMaxBuys     int     `yaml:"market_bot_max_buys"      json:"market_bot_max_buys"`
 	MarketBotRemoteURL   string  `yaml:"market_bot_remote_url"   json:"market_bot_remote_url"`
 	MarketBotRemoteToken string  `yaml:"market_bot_remote_token" json:"market_bot_remote_token"`
+
+	// ── Welcome package ────────────────────────────────────────────────────
+	// Auto-grants a configured item package to every player once, on first
+	// login. Defaults OFF — it mutates every player's inventory, so it must be
+	// explicitly opted into. Bump the version to re-issue to everyone.
+	WelcomePackageEnabled  *bool                `yaml:"welcome_package_enabled"            json:"welcome_package_enabled"`
+	WelcomePackageVersion  string               `yaml:"welcome_package_version"            json:"welcome_package_version"`
+	WelcomePackageScanSecs int                  `yaml:"welcome_package_scan_interval_secs" json:"welcome_package_scan_interval_secs"`
+	WelcomePackageItems    []welcomePackageItem `yaml:"welcome_package_items"              json:"welcome_package_items"`
 }
 
 // marketBotEnabled returns the effective bot-enabled flag. Missing yaml key →
@@ -184,6 +193,39 @@ func marketBotEnabled(cfg appConfig) bool {
 		return true
 	}
 	return *cfg.MarketBotEnabled
+}
+
+// welcomePackageEnabled returns the effective flag. Unlike the market bot,
+// this defaults OFF — it grants items to every player, so it must be opt-in.
+func welcomePackageEnabled(cfg appConfig) bool {
+	if cfg.WelcomePackageEnabled == nil {
+		return false
+	}
+	return *cfg.WelcomePackageEnabled
+}
+
+// startWelcomePackageScanner opens the ledger store, seeds the live runtime
+// config, and starts the scanner goroutine. The goroutine always runs so the
+// feature can be toggled on at runtime via the API; each tick is a cheap no-op
+// while disabled. Returns a cancel func, or nil if the store could not open.
+func startWelcomePackageScanner(cfg appConfig) context.CancelFunc {
+	store, err := openWelcomeStore(filepath.Join(configDir(), "welcome-package.db"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "welcome-package: store open failed: %v\n", err)
+		return nil
+	}
+	welcomeStoreDB = store
+
+	setWelcomeRuntime(buildWelcomeRuntime(
+		welcomePackageEnabled(cfg),
+		cfg.WelcomePackageVersion,
+		cfg.WelcomePackageScanSecs,
+		cfg.WelcomePackageItems,
+	))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go runWelcomePackageScanner(ctx)
+	return cancel
 }
 
 func configDir() string {
@@ -692,7 +734,20 @@ func main() {
 		remoteBotProxy = newRemoteBotClient(loadedConfig.MarketBotRemoteURL, loadedConfig.MarketBotRemoteToken)
 	}
 
+	globalWelcomeCancel = startWelcomePackageScanner(loadedConfig)
+	defer stopWelcomeScanner()
+
 	startServer(listenAddr)
+}
+
+// globalWelcomeCancel stops the welcome-package scanner goroutine on shutdown.
+var globalWelcomeCancel context.CancelFunc
+
+// stopWelcomeScanner cancels the welcome-package scanner if it is running.
+func stopWelcomeScanner() {
+	if globalWelcomeCancel != nil {
+		globalWelcomeCancel()
+	}
 }
 
 // embeddedBot holds the live market bot instance when market_bot_enabled=true.

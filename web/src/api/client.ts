@@ -450,6 +450,31 @@ export interface UpdateApplyResult {
   message: string
 }
 
+export interface WelcomePackageItem {
+  template: string
+  qty: number
+  quality: number
+}
+
+export interface WelcomePackageConfig {
+  enabled: boolean
+  version: string
+  scan_interval_secs: number
+  items: WelcomePackageItem[]
+}
+
+export interface WelcomeGrantRecord {
+  fls_id: string
+  package_version: string
+  account_id: number
+  character_name: string
+  status: string
+  granted_at: string
+  attempts: number
+  last_error: string
+  updated_at: string
+}
+
 export const api = {
   status: () => req<Status>('GET', '/status'),
   reconnect: () => req<Status>('POST', '/reconnect'),
@@ -735,5 +760,19 @@ export const api = {
   update: {
     check: () => req<UpdateCheckResult>('GET', '/update/check'),
     apply: (force?: boolean) => req<UpdateApplyResult>('POST', '/update/apply', force ? { force: true } : undefined),
+  },
+
+  welcomePackage: {
+    config: () => req<WelcomePackageConfig>('GET', '/welcome-package/config'),
+    saveConfig: (cfg: WelcomePackageConfig) => req<WelcomePackageConfig>('PUT', '/welcome-package/config', cfg),
+    grants: (limit?: number) =>
+      req<WelcomeGrantRecord[]>('GET', `/welcome-package/grants${limit ? `?limit=${limit}` : ''}`),
+    retry: (flsId: string, packageVersion: string, accountId: number) =>
+      req<{ cleared: number }>('POST', '/welcome-package/retry', {
+        fls_id: flsId,
+        package_version: packageVersion,
+        account_id: accountId,
+      }),
+    run: () => req<{ granted: number, failed: number, skipped: number }>('POST', '/welcome-package/run'),
   },
 }

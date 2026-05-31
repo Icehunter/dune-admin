@@ -713,6 +713,37 @@ func checkInventorySlotLimit(ctx context.Context, profile inventoryCapacityProfi
 // backpack (inventory_type=0). Returns an error if the inventory is over volume
 // or slot limits. Used to pre-validate RMQ give-item commands since the game
 // server's cheat function bypasses these checks.
+// listWelcomeOnlineAccounts returns currently-online characters eligible for the
+// welcome package: account id, pawn actor id (consumed by the give-items path),
+// FLS id (accounts."user", the ledger key), and character name. Online-only so
+// the live RMQ grant path applies — this is the "on first login" trigger.
+func listWelcomeOnlineAccounts(ctx context.Context) ([]welcomeAccount, error) {
+	if globalDB == nil {
+		return nil, fmt.Errorf("not connected")
+	}
+	rows, err := globalDB.Query(ctx, `
+		SELECT ps.account_id, ps.player_pawn_id,
+		       COALESCE(ac."user", ''), COALESCE(ps.character_name, '')
+		FROM dune.player_state ps
+		JOIN dune.actors a ON a.id = ps.player_pawn_id
+		JOIN dune.accounts ac ON ac.id = a.owner_account_id
+		WHERE ps.online_status = 'Online' AND ps.player_pawn_id IS NOT NULL`)
+	if err != nil {
+		return nil, fmt.Errorf("list welcome accounts: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]welcomeAccount, 0)
+	for rows.Next() {
+		var acc welcomeAccount
+		if err := rows.Scan(&acc.AccountID, &acc.PawnID, &acc.FlsID, &acc.CharacterName); err != nil {
+			return nil, fmt.Errorf("scan welcome account: %w", err)
+		}
+		out = append(out, acc)
+	}
+	return out, rows.Err()
+}
+
 func checkInventoryCapacity(ctx context.Context, playerID int64, template string, qty int64) error {
 	if globalDB == nil {
 		return fmt.Errorf("not connected")

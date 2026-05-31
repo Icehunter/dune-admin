@@ -13,6 +13,7 @@ import BasesTab from './tabs/BasesTab'
 import StorageTab from './tabs/StorageTab'
 import ServerSettingsTab from './tabs/ServerSettingsTab'
 import MarketTab from './tabs/MarketTab'
+import WelcomePackageTab from './tabs/WelcomePackageTab'
 import { Icon } from './dune-ui'
 import { api } from './api/client'
 import type { UpdateCheckResult } from './api/client'
@@ -27,6 +28,7 @@ const TAB_IDS = [
   'storage',
   'server',
   'market',
+  'welcome',
 ] as const
 type TabId = (typeof TAB_IDS)[number]
 const DEFAULT_TAB: TabId = 'battlegroup'
@@ -363,6 +365,10 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
                 Market
                 <Tabs.Indicator />
               </Tabs.Tab>
+              <Tabs.Tab id="welcome">
+                Welcome
+                <Tabs.Indicator />
+              </Tabs.Tab>
             </Tabs.List>
           </Tabs.ListContainer>
           <Tabs.Panel id="battlegroup" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
@@ -391,6 +397,9 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
           </Tabs.Panel>
           <Tabs.Panel id="market" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
             <MarketTab />
+          </Tabs.Panel>
+          <Tabs.Panel id="welcome" className="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+            <WelcomePackageTab />
           </Tabs.Panel>
         </Tabs>
       </div>

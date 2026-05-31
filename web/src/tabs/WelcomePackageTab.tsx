@@ -42,22 +42,21 @@ export default function WelcomePackageTab() {
     setItems(c.items ?? [])
   }
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      applyConfig(await api.welcomePackage.config())
-      setGrants(await api.welcomePackage.grants(100))
-    }
-    catch (e) {
-      toast.danger(`Failed to load welcome package: ${e instanceof Error ? e.message : String(e)}`)
-    }
-    finally {
-      setLoading(false)
-    }
+  const load = useCallback(() => {
+    Promise.resolve()
+      .then(() => setLoading(true))
+      .then(() => api.welcomePackage.config())
+      .then(applyConfig)
+      .then(() => api.welcomePackage.grants(100))
+      .then(setGrants)
+      .catch((e: unknown) => {
+        toast.danger(`Failed to load welcome package: ${e instanceof Error ? e.message : String(e)}`)
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
-    void load()
+    load()
   }, [load])
 
   const addItem = () => setItems((xs) => [...xs, { template: '', qty: 1, quality: 0 }])

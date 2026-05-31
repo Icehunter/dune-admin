@@ -7,9 +7,9 @@ import { keymap } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
 import { acceptCompletion } from '@codemirror/autocomplete'
 import { tags as hlTags } from '@lezer/highlight'
-import { Button, InputGroup, SearchField, Spinner, TextField, toast } from '@heroui/react'
+import { Button, SearchField, Spinner, toast } from '@heroui/react'
 import { api } from '../api/client'
-import { DataTable, Icon, PageHeader, type Column } from '../dune-ui'
+import { DataTable, Icon, NumberInput, PageHeader, type Column } from '../dune-ui'
 
 // ── CodeMirror theme ────────────────────────────────────────────────────────
 
@@ -183,7 +183,7 @@ export default function DatabaseTab({ section = 'tables' }: { section?: Section 
   ]
 
   const [tableInput, setTableInput] = useState('')
-  const [limitInput, setLimitInput] = useState('20')
+  const [limitInput, setLimitInput] = useState(20)
   const [searchInput, setSearchInput] = useState('')
   const [sqlInput, setSqlInput] = useState('')
   const [result, setResult] = useState<TableData | null>(null)
@@ -259,7 +259,7 @@ export default function DatabaseTab({ section = 'tables' }: { section?: Section 
           toast.warning(t('database.enterTableName'))
           return
         }
-        const r = await api.database.sample(tableInput.trim(), Number(limitInput) || 20)
+        const r = await api.database.sample(tableInput.trim(), limitInput)
         setResult({ headers: r.headers, rows: r.rows })
       }
       else if (section === 'search') {
@@ -332,19 +332,15 @@ export default function DatabaseTab({ section = 'tables' }: { section?: Section 
             placeholder={t('database.tablePlaceholder')}
           />
           {section === 'sample' && (
-            <TextField className="w-28" aria-label="Limit">
-              <InputGroup>
-                <InputGroup.Prefix>{t('database.limitLabel')}</InputGroup.Prefix>
-                <InputGroup.Input
-                  className="pl-2"
-                  type="number"
-                  min={1}
-                  max={1000}
-                  value={limitInput}
-                  onChange={(e) => setLimitInput(e.target.value)}
-                />
-              </InputGroup>
-            </TextField>
+            <NumberInput
+              ariaLabel={t('database.limitLabel')}
+              min={1}
+              max={1000}
+              value={limitInput}
+              onChange={setLimitInput}
+              showButtons={false}
+              className="w-28"
+            />
           )}
           <Button onPress={() => void run()} isDisabled={loading} size="sm">
             {loading ? <Spinner size="sm" color="current" /> : <Icon name="play" />}

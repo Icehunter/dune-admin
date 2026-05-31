@@ -1,20 +1,9 @@
 import { DataTable, type Column } from '../../dune-ui'
+import { useTranslation } from 'react-i18next'
 import type { MarketItem } from '../../api/client'
 import { qualityLabel } from '../../utils/icons'
 
 type Key = 'display_name' | 'quality' | 'category' | 'tier' | 'rarity' | 'lowest_price' | 'total_stock' | 'bot_stock' | 'listing_count'
-
-const COLUMNS: Column<Key>[] = [
-  { key: 'display_name', label: 'Item', minWidth: 200 },
-  { key: 'quality', label: 'Grade', width: 100 },
-  { key: 'category', label: 'Category', minWidth: 140 },
-  { key: 'tier', label: 'Tier', width: 60 },
-  { key: 'rarity', label: 'Rarity', width: 100 },
-  { key: 'lowest_price', label: 'Lowest Price', width: 120 },
-  { key: 'total_stock', label: 'Stock', width: 80 },
-  { key: 'bot_stock', label: 'Bot Stock', width: 90 },
-  { key: 'listing_count', label: 'Listings', width: 80 },
-]
 
 const RARITY_COLORS: Record<string, string> = {
   common: 'text-foreground',
@@ -32,9 +21,23 @@ type Props = {
 }
 
 export default function MarketTable({ items, onSelect }: Props) {
+  const { t } = useTranslation()
+
+  const COLUMNS: Column<Key>[] = [
+    { key: 'display_name', label: t('market.table.item'), minWidth: 200 },
+    { key: 'quality', label: t('market.table.grade'), width: 100 },
+    { key: 'category', label: t('market.table.category'), minWidth: 140 },
+    { key: 'tier', label: t('market.table.tier'), width: 60 },
+    { key: 'rarity', label: t('market.table.rarity'), width: 100 },
+    { key: 'lowest_price', label: t('market.table.lowestPrice'), width: 120 },
+    { key: 'total_stock', label: t('market.table.stock'), width: 80 },
+    { key: 'bot_stock', label: t('market.table.botStock'), width: 90 },
+    { key: 'listing_count', label: t('market.table.listings'), width: 80 },
+  ]
+
   return (
     <DataTable<MarketItem, Key>
-      aria-label="Market items"
+      aria-label={t('market.table.ariaLabel')}
       className="min-h-0 max-h-full"
       columns={COLUMNS}
       rows={items}
@@ -54,7 +57,7 @@ export default function MarketTable({ items, onSelect }: Props) {
         }
       }}
       onRowAction={onSelect}
-      emptyState={<div className="py-8 text-center text-muted">No items found.</div>}
+      emptyState={<div className="py-8 text-center text-muted">{t('market.table.noItemsFound')}</div>}
       renderCell={(it, key) => {
         switch (key) {
           case 'display_name':

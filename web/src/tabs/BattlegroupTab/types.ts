@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { Column } from '../../dune-ui'
 
 export type ServerSortKey = 'map' | 'phase' | 'players' | 'ready' | 'dimension' | 'partition'
@@ -31,21 +32,23 @@ export type ActionDef = {
   msg: string
 }
 
-export const SERVER_COLUMNS: Column<ServerSortKey>[] = [
-  { key: 'map', label: 'Map', isRowHeader: true },
-  { key: 'phase', label: 'Phase' },
-  { key: 'players', label: 'Players' },
-  { key: 'ready', label: 'Ready' },
-  { key: 'dimension', label: 'Dim' },
-  { key: 'partition', label: 'Part' },
-]
+export function getServerColumns(t: TFunction): Column<ServerSortKey>[] {
+  return [
+    { key: 'map', label: t('battlegroup.columns.map'), isRowHeader: true },
+    { key: 'phase', label: t('battlegroup.columns.phase') },
+    { key: 'players', label: t('battlegroup.columns.players') },
+    { key: 'ready', label: t('battlegroup.columns.ready') },
+    { key: 'dimension', label: t('battlegroup.columns.dim') },
+    { key: 'partition', label: t('battlegroup.columns.part') },
+  ]
+}
 
 export const ACTIONS: ActionDef[] = [
-  { label: 'Start', cmd: 'start', danger: false, msg: 'Start the battlegroup server?' },
-  { label: 'Stop', cmd: 'stop', danger: true, msg: 'Stop the server? All players will be disconnected.' },
-  { label: 'Restart', cmd: 'restart', danger: false, msg: 'Restart the server? Players will be briefly disconnected.' },
-  { label: 'Update', cmd: 'update', danger: false, msg: 'Run a server update? This takes the server offline briefly.' },
-  { label: 'Backup', cmd: 'backup', danger: false, msg: 'Create a database backup? This may take a few minutes.' },
+  { label: 'start', cmd: 'start', danger: false, msg: 'startMsg' },
+  { label: 'stop', cmd: 'stop', danger: true, msg: 'stopMsg' },
+  { label: 'restart', cmd: 'restart', danger: false, msg: 'restartMsg' },
+  { label: 'update', cmd: 'update', danger: false, msg: 'updateMsg' },
+  { label: 'backup', cmd: 'backup', danger: false, msg: 'backupMsg' },
 ]
 
 export const INIT_WARN_MS = 3 * 60 * 1000

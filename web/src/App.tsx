@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { memo, useState, useEffect, useRef, type ReactNode } from 'react'
 import { Show, SignInButton, UserButton, useAuth } from '@clerk/react'
 import { Button, Chip, Modal, Spinner, Toast, toast } from '@heroui/react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useStatus } from './hooks/useStatus'
 import SettingsConfigForm from './components/SettingsConfigForm'
+import { LanguageSelector } from './components/LanguageSelector'
 import BattlegroupTab from './tabs/BattlegroupTab'
 import PlayersTab from './tabs/PlayersTab'
 import DatabaseTab from './tabs/DatabaseTab'
@@ -38,35 +40,29 @@ function currentTabFromPath(pathname: string): TabId {
   return (TAB_IDS as readonly string[]).includes(seg) ? (seg as TabId) : DEFAULT_TAB
 }
 
-// Left-sidebar navigation, grouped to mirror the product's structure
-// (operator tooling today; a Player Portal group lands here later).
-const NAV_GROUPS: { title: string, items: { key: TabId, label: string }[] }[] = [
-  {
-    title: 'Operations',
-    items: [
-      { key: 'battlegroup', label: 'Battlegroup' },
-      { key: 'logs', label: 'Logs' },
-      { key: 'database', label: 'Database' },
-      { key: 'server', label: 'Server Settings' },
-    ],
-  },
-  {
-    title: 'Player World',
-    items: [
-      { key: 'players', label: 'Players' },
-      { key: 'storage', label: 'Storage' },
-      { key: 'bases', label: 'Bases' },
-      { key: 'blueprints', label: 'Blueprints' },
-    ],
-  },
-  {
-    title: 'Economy',
-    items: [
-      { key: 'market', label: 'Market Bot' },
-      { key: 'welcome', label: 'Welcome Kits' },
-    ],
-  },
+type DbSection = 'tables' | 'describe' | 'sample' | 'search' | 'sql'
+
+// Sub-items shown in the Operations nav when the Database tab is active.
+const DB_SECTIONS: { key: string, label: string, depth: number }[] = [
+  { key: 'db:tables', label: 'Tables', depth: 1 },
+  { key: 'db:describe', label: 'Describe', depth: 1 },
+  { key: 'db:sample', label: 'Sample', depth: 1 },
+  { key: 'db:search', label: 'Search Columns', depth: 1 },
+  { key: 'db:sql', label: 'Run SQL', depth: 1 },
 ]
+
+// Memoized at module level so identity is stable — prevents all inactive tabs from
+// re-rendering whenever AppCore re-renders (e.g. router location change, useStatus poll).
+const MBattlegroupTab = memo(BattlegroupTab)
+const MPlayersTab = memo(PlayersTab)
+const MDatabaseTab = memo(DatabaseTab)
+const MLogsTab = memo(LogsTab)
+const MBlueprintsTab = memo(BlueprintsTab)
+const MBasesTab = memo(BasesTab)
+const MStorageTab = memo(StorageTab)
+const MServerSettingsTab = memo(ServerSettingsTab)
+const MMarketTab = memo(MarketTab)
+const MWelcomePackageTab = memo(WelcomePackageTab)
 
 const hasClerk = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -97,6 +93,39 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
   const status = useStatus()
   const location = useLocation()
   const navigate = useNavigate()
+  const { t } = useTranslation()
+
+  // Left-sidebar navigation, grouped to mirror the product's structure
+  // (operator tooling today; a Player Portal group lands here later).
+  const NAV_GROUPS: { title: string, items: { key: TabId, label: string }[] }[] = [
+    {
+      title: t('nav.groups.operations'),
+      items: [
+        { key: 'battlegroup' as TabId, label: t('nav.battlegroup') },
+        { key: 'logs' as TabId, label: t('nav.logs') },
+        { key: 'database' as TabId, label: t('nav.database') },
+        { key: 'server' as TabId, label: t('nav.server') },
+      ],
+    },
+    {
+      title: t('nav.groups.playerWorld'),
+      items: [
+        { key: 'players' as TabId, label: t('nav.players') },
+        { key: 'storage' as TabId, label: t('nav.storage') },
+        { key: 'bases' as TabId, label: t('nav.bases') },
+        { key: 'blueprints' as TabId, label: t('nav.blueprints') },
+      ],
+    },
+    {
+      title: t('nav.groups.economy'),
+      items: [
+        { key: 'market' as TabId, label: t('nav.market') },
+        { key: 'welcome' as TabId, label: t('nav.welcome') },
+      ],
+    },
+  ]
+
+  const [dbSection, setDbSection] = useState<DbSection>('tables')
   const [showBackendConfig, setShowBackendConfig] = useState(false)
   const [latestVersion, setLatestVersion] = useState<string | null>(null)
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null)
@@ -139,7 +168,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
     try {
       const result = await api.update.apply(force)
       if (result.updated) {
-        toast.success(`${force ? 'Reinstalled' : 'Updated to'} ${result.version ?? 'latest'}. Server is restarting…`)
+        toast.success(force ? t('app.reinstalled', { version: result.version ?? 'latest' }) : t('app.updated', { version: result.version ?? 'latest' }))
         setUpdateInfo(null)
       }
       else {
@@ -147,7 +176,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
       }
     }
     catch (e) {
-      toast.danger(`Update failed: ${e instanceof Error ? e.message : String(e)}`)
+      toast.danger(t('app.updateFailed', { message: e instanceof Error ? e.message : String(e) }))
     }
     finally {
       setUpdateApplying(false)
@@ -164,7 +193,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
         style={{ background: 'linear-gradient(180deg, #241a0e 0%, #1a1610 100%)' }}
       >
         <div className="flex items-center gap-3">
-          <span className="text-xl font-bold uppercase tracking-[0.2em] text-accent">DUNE ADMIN</span>
+          <span className="text-xl font-bold uppercase tracking-[0.2em] text-accent">{t('app.title')}</span>
           {status?.control && status.control !== 'none' && <span className="text-xs text-muted">{status.control}</span>}
           {status?.ssh_host && <span className="text-xs text-muted">{status.ssh_host}</span>}
           {status?.db_host && status.control !== 'kubectl' && (
@@ -174,7 +203,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
             <button
               className="text-xs text-muted hover:text-foreground cursor-pointer bg-transparent border-0 p-0"
               onClick={() => setShowBackendConfig(true)}
-              title="Open Settings"
+              title={t('app.openSettings')}
             >
               v
               {status.version}
@@ -206,11 +235,12 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
             </span>
           )}
 
+          <LanguageSelector />
           <Button
             size="sm"
             variant="ghost"
             isIconOnly
-            aria-label="Configure backend"
+            aria-label={t('app.configureBackend')}
             onPress={() => setShowBackendConfig((v) => !v)}
             className={showBackendConfig ? 'text-accent' : ''}
           >
@@ -222,7 +252,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
               <Show when="signed-out">
                 <SignInButton>
                   <Button size="sm" variant="outline">
-                    Sign In
+                    {t('app.signIn')}
                   </Button>
                 </SignInButton>
               </Show>
@@ -242,7 +272,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
               <Modal.CloseTrigger />
               <Modal.Header>
                 <div className="flex items-baseline gap-6 flex-wrap">
-                  <Modal.Heading className="text-accent">Settings</Modal.Heading>
+                  <Modal.Heading className="text-accent">{t('app.settings')}</Modal.Heading>
                   {status && (
                     <div className="flex items-center gap-4 text-xs text-muted">
                       {status.version && (
@@ -280,10 +310,10 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
                         <>
                           <Spinner size="sm" color="current" />
                           {' '}
-                          Checking…
+                          {t('common.checking')}
                         </>
                       )
-                    : 'Check for Updates'}
+                    : t('app.checkUpdates')}
                 </Button>
                 {updateInfo && !updateInfo.needs_update && (
                   <Button
@@ -292,7 +322,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
                     onPress={() => applyUpdate(true)}
                     isDisabled={updateApplying}
                   >
-                    {updateApplying ? <Spinner size="sm" color="current" /> : 'Reinstall'}
+                    {updateApplying ? <Spinner size="sm" color="current" /> : t('app.reinstall')}
                   </Button>
                 )}
                 {updateInfo?.needs_update && (
@@ -315,7 +345,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
                 <span className="flex-1" />
 
                 {/* Right: save + close */}
-                <span className="text-xs text-muted">Changes on all tabs are saved together.</span>
+                <span className="text-xs text-muted">{t('app.changesNote')}</span>
                 <Button
                   size="sm"
                   onPress={() => formSaveRef.current?.()}
@@ -326,14 +356,14 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
                         <>
                           <Spinner size="sm" color="current" />
                           {' '}
-                          Saving…
+                          {t('common.saving')}
                         </>
                       )
                     : (
                         <>
                           <Icon name="save" />
                           {' '}
-                          Save & Apply
+                          {t('app.saveApply')}
                         </>
                       )}
                 </Button>
@@ -342,7 +372,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
                   variant="tertiary"
                   onPress={() => setShowBackendConfig(false)}
                 >
-                  Close
+                  {t('common.close')}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>
@@ -352,9 +382,30 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
 
       {/* Body: grouped left sidebar + content. All tabs stay mounted (inactive
           hidden) so per-tab state and isActive auto-refresh behavior persist. */}
-      <div className="flex-1 flex gap-4 p-4 overflow-hidden min-h-0">
-        <nav className="w-60 shrink-0 flex flex-col gap-3 overflow-y-auto">
-          {NAV_GROUPS.map((group) => (
+      <div className="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
+        <nav className="w-60 shrink-0 flex flex-col gap-2 overflow-y-auto">
+          {/* Operations: rendered separately so Database can expand DB sub-items inline */}
+          <SideNav
+            width="w-full"
+            title={NAV_GROUPS[0].title}
+            items={[
+              ...NAV_GROUPS[0].items.slice(0, 3),
+              ...(currentTab === 'database' ? DB_SECTIONS : []),
+              ...NAV_GROUPS[0].items.slice(3),
+            ] as { key: string, label: string, depth?: number }[]}
+            active={currentTab === 'database' ? `db:${dbSection}` : currentTab}
+            onSelect={(k: string) => {
+              if (k.startsWith('db:')) {
+                setDbSection(k.slice(3) as DbSection)
+                if (currentTab !== 'database') navigate('/database')
+              }
+              else {
+                navigate(`/${k}`)
+              }
+            }}
+          />
+          {/* Player World + Economy */}
+          {NAV_GROUPS.slice(1).map((group) => (
             <SideNav
               key={group.title}
               width="w-full"
@@ -367,34 +418,34 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
         </nav>
         <main className="flex-1 overflow-hidden min-h-0">
           <TabPane active={currentTab === 'battlegroup'}>
-            <BattlegroupTab isActive={currentTab === 'battlegroup'} />
+            <MBattlegroupTab isActive={currentTab === 'battlegroup'} />
           </TabPane>
           <TabPane active={currentTab === 'players'}>
-            <PlayersTab isActive={currentTab === 'players'} />
+            <MPlayersTab isActive={currentTab === 'players'} />
           </TabPane>
           <TabPane active={currentTab === 'database'}>
-            <DatabaseTab />
+            <MDatabaseTab section={dbSection} />
           </TabPane>
           <TabPane active={currentTab === 'logs'}>
-            <LogsTab />
+            <MLogsTab control={status?.control} />
           </TabPane>
           <TabPane active={currentTab === 'blueprints'}>
-            <BlueprintsTab isSignedIn={isSignedIn} />
+            <MBlueprintsTab isSignedIn={isSignedIn} />
           </TabPane>
           <TabPane active={currentTab === 'bases'}>
-            <BasesTab isSignedIn={isSignedIn} />
+            <MBasesTab isSignedIn={isSignedIn} />
           </TabPane>
           <TabPane active={currentTab === 'storage'}>
-            <StorageTab />
+            <MStorageTab />
           </TabPane>
           <TabPane active={currentTab === 'server'}>
-            <ServerSettingsTab />
+            <MServerSettingsTab />
           </TabPane>
           <TabPane active={currentTab === 'market'}>
-            <MarketTab />
+            <MMarketTab />
           </TabPane>
           <TabPane active={currentTab === 'welcome'}>
-            <WelcomePackageTab />
+            <MWelcomePackageTab />
           </TabPane>
         </main>
       </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, memo, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Button,
   Chip,
@@ -123,6 +124,7 @@ const AddTagsPanel = memo(function AddTagsPanel({
   pendingTags: string[]
   onAdd: (tag: string) => void
 }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebounce(query)
 
@@ -141,7 +143,7 @@ const AddTagsPanel = memo(function AddTagsPanel({
       <SearchField value={query} onChange={setQuery} variant="secondary">
         <SearchField.Group>
           <SearchField.SearchIcon />
-          <SearchField.Input placeholder="Search tags…" />
+          <SearchField.Input placeholder={t('players.actions.tags.searchPlaceholder')} />
           <SearchField.ClearButton />
         </SearchField.Group>
       </SearchField>
@@ -167,6 +169,7 @@ const AddTagsPanel = memo(function AddTagsPanel({
 })
 
 export function ActionsView({ player }: Props) {
+  const { t } = useTranslation()
   const [section, setSection] = useState<ActionSection>('resources')
   const [busy, setBusy] = useState(false)
 
@@ -430,7 +433,7 @@ export function ActionsView({ player }: Props) {
 
   const onlineWarning = (
     <div className="text-xs px-3 py-2 rounded mb-3 bg-warning/10 border border-warning text-warning">
-      ⚠ Player is online — XP changes may not take effect until they reconnect
+      {t('players.actions.specs.onlineWarning')}
     </div>
   )
 
@@ -443,10 +446,10 @@ export function ActionsView({ player }: Props) {
 
   return (
     <>
-      <div className="flex gap-4 h-full min-h-0 overflow-hidden">
+      <div className="flex gap-3 h-full min-h-0 overflow-hidden">
         {/* Section nav */}
         <div className="shrink-0">
-          <div className="flex flex-col gap-1 p-2 border border-border/60 rounded-[var(--radius)] bg-background w-[140px]">
+          <div className="flex flex-col gap-1 p-0 border border-border/60 rounded-[var(--radius)] bg-background w-[140px]">
             {ACTION_SECTIONS.map((s) => {
               const isActive = section === s.key
               return (
@@ -460,7 +463,7 @@ export function ActionsView({ player }: Props) {
                       : 'text-foreground hover:bg-surface-hover')
                   }
                 >
-                  {s.label}
+                  {t(s.label as never)}
                 </button>
               )
             })}
@@ -472,20 +475,20 @@ export function ActionsView({ player }: Props) {
           {section === 'resources' && (
             <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
               <Panel>
-                <SectionLabel>Currency &amp; Resources</SectionLabel>
-                {actionRow('Give Currency', numInput(currency, setCurrency, 1, 9999999), 'Give', () =>
+                <SectionLabel>{t('players.actions.resources.currencyResources')}</SectionLabel>
+                {actionRow(t('players.actions.resources.giveCurrency'), numInput(currency, setCurrency, 1, 9999999), t('players.actions.resources.give'), () =>
                   run(
                     () => api.players.giveCurrency(player.controller_id, currency),
                     `Gave ${currency} Solari to ${player.name}`,
                   ),
                 )}
-                {actionRow('Give Scrip', numInput(scrip, setScrip, 1, 9999999), 'Give', () =>
+                {actionRow(t('players.actions.resources.giveScrip'), numInput(scrip, setScrip, 1, 9999999), t('players.actions.resources.give'), () =>
                   run(
                     () => api.players.giveScrip(player.controller_id, scrip),
                     `Gave ${scrip} scrip to ${player.name}`,
                   ),
                 )}
-                {actionRow('Award Intel', numInput(intel, setIntel, 1, 9999999), 'Award', () =>
+                {actionRow(t('players.actions.resources.awardIntel'), numInput(intel, setIntel, 1, 9999999), t('players.actions.resources.award'), () =>
                   run(
                     () => api.players.awardIntel(player.id, intel),
                     `Awarded ${intel} intel to ${player.name}`,
@@ -494,32 +497,21 @@ export function ActionsView({ player }: Props) {
               </Panel>
 
               <Panel>
-                <SectionLabel>Character XP</SectionLabel>
+                <SectionLabel>{t('players.actions.resources.characterXP')}</SectionLabel>
                 {charXPCurrent && (
                   <div className="text-xs text-muted mb-2">
-                    Current:
-                    {' '}
-                    <span className="text-foreground">
-                      {charXPCurrent.xp.toLocaleString()}
-                      {' '}
-                      XP
-                    </span>
-                    {' '}
-                    — Level
-                    {' '}
-                    <span className="text-foreground">{charXPCurrent.level}</span>
-                    <span className="text-muted/60"> / 200</span>
+                    {t('players.actions.resources.currentXP', { xp: charXPCurrent.xp.toLocaleString(), level: charXPCurrent.level })}
                   </div>
                 )}
                 {actionRow(
-                  'Award Char XP',
+                  t('players.actions.resources.awardCharXP'),
                   <div className="flex flex-col gap-0.5">
                     {numInput(charXP, setCharXP, 0, 344440)}
                     <span className="text-xs text-muted">
-                      Max 344,440 (level 200) · live if online, DB if offline
+                      {t('players.actions.resources.charXPNote')}
                     </span>
                   </div>,
-                  'Award',
+                  t('players.actions.resources.award'),
                   () =>
                     run(
                       () => api.players.awardCharXP(player.id, charXP, player.fls_id),
@@ -534,15 +526,15 @@ export function ActionsView({ player }: Props) {
               </Panel>
 
               <Panel>
-                <SectionLabel>Live Actions</SectionLabel>
-                <div className="text-xs text-muted mb-2">Player must be online.</div>
+                <SectionLabel>{t('players.actions.resources.liveActions')}</SectionLabel>
+                <div className="text-xs text-muted mb-2">{t('players.actions.resources.liveActionsNote')}</div>
                 {actionRow(
-                  'Skill Points',
+                  t('players.actions.resources.skillPoints'),
                   <div className="flex flex-col gap-0.5">
                     {numInput(skillPointsAmount, setSkillPointsAmount, 0, 9999)}
-                    <span className="text-xs text-muted">Sets unspent points</span>
+                    <span className="text-xs text-muted">{t('players.actions.resources.skillPointsNote')}</span>
                   </div>,
-                  'Set',
+                  t('players.actions.resources.set'),
                   () =>
                     run(
                       () => api.players.setSkillPoints(player.fls_id, skillPointsAmount),
@@ -550,9 +542,9 @@ export function ActionsView({ player }: Props) {
                     ),
                 )}
                 {actionRow(
-                  'Fill Water',
-                  <span className="text-xs text-muted">Fills all water containers to max</span>,
-                  'Fill',
+                  t('players.actions.resources.fillWater'),
+                  <span className="text-xs text-muted">{t('players.actions.resources.fillWaterNote')}</span>,
+                  t('players.actions.resources.fill'),
                   () =>
                     run(
                       () => api.players.fillWater(player.fls_id),
@@ -560,11 +552,11 @@ export function ActionsView({ player }: Props) {
                     ),
                 )}
                 {actionRow(
-                  'Set Skill Module',
+                  t('players.actions.resources.setSkillModule'),
                   <div className="flex items-center gap-2">
                     <Select
-                      aria-label="Skill module"
-                      placeholder="Select module…"
+                      aria-label={t('players.actions.resources.skillModules')}
+                      placeholder={t('players.actions.resources.selectModule')}
                       selectedKey={skillModule || null}
                       onSelectionChange={(k) => setSkillModule(k ? String(k) : '')}
                       className="w-52"
@@ -576,7 +568,7 @@ export function ActionsView({ player }: Props) {
                       <Select.Popover className="!w-[380px]">
                         <Virtualizer layout={ListLayout} layoutOptions={{ rowHeight: 32 }}>
                           <ListBox
-                            aria-label="Skill modules"
+                            aria-label={t('players.actions.resources.skillModules')}
                             className="h-[300px] overflow-y-auto"
                             items={(allSkillModules as { id: string, label: string }[]).map((m) => ({
                               id: m.id,
@@ -595,7 +587,7 @@ export function ActionsView({ player }: Props) {
                     </Select>
                     {numInput(skillModuleLevel, setSkillModuleLevel, 0, 5)}
                   </div>,
-                  'Set',
+                  t('players.actions.resources.set'),
                   () =>
                     run(
                       () => api.players.setSkillModule(player.fls_id, skillModule, skillModuleLevel),
@@ -605,9 +597,9 @@ export function ActionsView({ player }: Props) {
               </Panel>
 
               <Panel>
-                <SectionLabel>Faction Reputation</SectionLabel>
+                <SectionLabel>{t('players.actions.resources.factionReputation')}</SectionLabel>
                 <div className="flex items-center gap-2 py-3 border-b border-border/40">
-                  <div className="w-36 shrink-0 text-sm text-muted">Faction</div>
+                  <div className="w-36 shrink-0 text-sm text-muted">{t('players.actions.resources.faction')}</div>
                   <Select
                     selectedKey={String(factionId)}
                     onSelectionChange={(k) => setFactionId(Number(k))}
@@ -630,12 +622,12 @@ export function ActionsView({ player }: Props) {
                   </Select>
                 </div>
                 {actionRow(
-                  'Reputation',
+                  t('players.actions.resources.reputation'),
                   <div className="flex flex-col gap-0.5">
                     {numInput(repDelta, setRepDelta, 0, 12474)}
-                    <span className="text-xs text-muted">Adds to current, max 12,474</span>
+                    <span className="text-xs text-muted">{t('players.actions.resources.reputationNote')}</span>
                   </div>,
-                  'Give',
+                  t('players.actions.resources.give'),
                   () =>
                     run(
                       () => api.players.giveFactionRep(player.controller_id, factionId, repDelta),
@@ -649,7 +641,7 @@ export function ActionsView({ player }: Props) {
           {section === 'specs' && (
             <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
               <div className="flex items-center gap-3 min-h-8">
-                <div className="flex-1"><SectionLabel>Specializations</SectionLabel></div>
+                <div className="flex-1"><SectionLabel>{t('players.actions.specs.specializations')}</SectionLabel></div>
                 <Button size="sm" variant="ghost" isDisabled={specsLoading} onPress={() => setSpecsLoaded(false)}>
                   {specsLoading ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
                 </Button>
@@ -663,7 +655,7 @@ export function ActionsView({ player }: Props) {
                       `Grant all keystones to ${player.name}`,
                     ).then(() => setSpecsLoaded(false))}
                 >
-                  Grant Max Keystones
+                  {t('players.actions.specs.grantMaxKeystones')}
                 </Button>
                 <Button
                   size="sm"
@@ -671,9 +663,9 @@ export function ActionsView({ player }: Props) {
                   isDisabled={busy || player.online_status === 'Online'}
                   onPress={() =>
                     gate(
-                      'Reset all keystones?',
-                      `This will remove all granted keystones for ${player.name}. This action cannot be undone.`,
-                      'Reset All Keystones',
+                      t('players.actions.specs.resetKeystonesTitle'),
+                      t('players.actions.specs.resetKeystonesDesc', { player: player.name }),
+                      t('players.actions.specs.resetAllKeystones'),
                       () =>
                         run(
                           () => api.players.resetAllKeystones(player.controller_id),
@@ -681,7 +673,7 @@ export function ActionsView({ player }: Props) {
                         ).then(() => setSpecsLoaded(false)),
                     )}
                 >
-                  Reset All Keystones
+                  {t('players.actions.specs.resetAllKeystones')}
                 </Button>
               </div>
               {player.online_status === 'Online' && onlineWarning}
@@ -689,12 +681,12 @@ export function ActionsView({ player }: Props) {
                 ? <div className="flex justify-center py-8"><Spinner size="lg" /></div>
                 : (
                     <DataTable<string, 'track' | 'xp' | 'level' | 'grant' | 'reset'>
-                      aria-label="Specializations"
+                      aria-label={t('players.actions.specs.specsLabel')}
                       className="min-h-0 max-h-full"
                       columns={[
-                        { key: 'track', label: 'Track', isRowHeader: true },
-                        { key: 'xp', label: 'XP' },
-                        { key: 'level', label: 'Level' },
+                        { key: 'track', label: t('players.actions.specs.columns.track'), isRowHeader: true },
+                        { key: 'xp', label: t('players.actions.specs.columns.xp') },
+                        { key: 'level', label: t('players.actions.specs.columns.level') },
                         { key: 'grant', label: '', sortable: false },
                         { key: 'reset', label: '', sortable: false },
                       ]}
@@ -749,7 +741,7 @@ export function ActionsView({ player }: Props) {
                                     })
                                   })}
                               >
-                                Grant Max
+                                {t('players.actions.specs.grantMax')}
                               </Button>
                             )
                           case 'reset':
@@ -760,9 +752,9 @@ export function ActionsView({ player }: Props) {
                                 isDisabled={busy}
                                 onPress={() =>
                                   gate(
-                                    `Reset ${track} spec?`,
-                                    `This will wipe all XP and levels for the ${track} specialization track.`,
-                                    'Reset Spec',
+                                    t('players.actions.specs.resetSpecTitle', { track }),
+                                    t('players.actions.specs.resetSpecDesc', { track }),
+                                    t('players.actions.specs.resetSpec'),
                                     () =>
                                       run(
                                         () => api.players.resetSpec(player.controller_id, track),
@@ -772,7 +764,7 @@ export function ActionsView({ player }: Props) {
                                       ),
                                   )}
                               >
-                                Reset
+                                {t('players.actions.specs.resetSpec')}
                               </Button>
                             )
                         }
@@ -792,14 +784,14 @@ export function ActionsView({ player }: Props) {
               return (
                 <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
                   <Panel>
-                    <SectionLabel>Quick Presets</SectionLabel>
+                    <SectionLabel>{t('players.actions.progression.quickPresets')}</SectionLabel>
                     <div className="text-xs text-muted">
-                      Curated bundles that complete one or more root journey nodes and cascade to all children + tags.
+                      {t('players.actions.progression.quickPresetsDesc')}
                     </div>
                     {!presetsLoaded
-                      ? <div className="text-xs text-muted py-2">Loading…</div>
+                      ? <div className="text-xs text-muted py-2">{t('players.actions.progression.loadingPresets')}</div>
                       : presets.length === 0
-                        ? <div className="text-xs text-muted py-2">No presets available</div>
+                        ? <div className="text-xs text-muted py-2">{t('players.actions.progression.noPresets')}</div>
                         : (
                             <div className="flex flex-col">
                               {presets.map((p) => (
@@ -812,9 +804,7 @@ export function ActionsView({ player }: Props) {
                                     <div className="text-xs text-muted">{p.description}</div>
                                   </div>
                                   <Chip size="sm" variant="soft">
-                                    {p.node_count}
-                                    {' '}
-                                    nodes
+                                    {t('players.actions.progression.nodes', { count: p.node_count })}
                                   </Chip>
                                   <Button
                                     size="sm"
@@ -826,7 +816,7 @@ export function ActionsView({ player }: Props) {
                                         `Applied preset '${p.name}' to ${player.name}`,
                                       ).then(() => setNodesLoaded(false))}
                                   >
-                                    Apply
+                                    {t('players.actions.progression.apply')}
                                   </Button>
                                 </div>
                               ))}
@@ -835,9 +825,9 @@ export function ActionsView({ player }: Props) {
                   </Panel>
 
                   <Panel>
-                    <SectionLabel>Progression Unlock</SectionLabel>
+                    <SectionLabel>{t('players.actions.progression.progressionUnlock')}</SectionLabel>
                     <div className="text-xs text-muted">
-                      Completes DA_FQ_ClimbTheRanks journey nodes and writes faction tier tags.
+                      {t('players.actions.progression.progressionUnlockDesc')}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Select
@@ -894,7 +884,7 @@ export function ActionsView({ player }: Props) {
                             `Applied ${unlockPreset} (${unlockFaction}) to ${player.name}`,
                           ).then(() => setNodesLoaded(false))}
                       >
-                        Apply Unlock
+                        {t('players.actions.progression.applyUnlock')}
                       </Button>
                       <Button
                         size="sm"
@@ -902,9 +892,9 @@ export function ActionsView({ player }: Props) {
                         isDisabled={busy}
                         onPress={() =>
                           gate(
-                            'Reverse progression unlock?',
-                            `This will undo the ${unlockPreset} preset for ${unlockFaction} and remove associated tags from ${player.name}.`,
-                            'Reverse Unlock',
+                            t('players.actions.progression.reverseUnlockTitle'),
+                            t('players.actions.progression.reverseUnlockDesc', { preset: unlockPreset, faction: unlockFaction, player: player.name }),
+                            t('players.actions.progression.reverseUnlock'),
                             () =>
                               run(
                                 () => api.players.progressionReverse(player.id, unlockFaction, unlockPreset),
@@ -912,7 +902,7 @@ export function ActionsView({ player }: Props) {
                               ).then(() => setNodesLoaded(false)),
                           )}
                       >
-                        Reverse Unlock
+                        {t('players.actions.progression.reverseUnlock')}
                       </Button>
                     </div>
                   </Panel>
@@ -920,17 +910,13 @@ export function ActionsView({ player }: Props) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {contractCatalogLoaded && !contractCatalogError && (
                       <Panel>
-                        <SectionLabel>Unlock Trainer</SectionLabel>
+                        <SectionLabel>{t('players.actions.progression.unlockTrainer')}</SectionLabel>
                         <div className="text-xs text-muted">
-                          Completes every
-                          {' '}
-                          <code>Trainer_X_*</code>
-                          {' '}
-                          contract and grants the full job skill tree.
+                          {t('players.actions.progression.unlockTrainerDesc')}
                         </div>
                         <div className="flex items-center gap-2">
                           <Select
-                            aria-label="Trainer"
+                            aria-label={t('players.actions.progression.trainerLabel')}
                             selectedKey={selectedTrainer}
                             onSelectionChange={(k) => setSelectedTrainer(k as TrainerKey)}
                             className="flex-1"
@@ -977,9 +963,9 @@ export function ActionsView({ player }: Props) {
                             isDisabled={busy}
                             onPress={() =>
                               gate(
-                                `Reset ${selectedTrainer} skill tree?`,
-                                `This will wipe the full ${selectedTrainer} job skill tree for ${player.name}.`,
-                                'Reset Skill Tree',
+                                t('players.actions.progression.resetSkillTreeTitle', { trainer: selectedTrainer }),
+                                t('players.actions.progression.resetSkillTreeDesc', { trainer: selectedTrainer, player: player.name }),
+                                t('players.actions.progression.resetSkillTree'),
                                 () =>
                                   run(
                                     () => api.players.resetJobSkills(player.account_id, selectedTrainer),
@@ -987,24 +973,20 @@ export function ActionsView({ player }: Props) {
                                   ),
                               )}
                           >
-                            Reset
+                            {t('players.actions.progression.resetSkillTree')}
                           </Button>
                         </div>
                       </Panel>
                     )}
 
                     <Panel>
-                      <SectionLabel>Unlock Main Quest</SectionLabel>
+                      <SectionLabel>{t('players.actions.progression.unlockMainQuest')}</SectionLabel>
                       <div className="text-xs text-muted">
-                        Flips every
-                        {' '}
-                        <code>DA_MQ_&lt;name&gt;.*</code>
-                        {' '}
-                        journey row complete and applies the m_TagsToAdd union.
+                        {t('players.actions.progression.unlockMainQuestDesc')}
                       </div>
                       <div className="flex items-center gap-2">
                         <Select
-                          aria-label="Main quest"
+                          aria-label={t('players.actions.progression.mainQuestLabel')}
                           selectedKey={selectedMQ}
                           onSelectionChange={(k) => setSelectedMQ(String(k))}
                           className="flex-1"
@@ -1041,7 +1023,7 @@ export function ActionsView({ player }: Props) {
                               `Unlocked ${selectedMQDef?.label ?? selectedMQ} for ${player.name}`,
                             ).then(() => setNodesLoaded(false))}
                         >
-                          Apply
+                          {t('players.actions.progression.apply')}
                         </Button>
                       </div>
                     </Panel>
@@ -1053,29 +1035,21 @@ export function ActionsView({ player }: Props) {
           {section === 'contracts' && (
             <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-3">
               <div className="flex items-center gap-2 min-h-8">
-                <SectionLabel>Complete Contract(s)</SectionLabel>
+                <SectionLabel>{t('players.actions.contracts.title')}</SectionLabel>
                 <div className="text-xs text-muted">
                   {contractCatalogError
                     ? (
                         <span className="text-danger">
-                          load failed:
-                          {' '}
-                          {contractCatalogError}
-                          {' '}
-                          — restart the server
+                          {t('players.actions.contracts.loadFailed', { error: contractCatalogError })}
                         </span>
                       )
                     : contractCatalogLoaded
-                      ? `${contractCatalog.length} contracts`
-                      : 'loading…'}
+                      ? t('players.actions.contracts.count', { count: contractCatalog.length })
+                      : t('players.actions.contracts.loadingContracts')}
                 </div>
               </div>
               <div className="text-xs text-muted">
-                Applies the contract&apos;s
-                {' '}
-                <code>AddedFlagsOnCompletion</code>
-                {' '}
-                tags + tier-promotion side effects. Multi-select supported.
+                {t('players.actions.contracts.desc')}
               </div>
 
               {selectedContracts.length > 0 && (
@@ -1098,21 +1072,21 @@ export function ActionsView({ player }: Props) {
                     onClick={() => setSelectedContracts([])}
                     className="text-xs underline text-muted"
                   >
-                    clear all
+                    {t('players.actions.contracts.clearAll')}
                   </button>
                 </div>
               )}
 
               <div className="flex items-center gap-2 flex-wrap">
                 <SearchField
-                  aria-label="Filter contracts"
+                  aria-label={t('players.actions.contracts.filterLabel')}
                   className="flex-1 min-w-48"
                   value={contractSearch}
                   onChange={setContractSearch}
                 >
                   <SearchField.Group>
                     <SearchField.SearchIcon />
-                    <SearchField.Input placeholder="Filter contracts (e.g. Trainer_Mentat, Atre_Rank01)..." />
+                    <SearchField.Input placeholder={t('players.actions.contracts.filterPlaceholder')} />
                     <SearchField.ClearButton />
                   </SearchField.Group>
                 </SearchField>
@@ -1129,9 +1103,7 @@ export function ActionsView({ player }: Props) {
                       setNodesLoaded(false)
                     })}
                 >
-                  Apply Contract(s) (
-                  {selectedContracts.length}
-                  )
+                  {t('players.actions.contracts.applyContracts', { count: selectedContracts.length })}
                 </Button>
                 <Button
                   size="sm"
@@ -1146,9 +1118,7 @@ export function ActionsView({ player }: Props) {
                       setNodesLoaded(false)
                     })}
                 >
-                  Reverse Contract(s) (
-                  {selectedContracts.length}
-                  )
+                  {t('players.actions.contracts.reverseContracts', { count: selectedContracts.length })}
                 </Button>
               </div>
 
@@ -1163,7 +1133,7 @@ export function ActionsView({ player }: Props) {
                         || (c.alias && c.alias.toLowerCase().includes(q)),
                     )
                     if (matches.length === 0) {
-                      return <div className="px-2 py-3 text-xs text-center text-muted">No matching contracts</div>
+                      return <div className="px-2 py-3 text-xs text-center text-muted">{t('players.actions.contracts.noMatching')}</div>
                     }
                     return matches.map((c) => {
                       const id = c.alias || c.id
@@ -1186,10 +1156,9 @@ export function ActionsView({ player }: Props) {
                             {id}
                           </span>
                           <span className="text-muted">
-                            {c.tag_count}
-                            {' '}
-                            tag
-                            {c.tag_count === 1 ? '' : 's'}
+                            {c.tag_count === 1
+                              ? t('players.actions.contracts.tagCount', { count: c.tag_count })
+                              : t('players.actions.contracts.tagCountPlural', { count: c.tag_count })}
                           </span>
                         </button>
                       )
@@ -1203,7 +1172,7 @@ export function ActionsView({ player }: Props) {
           {section === 'journey' && (
             <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-hidden">
               <div className="flex items-center gap-2 shrink-0 min-h-8">
-                <SectionLabel>Journey Nodes</SectionLabel>
+                <SectionLabel>{t('players.actions.journey.title')}</SectionLabel>
                 <div className="flex-1" />
                 <Button size="sm" variant="ghost" onPress={() => setNodesLoaded(false)} isDisabled={nodesLoading}>
                   {nodesLoading ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
@@ -1214,9 +1183,9 @@ export function ActionsView({ player }: Props) {
                   isDisabled={busy}
                   onPress={() =>
                     gate(
-                      'Wipe all journey nodes?',
-                      `This will delete all journey progress for ${player.name}. This action cannot be undone.`,
-                      'Wipe All',
+                      t('players.actions.journey.wipeAllTitle'),
+                      t('players.actions.journey.wipeAllDesc', { player: player.name }),
+                      t('players.actions.journey.wipeAll'),
                       () =>
                         run(
                           () => api.players.journeyWipe(player.account_id),
@@ -1224,23 +1193,23 @@ export function ActionsView({ player }: Props) {
                         ).then(() => setNodes([])),
                     )}
                 >
-                  Wipe All
+                  {t('players.actions.journey.wipeAll')}
                 </Button>
               </div>
-              <DebouncedSearchField className="shrink-0" placeholder="Filter nodes..." onSearch={setNodeSearch} />
+              <DebouncedSearchField className="shrink-0" placeholder={t('players.actions.journey.filterPlaceholder')} onSearch={setNodeSearch} />
               {nodesLoading
                 ? <div className="flex justify-center py-8"><Spinner size="lg" /></div>
                 : (
                     <DataTable<JourneyNode, 'node' | 'done' | 'revealed' | 'reward' | 'actions'>
-                      aria-label="Journey nodes"
+                      aria-label={t('players.actions.journey.journeyLabel')}
                       className="min-h-0 max-h-full"
                       virtualized
                       rowHeight={36}
                       columns={[
-                        { key: 'node', label: 'Node ID', isRowHeader: true, minWidth: 240 },
-                        { key: 'done', label: 'Done', width: 80 },
-                        { key: 'revealed', label: 'Revealed', width: 100 },
-                        { key: 'reward', label: 'Reward', width: 90 },
+                        { key: 'node', label: t('players.actions.journey.columns.nodeId'), isRowHeader: true, minWidth: 240 },
+                        { key: 'done', label: t('players.actions.journey.columns.done'), width: 80 },
+                        { key: 'revealed', label: t('players.actions.journey.columns.revealed'), width: 100 },
+                        { key: 'reward', label: t('players.actions.journey.columns.reward'), width: 90 },
                         { key: 'actions', label: '', sortable: false, width: 220 },
                       ]}
                       rows={filteredNodes}
@@ -1255,7 +1224,7 @@ export function ActionsView({ player }: Props) {
                       }}
                       emptyState={(
                         <div className="text-center py-8 text-xs text-muted">
-                          {nodes.length === 0 ? 'No journey nodes found' : 'No matching nodes'}
+                          {nodes.length === 0 ? t('players.actions.journey.noNodes') : t('players.actions.journey.noMatching')}
                         </div>
                       )}
                       renderCell={(n, key) => {
@@ -1286,7 +1255,7 @@ export function ActionsView({ player }: Props) {
                                       )
                                     })}
                                 >
-                                  {n.is_complete ? '↻ Re-do' : 'Complete'}
+                                  {n.is_complete ? t('players.actions.journey.redo') : t('players.actions.journey.complete')}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1307,7 +1276,7 @@ export function ActionsView({ player }: Props) {
                                       )
                                     })}
                                 >
-                                  Reset
+                                  {t('players.actions.journey.reset')}
                                 </Button>
                               </div>
                             )
@@ -1321,12 +1290,11 @@ export function ActionsView({ player }: Props) {
           {section === 'experimental' && (
             <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
               <div className="text-xs px-3 py-2 rounded bg-danger/10 border border-danger/40 text-danger">
-                ⚠ Experimental — these commands are sent via RabbitMQ but their effects are unverified. Use on test
-                characters only.
+                {t('players.actions.experimental.warning')}
               </div>
               <Panel>
-                <SectionLabel>CheatScript — Known Scripts</SectionLabel>
-                <div className="text-xs text-muted mb-2">Named scripts defined in DefaultGame.ini. Fire-and-forget.</div>
+                <SectionLabel>{t('players.actions.experimental.knownScripts')}</SectionLabel>
+                <div className="text-xs text-muted mb-2">{t('players.actions.experimental.knownScriptsDesc')}</div>
                 {(
                   [
                     {
@@ -1379,7 +1347,7 @@ export function ActionsView({ player }: Props) {
                       onPress={
                         danger
                           ? () =>
-                              gate(`Run ${label}?`, desc.replace(/^⚠ DESTRUCTIVE — /, ''), 'Confirm Run', () =>
+                              gate(t('players.actions.experimental.runTitle', { label }), desc.replace(/^⚠ DESTRUCTIVE — /, ''), t('players.actions.experimental.confirmRun'), () =>
                                 run(
                                   () => api.players.cheatScript(player.fls_id, name),
                                   `CheatScript ${name} sent for ${player.name}`,
@@ -1392,23 +1360,23 @@ export function ActionsView({ player }: Props) {
                               )
                       }
                     >
-                      Run
+                      {t('players.actions.experimental.run')}
                     </Button>
                   </div>
                 ))}
               </Panel>
               <Panel>
-                <SectionLabel>CheatScript — Custom</SectionLabel>
+                <SectionLabel>{t('players.actions.experimental.customScript')}</SectionLabel>
                 <div className="text-xs text-muted mb-2">
-                  Try any script name or console command.
+                  {t('players.actions.experimental.customScriptDesc')}
                 </div>
                 <div className="flex items-center gap-2">
                   <Input
-                    placeholder="Script / command name…"
+                    placeholder={t('players.actions.experimental.customScriptPlaceholder')}
                     value={customScriptName}
                     onChange={(e) => setCustomScriptName(e.target.value)}
                     className="flex-1"
-                    aria-label="Custom script name"
+                    aria-label={t('players.actions.experimental.customScriptLabel')}
                   />
                   <Button
                     size="sm"
@@ -1420,7 +1388,7 @@ export function ActionsView({ player }: Props) {
                         `CheatScript "${customScriptName}" sent for ${player.name}`,
                       )}
                   >
-                    Try
+                    {t('players.actions.experimental.try')}
                   </Button>
                 </div>
               </Panel>
@@ -1430,31 +1398,31 @@ export function ActionsView({ player }: Props) {
           {section === 'admin' && (
             <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
               <Panel>
-                <SectionLabel>Live Actions</SectionLabel>
-                <div className="text-xs text-muted mb-2">RabbitMQ commands — player must be online.</div>
+                <SectionLabel>{t('players.actions.admin.liveActions')}</SectionLabel>
+                <div className="text-xs text-muted mb-2">{t('players.actions.admin.liveActionsDesc')}</div>
                 {actionRow(
-                  'Kick Player',
-                  <span className="text-xs text-muted">Disconnects the player from the server</span>,
-                  'Kick',
+                  t('players.actions.admin.kickPlayer'),
+                  <span className="text-xs text-muted">{t('players.actions.admin.kickDesc')}</span>,
+                  t('players.actions.admin.kick'),
                   () => run(() => api.players.kick(player.fls_id), `Kick command sent for ${player.name}`),
                 )}
               </Panel>
 
               <Panel>
-                <SectionLabel>Destructive Live Actions</SectionLabel>
-                <div className="text-xs text-muted mb-2">Irreversible — player must be online.</div>
+                <SectionLabel>{t('players.actions.admin.destructive')}</SectionLabel>
+                <div className="text-xs text-muted mb-2">{t('players.actions.admin.destructiveDesc')}</div>
                 <div className="flex items-end gap-3 py-3 border-b border-border/40">
-                  <div className="w-36 shrink-0 text-sm text-muted">Wipe Inventory</div>
-                  <div className="flex-1 text-xs text-muted">Destroys all items in the player&apos;s inventory</div>
+                  <div className="w-36 shrink-0 text-sm text-muted">{t('players.actions.admin.wipeInventory')}</div>
+                  <div className="flex-1 text-xs text-muted">{t('players.actions.admin.wipeInventoryDesc')}</div>
                   <Button
                     size="sm"
                     variant="danger-soft"
                     isDisabled={busy}
                     onPress={() =>
                       gate(
-                        'Wipe inventory permanently?',
-                        `This will destroy all items in ${player.name}'s inventory. This action cannot be undone.`,
-                        'Confirm Wipe',
+                        t('players.actions.admin.wipeInventoryTitle'),
+                        t('players.actions.admin.wipeInventoryConfirmDesc', { player: player.name }),
+                        t('players.actions.admin.confirmWipe'),
                         () =>
                           run(
                             () => api.players.cleanInventory(player.fls_id),
@@ -1462,21 +1430,21 @@ export function ActionsView({ player }: Props) {
                           ),
                       )}
                   >
-                    Wipe
+                    {t('players.actions.admin.wipe')}
                   </Button>
                 </div>
                 <div className="flex items-end gap-3 py-3">
-                  <div className="w-36 shrink-0 text-sm text-muted">Reset Progression</div>
-                  <div className="flex-1 text-xs text-muted">Wipes XP, skills and journey for the player</div>
+                  <div className="w-36 shrink-0 text-sm text-muted">{t('players.actions.admin.resetProgression')}</div>
+                  <div className="flex-1 text-xs text-muted">{t('players.actions.admin.resetProgressionDesc')}</div>
                   <Button
                     size="sm"
                     variant="danger-soft"
                     isDisabled={busy}
                     onPress={() =>
                       gate(
-                        'Reset progression permanently?',
-                        `This will wipe XP, skills, and journey progress for ${player.name}. This action cannot be undone.`,
-                        'Confirm Reset',
+                        t('players.actions.admin.resetProgressionTitle'),
+                        t('players.actions.admin.resetProgressionConfirmDesc', { player: player.name }),
+                        t('players.actions.admin.confirmReset'),
                         () =>
                           run(
                             () => api.players.resetProgression(player.fls_id),
@@ -1484,34 +1452,34 @@ export function ActionsView({ player }: Props) {
                           ),
                       )}
                   >
-                    Reset
+                    {t('players.actions.admin.confirmReset')}
                   </Button>
                 </div>
               </Panel>
 
               <Panel>
-                <SectionLabel>Reset Actions</SectionLabel>
+                <SectionLabel>{t('players.actions.admin.resetActions')}</SectionLabel>
                 {actionRow(
-                  'Delete Tutorials',
-                  <span className="text-xs text-muted">Removes all tutorial completion records</span>,
-                  'Delete',
+                  t('players.actions.admin.deleteTutorials'),
+                  <span className="text-xs text-muted">{t('players.actions.admin.deleteTutorialsDesc')}</span>,
+                  t('players.actions.admin.delete'),
                   () =>
                     run(() => api.players.deleteTutorials(player.id), `Deleted tutorials for ${player.name}`),
                   true,
-                  { title: 'Delete tutorials?', description: `This will remove all tutorial completion records for ${player.name}.` },
+                  { title: t('players.actions.admin.deleteTutorialsTitle'), description: t('players.actions.admin.deleteTutorialsConfirmDesc', { player: player.name }) },
                 )}
                 {actionRow(
-                  'Wipe Codex',
-                  <span className="text-xs text-muted">Clears all codex discoveries</span>,
-                  'Wipe',
+                  t('players.actions.admin.wipeCodex'),
+                  <span className="text-xs text-muted">{t('players.actions.admin.wipeCodexDesc')}</span>,
+                  t('players.actions.admin.wipe'),
                   () => run(() => api.players.wipeCodex(player.account_id), `Wiped codex for ${player.name}`),
                   true,
-                  { title: 'Wipe codex?', description: `This will clear all codex discoveries for ${player.name}.` },
+                  { title: t('players.actions.admin.wipeCodexTitle'), description: t('players.actions.admin.wipeCodexConfirmDesc', { player: player.name }) },
                 )}
                 {actionRow(
-                  'Dismiss Returning Player Popup',
-                  <span className="text-xs text-muted">Marks the award as claimed so the login popup stops appearing</span>,
-                  'Dismiss',
+                  t('players.actions.admin.dismissReturning'),
+                  <span className="text-xs text-muted">{t('players.actions.admin.dismissReturningDesc')}</span>,
+                  t('players.actions.admin.dismiss'),
                   () =>
                     run(
                       () => api.players.dismissReturningPlayerAward(player.account_id),
@@ -1522,26 +1490,26 @@ export function ActionsView({ player }: Props) {
               </Panel>
 
               <Panel>
-                <SectionLabel>Character Export</SectionLabel>
+                <SectionLabel>{t('players.actions.admin.characterExport')}</SectionLabel>
                 <div className="flex items-end gap-3 py-1">
-                  <div className="flex-1 text-xs text-muted">Download character data as JSON</div>
+                  <div className="flex-1 text-xs text-muted">{t('players.actions.admin.characterExportDesc')}</div>
                   <Button
                     size="sm"
                     variant="ghost"
                     isDisabled={busy}
-                    onPress={() => run(() => api.players.exportPlayer(player.account_id), 'Export downloaded')}
+                    onPress={() => run(() => api.players.exportPlayer(player.account_id), t('players.actions.admin.exportDownloaded'))}
                   >
-                    Download
+                    {t('players.actions.admin.downloadExport')}
                   </Button>
                 </div>
               </Panel>
 
               <Panel>
-                <SectionLabel>Teleport</SectionLabel>
+                <SectionLabel>{t('players.actions.admin.teleport')}</SectionLabel>
                 <div className="flex items-end gap-3 py-1">
                   <Select
-                    aria-label="Teleport destination"
-                    placeholder="Select location..."
+                    aria-label={t('players.actions.admin.teleport')}
+                    placeholder={t('players.actions.admin.teleportPlaceholder')}
                     selectedKey={selectedPartition || null}
                     onSelectionChange={(k) => setSelectedPartition(k ? String(k) : '')}
                     className="flex-1"
@@ -1571,14 +1539,14 @@ export function ActionsView({ player }: Props) {
                         `Teleported ${player.name} to ${selectedPartition}`,
                       )}
                   >
-                    Move
+                    {t('players.actions.admin.move')}
                   </Button>
                 </div>
-                <span className="text-xs text-muted">Live if online · written to DB if offline</span>
+                <span className="text-xs text-muted">{t('players.actions.admin.teleportNote')}</span>
               </Panel>
 
               <Panel>
-                <SectionLabel>Teleport to Player</SectionLabel>
+                <SectionLabel>{t('players.actions.admin.teleportToPlayer')}</SectionLabel>
                 <div className="text-xs text-muted mb-2">
                   Drop
                   {' '}
@@ -1590,14 +1558,14 @@ export function ActionsView({ player }: Props) {
                   <SearchField value={targetSearch} onChange={setTargetSearch} className="w-full">
                     <SearchField.Group>
                       <SearchField.SearchIcon />
-                      <SearchField.Input placeholder="Search by name…" aria-label="Search players" />
+                      <SearchField.Input placeholder={t('players.searchPlaceholder')} aria-label={t('players.searchLabel')} />
                       <SearchField.ClearButton />
                     </SearchField.Group>
                   </SearchField>
                   <div className="flex items-end gap-3">
                     <Select
-                      aria-label="Target player"
-                      placeholder={allPlayers.length === 0 ? 'Loading players…' : 'Pick a target…'}
+                      aria-label={t('players.actions.admin.selectTargetLabel')}
+                      placeholder={allPlayers.length === 0 ? t('players.actions.admin.loadingPlayers') : t('players.actions.admin.pickTarget')}
                       selectedKey={selectedTeleportTarget != null ? String(selectedTeleportTarget) : null}
                       onSelectionChange={(k) => setSelectedTeleportTarget(k ? Number(k) : null)}
                       className="flex-1"
@@ -1640,14 +1608,14 @@ export function ActionsView({ player }: Props) {
                         )
                       }}
                     >
-                      Move
+                      {t('players.actions.admin.move')}
                     </Button>
                   </div>
                 </div>
               </Panel>
 
               <Panel>
-                <SectionLabel>Whisper</SectionLabel>
+                <SectionLabel>{t('players.actions.admin.whisper')}</SectionLabel>
                 <div className="text-xs text-muted mb-2">
                   Send a private chat message to
                   {' '}
@@ -1658,7 +1626,7 @@ export function ActionsView({ player }: Props) {
                 </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted shrink-0">From:</span>
+                    <span className="text-xs text-muted shrink-0">{t('players.actions.admin.whisperFrom')}</span>
                     <input
                       type="text"
                       value={whisperSenderName}
@@ -1695,7 +1663,7 @@ export function ActionsView({ player }: Props) {
                               whisperSenderName.trim() || 'GM',
                               whisperText.trim(),
                             ),
-                          `Whisper sent to ${player.name}`,
+                          t('players.actions.admin.whisperSent', { player: player.name }),
                         ).then(() => setWhisperText(''))}
                     >
                       Send
@@ -1705,13 +1673,13 @@ export function ActionsView({ player }: Props) {
               </Panel>
 
               <Panel>
-                <SectionLabel>Spawn Vehicle</SectionLabel>
-                <div className="text-xs text-muted mb-2">Player must be online. Spawns at the chosen partition location.</div>
+                <SectionLabel>{t('players.actions.admin.spawnVehicle')}</SectionLabel>
+                <div className="text-xs text-muted mb-2">{t('players.actions.admin.spawnVehicleDesc')}</div>
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <Select
-                      aria-label="Vehicle type"
-                      placeholder="Select vehicle…"
+                      aria-label={t('players.actions.admin.vehicleLabel')}
+                      placeholder={t('players.actions.admin.selectVehicle')}
                       selectedKey={spawnVehicleId || null}
                       onSelectionChange={(k) => {
                         const id = k ? String(k) : ''
@@ -1745,7 +1713,7 @@ export function ActionsView({ player }: Props) {
                         return templates.length > 1
                           ? (
                               <Select
-                                aria-label="Template"
+                                aria-label={t('players.actions.admin.templateLabel')}
                                 selectedKey={spawnVehicleTemplate || null}
                                 onSelectionChange={(k) => setSpawnVehicleTemplate(k ? String(k) : '')}
                                 className="w-44"
@@ -1771,8 +1739,8 @@ export function ActionsView({ player }: Props) {
                   </div>
                   <div className="flex items-center gap-2">
                     <Select
-                      aria-label="Spawn location"
-                      placeholder="Select spawn location…"
+                      aria-label={t('players.actions.admin.spawnLocationLabel')}
+                      placeholder={t('players.actions.admin.selectSpawnLocation')}
                       selectedKey={spawnVehiclePartition || null}
                       onSelectionChange={(k) => setSpawnVehiclePartition(k ? String(k) : '')}
                       className="flex-1"
@@ -1798,7 +1766,7 @@ export function ActionsView({ player }: Props) {
                         checked={spawnVehiclePersistent}
                         onChange={(e) => setSpawnVehiclePersistent(e.target.checked)}
                       />
-                      <span className="text-xs">Persistent</span>
+                      <span className="text-xs">{t('players.actions.admin.persistent')}</span>
                     </label>
                     <Button
                       size="sm"
@@ -1820,7 +1788,7 @@ export function ActionsView({ player }: Props) {
                         )
                       }}
                     >
-                      Spawn
+                      {t('players.actions.admin.spawn')}
                     </Button>
                   </div>
                 </div>
@@ -1831,7 +1799,7 @@ export function ActionsView({ player }: Props) {
           {section === 'tags' && (
             <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
               <div className="shrink-0 flex flex-col gap-2">
-                <SectionLabel>Add Tags</SectionLabel>
+                <SectionLabel>{t('players.actions.tags.addTags')}</SectionLabel>
                 <AddTagsPanel tags={tags} pendingTags={pendingTags} onAdd={handleAddTag} />
                 {pendingTags.length > 0 && (
                   <>
@@ -1866,9 +1834,7 @@ export function ActionsView({ player }: Props) {
                         })
                       }}
                     >
-                      Add (
-                      {pendingTags.length}
-                      )
+                      {t('players.actions.tags.addCount', { count: pendingTags.length })}
                     </Button>
                   </>
                 )}
@@ -1880,24 +1846,22 @@ export function ActionsView({ player }: Props) {
                     <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
                       <div className="flex items-center gap-2 shrink-0 min-h-8">
                         <SectionLabel>
-                          Active Tags (
-                          {tags.length}
-                          )
+                          {t('players.actions.tags.activeTags', { count: tags.length })}
                         </SectionLabel>
-                        <DebouncedSearchField className="flex-1" placeholder="Filter to remove…" onSearch={setTagRemoveSearch} />
+                        <DebouncedSearchField className="flex-1" placeholder={t('players.actions.tags.filterPlaceholder')} onSearch={setTagRemoveSearch} />
                       </div>
                       <DataTable<string, 'tag' | 'actions'>
-                        aria-label="Active tags"
+                        aria-label={t('players.actions.tags.activeTagsLabel')}
                         className="min-h-0 max-h-full"
                         columns={[
-                          { key: 'tag', label: 'Tag', isRowHeader: true },
+                          { key: 'tag', label: t('players.actions.tags.tagColumn'), isRowHeader: true },
                           { key: 'actions', label: '', sortable: false },
                         ]}
                         rows={filteredActiveTags}
                         rowId={(t) => t}
                         initialSort={{ column: 'tag', direction: 'ascending' }}
                         sortValue={(t) => t}
-                        emptyState={<div className="py-6 text-center text-muted">No tags</div>}
+                        emptyState={<div className="py-6 text-center text-muted">{t('players.actions.tags.noTags')}</div>}
                         renderCell={(tag, key) => {
                           if (key === 'tag') return <span className="font-mono">{tag}</span>
                           return (
@@ -1906,7 +1870,7 @@ export function ActionsView({ player }: Props) {
                               variant="danger-soft"
                               onPress={() => {
                                 setTags((prev) => prev.filter((t) => t !== tag))
-                                run(() => api.players.updateTags(player.account_id, [], [tag]), 'Removed tag')
+                                run(() => api.players.updateTags(player.account_id, [], [tag]), t('players.actions.tags.removedTag'))
                               }}
                               aria-label={`Remove ${tag}`}
                             >
@@ -1927,15 +1891,15 @@ export function ActionsView({ player }: Props) {
                 : (
                     <>
                       <Panel>
-                        <SectionLabel>Game Events</SectionLabel>
+                        <SectionLabel>{t('players.actions.history.gameEvents')}</SectionLabel>
                         <DataTable<GameEvent, 'time' | 'map' | 'event_type' | 'location'>
-                          aria-label="Game events"
+                          aria-label={t('players.actions.history.gameEventsLabel')}
                           className="max-h-[40vh]"
                           columns={[
-                            { key: 'time', label: 'Time', isRowHeader: true },
-                            { key: 'map', label: 'Map' },
-                            { key: 'event_type', label: 'Event Type' },
-                            { key: 'location', label: 'Location', sortable: false },
+                            { key: 'time', label: t('players.actions.history.columns.time'), isRowHeader: true },
+                            { key: 'map', label: t('players.actions.history.columns.map') },
+                            { key: 'event_type', label: t('players.actions.history.columns.eventType') },
+                            { key: 'location', label: t('players.actions.history.columns.location'), sortable: false },
                           ]}
                           rows={events}
                           rowId={(evt) => `${evt.actor_id}-${evt.universe_time}`}
@@ -1946,7 +1910,7 @@ export function ActionsView({ player }: Props) {
                             if (k === 'event_type') return evt.event_type
                             return ''
                           }}
-                          emptyState={<div className="py-6 text-center text-muted">No events</div>}
+                          emptyState={<div className="py-6 text-center text-muted">{t('players.actions.history.noEvents')}</div>}
                           renderCell={(evt, key) => {
                             switch (key) {
                               case 'time': return <span className="font-mono text-muted">{evt.universe_time}</span>
@@ -1973,15 +1937,15 @@ export function ActionsView({ player }: Props) {
                       </Panel>
 
                       <Panel>
-                        <SectionLabel>Dungeon Records</SectionLabel>
+                        <SectionLabel>{t('players.actions.history.dungeonRecords')}</SectionLabel>
                         <DataTable<DungeonRecord, 'dungeon' | 'difficulty' | 'duration' | 'party'>
-                          aria-label="Dungeon records"
+                          aria-label={t('players.actions.history.dungeonLabel')}
                           className="max-h-[40vh]"
                           columns={[
-                            { key: 'dungeon', label: 'Dungeon', isRowHeader: true },
-                            { key: 'difficulty', label: 'Difficulty' },
-                            { key: 'duration', label: 'Duration' },
-                            { key: 'party', label: 'Party Size' },
+                            { key: 'dungeon', label: t('players.actions.history.columns.dungeon'), isRowHeader: true },
+                            { key: 'difficulty', label: t('players.actions.history.columns.difficulty') },
+                            { key: 'duration', label: t('players.actions.history.columns.duration') },
+                            { key: 'party', label: t('players.actions.history.columns.partySize') },
                           ]}
                           rows={dungeons}
                           rowId={(d) => String(d.completion_id)}
@@ -1992,7 +1956,7 @@ export function ActionsView({ player }: Props) {
                             if (k === 'duration') return d.duration_ms
                             return d.players_num
                           }}
-                          emptyState={<div className="py-6 text-center text-muted">No dungeon records</div>}
+                          emptyState={<div className="py-6 text-center text-muted">{t('players.actions.history.noDungeons')}</div>}
                           renderCell={(d, key) => {
                             switch (key) {
                               case 'dungeon': return <span className="font-semibold">{d.dungeon_id}</span>

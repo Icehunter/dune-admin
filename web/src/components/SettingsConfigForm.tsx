@@ -1,4 +1,5 @@
 import { useState, useEffect, type MutableRefObject } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Select, ListBox, Spinner, Tabs, toast } from '@heroui/react'
 import { api, MASKED } from '../api/client'
 import type { AppConfig } from '../api/client'
@@ -131,6 +132,7 @@ interface Props {
 }
 
 export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
+  const { t } = useTranslation()
   const [cfg, setCfg] = useState<AppConfig>(EMPTY)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('connection')
@@ -139,9 +141,9 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
   useEffect(() => {
     api.config.get()
       .then((c) => setCfg(mergeConfig(c as Record<string, unknown>)))
-      .catch((e) => toast.danger(`Could not load config: ${e instanceof Error ? e.message : String(e)}`))
+      .catch((e) => toast.danger(t('settings.loadFailed', { message: e instanceof Error ? e.message : String(e) })))
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
   const set = (key: keyof AppConfig) => (v: string) =>
     setCfg((prev) => ({
@@ -160,10 +162,10 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
     onSavingChange?.(true)
     try {
       await api.config.save(cfg)
-      toast.success('Config saved — applying settings…')
+      toast.success(t('settings.configSaved'))
     }
     catch (e: unknown) {
-      toast.danger(`Save failed: ${e instanceof Error ? e.message : String(e)}`)
+      toast.danger(t('settings.saveFailed', { message: e instanceof Error ? e.message : String(e) }))
     }
     finally {
       onSavingChange?.(false)
@@ -186,7 +188,7 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
     return (
       <div className="flex items-center justify-center flex-1 gap-2 text-muted">
         <Spinner size="sm" color="current" />
-        <span className="text-sm">Loading config…</span>
+        <span className="text-sm">{t('settings.loadingConfig')}</span>
       </div>
     )
   }
@@ -208,19 +210,19 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
         <Tabs.ListContainer className="shrink-0">
           <Tabs.List aria-label="Config sections" className="gap-1">
             <Tabs.Tab id="connection">
-              Connection
+              {t('settings.tabs.connection')}
               <Tabs.Indicator />
             </Tabs.Tab>
             <Tabs.Tab id="control">
-              Control
+              {t('settings.tabs.control')}
               <Tabs.Indicator />
             </Tabs.Tab>
             <Tabs.Tab id="broker">
-              Broker
+              {t('settings.tabs.broker')}
               <Tabs.Indicator />
             </Tabs.Tab>
             <Tabs.Tab id="advanced">
-              Advanced
+              {t('settings.tabs.advanced')}
               <Tabs.Indicator />
             </Tabs.Tab>
           </Tabs.List>
@@ -229,39 +231,39 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
         {/* ── Connection ─────────────────────────────────────────────────── */}
         <Tabs.Panel id="connection" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
-            <SectionLabel>Database</SectionLabel>
+            <SectionLabel>{t('settings.sections.database')}</SectionLabel>
             <G2>
-              <F label="Host" hint="127.0.0.1 over SSH tunnel">
+              <F label={t('settings.db.host')} hint={t('settings.db.hostHint')}>
                 <TI value={cfg.db_host} onChange={set('db_host')} placeholder="127.0.0.1" />
               </F>
-              <F label="Port">
+              <F label={t('settings.db.port')}>
                 <TI value={cfg.db_port || ''} onChange={set('db_port')} type="number" placeholder="15432" />
               </F>
-              <F label="User">
+              <F label={t('settings.db.user')}>
                 <TI value={cfg.db_user} onChange={set('db_user')} placeholder="dune" />
               </F>
-              <F label="Password" hint="send placeholder to keep existing">
+              <F label={t('settings.db.password')} hint={t('settings.db.passwordHint')}>
                 <TI value={cfg.db_pass} onChange={set('db_pass')} type="password" placeholder={MASKED} />
               </F>
-              <F label="Database name">
+              <F label={t('settings.db.name')}>
                 <TI value={cfg.db_name} onChange={set('db_name')} placeholder="dune" />
               </F>
-              <F label="Schema">
+              <F label={t('settings.db.schema')}>
                 <TI value={cfg.db_schema} onChange={set('db_schema')} placeholder="dune" />
               </F>
             </G2>
           </Panel>
 
           <Panel>
-            <SectionLabel>SSH (leave blank for local)</SectionLabel>
+            <SectionLabel>{t('settings.sections.ssh')}</SectionLabel>
             <G2>
-              <F label="Host : port" hint="enables SSH tunnel for all DB + exec">
+              <F label={t('settings.ssh.hostPort')} hint={t('settings.ssh.hostPortHint')}>
                 <TI value={cfg.ssh_host} onChange={set('ssh_host')} placeholder="192.168.0.72:22" />
               </F>
-              <F label="User">
+              <F label={t('settings.ssh.user')}>
                 <TI value={cfg.ssh_user} onChange={set('ssh_user')} placeholder="dune" />
               </F>
-              <F label="Private key path" hint="absolute path, blank = auto-detect">
+              <F label={t('settings.ssh.privateKey')} hint={t('settings.ssh.privateKeyHint')}>
                 <TI value={cfg.ssh_key} onChange={set('ssh_key')} placeholder="~/.ssh/id_ed25519" />
               </F>
             </G2>
@@ -271,7 +273,7 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
         {/* ── Control ────────────────────────────────────────────────────── */}
         <Tabs.Panel id="control" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
-            <SectionLabel>Control Plane</SectionLabel>
+            <SectionLabel>{t('settings.sections.controlPlane')}</SectionLabel>
             <div className="mt-1 flex flex-col gap-1">
               <Select
                 selectedKey={cfg.control || 'local'}
@@ -285,33 +287,33 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
                 <Select.Popover>
                   <ListBox>
                     <ListBox.Item id="kubectl" textValue="kubectl">
-                      kubectl — Kubernetes / k3s
+                      {t('settings.control.kubectl')}
                       <ListBox.ItemIndicator />
                     </ListBox.Item>
                     <ListBox.Item id="docker" textValue="docker">
-                      docker — Docker containers
+                      {t('settings.control.docker')}
                       <ListBox.ItemIndicator />
                     </ListBox.Item>
                     <ListBox.Item id="local" textValue="local">
-                      local — bare metal / LGSM / shell
+                      {t('settings.control.local')}
                       <ListBox.ItemIndicator />
                     </ListBox.Item>
                     <ListBox.Item id="amp" textValue="amp">
-                      amp — CubeCoders AMP
+                      {t('settings.control.amp')}
                       <ListBox.ItemIndicator />
                     </ListBox.Item>
                   </ListBox>
                 </Select.Popover>
               </Select>
-              <p className="text-xs text-muted">How dune-admin manages the game server</p>
+              <p className="text-xs text-muted">{t('settings.control.modeHint')}</p>
             </div>
           </Panel>
 
           {isKubectl && (
             <Panel>
-              <SectionLabel>Kubernetes</SectionLabel>
+              <SectionLabel>{t('settings.sections.kubernetes')}</SectionLabel>
               <G2>
-                <F label="Namespace" hint="blank = auto-discover">
+                <F label={t('settings.k8s.namespace')} hint={t('settings.k8s.namespaceHint')}>
                   <TI value={cfg.control_namespace} onChange={set('control_namespace')} placeholder="my-namespace" />
                 </F>
               </G2>
@@ -320,70 +322,70 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
 
           {isDocker && (
             <Panel>
-              <SectionLabel>Docker containers</SectionLabel>
+              <SectionLabel>{t('settings.sections.dockerContainers')}</SectionLabel>
               <G2>
-                <F label="Game server"><TI value={cfg.docker_gameserver} onChange={set('docker_gameserver')} placeholder="dune-gameserver" /></F>
-                <F label="Broker (game)"><TI value={cfg.docker_broker_game} onChange={set('docker_broker_game')} placeholder="dune-mq-game" /></F>
-                <F label="Broker (admin)"><TI value={cfg.docker_broker_admin} onChange={set('docker_broker_admin')} placeholder="dune-mq-admin" /></F>
-                <F label="Database"><TI value={cfg.docker_db} onChange={set('docker_db')} placeholder="dune-postgres" /></F>
+                <F label={t('settings.docker.gameServer')}><TI value={cfg.docker_gameserver} onChange={set('docker_gameserver')} placeholder="dune-gameserver" /></F>
+                <F label={t('settings.docker.brokerGame')}><TI value={cfg.docker_broker_game} onChange={set('docker_broker_game')} placeholder="dune-mq-game" /></F>
+                <F label={t('settings.docker.brokerAdmin')}><TI value={cfg.docker_broker_admin} onChange={set('docker_broker_admin')} placeholder="dune-mq-admin" /></F>
+                <F label={t('settings.docker.database')}><TI value={cfg.docker_db} onChange={set('docker_db')} placeholder="dune-postgres" /></F>
               </G2>
             </Panel>
           )}
 
           {isLocal && (
             <Panel>
-              <SectionLabel>Server commands</SectionLabel>
+              <SectionLabel>{t('settings.sections.serverCommands')}</SectionLabel>
               <G2>
-                <F label="Start"><TI value={cfg.cmd_start} onChange={set('cmd_start')} placeholder="service dune start" /></F>
-                <F label="Stop"><TI value={cfg.cmd_stop} onChange={set('cmd_stop')} placeholder="service dune stop" /></F>
-                <F label="Restart"><TI value={cfg.cmd_restart} onChange={set('cmd_restart')} placeholder="service dune restart" /></F>
-                <F label="Status"><TI value={cfg.cmd_status} onChange={set('cmd_status')} placeholder="service dune status" /></F>
+                <F label={t('settings.cmd.start')}><TI value={cfg.cmd_start} onChange={set('cmd_start')} placeholder="service dune start" /></F>
+                <F label={t('settings.cmd.stop')}><TI value={cfg.cmd_stop} onChange={set('cmd_stop')} placeholder="service dune stop" /></F>
+                <F label={t('settings.cmd.restart')}><TI value={cfg.cmd_restart} onChange={set('cmd_restart')} placeholder="service dune restart" /></F>
+                <F label={t('settings.cmd.status')}><TI value={cfg.cmd_status} onChange={set('cmd_status')} placeholder="service dune status" /></F>
               </G2>
             </Panel>
           )}
 
           {isAmp && (
             <Panel>
-              <SectionLabel>CubeCoders AMP</SectionLabel>
+              <SectionLabel>{t('settings.sections.amp')}</SectionLabel>
               <G2>
-                <F label="Instance name"><TI value={cfg.amp_instance} onChange={set('amp_instance')} placeholder="DuneAwakening01" /></F>
-                <F label="Container name" hint="default: AMP_<instance>"><TI value={cfg.amp_container} onChange={set('amp_container')} placeholder="AMP_DuneAwakening01" /></F>
-                <F label="AMP user"><TI value={cfg.amp_user} onChange={set('amp_user')} placeholder="amp" /></F>
-                <F label="Log path"><TI value={cfg.amp_log_path} onChange={set('amp_log_path')} placeholder="/logs" /></F>
-                <F label="Data root"><TI value={cfg.amp_data_root} onChange={set('amp_data_root')} placeholder="/AMP/duneawakening" /></F>
+                <F label={t('settings.amp.instanceName')}><TI value={cfg.amp_instance} onChange={set('amp_instance')} placeholder="DuneAwakening01" /></F>
+                <F label={t('settings.amp.containerName')} hint={t('settings.amp.containerNameHint')}><TI value={cfg.amp_container} onChange={set('amp_container')} placeholder="AMP_DuneAwakening01" /></F>
+                <F label={t('settings.amp.user')}><TI value={cfg.amp_user} onChange={set('amp_user')} placeholder="amp" /></F>
+                <F label={t('settings.amp.logPath')}><TI value={cfg.amp_log_path} onChange={set('amp_log_path')} placeholder="/logs" /></F>
+                <F label={t('settings.amp.dataRoot')}><TI value={cfg.amp_data_root} onChange={set('amp_data_root')} placeholder="/AMP/duneawakening" /></F>
                 <CB
-                  label="Use container (podman exec)"
+                  label={t('settings.amp.useContainer')}
                   checked={cfg.amp_use_container}
                   onChange={setBool('amp_use_container')}
-                  hint="Disable to run on host as the AMP user directly."
+                  hint={t('settings.amp.useContainerHint')}
                 />
               </G2>
             </Panel>
           )}
 
           {!isKubectl && !isDocker && !isLocal && !isAmp && (
-            <p className="text-xs text-muted pt-2">Select a control mode above to see mode-specific settings.</p>
+            <p className="text-xs text-muted pt-2">{t('settings.control.selectMode')}</p>
           )}
         </Tabs.Panel>
 
         {/* ── Broker ─────────────────────────────────────────────────────── */}
         <Tabs.Panel id="broker" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
-            <SectionLabel>RabbitMQ (optional)</SectionLabel>
-            <p className="text-xs text-muted -mt-1">Enables capture and notifications when configured.</p>
+            <SectionLabel>{t('settings.sections.rabbitmq')}</SectionLabel>
+            <p className="text-xs text-muted -mt-1">{t('settings.broker.optionalHint')}</p>
             <G2>
-              <F label="Game addr"><TI value={cfg.broker_game_addr} onChange={set('broker_game_addr')} placeholder="10.x.x.x:5672" /></F>
-              <F label="Admin addr"><TI value={cfg.broker_admin_addr} onChange={set('broker_admin_addr')} placeholder="10.x.x.x:5672" /></F>
-              <F label="User"><TI value={cfg.broker_user} onChange={set('broker_user')} placeholder="dune_cap" /></F>
-              <F label="Password"><TI value={cfg.broker_pass} onChange={set('broker_pass')} type="password" placeholder={MASKED} /></F>
-              <F label="JWT secret" hint="blank = built-in default">
+              <F label={t('settings.broker.gameAddr')}><TI value={cfg.broker_game_addr} onChange={set('broker_game_addr')} placeholder="10.x.x.x:5672" /></F>
+              <F label={t('settings.broker.adminAddr')}><TI value={cfg.broker_admin_addr} onChange={set('broker_admin_addr')} placeholder="10.x.x.x:5672" /></F>
+              <F label={t('settings.broker.user')}><TI value={cfg.broker_user} onChange={set('broker_user')} placeholder="dune_cap" /></F>
+              <F label={t('settings.broker.password')}><TI value={cfg.broker_pass} onChange={set('broker_pass')} type="password" placeholder={MASKED} /></F>
+              <F label={t('settings.broker.jwtSecret')} hint={t('settings.broker.jwtSecretHint')}>
                 <TI value={cfg.broker_jwt_secret} onChange={set('broker_jwt_secret')} type="password" placeholder={MASKED} />
               </F>
-              <F label="Exec prefix" hint="when broker is inside a container">
+              <F label={t('settings.broker.execPrefix')} hint={t('settings.broker.execPrefixHint')}>
                 <TI value={cfg.broker_exec_prefix} onChange={set('broker_exec_prefix')} placeholder="podman exec <container>" />
               </F>
               <div className="sm:col-span-2">
-                <CB label="Use TLS (amqps://)" checked={cfg.broker_tls} onChange={setBool('broker_tls')} />
+                <CB label={t('settings.broker.useTls')} checked={cfg.broker_tls} onChange={setBool('broker_tls')} />
               </div>
             </G2>
           </Panel>
@@ -392,43 +394,42 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
         {/* ── Advanced ───────────────────────────────────────────────────── */}
         <Tabs.Panel id="advanced" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
-            <SectionLabel>Server</SectionLabel>
+            <SectionLabel>{t('settings.sections.server')}</SectionLabel>
             <G2>
-              <F label="Listen address" hint="⚠ restart required">
+              <F label={t('settings.adv.listenAddr')} hint={t('settings.adv.listenAddrHint')}>
                 <TI value={cfg.listen_addr} onChange={set('listen_addr')} placeholder=":8080" />
               </F>
-              <F label="Scrip currency ID">
+              <F label={t('settings.adv.scripCurrency')}>
                 <TI value={cfg.scrip_currency || ''} onChange={set('scrip_currency')} type="number" placeholder="1" />
               </F>
-              <F label="Director URL" hint="proxied at /director/">
+              <F label={t('settings.adv.directorUrl')} hint={t('settings.adv.directorUrlHint')}>
                 <TI value={cfg.director_url} onChange={set('director_url')} placeholder="http://127.0.0.1:11717" />
               </F>
             </G2>
           </Panel>
 
           <Panel>
-            <SectionLabel>Paths</SectionLabel>
+            <SectionLabel>{t('settings.sections.paths')}</SectionLabel>
             <G2>
-              <F label="Backup directory">
+              <F label={t('settings.adv.backupDir')}>
                 <TI value={cfg.backup_dir} onChange={set('backup_dir')} placeholder="/path/to/backups" />
               </F>
-              <F label="Server INI directory" hint="UserGame.ini location">
+              <F label={t('settings.adv.serverIniDir')} hint={t('settings.adv.serverIniDirHint')}>
                 <TI value={cfg.server_ini_dir} onChange={set('server_ini_dir')} placeholder="/path/to/server/state" />
               </F>
-              <F label="Default INI directory" hint="DefaultGame.ini base layer">
+              <F label={t('settings.adv.defaultIniDir')} hint={t('settings.adv.defaultIniDirHint')}>
                 <TI value={cfg.default_ini_dir} onChange={set('default_ini_dir')} placeholder="/path/to/game/Config" />
               </F>
             </G2>
           </Panel>
 
           <Panel>
-            <SectionLabel>Backend URL Override</SectionLabel>
+            <SectionLabel>{t('settings.sections.backendUrlOverride')}</SectionLabel>
             <p className="text-xs text-muted -mt-1">
-              Only needed when the UI is served from a different host (SSH tunnel, CDN).
-              Leave blank for single-binary setup.
+              {t('settings.adv.backendUrlHint')}
             </p>
             <G2>
-              <F label="URL" hint="stored in browser, not server">
+              <F label={t('settings.adv.url')} hint={t('settings.adv.urlHint')}>
                 <TI
                   value={backendUrl}
                   onChange={(v) => {
@@ -440,7 +441,7 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
               </F>
             </G2>
             <div className="flex gap-2 mt-1">
-              <Button size="sm" onPress={() => window.location.reload()}>Apply & Reload</Button>
+              <Button size="sm" onPress={() => window.location.reload()}>{t('settings.adv.applyReload')}</Button>
               <Button
                 size="sm"
                 variant="outline"
@@ -450,7 +451,7 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
                   window.location.reload()
                 }}
               >
-                Reset
+                {t('settings.adv.reset')}
               </Button>
             </div>
           </Panel>

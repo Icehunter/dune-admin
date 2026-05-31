@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Modal, Spinner, toast } from '@heroui/react'
 import { api } from '../../../api/client'
 import type { BackupFile } from '../../../api/client'
@@ -16,6 +17,7 @@ type Props = {
 export function RestoreModal({
   open, backupFiles, backupFilesLoading, setBackupFiles, onClose, onRestoreComplete,
 }: Props) {
+  const { t } = useTranslation()
   const [selectedFile, setSelectedFile] = useState('')
   const [restoreRunning, setRestoreRunning] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -24,7 +26,7 @@ export function RestoreModal({
     setUploading(true)
     try {
       const res = await api.battlegroup.backupUpload(file)
-      toast.success(`Uploaded ${res.name}`)
+      toast.success(t('battlegroup.restore.uploaded', { name: res.name }))
       const updated = await api.battlegroup.backupFiles()
       setBackupFiles(updated)
       setSelectedFile(res.name)
@@ -43,12 +45,12 @@ export function RestoreModal({
         <Modal.Container>
           <Modal.Dialog className="w-[640px] max-w-[90vw]">
             <Modal.CloseTrigger />
-            <Modal.Header><Modal.Heading>Restore from Backup</Modal.Heading></Modal.Header>
+            <Modal.Header><Modal.Heading>{t('battlegroup.restore.title')}</Modal.Heading></Modal.Header>
             <Modal.Body>
               <p className="text-sm mb-3 text-danger flex items-center gap-1.5">
                 <Icon name="triangle-alert" />
                 {' '}
-                This overwrites current data. Server should be stopped first.
+                {t('battlegroup.restore.warning')}
               </p>
 
               <div className="mb-3">
@@ -56,7 +58,7 @@ export function RestoreModal({
                   accept=".backup,.zip"
                   uploading={uploading}
                   onSelect={uploadFile}
-                  prompt="Drop or click to upload a .backup or .zip from your computer"
+                  prompt={t('battlegroup.restore.dropzone')}
                 />
               </div>
 
@@ -66,7 +68,7 @@ export function RestoreModal({
                   )
                 : backupFiles.length === 0
                   ? (
-                      <p className="text-sm text-muted">No backup files on server yet.</p>
+                      <p className="text-sm text-muted">{t('battlegroup.restore.noBackups')}</p>
                     )
                   : (
                       <div className="flex flex-col gap-1">
@@ -120,7 +122,7 @@ export function RestoreModal({
                     )}
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="tertiary" onPress={onClose} isDisabled={restoreRunning}>Cancel</Button>
+              <Button variant="tertiary" onPress={onClose} isDisabled={restoreRunning}>{t('common.cancel')}</Button>
               <Button
                 variant="danger"
                 isDisabled={!selectedFile || restoreRunning || backupFilesLoading}
@@ -128,7 +130,7 @@ export function RestoreModal({
                   setRestoreRunning(true)
                   try {
                     const res = await api.battlegroup.restore(selectedFile)
-                    toast.success('Restore completed')
+                    toast.success(t('battlegroup.restore.restoreCompleted'))
                     onRestoreComplete(res.output || '(done)')
                   }
                   catch (e: unknown) {
@@ -141,7 +143,7 @@ export function RestoreModal({
               >
                 {restoreRunning
                   ? <Spinner size="sm" color="current" />
-                  : `Restore ${selectedFile ? selectedFile.slice(-20) : ''}`}
+                  : t('battlegroup.restore.restoreBtn', { file: selectedFile ? selectedFile.slice(-20) : '' })}
               </Button>
             </Modal.Footer>
           </Modal.Dialog>

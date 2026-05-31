@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Button, Modal, Spinner } from '@heroui/react'
 import { api } from '../../../api/client'
 import { Icon } from '../../../dune-ui'
@@ -13,22 +14,20 @@ type Props = {
 export function CommandOutputModal({
   runningCmd, cmdOutput, cmdDone, lastBackupFile, onClose,
 }: Props) {
+  const { t } = useTranslation()
   return (
     <Modal>
       <Modal.Backdrop isOpen={runningCmd !== null} onOpenChange={(v) => { if (!v && cmdDone) onClose() }}>
         <Modal.Container>
           <Modal.Dialog>
-            <Modal.Header><Modal.Heading>{runningCmd ?? ''}</Modal.Heading></Modal.Header>
+            <Modal.Header><Modal.Heading>{runningCmd ? t(`battlegroup.actions.${runningCmd}` as never) : ''}</Modal.Heading></Modal.Header>
             <Modal.Body>
               {!cmdDone
                 ? (
                     <div className="flex flex-col items-center gap-4 py-6">
                       <Spinner size="lg" />
                       <p className="text-sm text-muted">
-                        Running
-                        {' '}
-                        {runningCmd?.toLowerCase() ?? ''}
-                        ...
+                        {t('battlegroup.runningCmd', { cmd: runningCmd?.toLowerCase() ?? '' })}
                       </p>
                     </div>
                   )
@@ -40,7 +39,7 @@ export function CommandOutputModal({
             </Modal.Body>
             {cmdDone && (
               <Modal.Footer>
-                {lastBackupFile && runningCmd === 'Backup' && (
+                {lastBackupFile && runningCmd === 'backup' && (
                   <a
                     href={api.battlegroup.backupDownloadUrl(lastBackupFile)}
                     download={lastBackupFile.replace('.backup', '.zip')}
@@ -48,10 +47,10 @@ export function CommandOutputModal({
                   >
                     <Icon name="download" />
                     {' '}
-                    Download
+                    {t('battlegroup.modal.download')}
                   </a>
                 )}
-                <Button onPress={onClose}>Close</Button>
+                <Button onPress={onClose}>{t('common.close')}</Button>
               </Modal.Footer>
             )}
           </Modal.Dialog>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import type { MarketItem } from '../../api/client'
 import { iconUrl, categoryColor, qualityLabel } from '../../utils/icons'
 
@@ -27,8 +28,10 @@ type Props = {
 }
 
 export default function MarketGrid({ items, onSelect }: Props) {
+  const { t } = useTranslation()
+
   if (items.length === 0) {
-    return <div className="flex-1 py-8 text-center text-muted">No items found.</div>
+    return <div className="flex-1 py-8 text-center text-muted">{t('market.table.noItemsFound')}</div>
   }
 
   return (

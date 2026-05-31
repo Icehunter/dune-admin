@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { Button, Input, Select, ListBox, Spinner, toast, TextField } from '@heroui/react'
 import { api } from '../../api/client'
@@ -15,6 +16,7 @@ import { RestoreModal } from './modals/RestoreModal'
 const POLL_MS = 30_000
 
 export default function BattlegroupTab({ isActive = false }: { isActive?: boolean }) {
+  const { t } = useTranslation()
   const [status, setStatus] = useState<DetailedStatus | null>(null)
   const [statusLoading, setStatusLoading] = useState(false)
 
@@ -45,9 +47,9 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
       .then(() => setStatusLoading(true))
       .then(() => api.battlegroup.status() as Promise<unknown>)
       .then((res) => setStatus(res as DetailedStatus))
-      .catch((e: unknown) => toast.danger(`Status failed: ${e instanceof Error ? e.message : String(e)}`))
+      .catch((e: unknown) => toast.danger(t('battlegroup.statusFailed', { message: e instanceof Error ? e.message : String(e) })))
       .finally(() => setStatusLoading(false))
-  }, [])
+  }, [t])
 
   useEffect(() => {
     fetchStatus()
@@ -81,26 +83,26 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
 
   const runCmd = async (action: ActionDef) => {
     setConfirmCmd(null)
-    setRunningCmd(action.label)
+    setRunningCmd(action.cmd)
     setCmdOutput(null)
     setCmdDone(false)
     try {
       const res = await api.battlegroup.exec(action.cmd)
-      setCmdOutput(res.output || '(no output)')
+      setCmdOutput(res.output || t('battlegroup.noOutput'))
       setCmdDone(true)
       if (action.cmd === 'start' || action.cmd === 'restart') setStartedAt(Date.now())
       if (action.cmd === 'backup') {
         const match = (res.output || '').match(/database-dumps\/[^/]+\/([^\s]+\.backup)/)
         if (match) setLastBackupFile(match[1])
       }
-      toast.success(`${action.label} completed`)
+      toast.success(t('battlegroup.cmdCompleted', { label: t(`battlegroup.actions.${action.cmd}` as never) }))
       fetchStatus()
     }
     catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       setCmdOutput(`Error: ${msg}`)
       setCmdDone(true)
-      toast.danger(`${action.label} failed: ${msg}`)
+      toast.danger(t('battlegroup.cmdFailed', { label: t(`battlegroup.actions.${action.cmd}` as never), message: msg }))
     }
   }
 
@@ -110,7 +112,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
     setShowRestore(true)
     api.battlegroup.backupFiles()
       .then(setBackupFiles)
-      .catch(() => toast.danger('Could not load backup files'))
+      .catch(() => toast.danger(t('battlegroup.backupLoadFailed')))
       .finally(() => setBackupFilesLoading(false))
   }
 
@@ -121,7 +123,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
     <div className="flex flex-col h-full gap-3 min-h-0">
 
       {/* ── Overview ─────────────────────────────────────────────────── */}
-      <PageHeader title={bg ? `${bg.title} (${bg.name})` : 'Battlegroup Status'}>
+      <PageHeader title={bg ? t('battlegroup.titleFull', { bgTitle: bg.title, bgName: bg.name }) : t('battlegroup.statusTitle')}>
         <Button size="sm" variant="ghost" onPress={refreshStatus} isDisabled={statusLoading}>
           {statusLoading
             ? <Spinner size="sm" color="current" />
@@ -141,15 +143,15 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
 
       {bg && (
         <InfoCard>
-          <InfoCard.Item label="Phase" value={bg.phase || '—'} valueColor={phaseColor(bg.phase)} />
-          <InfoCard.Item label="Database" value={bg.database || '—'} valueColor={phaseColor(bg.database)} />
+          <InfoCard.Item label={t('battlegroup.phase')} value={bg.phase || '—'} valueColor={phaseColor(bg.phase)} />
+          <InfoCard.Item label={t('battlegroup.database')} value={bg.database || '—'} valueColor={phaseColor(bg.database)} />
         </InfoCard>
       )}
 
       {isInitializing && (
         <div className="rounded-[var(--radius)] px-3 py-2 text-sm flex items-center gap-2 bg-warning/10 text-warning border border-warning/40 shrink-0">
           <Icon name="triangle-alert" />
-          <span>Server just started — game servers may still be initializing (~2 min).</span>
+          <span>{t('battlegroup.initWarning')}</span>
         </div>
       )}
 
@@ -158,20 +160,20 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
           ? (
               <div className="flex items-center gap-2 py-4 text-muted">
                 <Spinner size="sm" color="current" />
-                <span className="text-sm">Loading status...</span>
+                <span className="text-sm">{t('battlegroup.loadingStatus')}</span>
               </div>
             )
           : (
               <ServersTable
                 servers={servers}
                 isInitializing={isInitializing}
-                emptyMessage={status ? 'No game servers found.' : 'Click Refresh to load status.'}
+                emptyMessage={status ? t('battlegroup.noGameServers') : t('battlegroup.clickRefresh')}
               />
             )}
       </div>
 
       {/* ── Server Control ───────────────────────────────────────────── */}
-      <SectionDivider title="Server Control" />
+      <SectionDivider title={t('battlegroup.serverControl')} />
       <div className="flex flex-wrap gap-2 shrink-0">
         {ACTIONS.map((action) => (
           <Button
@@ -181,29 +183,29 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
             isDisabled={runningCmd !== null}
             size="sm"
           >
-            {action.label}
+            {t(`battlegroup.actions.${action.cmd}` as never)}
           </Button>
         ))}
         <Button variant="danger-soft" size="sm" isDisabled={runningCmd !== null} onPress={openRestore}>
-          Restore
+          {t('battlegroup.restoreLabel')}
         </Button>
       </div>
 
       {/* ── Broadcasts ──────────────────────────────────────────────── */}
-      <SectionDivider title="Broadcasts" />
+      <SectionDivider title={t('battlegroup.broadcasts')} />
       <div className="flex flex-wrap gap-3 shrink-0">
 
         {/* Generic broadcast */}
         <div className="flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-3">
-          <div className="text-xs font-semibold uppercase tracking-widest text-accent">Generic Message</div>
-          <TextField aria-label="Title">
-            <Input placeholder="Title" value={broadcastTitle} onChange={(e) => setBroadcastTitle(e.target.value)} />
+          <div className="text-xs font-semibold uppercase tracking-widest text-accent">{t('battlegroup.genericMessage')}</div>
+          <TextField aria-label={t('battlegroup.titlePlaceholder')}>
+            <Input placeholder={t('battlegroup.titlePlaceholder')} value={broadcastTitle} onChange={(e) => setBroadcastTitle(e.target.value)} />
           </TextField>
-          <TextField aria-label="Body">
-            <Input placeholder="Body" value={broadcastBody} onChange={(e) => setBroadcastBody(e.target.value)} />
+          <TextField aria-label={t('battlegroup.bodyPlaceholder')}>
+            <Input placeholder={t('battlegroup.bodyPlaceholder')} value={broadcastBody} onChange={(e) => setBroadcastBody(e.target.value)} />
           </TextField>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-muted shrink-0">Duration (s)</label>
+            <label className="text-xs text-muted shrink-0">{t('battlegroup.durationLabel')}</label>
             <Input
               type="number"
               min={5}
@@ -221,7 +223,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
                 setBroadcastBusy(true)
                 try {
                   await api.broadcast.send([{ Key: 'en', Title: broadcastTitle, Body: broadcastBody }], broadcastDuration)
-                  toast.success('Broadcast sent')
+                  toast.success(t('battlegroup.broadcastSent'))
                   setBroadcastTitle('')
                   setBroadcastBody('')
                 }
@@ -237,7 +239,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
                     <>
                       <Icon name="megaphone" />
                       {' '}
-                      Send
+                      {t('common.send')}
                     </>
                   )}
             </Button>
@@ -246,10 +248,10 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
 
         {/* Shutdown broadcast */}
         <div className="flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-3">
-          <div className="text-xs font-semibold uppercase tracking-widest text-accent">Shutdown Broadcast</div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-accent">{t('battlegroup.shutdownBroadcast')}</div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-muted shrink-0">Type</label>
-            <Select selectedKey={shutdownType} onSelectionChange={(k) => setShutdownType(String(k))} className="flex-1" aria-label="Shutdown type">
+            <label className="text-xs text-muted shrink-0">{t('battlegroup.shutdownType')}</label>
+            <Select selectedKey={shutdownType} onSelectionChange={(k) => setShutdownType(String(k))} className="flex-1" aria-label={t('battlegroup.shutdownTypeLabel')}>
               <Select.Trigger>
                 <Select.Value />
                 <Select.Indicator />
@@ -267,7 +269,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
             </Select>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-muted shrink-0">Delay (min)</label>
+            <label className="text-xs text-muted shrink-0">{t('battlegroup.shutdownDelay')}</label>
             <Input
               type="number"
               min={1}
@@ -275,7 +277,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
               value={shutdownDelay}
               onChange={(e) => setShutdownDelay(Math.max(1, parseInt(e.target.value) || 10))}
               className="w-20"
-              aria-label="Delay minutes"
+              aria-label={t('battlegroup.shutdownDelayLabel')}
             />
           </div>
           <div className="flex gap-2 mt-auto">
@@ -287,7 +289,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
                 setShutdownBusy(true)
                 try {
                   await api.broadcast.shutdown(shutdownType, shutdownDelay)
-                  toast.success(`Shutdown broadcast sent (${shutdownDelay} min)`)
+                  toast.success(t('battlegroup.shutdownSent', { delay: shutdownDelay }))
                 }
                 catch (e: unknown) {
                   toast.danger(e instanceof Error ? e.message : String(e))
@@ -301,7 +303,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
                     <>
                       <Icon name="triangle-alert" />
                       {' '}
-                      Broadcast
+                      {t('battlegroup.broadcastBtn')}
                     </>
                   )}
             </Button>
@@ -313,7 +315,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
                 setShutdownBusy(true)
                 try {
                   await api.broadcast.shutdown(shutdownType, 0, true)
-                  toast.success('Shutdown broadcast cancelled')
+                  toast.success(t('battlegroup.shutdownCancelled'))
                 }
                 catch (e: unknown) {
                   toast.danger(e instanceof Error ? e.message : String(e))
@@ -321,7 +323,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
                 finally { setShutdownBusy(false) }
               }}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
           </div>
         </div>
@@ -353,7 +355,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
         onRestoreComplete={(output) => {
           setCmdOutput(output)
           setCmdDone(true)
-          setRunningCmd('Restore')
+          setRunningCmd('restore')
           setShowRestore(false)
         }}
       />

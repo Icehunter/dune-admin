@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ListBox, SearchField, Select, Button } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { Icon } from '../../dune-ui'
 
 export type MarketFilters = {
@@ -15,6 +16,7 @@ type Props = {
 }
 
 export default function MarketSearch({ filters, onChange, onReset }: Props) {
+  const { t } = useTranslation()
   const [searchDraft, setSearchDraft] = useState(filters.search)
 
   // Sync draft when filters are reset externally.
@@ -39,14 +41,14 @@ export default function MarketSearch({ filters, onChange, onReset }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <SearchField
-        aria-label="Search items"
+        aria-label={t('market.search.ariaLabel')}
         className="flex-1 min-w-[200px]"
         value={searchDraft}
         onChange={setSearchDraft}
       >
         <SearchField.Group>
           <SearchField.SearchIcon />
-          <SearchField.Input placeholder="Search items…" />
+          <SearchField.Input placeholder={t('market.search.searchPlaceholder')} />
           <SearchField.ClearButton />
         </SearchField.Group>
       </SearchField>
@@ -55,7 +57,7 @@ export default function MarketSearch({ filters, onChange, onReset }: Props) {
         selectedKey={filters.owner || 'all'}
         onSelectionChange={(k) => set({ owner: k === 'all' ? '' : k as MarketFilters['owner'] })}
         className="w-36"
-        aria-label="Filter by seller"
+        aria-label={t('market.search.sellerAriaLabel')}
       >
         <Select.Trigger>
           <Select.Value />
@@ -63,16 +65,16 @@ export default function MarketSearch({ filters, onChange, onReset }: Props) {
         </Select.Trigger>
         <Select.Popover>
           <ListBox>
-            <ListBox.Item id="all" textValue="All sellers">
-              All sellers
+            <ListBox.Item id="all" textValue={t('market.search.allSellers')}>
+              {t('market.search.allSellers')}
               <ListBox.ItemIndicator />
             </ListBox.Item>
-            <ListBox.Item id="bot" textValue="Bot only">
-              Bot only
+            <ListBox.Item id="bot" textValue={t('market.search.botOnly')}>
+              {t('market.search.botOnly')}
               <ListBox.ItemIndicator />
             </ListBox.Item>
-            <ListBox.Item id="player" textValue="Players only">
-              Players only
+            <ListBox.Item id="player" textValue={t('market.search.playersOnly')}>
+              {t('market.search.playersOnly')}
               <ListBox.ItemIndicator />
             </ListBox.Item>
           </ListBox>
@@ -83,7 +85,7 @@ export default function MarketSearch({ filters, onChange, onReset }: Props) {
         <Button size="sm" variant="ghost" onPress={onReset}>
           <Icon name="x" />
           {' '}
-          Clear
+          {t('market.search.clearFilters')}
         </Button>
       )}
     </div>

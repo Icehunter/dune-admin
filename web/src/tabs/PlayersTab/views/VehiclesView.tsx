@@ -1,27 +1,29 @@
 import { useState, useEffect } from 'react'
 import { Button, Chip, Spinner, toast } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { Player, VehicleRow } from '../../../api/client'
 import { DataTable, SectionLabel, type Column } from '../../../dune-ui'
 
 type VehicleKey = 'class' | 'location' | 'chassis' | 'name' | 'type' | 'actions'
 
-const VEHICLE_COLUMNS: Column<VehicleKey>[] = [
-  { key: 'class', label: 'Class', isRowHeader: true },
-  { key: 'location', label: 'Location' },
-  { key: 'chassis', label: 'Chassis' },
-  { key: 'name', label: 'Name' },
-  { key: 'type', label: 'Type', sortable: false },
-  { key: 'actions', label: '', sortable: false },
-]
-
 interface Props {
   player: Player
 }
 
 export function VehiclesView({ player }: Props) {
+  const { t } = useTranslation()
   const [vehicles, setVehicles] = useState<VehicleRow[]>([])
   const [loading, setLoading] = useState(false)
+
+  const VEHICLE_COLUMNS: Column<VehicleKey>[] = [
+    { key: 'class', label: t('players.vehicles.columns.class'), isRowHeader: true },
+    { key: 'location', label: t('players.vehicles.columns.location') },
+    { key: 'chassis', label: t('players.vehicles.columns.chassis') },
+    { key: 'name', label: t('players.vehicles.columns.name') },
+    { key: 'type', label: t('players.vehicles.columns.type'), sortable: false },
+    { key: 'actions', label: '', sortable: false },
+  ]
 
   useEffect(() => {
     Promise.resolve()
@@ -40,13 +42,13 @@ export function VehiclesView({ player }: Props) {
       const res = await api.players.repairVehicle(v.id, player.id)
       const label = v.vehicle_name || v.class
       if (res.total === 0) {
-        toast.success(`No modules found on ${label}`)
+        toast.success(t('players.vehicles.repairNone', { label }))
       }
       else if (res.skipped > 0) {
-        toast.success(`Repaired ${res.repaired} of ${res.total} modules on ${label} (${res.skipped} skipped) — relog to see in-game`)
+        toast.success(t('players.vehicles.repairPartial', { repaired: res.repaired, total: res.total, label, skipped: res.skipped }))
       }
       else {
-        toast.success(`Repaired ${res.repaired} modules on ${label} — relog to see in-game`)
+        toast.success(t('players.vehicles.repairDone', { repaired: res.repaired, label }))
       }
       api.players.vehicles(player.controller_id).then(setVehicles).catch(() => {})
     }
@@ -58,7 +60,7 @@ export function VehiclesView({ player }: Props) {
   const handleRefuelVehicle = async (v: VehicleRow) => {
     try {
       await api.players.refuelVehicle(v.id, player.id)
-      toast.success(`Refueled ${v.vehicle_name || v.class} — relog to see in-game`)
+      toast.success(t('players.vehicles.refuelDone', { label: v.vehicle_name || v.class }))
     }
     catch (e: unknown) {
       toast.danger(e instanceof Error ? e.message : String(e))
@@ -71,9 +73,9 @@ export function VehiclesView({ player }: Props) {
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
-      <div className="shrink-0 min-h-8 flex items-center"><SectionLabel>Vehicles</SectionLabel></div>
+      <div className="shrink-0 min-h-8 flex items-center"><SectionLabel>{t('players.vehicles.vehiclesLabel')}</SectionLabel></div>
       <DataTable<VehicleRow, VehicleKey>
-        aria-label="Vehicles"
+        aria-label={t('players.vehicles.vehiclesLabel')}
         className="min-h-0 max-h-full"
         columns={VEHICLE_COLUMNS}
         rows={vehicles}
@@ -86,7 +88,7 @@ export function VehiclesView({ player }: Props) {
           if (k === 'name') return v.vehicle_name ?? ''
           return ''
         }}
-        emptyState={<div className="py-6 text-center text-muted">No vehicles found</div>}
+        emptyState={<div className="py-6 text-center text-muted">{t('players.vehicles.noVehiclesFound')}</div>}
         renderCell={(v, key) => {
           switch (key) {
             case 'class': return <span className="font-semibold">{v.class}</span>
@@ -102,16 +104,16 @@ export function VehiclesView({ player }: Props) {
             case 'type':
               return (
                 <div className="flex gap-1">
-                  {v.is_backup && <Chip size="sm" color="accent" variant="soft">Backup</Chip>}
-                  {v.is_recovered && <Chip size="sm" color="warning" variant="soft">Recovered</Chip>}
+                  {v.is_backup && <Chip size="sm" color="accent" variant="soft">{t('players.vehicles.backup')}</Chip>}
+                  {v.is_recovered && <Chip size="sm" color="warning" variant="soft">{t('players.vehicles.recovered')}</Chip>}
                 </div>
               )
             case 'actions':
               return !v.is_backup
                 ? (
                     <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onPress={() => handleRepairVehicle(v)}>Repair</Button>
-                      <Button size="sm" variant="ghost" onPress={() => handleRefuelVehicle(v)}>Refuel</Button>
+                      <Button size="sm" variant="ghost" onPress={() => handleRepairVehicle(v)}>{t('players.vehicles.repair')}</Button>
+                      <Button size="sm" variant="ghost" onPress={() => handleRefuelVehicle(v)}>{t('players.vehicles.refuel')}</Button>
                     </div>
                   )
                 : null

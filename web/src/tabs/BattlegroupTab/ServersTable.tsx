@@ -1,6 +1,7 @@
+import { useTranslation } from 'react-i18next'
 import { DataTable } from '../../dune-ui'
 import { phaseColor } from './helpers'
-import { SERVER_COLUMNS, type ServerRow, type ServerSortKey } from './types'
+import { getServerColumns, type ServerRow, type ServerSortKey } from './types'
 
 type Props = {
   servers: ServerRow[]
@@ -9,11 +10,12 @@ type Props = {
 }
 
 export function ServersTable({ servers, isInitializing, emptyMessage }: Props) {
+  const { t } = useTranslation()
   return (
     <DataTable<ServerRow, ServerSortKey>
-      aria-label="Game servers"
+      aria-label={t('nav.battlegroup')}
       className="min-h-0 max-h-full"
-      columns={SERVER_COLUMNS}
+      columns={getServerColumns(t)}
       rows={servers}
       rowId={(s) => `${s.map}-${s.dimension}-${s.partition}`}
       initialSort={{ column: 'map', direction: 'ascending' }}
@@ -28,7 +30,7 @@ export function ServersTable({ servers, isInitializing, emptyMessage }: Props) {
               <span className="font-semibold" style={{ color: phaseColor(s.phase) }}>
                 {s.phase || '—'}
                 {isInitializing && s.phase === 'Running' && (
-                  <span className="ml-1 font-normal text-warning">(initializing)</span>
+                  <span className="ml-1 font-normal text-warning">{t('battlegroup.initializing')}</span>
                 )}
               </span>
             )

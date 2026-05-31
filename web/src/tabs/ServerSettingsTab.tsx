@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, ListBox, SearchField, Select, Spinner, toast } from '@heroui/react'
 import { api } from '../api/client'
 import type { ServerSetting, ServerSettingUpdate, RawSection } from '../api/client'
@@ -126,6 +127,7 @@ function SettingRow({
   onChange: (value: string) => void
   onDelete: () => Promise<void>
 }) {
+  const { t } = useTranslation()
   const rawDisplay = pending !== undefined ? pending : item.current
   const display = item.type === 'bool'
     ? (/^(true|1|yes)$/i.test(rawDisplay) ? 'True' : /^(false|0|no)$/i.test(rawDisplay) ? 'False' : rawDisplay)
@@ -139,7 +141,7 @@ function SettingRow({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-foreground">{item.label}</span>
           {src && <span className={`text-xs ${src.cls}`}>{src.text}</span>}
-          {dirty && <span className="text-xs text-warning">unsaved</span>}
+          {dirty && <span className="text-xs text-warning">{t('server.unsaved')}</span>}
         </div>
         <p className="text-xs text-muted mt-0.5 leading-relaxed">{item.description}</p>
         {item.layers.length > 1 && (
@@ -248,6 +250,7 @@ function groupLinesByKey(lines: RawSection['lines']) {
 
 // One panel per INI section name, merging all source files that contain it.
 function RawSectionPanel({ sections, onSaved }: { sections: RawSection[], onSaved: () => void }) {
+  const { t } = useTranslation()
   const sectionName = sections[0].section
   // Find the active user-writable source for this section (userGame or userEngine).
   const userSec = sections.find((s) => s.source === 'userGame')
@@ -278,12 +281,12 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[], onSave
     setSaving(true)
     try {
       await api.serverSettings.updateRaw(sectionName, draft)
-      toast.success(`Saved to ${userSec ? SOURCE_FILE[userSec.source] : 'UserGame.ini'}`)
+      toast.success(t('server.savedTo', { file: userSec ? SOURCE_FILE[userSec.source] : 'UserGame.ini' }))
       setEditing(false)
       onSaved()
     }
     catch (e: unknown) {
-      toast.danger(`Save failed: ${e instanceof Error ? e.message : String(e)}`)
+      toast.danger(t('server.saveFailed', { message: e instanceof Error ? e.message : String(e) }))
     }
     finally {
       setSaving(false)
@@ -294,11 +297,11 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[], onSave
     setSaving(true)
     try {
       await api.serverSettings.updateRaw(sectionName, '')
-      toast.success(`Removed from ${userSec ? SOURCE_FILE[userSec.source] : 'UserGame.ini'}`)
+      toast.success(t('server.removedFrom', { file: userSec ? SOURCE_FILE[userSec.source] : 'UserGame.ini' }))
       onSaved()
     }
     catch (e: unknown) {
-      toast.danger(`Delete failed: ${e instanceof Error ? e.message : String(e)}`)
+      toast.danger(t('server.deleteFailed', { message: e instanceof Error ? e.message : String(e) }))
     }
     finally {
       setSaving(false)
@@ -330,7 +333,7 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[], onSave
           </span>
         ))}
         {userSec && collapsed && !editing && (
-          <span className="text-xs text-warning">· user override</span>
+          <span className="text-xs text-warning">{t('server.userOverride')}</span>
         )}
         <div
           className="ml-auto flex items-center gap-1 min-w-[2rem]"
@@ -339,9 +342,9 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[], onSave
           {editing
             ? (
                 <>
-                  <Button size="sm" variant="ghost" onPress={cancel} isDisabled={saving}>Cancel</Button>
+                  <Button size="sm" variant="ghost" onPress={cancel} isDisabled={saving}>{t('server.collapse')}</Button>
                   <Button size="sm" onPress={save} isDisabled={saving}>
-                    {saving ? <Spinner size="sm" color="current" /> : 'Save'}
+                    {saving ? <Spinner size="sm" color="current" /> : t('common.save')}
                   </Button>
                 </>
               )
@@ -364,7 +367,7 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[], onSave
                     size="sm"
                     variant="ghost"
                     onPress={() => setCollapsed(true)}
-                    aria-label="Collapse section"
+                    aria-label={t('server.collapseSection')}
                   >
                     <Icon name="x" className="w-3.5 h-3.5" />
                   </Button>
@@ -382,7 +385,7 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[], onSave
               rows={Math.max(4, draft.split('\n').length + 1)}
               className="w-full bg-surface border border-border rounded px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60 resize-y"
               spellCheck={false}
-              placeholder="Key=Value or +Key=Value for array entries"
+              placeholder={t('server.rawPlaceholder')}
             />
           )
         : (
@@ -430,6 +433,7 @@ function RawSectionPanel({ sections, onSaved }: { sections: RawSection[], onSave
 const USER_SOURCES = new Set(['userGame', 'userEngine'])
 
 export default function ServerSettingsTab() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<ServerSetting[]>([])
   const [raw, setRaw] = useState<RawSection[]>([])
   const [pending, setPending] = useState<Map<string, string>>(new Map())
@@ -477,11 +481,11 @@ export default function ServerSettingsTab() {
   const handleDelete = async (item: ServerSetting) => {
     try {
       await api.serverSettings.update([{ section: item.section, key: item.key, value: '' }])
-      toast.success(`Removed from ${SOURCE_FILE[item.source] ?? item.source}`)
+      toast.success(t('server.removedFrom', { file: SOURCE_FILE[item.source] ?? item.source }))
       load()
     }
     catch (e: unknown) {
-      toast.danger(`Delete failed: ${e instanceof Error ? e.message : String(e)}`)
+      toast.danger(t('server.deleteFailed', { message: e instanceof Error ? e.message : String(e) }))
     }
   }
 
@@ -499,7 +503,7 @@ export default function ServerSettingsTab() {
       load()
     }
     catch (e: unknown) {
-      toast.danger(`Save failed: ${e instanceof Error ? e.message : String(e)}`)
+      toast.danger(t('server.saveFailed', { message: e instanceof Error ? e.message : String(e) }))
     }
     finally {
       setSaving(false)
@@ -512,7 +516,7 @@ export default function ServerSettingsTab() {
     return (
       <div className="flex items-center justify-center h-full gap-2 text-muted">
         <Spinner size="sm" color="current" />
-        <span className="text-sm">Loading settings…</span>
+        <span className="text-sm">{t('server.loading')}</span>
       </div>
     )
   }
@@ -520,10 +524,10 @@ export default function ServerSettingsTab() {
   if (error) {
     return (
       <div className="flex flex-col h-full gap-3">
-        <PageHeader title="Server Settings" />
+        <PageHeader title={t('server.title')} />
         <div className="rounded px-4 py-3 text-sm bg-danger/10 border border-danger/40 text-danger">
           {error.includes('server_ini_dir') || error.includes('ini dir')
-            ? `Could not locate server INI files: ${error}. For kubectl, ensure the game server PVC is mounted. For docker/local, add server_ini_dir to ~/.dune-admin/config.yaml.`
+            ? t('server.iniNotFound', { error })
             : error}
         </div>
       </div>
@@ -593,17 +597,17 @@ export default function ServerSettingsTab() {
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
-      <PageHeader title="Server Settings">
+      <PageHeader title={t('server.title')}>
         <div className="flex items-center gap-2">
           <SearchField
-            aria-label="Search settings"
+            aria-label={t('server.searchLabel')}
             className="w-56"
             value={search}
             onChange={setSearch}
           >
             <SearchField.Group>
               <SearchField.SearchIcon />
-              <SearchField.Input placeholder="Search settings…" />
+              <SearchField.Input placeholder={t('server.searchPlaceholder')} />
               <SearchField.ClearButton />
             </SearchField.Group>
           </SearchField>
@@ -614,15 +618,15 @@ export default function ServerSettingsTab() {
             size="sm"
             variant={showAll ? 'primary' : 'ghost'}
             onPress={toggleShowAll}
-            aria-label={showAll ? 'Showing all settings — click to show user settings only' : 'Showing user settings only — click to show all'}
+            aria-label={showAll ? t('server.showAllAriaLabel') : t('server.showUserAriaLabel')}
           >
             <Icon name={showAll ? 'eye' : 'eye-off'} className="w-3.5 h-3.5" />
-            <span className="ml-1">{showAll ? 'All' : 'User'}</span>
+            <span className="ml-1">{showAll ? t('server.showAll') : t('server.showUser')}</span>
           </Button>
           <Button size="sm" onPress={save} isDisabled={dirtyCount === 0 || saving}>
             {saving
               ? <Spinner size="sm" color="current" />
-              : `Save${dirtyCount > 0 ? ` (${dirtyCount})` : ''}`}
+              : dirtyCount > 0 ? t('server.saveWithCount', { count: dirtyCount }) : t('server.save')}
           </Button>
         </div>
       </PageHeader>
@@ -643,18 +647,16 @@ export default function ServerSettingsTab() {
 
         {searching && !hasResults && (
           <div className="text-sm text-muted py-8 text-center">
-            No settings match “
-            {search.trim()}
-            ”.
+            {t('server.noMatchSettings', { query: search.trim() })}
           </div>
         )}
 
         {/* Common Settings — curated subset, always visible at top */}
         {commonItems.length > 0 && (
           <Panel>
-            <SectionLabel>Common Settings</SectionLabel>
+            <SectionLabel>{t('server.commonSettings')}</SectionLabel>
             <div className="text-xs text-muted mb-2">
-              The dozen or so knobs admins reach for most often. Everything else lives in the categories below.
+              {t('server.commonSettingsDesc')}
             </div>
             <div>
               {commonItems.map((item) => (
@@ -676,9 +678,9 @@ export default function ServerSettingsTab() {
             is what makes the grid break cleanly at that point. */}
         {categories.length > 0 && (
           <div>
-            <SectionLabel>Advanced — All Categories</SectionLabel>
+            <SectionLabel>{t('server.advancedCategories')}</SectionLabel>
             <div className="text-xs text-muted mb-2">
-              Click a category to expand it in place. Click again or pick another to switch.
+              {t('server.advancedCategoriesDesc')}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-2">
               {categories.map(([cat, catItems]) => {
@@ -703,15 +705,12 @@ export default function ServerSettingsTab() {
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">{cat}</div>
                         <div className="text-xs text-muted">
-                          {catItems.length}
-                          {' '}
-                          {catItems.length === 1 ? 'setting' : 'settings'}
+                          {catItems.length === 1
+                            ? t('server.settingCount_one', { count: catItems.length })
+                            : t('server.settingCount_other', { count: catItems.length })}
                           {overrideCount > 0 && (
                             <span className="ml-1 text-warning">
-                              ·
-                              {overrideCount}
-                              {' '}
-                              overridden
+                              {t('server.overriddenCount', { count: overrideCount })}
                             </span>
                           )}
                         </div>
@@ -730,7 +729,7 @@ export default function ServerSettingsTab() {
                               size="sm"
                               variant="ghost"
                               onPress={() => toggleCategory(cat)}
-                              aria-label="Collapse category"
+                              aria-label={t('server.collapseCategory')}
                             >
                               <Icon name="x" className="w-3.5 h-3.5" />
                             </Button>
@@ -759,11 +758,9 @@ export default function ServerSettingsTab() {
         {/* Raw sections — non-schema keys and array entries, one panel per INI section */}
         {visibleRawSections.length > 0 && (
           <div>
-            <SectionLabel>Raw INI Sections</SectionLabel>
+            <SectionLabel>{t('server.rawIniSections')}</SectionLabel>
             <div className="text-xs text-muted mb-2">
-              Array entries (
-              <code className="font-mono">+key=val</code>
-              ) and unrecognised keys, grouped by INI section.
+              {t('server.rawIniDesc')}
             </div>
             <div className="flex flex-col gap-3 mt-2">
               {visibleRawSections.map((sections) => (

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button, Spinner } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
 import type { MarketItem } from '../../api/client'
 import { Icon, PageHeader } from '../../dune-ui'
@@ -14,6 +15,7 @@ import BotControlPanel from './bot/BotControlPanel'
 const DEFAULT_FILTERS: MarketFilters = { search: '', category: '', owner: '' }
 
 export default function MarketTab() {
+  const { t } = useTranslation()
   const [items, setItems] = useState<MarketItem[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -73,18 +75,18 @@ export default function MarketTab() {
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
-      <PageHeader title="Market Board" subtitle="Browse active exchange listings from bot and player sellers.">
+      <PageHeader title={t('market.title')} subtitle={t('market.subtitle')}>
         {botConfigured
           ? (
               <Button size="sm" variant="ghost" onPress={() => setBotOpen(true)}>
                 <Icon name="bot" />
                 {' '}
-                Bot Control
+                {t('market.botControl')}
               </Button>
             )
           : (
               <span className="hidden text-xs text-muted sm:inline">
-                No market bot connected — enable the built-in bot to manage it here
+                {t('market.noBotConnected')}
               </span>
             )}
         <ViewToggle view={view} onChange={setView} />
@@ -97,7 +99,7 @@ export default function MarketTab() {
                 <>
                   <Icon name="refresh-cw" />
                   {' '}
-                  Refresh
+                  {t('common.refresh')}
                 </>
               )}
         </Button>

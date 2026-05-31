@@ -1,26 +1,28 @@
 import { useState, useEffect } from 'react'
 import { Button, Spinner, toast } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { Player, InventoryItem } from '../../../api/client'
 import { DataTable, SectionLabel, type Column } from '../../../dune-ui'
 
 type ItemKey = 'template' | 'stack' | 'quality' | 'durability' | 'actions'
 
-const ITEM_COLUMNS: Column<ItemKey>[] = [
-  { key: 'template', label: 'Template', isRowHeader: true },
-  { key: 'stack', label: 'Stack' },
-  { key: 'quality', label: 'Quality' },
-  { key: 'durability', label: 'Durability' },
-  { key: 'actions', label: '', sortable: false },
-]
-
 interface Props {
   player: Player
 }
 
 export function InventoryView({ player }: Props) {
+  const { t } = useTranslation()
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(false)
+
+  const ITEM_COLUMNS: Column<ItemKey>[] = [
+    { key: 'template', label: t('players.inventory.columns.template'), isRowHeader: true },
+    { key: 'stack', label: t('players.inventory.columns.stack') },
+    { key: 'quality', label: t('players.inventory.columns.quality') },
+    { key: 'durability', label: t('players.inventory.columns.durability') },
+    { key: 'actions', label: '', sortable: false },
+  ]
 
   useEffect(() => {
     Promise.resolve()
@@ -36,13 +38,13 @@ export function InventoryView({ player }: Props) {
 
   const handleDelete = async (itemId: number) => {
     if (player.online_status === 'Online') {
-      const ok = window.confirm('Player is online — deleting items may cause inventory desyncs. Continue?')
+      const ok = window.confirm(t('players.inventory.deleteOnlineWarning'))
       if (!ok) return
     }
     try {
       await api.players.deleteItem(itemId)
       setItems((prev) => prev.filter((i) => i.id !== itemId))
-      toast.success('Item deleted')
+      toast.success(t('players.inventory.itemDeleted'))
     }
     catch (e: unknown) {
       toast.danger(e instanceof Error ? e.message : String(e))
@@ -53,7 +55,7 @@ export function InventoryView({ player }: Props) {
     try {
       await api.players.repairItem(item.id)
       setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, durability: i.max_durability } : i))
-      toast.success(`Repaired ${item.name || item.template_id}`)
+      toast.success(t('players.inventory.repaired', { name: item.name || item.template_id }))
     }
     catch (e: unknown) {
       toast.danger(e instanceof Error ? e.message : String(e))
@@ -64,10 +66,10 @@ export function InventoryView({ player }: Props) {
     try {
       const res = await api.players.repairGear(player.id)
       if (res.repaired === 0) {
-        toast.success(`No gear needed repair (${res.scanned} items scanned)`)
+        toast.success(t('players.inventory.repairGearNone', { scanned: res.scanned }))
       }
       else {
-        toast.success(`Repaired ${res.repaired} of ${res.scanned} gear pieces — relog to see in-game`)
+        toast.success(t('players.inventory.repairGearDone', { repaired: res.repaired, scanned: res.scanned }))
         api.players.inventory(player.id).then(setItems).catch(() => {})
       }
     }
@@ -83,11 +85,11 @@ export function InventoryView({ player }: Props) {
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
       <div className="shrink-0 min-h-8 flex items-center justify-between">
-        <SectionLabel>Items</SectionLabel>
-        <Button size="sm" variant="ghost" onPress={handleRepairAllGear}>Repair gear</Button>
+        <SectionLabel>{t('players.inventory.itemsLabel')}</SectionLabel>
+        <Button size="sm" variant="ghost" onPress={handleRepairAllGear}>{t('players.inventory.repairGear')}</Button>
       </div>
       <DataTable<InventoryItem, ItemKey>
-        aria-label="Inventory items"
+        aria-label={t('players.inventory.title')}
         className="min-h-0 max-h-full"
         columns={ITEM_COLUMNS}
         rows={items}
@@ -100,7 +102,7 @@ export function InventoryView({ player }: Props) {
           if (k === 'durability') return typeof i.durability === 'number' ? i.durability : 0
           return ''
         }}
-        emptyState={<div className="py-6 text-center text-muted">No items found</div>}
+        emptyState={<div className="py-6 text-center text-muted">{t('players.inventory.noItemsFound')}</div>}
         renderCell={(i, key) => {
           switch (key) {
             case 'template':
@@ -123,7 +125,7 @@ export function InventoryView({ player }: Props) {
               return (
                 <div className="flex gap-1">
                   {i.max_durability !== 'N/A' && (
-                    <Button size="sm" variant="ghost" onPress={() => handleRepair(i)}>Repair</Button>
+                    <Button size="sm" variant="ghost" onPress={() => handleRepair(i)}>{t('players.inventory.repair')}</Button>
                   )}
                   <Button size="sm" variant="danger-soft" onPress={() => handleDelete(i.id)}>X</Button>
                 </div>

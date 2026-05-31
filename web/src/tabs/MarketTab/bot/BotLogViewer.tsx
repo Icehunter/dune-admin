@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button, Checkbox } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { getWsBase, api } from '../../../api/client'
 import { Icon } from '../../../dune-ui'
 
@@ -10,6 +11,7 @@ type Props = {
 type ConnState = 'idle' | 'connecting' | 'connected' | 'error'
 
 export default function BotLogViewer({ active = false }: Props) {
+  const { t } = useTranslation()
   const [connState, setConnState] = useState<ConnState>('idle')
   const [error, setError] = useState<string | null>(null)
   const [lines, setLines] = useState<string[]>([])
@@ -61,7 +63,7 @@ export default function BotLogViewer({ active = false }: Props) {
       .then(() => api.marketBot.logsReady())
       .then((check) => {
         if (!check.ready) {
-          setError(check.reason ?? 'Log streaming not available')
+          setError(check.reason ?? t('market.bot.log.notAvailable'))
           setConnState('error')
           return
         }
@@ -75,7 +77,7 @@ export default function BotLogViewer({ active = false }: Props) {
           bufRef.current.push(e.data as string)
         }
         ws.onerror = () => {
-          setError('WebSocket connection failed — the log stream was interrupted.')
+          setError(t('market.bot.log.wsError'))
           setConnState('error')
         }
         ws.onclose = (e) => {
@@ -85,7 +87,9 @@ export default function BotLogViewer({ active = false }: Props) {
             bufRef.current = []
           }
           if (e.code !== 1000 && e.code !== 1001) {
-            setError(`Connection closed (code ${e.code})${e.reason ? ': ' + e.reason : ''}`)
+            setError(e.reason
+              ? t('market.bot.log.connClosedReason', { code: e.code, reason: e.reason })
+              : t('market.bot.log.connClosed', { code: e.code }))
             setConnState('error')
           }
           else {
@@ -94,10 +98,10 @@ export default function BotLogViewer({ active = false }: Props) {
         }
       })
       .catch(() => {
-        setError('Could not reach backend — check that it is running.')
+        setError(t('market.bot.log.backendUnreachable'))
         setConnState('error')
       })
-  }, [startFlush, stopFlush])
+  }, [startFlush, stopFlush, t])
 
   const disconnect = useCallback(() => {
     if (wsRef.current) {
@@ -122,10 +126,10 @@ export default function BotLogViewer({ active = false }: Props) {
   }, [disconnect])
 
   const stateLabel = {
-    idle: '○ disconnected',
-    connecting: '◌ connecting…',
-    connected: '● connected',
-    error: '✕ error',
+    idle: t('market.bot.log.idle'),
+    connecting: t('market.bot.log.connecting'),
+    connected: t('market.bot.log.connected'),
+    error: t('market.bot.log.error'),
   }[connState]
 
   const stateColor = {
@@ -145,27 +149,27 @@ export default function BotLogViewer({ active = false }: Props) {
       <div className="flex items-center gap-2 shrink-0 flex-wrap">
         <span className={`text-xs font-mono ${stateColor}`}>{stateLabel}</span>
         <div className="flex-1" />
-        <Checkbox isSelected={autoScroll} onChange={setAutoScroll}>Auto-scroll</Checkbox>
+        <Checkbox isSelected={autoScroll} onChange={setAutoScroll}>{t('market.bot.log.autoScroll')}</Checkbox>
         {connState !== 'connected'
           ? (
               <Button size="sm" variant="outline" onPress={connect} isDisabled={connState === 'connecting'}>
                 <Icon name="play" />
                 {' '}
-                Connect
+                {t('market.bot.log.connect')}
               </Button>
             )
           : (
               <Button size="sm" variant="danger-soft" onPress={disconnect}>
                 <Icon name="square" />
                 {' '}
-                Stop
+                {t('market.bot.log.stop')}
               </Button>
             )}
         {lines.length > 0 && (
           <Button size="sm" variant="ghost" onPress={clearLog}>
             <Icon name="trash-2" />
             {' '}
-            Clear
+            {t('market.bot.log.clear')}
           </Button>
         )}
       </div>
@@ -181,7 +185,7 @@ export default function BotLogViewer({ active = false }: Props) {
         className="flex-1 overflow-auto p-3 text-xs font-mono m-0 whitespace-pre-wrap break-all rounded-[var(--radius)] border border-border/60 bg-background text-success"
       >
         {lines.length === 0
-          ? (connState === 'connected' ? 'Waiting for log lines…' : connState === 'connecting' ? 'Connecting…' : '')
+          ? (connState === 'connected' ? t('market.bot.log.waitingForLines') : connState === 'connecting' ? t('market.bot.log.connectingState') : '')
           : lines.join('\n')}
       </pre>
     </div>

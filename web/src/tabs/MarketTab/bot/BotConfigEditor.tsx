@@ -1,5 +1,6 @@
 import { useState, forwardRef, useImperativeHandle } from 'react'
 import { toast } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { BotConfig } from '../../../api/client'
 import { Panel, SectionLabel } from '../../../dune-ui'
@@ -25,6 +26,7 @@ function percentToThreshold(p: number): number {
 }
 
 const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfigEditor({ config, onSaved }, ref) {
+  const { t } = useTranslation()
   const [draft, setDraft] = useState<BotConfig>(config)
   const [buyPct, setBuyPct] = useState<number>(thresholdToPercent(config.buy_threshold))
 
@@ -54,7 +56,7 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
       const saved = await api.marketBot.saveConfig(payload)
       setBuyPct(thresholdToPercent(saved.buy_threshold))
       onSaved(saved)
-      toast.success('Config saved — changes apply on next tick')
+      toast.success(t('market.bot.configEditor.configSaved'))
     },
     reset: () => {
       setDraft(config)
@@ -62,24 +64,31 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
     },
     getEnabled: () => draft.enabled,
     setEnabled: (v: boolean) => set('enabled', v),
-  }), [draft, buyPct, config, onSaved])
+  }), [draft, buyPct, config, onSaved, t])
 
-  const GRADE_LABELS = ['Standard', 'Refined', 'Superior', 'Masterwork', 'Pristine', 'Flawless']
+  const GRADE_LABELS = [
+    t('market.bot.configEditor.gradeStandard'),
+    t('market.bot.configEditor.gradeRefined'),
+    t('market.bot.configEditor.gradeSuperior'),
+    t('market.bot.configEditor.gradeMasterwork'),
+    t('market.bot.configEditor.gradePristine'),
+    t('market.bot.configEditor.gradeFlawless'),
+  ]
 
   return (
     <div className="flex flex-col gap-4 pr-1">
 
       <Panel>
-        <SectionLabel>Tick Intervals</SectionLabel>
+        <SectionLabel>{t('market.bot.configEditor.tickIntervals')}</SectionLabel>
         <div className="grid grid-cols-2 gap-3 mt-1">
-          <Field label="List tick interval" hint="e.g. 30m, 1h">
+          <Field label={t('market.bot.configEditor.listTickInterval')} hint={t('market.bot.configEditor.listTickHint')}>
             <input
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
               value={draft.list_interval}
               onChange={(e) => set('list_interval', e.target.value)}
             />
           </Field>
-          <Field label="Buy tick interval" hint="e.g. 5m">
+          <Field label={t('market.bot.configEditor.buyTickInterval')} hint={t('market.bot.configEditor.buyTickHint')}>
             <input
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
               value={draft.buy_interval}
@@ -90,10 +99,10 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
       </Panel>
 
       <Panel>
-        <SectionLabel>Limits</SectionLabel>
-        <p className="text-xs text-muted -mt-1">Controls how many items the bot buys and lists each tick.</p>
+        <SectionLabel>{t('market.bot.configEditor.limits')}</SectionLabel>
+        <p className="text-xs text-muted -mt-1">{t('market.bot.configEditor.limitsDesc')}</p>
         <div className="grid grid-cols-3 gap-3 mt-1">
-          <Field label="Max buys per tick">
+          <Field label={t('market.bot.configEditor.maxBuysPerTick')}>
             <input
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
               type="number"
@@ -101,7 +110,7 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
               onChange={(e) => set('max_buys', Number(e.target.value))}
             />
           </Field>
-          <Field label="Listings per grade" hint="per item per quality level">
+          <Field label={t('market.bot.configEditor.listingsPerGrade')} hint={t('market.bot.configEditor.listingsPerGradeHint')}>
             <input
               className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
               type="number"
@@ -109,7 +118,7 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
               onChange={(e) => set('listings_per_grade', Number(e.target.value))}
             />
           </Field>
-          <Field label="Buy threshold" hint={`${buyPct}% of bot's reference price`}>
+          <Field label={t('market.bot.configEditor.buyThreshold')} hint={t('market.bot.configEditor.buyThresholdHint', { pct: buyPct })}>
             <div className="flex items-center gap-2">
               <input
                 className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-20"
@@ -126,23 +135,27 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
         </div>
         <div className="flex flex-col gap-0.5 mt-1">
           <p className="text-xs text-muted">
-            <strong>Buy threshold:</strong>
+            <strong>
+              {t('market.bot.configEditor.buyThreshold')}
+              :
+            </strong>
             {' '}
-            buys a listing only when its price is at or below this % of the bot's reference price.
-            100% = match or below · 70% = 30%+ discount required · 110% = up to 10% above bot price.
+            {t('market.bot.configEditor.buyThresholdDesc')}
           </p>
           <p className="text-xs text-muted">
-            <strong>Listings per grade:</strong>
+            <strong>
+              {t('market.bot.configEditor.listingsPerGrade')}
+              :
+            </strong>
             {' '}
-            active listings maintained per item per quality grade (0 = Standard … 5 = Flawless).
-            Stackables use grade 0 only. Example: 5 × 6 grades = up to 30 listings per gradeable item.
+            {t('market.bot.configEditor.listingsPerGradeDesc')}
           </p>
         </div>
       </Panel>
 
       <Panel>
-        <SectionLabel>Grade Multipliers</SectionLabel>
-        <p className="text-xs text-muted -mt-1">Scales the listing price by quality grade. Grade 0 (Standard) is the base and should stay at 1.0.</p>
+        <SectionLabel>{t('market.bot.configEditor.gradeMultipliers')}</SectionLabel>
+        <p className="text-xs text-muted -mt-1">{t('market.bot.configEditor.gradeMultipliersDesc')}</p>
         <div className="flex flex-wrap gap-3 mt-1">
           {(draft.grade_multipliers ?? []).map((mult, i) => (
             <Field key={i} label={GRADE_LABELS[i] ?? `Grade ${i}`} hint={`×${mult.toFixed(2)}`}>
@@ -160,8 +173,8 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
       </Panel>
 
       <Panel>
-        <SectionLabel>Rarity Multipliers</SectionLabel>
-        <p className="text-xs text-muted -mt-1">Applies to items with no NPC vendor price and to crafted Unique/Memento gear. Keyed by rarity; Common (1.0) is the baseline. Grade multipliers stack on top.</p>
+        <SectionLabel>{t('market.bot.configEditor.rarityMultipliers')}</SectionLabel>
+        <p className="text-xs text-muted -mt-1">{t('market.bot.configEditor.rarityMultipliersDesc')}</p>
         <div className="flex flex-wrap gap-3 mt-1">
           {Object.entries(draft.rarity_multipliers ?? {}).map(([rarity, mult]) => (
             <Field key={rarity} label={capitalize(rarity)} hint={`×${(mult as number).toFixed(2)}`}>
@@ -180,8 +193,8 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
 
       {draft.vendor_multipliers && Object.keys(draft.vendor_multipliers ?? {}).length > 0 && (
         <Panel>
-          <SectionLabel>Vendor Multipliers</SectionLabel>
-          <p className="text-xs text-muted -mt-1">Applies to items that have an NPC vendor price (most items). Listing price = vendor price × this multiplier, keyed by rarity. Only one of Vendor or Rarity applies to a given item.</p>
+          <SectionLabel>{t('market.bot.configEditor.vendorMultipliers')}</SectionLabel>
+          <p className="text-xs text-muted -mt-1">{t('market.bot.configEditor.vendorMultipliersDesc')}</p>
           <div className="flex flex-wrap gap-3 mt-1">
             {Object.entries(draft.vendor_multipliers ?? {}).map(([rarity, mult]) => (
               <Field key={rarity} label={capitalize(rarity)} hint={`×${(mult as number).toFixed(2)}`}>

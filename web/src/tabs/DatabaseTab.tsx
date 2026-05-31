@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import CodeMirror from '@uiw/react-codemirror'
 import { createTheme } from '@uiw/codemirror-themes'
 import { sql as sqlLang, PostgreSQL } from '@codemirror/lang-sql'
 import { keymap } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
 import { acceptCompletion } from '@codemirror/autocomplete'
-import { tags as t } from '@lezer/highlight'
+import { tags as hlTags } from '@lezer/highlight'
 import { Button, InputGroup, SearchField, Spinner, TextField, toast } from '@heroui/react'
 import { api } from '../api/client'
-import { DataTable, Icon, PageHeader, SideNav, type Column } from '../dune-ui'
+import { DataTable, Icon, PageHeader, type Column } from '../dune-ui'
 
 // ── CodeMirror theme ────────────────────────────────────────────────────────
 
@@ -27,23 +28,23 @@ const duneTheme = createTheme({
     gutterActiveForeground: 'var(--accent)',
   },
   styles: [
-    { tag: t.comment, color: 'var(--muted)', fontStyle: 'italic' },
-    { tag: t.lineComment, color: 'var(--muted)', fontStyle: 'italic' },
-    { tag: t.blockComment, color: 'var(--muted)', fontStyle: 'italic' },
-    { tag: t.keyword, color: 'var(--accent)', fontWeight: 'bold' },
-    { tag: t.definitionKeyword, color: 'var(--accent)' },
-    { tag: t.modifier, color: 'var(--accent)' },
-    { tag: t.operatorKeyword, color: 'var(--accent)' },
-    { tag: t.string, color: 'var(--success)' },
-    { tag: t.number, color: 'var(--warning)' },
-    { tag: t.bool, color: 'var(--warning)' },
-    { tag: t.null, color: 'var(--danger)' },
-    { tag: t.operator, color: 'var(--foreground)' },
-    { tag: t.punctuation, color: 'var(--muted)' },
-    { tag: t.name, color: 'var(--foreground)' },
-    { tag: t.typeName, color: 'var(--warning)' },
-    { tag: t.function(t.variableName), color: 'var(--warning)' },
-    { tag: t.special(t.name), color: 'var(--accent)' },
+    { tag: hlTags.comment, color: 'var(--muted)', fontStyle: 'italic' },
+    { tag: hlTags.lineComment, color: 'var(--muted)', fontStyle: 'italic' },
+    { tag: hlTags.blockComment, color: 'var(--muted)', fontStyle: 'italic' },
+    { tag: hlTags.keyword, color: 'var(--accent)', fontWeight: 'bold' },
+    { tag: hlTags.definitionKeyword, color: 'var(--accent)' },
+    { tag: hlTags.modifier, color: 'var(--accent)' },
+    { tag: hlTags.operatorKeyword, color: 'var(--accent)' },
+    { tag: hlTags.string, color: 'var(--success)' },
+    { tag: hlTags.number, color: 'var(--warning)' },
+    { tag: hlTags.bool, color: 'var(--warning)' },
+    { tag: hlTags.null, color: 'var(--danger)' },
+    { tag: hlTags.operator, color: 'var(--foreground)' },
+    { tag: hlTags.punctuation, color: 'var(--muted)' },
+    { tag: hlTags.name, color: 'var(--foreground)' },
+    { tag: hlTags.typeName, color: 'var(--warning)' },
+    { tag: hlTags.function(hlTags.variableName), color: 'var(--warning)' },
+    { tag: hlTags.special(hlTags.name), color: 'var(--accent)' },
   ],
 })
 
@@ -52,21 +53,14 @@ const duneTheme = createTheme({
 type Section = 'tables' | 'describe' | 'sample' | 'search' | 'sql'
 type TableData = { headers: string[], rows: string[][] }
 
-const SECTIONS: { key: Section, label: string }[] = [
-  { key: 'tables', label: 'Tables' },
-  { key: 'describe', label: 'Describe' },
-  { key: 'sample', label: 'Sample' },
-  { key: 'search', label: 'Search Columns' },
-  { key: 'sql', label: 'Run SQL' },
-]
-
 // ── Sub-components ───────────────────────────────────────────────────────────
 
 function ResultTable({ headers, rows }: TableData) {
+  const { t } = useTranslation()
   const safeHeaders = headers ?? []
   const safeRows = rows ?? []
   if (safeRows.length === 0 || safeHeaders.length === 0) {
-    return <p className="text-sm text-muted">No results.</p>
+    return <p className="text-sm text-muted">{t('database.noResults')}</p>
   }
   const columns: Column<string>[] = safeHeaders.map((h, i) => ({
     key: `c${i}`,
@@ -76,7 +70,7 @@ function ResultTable({ headers, rows }: TableData) {
   const items: Row[] = safeRows.map((r, i) => ({ _id: String(i), values: r ?? [] }))
   return (
     <DataTable<Row, string>
-      aria-label="Result"
+      aria-label={t('database.resultLabel')}
       className="min-h-0 max-h-full"
       columns={columns}
       rows={items}
@@ -97,11 +91,13 @@ function ResultTable({ headers, rows }: TableData) {
 }
 
 /** Type-ahead table picker — matches the GiveItemsModal search-dropdown pattern. */
-function TableSearchInput({ value, onChange, onRun, tableNames }: {
+function TableSearchInput({ value, onChange, onRun, tableNames, ariaLabel, placeholder }: {
   value: string
   onChange: (v: string) => void
   onRun: () => void
   tableNames: string[]
+  ariaLabel: string
+  placeholder: string
 }) {
   const [open, setOpen] = useState(false)
 
@@ -133,12 +129,12 @@ function TableSearchInput({ value, onChange, onRun, tableNames }: {
           setOpen(true)
         }}
         onFocus={() => setOpen(true)}
-        aria-label="Table name"
+        aria-label={ariaLabel}
       >
         <SearchField.Group>
           <SearchField.SearchIcon />
           <SearchField.Input
-            placeholder="actors"
+            placeholder={placeholder}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 setOpen(false)
@@ -175,8 +171,17 @@ function TableSearchInput({ value, onChange, onRun, tableNames }: {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function DatabaseTab() {
-  const [active, setActive] = useState<Section>('tables')
+export default function DatabaseTab({ section = 'tables' }: { section?: Section }) {
+  const { t } = useTranslation()
+
+  const SECTIONS: { key: Section, label: string }[] = [
+    { key: 'tables', label: t('database.sections.tables') },
+    { key: 'describe', label: t('database.sections.describe') },
+    { key: 'sample', label: t('database.sections.sample') },
+    { key: 'search', label: t('database.sections.search') },
+    { key: 'sql', label: t('database.sections.sql') },
+  ]
+
   const [tableInput, setTableInput] = useState('')
   const [limitInput, setLimitInput] = useState('20')
   const [searchInput, setSearchInput] = useState('')
@@ -208,24 +213,28 @@ export default function DatabaseTab() {
       .then((rows) => {
         setTableNames(rows.map((r) => r.name))
         setResult({
-          headers: ['Table', 'Rows'],
+          headers: [t('database.tableColumn'), t('database.rowsColumn')],
           rows: rows.map((r) => [r.name, String(r.row_count)]),
         })
       })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : String(e)
         setError(msg)
-        toast.danger(`Failed: ${msg}`)
+        toast.danger(t('database.failed', { message: msg }))
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
+  // Reset results and re-fetch whenever the section changes (driven by the left nav).
   useEffect(() => {
-    fetchTables()
-  }, [fetchTables])
+    setTruncated(false) // eslint-disable-line react-hooks/set-state-in-effect
+    setError(null)
+    setResult(null)
+    if (section === 'tables') fetchTables()
+  }, [section, fetchTables])
 
   const run = useCallback(async () => {
-    if (active === 'tables') {
+    if (section === 'tables') {
       fetchTables()
       return
     }
@@ -234,28 +243,28 @@ export default function DatabaseTab() {
     setTruncated(false)
     setError(null)
     try {
-      if (active === 'describe') {
+      if (section === 'describe') {
         if (!tableInput.trim()) {
-          toast.warning('Enter a table name')
+          toast.warning(t('database.enterTableName'))
           return
         }
         const r = await api.database.describe(tableInput.trim())
         setResult({
-          headers: ['Column', 'Type', 'Nullable'],
+          headers: [t('database.columnColumn'), t('database.typeColumn'), t('database.nullableColumn')],
           rows: r.columns.map((c) => [c.name, c.data_type, c.nullable]),
         })
       }
-      else if (active === 'sample') {
+      else if (section === 'sample') {
         if (!tableInput.trim()) {
-          toast.warning('Enter a table name')
+          toast.warning(t('database.enterTableName'))
           return
         }
         const r = await api.database.sample(tableInput.trim(), Number(limitInput) || 20)
         setResult({ headers: r.headers, rows: r.rows })
       }
-      else if (active === 'search') {
+      else if (section === 'search') {
         if (!searchInput.trim()) {
-          toast.warning('Enter a search term')
+          toast.warning(t('database.enterSearchTerm'))
           return
         }
         const r = await api.database.search(searchInput.trim())
@@ -263,7 +272,7 @@ export default function DatabaseTab() {
       }
       else {
         if (!sqlInput.trim()) {
-          toast.warning('Enter a SQL query')
+          toast.warning(t('database.enterSQL'))
           return
         }
         const r = await api.database.sql(sqlInput.trim())
@@ -274,12 +283,12 @@ export default function DatabaseTab() {
     catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       setError(msg)
-      toast.danger(`Failed: ${msg}`)
+      toast.danger(t('database.failed', { message: msg }))
     }
     finally {
       setLoading(false)
     }
-  }, [active, fetchTables, limitInput, searchInput, sqlInput, tableInput])
+  }, [section, fetchTables, limitInput, searchInput, sqlInput, tableInput, t])
 
   const editorKeymap = useMemo(() => [
     Prec.highest(keymap.of([
@@ -295,156 +304,136 @@ export default function DatabaseTab() {
     ])),
   ], [run])
 
-  const activeLabel = SECTIONS.find((s) => s.key === active)?.label ?? ''
+  const activeLabel = SECTIONS.find((s) => s.key === section)?.label ?? ''
 
   return (
-    <div className="flex gap-4 h-full min-h-0">
-      <SideNav<Section>
-        items={SECTIONS}
-        active={active}
-        onSelect={(k) => {
-          setActive(k)
-          setTruncated(false)
-          setError(null)
-          if (k === 'tables') {
-            // Always reload when navigating back to Tables
-            setResult(null)
-            fetchTables()
-          }
-          else {
-            setResult(null)
-          }
-        }}
-        title="Database"
-        width="w-60"
-      />
+    <div className="h-full min-h-0 flex flex-col gap-3">
+      <PageHeader title={activeLabel}>
+        <Button
+          size="sm"
+          variant="ghost"
+          isIconOnly
+          onPress={() => void run()}
+          isDisabled={loading}
+          aria-label={t('database.refreshLabel')}
+        >
+          {loading ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
+        </Button>
+      </PageHeader>
 
-      <div className="flex-1 flex flex-col gap-3 min-h-0">
-        <PageHeader title={activeLabel}>
-          <Button
-            size="sm"
-            variant="ghost"
-            isIconOnly
-            onPress={() => void run()}
-            isDisabled={loading}
-            aria-label="Refresh"
-          >
-            {loading ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
+      {(section === 'describe' || section === 'sample') && (
+        <div className="flex items-center gap-3 shrink-0">
+          <TableSearchInput
+            value={tableInput}
+            onChange={setTableInput}
+            onRun={() => void run()}
+            tableNames={tableNames}
+            ariaLabel={t('database.tableNameLabel')}
+            placeholder={t('database.tablePlaceholder')}
+          />
+          {section === 'sample' && (
+            <TextField className="w-28" aria-label="Limit">
+              <InputGroup>
+                <InputGroup.Prefix>{t('database.limitLabel')}</InputGroup.Prefix>
+                <InputGroup.Input
+                  className="pl-2"
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={limitInput}
+                  onChange={(e) => setLimitInput(e.target.value)}
+                />
+              </InputGroup>
+            </TextField>
+          )}
+          <Button onPress={() => void run()} isDisabled={loading} size="sm">
+            {loading ? <Spinner size="sm" color="current" /> : <Icon name="play" />}
+            {' '}
+            {t('database.runBtn')}
           </Button>
-        </PageHeader>
+        </div>
+      )}
 
-        {(active === 'describe' || active === 'sample') && (
-          <div className="flex items-center gap-3 shrink-0">
-            <TableSearchInput
-              value={tableInput}
-              onChange={setTableInput}
-              onRun={() => void run()}
-              tableNames={tableNames}
+      {section === 'search' && (
+        <div className="flex items-center gap-3 shrink-0">
+          <SearchField
+            className="flex-1 max-w-md"
+            value={searchInput}
+            onChange={setSearchInput}
+            aria-label={t('database.searchLabel')}
+          >
+            <SearchField.Group>
+              <SearchField.SearchIcon />
+              <SearchField.Input
+                placeholder={t('database.searchPlaceholder')}
+                onKeyDown={(e) => e.key === 'Enter' && void run()}
+              />
+              <SearchField.ClearButton />
+            </SearchField.Group>
+          </SearchField>
+          <Button onPress={() => void run()} isDisabled={loading} size="sm">
+            {loading ? <Spinner size="sm" color="current" /> : <Icon name="search" />}
+            {' '}
+            Search
+          </Button>
+        </div>
+      )}
+
+      {section === 'sql' && (
+        <div className="flex flex-col gap-2 shrink-0">
+          <div
+            className="rounded-[var(--radius)] overflow-hidden border"
+            style={{ borderColor: 'var(--field-border)' }}
+          >
+            <CodeMirror
+              value={sqlInput}
+              onChange={setSqlInput}
+              extensions={editorKeymap.concat(sqlExtension)}
+              theme={duneTheme}
+              height="140px"
+              basicSetup={{
+                lineNumbers: true,
+                foldGutter: false,
+                autocompletion: true,
+                highlightActiveLine: true,
+                highlightSelectionMatches: true,
+              }}
+              placeholder={t('database.sqlPlaceholder')}
             />
-            {active === 'sample' && (
-              <TextField className="w-28" aria-label="Limit">
-                <InputGroup>
-                  <InputGroup.Prefix>Limit</InputGroup.Prefix>
-                  <InputGroup.Input
-                    className="pl-2"
-                    type="number"
-                    min={1}
-                    max={1000}
-                    value={limitInput}
-                    onChange={(e) => setLimitInput(e.target.value)}
-                  />
-                </InputGroup>
-              </TextField>
-            )}
+          </div>
+          <div className="flex items-center gap-3">
             <Button onPress={() => void run()} isDisabled={loading} size="sm">
               {loading ? <Spinner size="sm" color="current" /> : <Icon name="play" />}
               {' '}
-              Run
+              {t('database.runQuery')}
             </Button>
+            <span className="text-xs text-muted">{t('database.runHint')}</span>
           </div>
-        )}
+        </div>
+      )}
 
-        {active === 'search' && (
-          <div className="flex items-center gap-3 shrink-0">
-            <SearchField
-              className="flex-1 max-w-md"
-              value={searchInput}
-              onChange={setSearchInput}
-              aria-label="Column or table name"
-            >
-              <SearchField.Group>
-                <SearchField.SearchIcon />
-                <SearchField.Input
-                  placeholder="player_id, faction..."
-                  onKeyDown={(e) => e.key === 'Enter' && void run()}
-                />
-                <SearchField.ClearButton />
-              </SearchField.Group>
-            </SearchField>
-            <Button onPress={() => void run()} isDisabled={loading} size="sm">
-              {loading ? <Spinner size="sm" color="current" /> : <Icon name="search" />}
-              {' '}
-              Search
-            </Button>
-          </div>
-        )}
+      {loading && (
+        <div className="flex justify-center py-8 shrink-0">
+          <Spinner size="lg" />
+        </div>
+      )}
 
-        {active === 'sql' && (
-          <div className="flex flex-col gap-2 shrink-0">
-            <div
-              className="rounded-[var(--radius)] overflow-hidden border"
-              style={{ borderColor: 'var(--field-border)' }}
-            >
-              <CodeMirror
-                value={sqlInput}
-                onChange={setSqlInput}
-                extensions={editorKeymap.concat(sqlExtension)}
-                theme={duneTheme}
-                height="140px"
-                basicSetup={{
-                  lineNumbers: true,
-                  foldGutter: false,
-                  autocompletion: true,
-                  highlightActiveLine: true,
-                  highlightSelectionMatches: true,
-                }}
-                placeholder="SELECT * FROM dune.actors LIMIT 10;"
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <Button onPress={() => void run()} isDisabled={loading} size="sm">
-                {loading ? <Spinner size="sm" color="current" /> : <Icon name="play" />}
-                {' '}
-                Run Query
-              </Button>
-              <span className="text-xs text-muted">Cmd/Ctrl+Enter to run · Tab accepts suggestion</span>
-            </div>
-          </div>
-        )}
+      {error && !loading && (
+        <div className="rounded-[var(--radius)] p-4 bg-danger/10 border border-danger/40 text-danger shrink-0">
+          <strong>{t('common.error')}</strong>
+          {' '}
+          {error}
+        </div>
+      )}
 
-        {loading && (
-          <div className="flex justify-center py-8 shrink-0">
-            <Spinner size="lg" />
-          </div>
-        )}
-
-        {error && !loading && (
-          <div className="rounded-[var(--radius)] p-4 bg-danger/10 border border-danger/40 text-danger shrink-0">
-            <strong>Error:</strong>
-            {' '}
-            {error}
-          </div>
-        )}
-
-        {result && !loading && !error && (
-          <div className="flex-1 min-h-0 flex flex-col gap-1">
-            <ResultTable headers={result.headers} rows={result.rows} />
-            {truncated && (
-              <p className="text-xs text-muted shrink-0">Results limited to 200 rows.</p>
-            )}
-          </div>
-        )}
-      </div>
+      {result && !loading && !error && (
+        <div className="flex-1 min-h-0 flex flex-col gap-1">
+          <ResultTable headers={result.headers} rows={result.rows} />
+          {truncated && (
+            <p className="text-xs text-muted shrink-0">{t('database.rowsLimited')}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

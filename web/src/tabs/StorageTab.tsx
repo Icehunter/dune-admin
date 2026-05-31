@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Button, Chip, Input, InputGroup, Modal, SearchField, Spinner, TextField, toast,
 } from '@heroui/react'
@@ -7,15 +8,6 @@ import type { InventoryItem } from '../api/client'
 import { DataTable, Icon, PageHeader, SideNav, type Column } from '../dune-ui'
 
 type ItemKey = 'id' | 'template' | 'stack_size' | 'quality' | 'durability' | 'actions'
-
-const ITEM_COLUMNS: Column<ItemKey>[] = [
-  { key: 'id', label: 'ID', width: 100 },
-  { key: 'template', label: 'Template', minWidth: 240 },
-  { key: 'stack_size', label: 'Stack', width: 100 },
-  { key: 'quality', label: 'Quality', width: 100 },
-  { key: 'durability', label: 'Durability', width: 130 },
-  { key: 'actions', label: '', width: 120, sortable: false },
-]
 
 type Container = {
   id: number
@@ -40,6 +32,17 @@ function shortClass(cls: string): string {
 }
 
 export default function StorageTab() {
+  const { t } = useTranslation()
+
+  const ITEM_COLUMNS: Column<ItemKey>[] = [
+    { key: 'id', label: t('storage.columns.id'), width: 100 },
+    { key: 'template', label: t('storage.columns.template'), minWidth: 240 },
+    { key: 'stack_size', label: t('storage.columns.stack'), width: 100 },
+    { key: 'quality', label: t('storage.columns.quality'), width: 100 },
+    { key: 'durability', label: t('storage.columns.durability'), width: 130 },
+    { key: 'actions', label: '', width: 120, sortable: false },
+  ]
+
   const [containers, setContainers] = useState<Container[]>([])
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<Container | null>(null)
@@ -82,7 +85,7 @@ export default function StorageTab() {
       if (selected) {
         setContainers((prev) => prev.map((c) => c.id === selected.id ? { ...c, item_count: c.item_count - 1 } : c))
       }
-      toast.success('Item removed')
+      toast.success(t('storage.itemRemoved'))
     }
     catch (e: unknown) {
       toast.danger(e instanceof Error ? e.message : String(e))
@@ -98,12 +101,12 @@ export default function StorageTab() {
       || shortClass(c.class).toLowerCase().includes(q)
       || (c.name && c.name.toLowerCase().includes(q))
       || (c.owner_name && c.owner_name.toLowerCase().includes(q))
-      || (c.item_templates ?? []).some((t) => t.toLowerCase().includes(q))
+      || (c.item_templates ?? []).some((tmpl) => tmpl.toLowerCase().includes(q))
       || (c.item_names ?? []).some((n) => n.toLowerCase().includes(q)),
     )
   }, [containers, search])
 
-  const navItems = filtered.map((c) => ({
+  const navItems = useMemo(() => filtered.map((c) => ({
     key: String(c.id),
     label: c.name || `#${c.id}`,
     sublabel: [
@@ -113,19 +116,14 @@ export default function StorageTab() {
       c.owner_name || null,
     ].filter(Boolean).join(' · '),
     hint: <Chip size="sm" variant="soft">{c.item_count}</Chip>,
-  }))
+  })), [filtered])
 
   return (
     <div className="flex flex-col gap-3 h-full min-h-0">
       {/* Warning banner */}
       <div className="shrink-0 rounded-[var(--radius)] px-4 py-2 text-xs font-medium bg-danger/10 border border-danger/40 text-danger flex items-center gap-2">
         <Icon name="triangle-alert" />
-        <span>
-          Items added to or removed from storage containers require a
-          <strong>server zone restart</strong>
-          {' '}
-          to become visible to other players.
-        </span>
+        <span>{t('storage.warningText')}</span>
       </div>
 
       <div className="flex gap-3 flex-1 min-h-0">
@@ -136,7 +134,7 @@ export default function StorageTab() {
             const c = containers.find((x) => String(x.id) === id)
             if (c) selectContainer(c)
           }}
-          title={`Containers (${containers.length})`}
+          title={t('storage.containersTitle', { count: containers.length })}
           titleAction={(
             <Button size="sm" variant="ghost" onPress={load} isDisabled={loading}>
               {loading ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
@@ -145,14 +143,14 @@ export default function StorageTab() {
           width="w-60"
         >
           <SearchField
-            aria-label="Search containers"
+            aria-label={t('storage.searchLabel')}
             value={search}
             onChange={setSearch}
             className="w-full"
           >
             <SearchField.Group>
               <SearchField.SearchIcon />
-              <SearchField.Input placeholder="Search..." />
+              <SearchField.Input placeholder={t('storage.searchPlaceholder')} />
               <SearchField.ClearButton />
             </SearchField.Group>
           </SearchField>
@@ -162,18 +160,18 @@ export default function StorageTab() {
           {!selected
             ? (
                 <div className="flex items-center justify-center h-full text-muted">
-                  <p className="text-sm">Select a container to view its contents</p>
+                  <p className="text-sm">{t('storage.selectContainer')}</p>
                 </div>
               )
             : (
                 <>
                   <PageHeader
-                    title={selected.name || `Container #${selected.id}`}
+                    title={selected.name || t('storage.containerTitle', { id: selected.id })}
                     subtitle={[
                       selected.name ? `#${selected.id}` : null,
                       shortClass(selected.class),
                       selected.map,
-                      selected.owner_name ? `Owner: ${selected.owner_name}` : null,
+                      selected.owner_name ? t('storage.ownerLabel', { name: selected.owner_name }) : null,
                     ].filter(Boolean).join(' · ')}
                   >
                     <Button size="sm" variant="ghost" onPress={() => selectContainer(selected)} isDisabled={itemsLoading}>
@@ -183,14 +181,14 @@ export default function StorageTab() {
                             <>
                               <Icon name="refresh-cw" />
                               {' '}
-                              Refresh
+                              {t('common.refresh')}
                             </>
                           )}
                     </Button>
                     <Button size="sm" onPress={() => setShowAdd(true)}>
                       <Icon name="plus" />
                       {' '}
-                      Add Items
+                      {t('storage.addItems')}
                     </Button>
                   </PageHeader>
 
@@ -200,7 +198,7 @@ export default function StorageTab() {
                       )
                     : (
                         <DataTable<InventoryItem, ItemKey>
-                          aria-label="Container items"
+                          aria-label={t('storage.ariaLabel')}
                           className="min-h-0 max-h-full"
                           columns={ITEM_COLUMNS}
                           rows={items}
@@ -211,7 +209,7 @@ export default function StorageTab() {
                             if (k === 'actions') return ''
                             return (i as unknown as Record<string, string | number>)[k]
                           }}
-                          emptyState={<div className="py-8 text-center text-muted">Container is empty</div>}
+                          emptyState={<div className="py-8 text-center text-muted">{t('storage.containerEmpty')}</div>}
                           renderCell={(i, key) => {
                             switch (key) {
                               case 'id': return <span className="font-mono text-muted">{i.id}</span>
@@ -235,7 +233,7 @@ export default function StorageTab() {
                                   >
                                     <Icon name="x" />
                                     {' '}
-                                    Remove
+                                    {t('storage.remove')}
                                   </Button>
                                 )
                             }
@@ -270,6 +268,7 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
   onSuccess: () => void
   onRefresh: () => void
 }) {
+  const { t } = useTranslation()
   const [templates, setTemplates] = useState<{ id: string, name: string }[]>([])
   const [loading, setLoading] = useState(false)
   const [query, setQuery] = useState('')
@@ -302,17 +301,19 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
   const filtered = useMemo(() => {
     if (!query) return []
     const q = query.toLowerCase()
-    return templates.filter((t) => t.id.toLowerCase().includes(q) || t.name.toLowerCase().includes(q)).slice(0, 100)
+    return templates
+      .filter((tmpl) => tmpl.id.toLowerCase().includes(q) || tmpl.name.toLowerCase().includes(q))
+      .slice(0, 100)
   }, [templates, query])
 
-  const pick = (t: { id: string, name: string }) => {
-    setSelected(t.id)
-    setQuery(t.name ? `${t.id}  —  ${t.name}` : t.id)
+  const pick = (tmpl: { id: string, name: string }) => {
+    setSelected(tmpl.id)
+    setQuery(tmpl.name ? `${tmpl.id}  —  ${tmpl.name}` : tmpl.id)
   }
 
   const addToStaged = () => {
     if (!selected) {
-      toast.warning('Select a template')
+      toast.warning(t('storage.addModal.selectTemplate'))
       return
     }
     setStaged((prev) => [...prev, { template: selected, qty, quality }])
@@ -356,9 +357,11 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading className="text-accent">
-                {container.name || `Container #${container.id}`}
+                {container.name || t('storage.containerTitle', { id: container.id })}
                 {' '}
-                — Add Items
+                —
+                {' '}
+                {t('storage.addItems')}
               </Modal.Heading>
             </Modal.Header>
             <Modal.Body className="flex flex-col gap-3">
@@ -369,7 +372,7 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
                 : (
                     <>
                       <div className="flex items-center gap-3 shrink-0">
-                        <TextField className="flex-1 min-w-0" aria-label="Template">
+                        <TextField className="flex-1 min-w-0" aria-label={t('storage.addModal.templateLabel')}>
                           <div className="relative w-full">
                             <SearchField
                               className="w-full"
@@ -381,25 +384,25 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
                             >
                               <SearchField.Group>
                                 <SearchField.SearchIcon />
-                                <SearchField.Input placeholder="Search templates..." />
+                                <SearchField.Input placeholder={t('storage.addModal.searchPlaceholder')} />
                                 <SearchField.ClearButton />
                               </SearchField.Group>
                             </SearchField>
                             {filtered.length > 0 && (
                               <div className="absolute z-50 w-full mt-1 rounded-[var(--radius)] border border-border bg-surface overflow-y-auto max-h-52">
-                                {filtered.map((t) => (
+                                {filtered.map((tmpl) => (
                                   <div
-                                    key={t.id}
+                                    key={tmpl.id}
                                     className="px-3 py-1.5 text-xs cursor-pointer hover:bg-surface-hover"
-                                    onClick={() => pick(t)}
+                                    onClick={() => pick(tmpl)}
                                   >
-                                    <span className="font-mono">{t.id}</span>
-                                    {t.name
+                                    <span className="font-mono">{tmpl.id}</span>
+                                    {tmpl.name
                                       ? (
                                           <span className="text-muted">
                                             {' '}
                                             —
-                                            {t.name}
+                                            {tmpl.name}
                                           </span>
                                         )
                                       : null}
@@ -411,7 +414,7 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
                         </TextField>
                         <TextField className="w-32 shrink-0" aria-label="Quantity">
                           <InputGroup>
-                            <InputGroup.Prefix>Qty</InputGroup.Prefix>
+                            <InputGroup.Prefix>{t('storage.addModal.qtyLabel')}</InputGroup.Prefix>
                             <InputGroup.Input
                               className="pl-2"
                               type="number"
@@ -423,7 +426,7 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
                         </TextField>
                         <TextField className="w-40 shrink-0" aria-label="Quality">
                           <InputGroup>
-                            <InputGroup.Prefix>Quality</InputGroup.Prefix>
+                            <InputGroup.Prefix>{t('storage.addModal.qualityLabel')}</InputGroup.Prefix>
                             <InputGroup.Input
                               className="pl-2"
                               type="number"
@@ -436,7 +439,7 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
                         <Button size="sm" onPress={addToStaged} isDisabled={!selected} className="shrink-0">
                           <Icon name="plus" />
                           {' '}
-                          Add
+                          {t('storage.addModal.add')}
                         </Button>
                       </div>
 
@@ -444,8 +447,8 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
                         <>
                           <div className="flex items-center gap-2 px-3 shrink-0">
                             <span className="flex-1" />
-                            <span className="text-xs w-20 text-center text-muted">Qty</span>
-                            <span className="text-xs w-20 text-center text-muted">Quality</span>
+                            <span className="text-xs w-20 text-center text-muted">{t('storage.addModal.qtyColLabel')}</span>
+                            <span className="text-xs w-20 text-center text-muted">{t('storage.addModal.qualityColLabel')}</span>
                             <span className="w-6" />
                           </div>
                           <div className="flex flex-col gap-1 overflow-y-auto flex-1 min-h-0">
@@ -507,10 +510,10 @@ function AddItemsModal({ container, open, onClose, onSuccess, onRefresh }: {
                   )}
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="tertiary" size="sm" slot="close">Cancel</Button>
+              <Button variant="tertiary" size="sm" slot="close">{t('common.cancel')}</Button>
               <Button size="sm" onPress={handleSubmit} isDisabled={submitting || staged.length === 0}>
                 {submitting ? <Spinner size="sm" color="current" /> : <Icon name="plus" />}
-                Add
+                {t('storage.addModal.add')}
                 {' '}
                 {staged.length}
                 {' '}

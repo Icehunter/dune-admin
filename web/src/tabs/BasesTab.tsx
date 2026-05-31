@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Card, Spinner, toast } from '@heroui/react'
 import { api, ApiError } from '../api/client'
 import type { BaseRow } from '../api/client'
@@ -6,18 +7,19 @@ import { DataTable, Icon, PageHeader, type Column } from '../dune-ui'
 
 type Key = 'id' | 'name' | 'pieces' | 'placeables' | 'actions'
 
-const COLUMNS: Column<Key>[] = [
-  { key: 'id', label: 'ID', width: 80 },
-  { key: 'name', label: 'Name', minWidth: 220 },
-  { key: 'pieces', label: 'Pieces', width: 100 },
-  { key: 'placeables', label: 'Placeables', width: 110 },
-  { key: 'actions', label: '', width: 120, sortable: false },
-]
-
 export default function BasesTab({ isSignedIn = true }: { isSignedIn?: boolean }) {
+  const { t } = useTranslation()
   const [bases, setBases] = useState<BaseRow[]>([])
   const [loading, setLoading] = useState(false)
   const [unsupported, setUnsupported] = useState(false)
+
+  const COLUMNS: Column<Key>[] = [
+    { key: 'id', label: t('bases.columns.id'), width: 80 },
+    { key: 'name', label: t('bases.columns.name'), minWidth: 220 },
+    { key: 'pieces', label: t('bases.columns.pieces'), width: 100 },
+    { key: 'placeables', label: t('bases.columns.placeables'), width: 110 },
+    { key: 'actions', label: '', width: 120, sortable: false },
+  ]
 
   const load = useCallback(() => {
     Promise.resolve()
@@ -29,10 +31,10 @@ export default function BasesTab({ isSignedIn = true }: { isSignedIn?: boolean }
       .then(setBases)
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.status === 404) setUnsupported(true)
-        else toast.danger(`Failed to load bases: ${e instanceof Error ? e.message : String(e)}`)
+        else toast.danger(t('bases.failedToLoad', { message: e instanceof Error ? e.message : String(e) }))
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [t])
 
   useEffect(() => {
     load()
@@ -46,7 +48,7 @@ export default function BasesTab({ isSignedIn = true }: { isSignedIn?: boolean }
           <span>
             A
             {' '}
-            <strong>Layout Tools</strong>
+            <strong>{t('bases.layoutAccountStrong')}</strong>
             {' '}
             account is required to export bases. Sign in using the button in the top
             right.
@@ -55,8 +57,8 @@ export default function BasesTab({ isSignedIn = true }: { isSignedIn?: boolean }
       )}
 
       <PageHeader
-        title={`Bases (${bases.length})`}
-        subtitle="Live in-world player bases. Export any base as a solido-compatible blueprint."
+        title={t('bases.title', { count: bases.length })}
+        subtitle={t('bases.subtitle')}
       >
         <Button size="sm" variant="ghost" onPress={load} isDisabled={loading}>
           {loading
@@ -67,7 +69,7 @@ export default function BasesTab({ isSignedIn = true }: { isSignedIn?: boolean }
                 <>
                   <Icon name="refresh-cw" />
                   {' '}
-                  Refresh
+                  {t('common.refresh')}
                 </>
               )}
         </Button>
@@ -83,26 +85,25 @@ export default function BasesTab({ isSignedIn = true }: { isSignedIn?: boolean }
           ? (
               <Card className="self-center max-w-sm">
                 <Card.Header>
-                  <Card.Title className="text-accent text-sm">Feature not available</Card.Title>
+                  <Card.Title className="text-accent text-sm">{t('bases.featureNotAvailable')}</Card.Title>
                 </Card.Header>
                 <Card.Content>
                   <p className="text-xs text-muted text-center">
-                    This version of the dune-admin binary does not support base listing.
-                    Upgrade to the latest release to use this feature.
+                    {t('bases.featureNotAvailableDesc')}
                   </p>
                 </Card.Content>
               </Card>
             )
           : (
               <DataTable<BaseRow, Key>
-                aria-label="Player bases"
+                aria-label={t('bases.ariaLabel')}
                 className="min-h-0 max-h-full"
                 columns={COLUMNS}
                 rows={bases}
                 rowId={(b) => String(b.id)}
                 initialSort={{ column: 'id', direction: 'ascending' }}
                 sortValue={(b, k) => (k === 'actions' ? '' : (b as unknown as Record<string, string | number>)[k])}
-                emptyState={<div className="py-8 text-center text-muted">No bases found.</div>}
+                emptyState={<div className="py-8 text-center text-muted">{t('bases.noBasesFound')}</div>}
                 renderCell={(b, key) => {
                   switch (key) {
                     case 'id':
@@ -120,7 +121,7 @@ export default function BasesTab({ isSignedIn = true }: { isSignedIn?: boolean }
                               <Button size="sm" variant="outline" className="w-full">
                                 <Icon name="download" />
                                 {' '}
-                                Export
+                                {t('bases.export')}
                               </Button>
                             </a>
                           )
@@ -128,7 +129,7 @@ export default function BasesTab({ isSignedIn = true }: { isSignedIn?: boolean }
                             <Button size="sm" variant="outline" className="w-full" isDisabled>
                               <Icon name="download" />
                               {' '}
-                              Export
+                              {t('bases.export')}
                             </Button>
                           )
                   }

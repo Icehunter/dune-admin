@@ -1,4 +1,5 @@
 import { Chip } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import type { BotStatus } from '../../../api/client'
 
 function fmt(ts: string | null | undefined): string {
@@ -17,13 +18,14 @@ function fmtBalance(n: number | undefined): string {
 }
 
 export default function BotStatusCard({ status }: { status: BotStatus }) {
-  const statusLabel = status.running ? '● Running' : '⏸ Paused'
+  const { t } = useTranslation()
+  const statusLabel = status.running ? t('market.bot.status.running') : t('market.bot.status.paused')
   const statusColor = status.running ? 'success' : 'warning'
 
   return (
     <div className="flex flex-wrap gap-4 items-start">
       <div className="flex flex-col gap-1 min-w-[120px]">
-        <span className="text-xs text-muted uppercase tracking-wider">Status</span>
+        <span className="text-xs text-muted uppercase tracking-wider">{t('market.bot.status.label')}</span>
         <Chip
           size="sm"
           color={statusColor}
@@ -33,14 +35,14 @@ export default function BotStatusCard({ status }: { status: BotStatus }) {
         </Chip>
       </div>
 
-      <Stat label="Uptime" value={status.uptime || '—'} />
-      <Stat label="Listings" value={status.listing_count?.toLocaleString() ?? '—'} />
-      <Stat label="Balance" value={fmtBalance(status.balance)} />
-      <Stat label="Errors" value={String(status.error_count ?? 0)} accent={status.error_count > 0 ? 'danger' : undefined} />
-      <Stat label="Last List Tick" value={fmt(status.last_list_tick)} />
-      <Stat label="Last Buy Tick" value={fmt(status.last_buy_tick)} />
-      {status.next_list_tick != null && <Stat label="Next List Tick" value={fmt(status.next_list_tick)} />}
-      {status.next_buy_tick != null && <Stat label="Next Buy Tick" value={fmt(status.next_buy_tick)} />}
+      <Stat label={t('market.bot.status.uptime')} value={status.uptime || '—'} />
+      <Stat label={t('market.bot.status.listings')} value={status.listing_count?.toLocaleString() ?? '—'} />
+      <Stat label={t('market.bot.status.balance')} value={fmtBalance(status.balance)} />
+      <Stat label={t('market.bot.status.errors')} value={String(status.error_count ?? 0)} accent={status.error_count > 0 ? 'danger' : undefined} />
+      <Stat label={t('market.bot.status.lastListTick')} value={fmt(status.last_list_tick)} />
+      <Stat label={t('market.bot.status.lastBuyTick')} value={fmt(status.last_buy_tick)} />
+      {status.next_list_tick != null && <Stat label={t('market.bot.status.nextListTick')} value={fmt(status.next_list_tick)} />}
+      {status.next_buy_tick != null && <Stat label={t('market.bot.status.nextBuyTick')} value={fmt(status.next_buy_tick)} />}
     </div>
   )
 }

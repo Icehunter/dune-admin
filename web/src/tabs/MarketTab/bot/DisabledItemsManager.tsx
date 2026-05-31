@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Button, SearchField, Spinner, toast } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { BotConfig, CatalogItem } from '../../../api/client'
 import { DataTable, type Column, Icon } from '../../../dune-ui'
@@ -12,16 +13,17 @@ type Props = {
 type DisabledRow = { template_id: string, display_name: string }
 type RowKey = 'name' | 'template_id' | 'actions'
 
-const COLUMNS: Column<RowKey>[] = [
-  { key: 'name', label: 'Name' },
-  { key: 'template_id', label: 'Template ID' },
-  { key: 'actions', label: '', sortable: false },
-]
-
 export default function DisabledItemsManager({ config, onSaved }: Props) {
+  const { t } = useTranslation()
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const COLUMNS: Column<RowKey>[] = [
+    { key: 'name', label: t('market.bot.disabledItems.columns.name') },
+    { key: 'template_id', label: t('market.bot.disabledItems.columns.templateId') },
+    { key: 'actions', label: '', sortable: false },
+  ]
 
   useEffect(() => {
     api.market.catalog().then(setCatalog).catch(() => {})
@@ -55,7 +57,7 @@ export default function DisabledItemsManager({ config, onSaved }: Props) {
       onSaved(saved)
     }
     catch (e: unknown) {
-      toast.danger(`Save failed: ${e instanceof Error ? e.message : String(e)}`)
+      toast.danger(t('common.failed', { message: e instanceof Error ? e.message : String(e) }))
     }
     finally {
       setSaving(false)
@@ -77,16 +79,16 @@ export default function DisabledItemsManager({ config, onSaved }: Props) {
       {/* Search + add row */}
       <div className="flex gap-2 items-end">
         <div className="flex flex-col gap-0.5 flex-1">
-          <label className="text-xs text-muted">Search items to disable</label>
+          <label className="text-xs text-muted">{t('market.bot.disabledItems.searchLabel')}</label>
           <SearchField
-            aria-label="Search disabled items"
+            aria-label={t('market.bot.disabledItems.searchAriaLabel')}
             value={search}
             onChange={setSearch}
             className="w-full"
           >
             <SearchField.Group>
               <SearchField.SearchIcon />
-              <SearchField.Input placeholder="Search by name or template ID…" />
+              <SearchField.Input placeholder={t('market.bot.disabledItems.searchPlaceholder')} />
               <SearchField.ClearButton />
             </SearchField.Group>
           </SearchField>
@@ -109,7 +111,7 @@ export default function DisabledItemsManager({ config, onSaved }: Props) {
               <Button size="sm" variant="outline" onPress={() => add(item.template_id)}>
                 <Icon name="plus" />
                 {' '}
-                Add
+                {t('common.add')}
               </Button>
             </div>
           ))}
@@ -117,23 +119,23 @@ export default function DisabledItemsManager({ config, onSaved }: Props) {
       )}
 
       {search.trim() && results.length === 0 && (
-        <p className="text-xs text-muted">No matching items found.</p>
+        <p className="text-xs text-muted">{t('market.bot.disabledItems.noMatchingItems')}</p>
       )}
 
       {/* Disabled list */}
       <div className="flex flex-col gap-2">
         <span className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Disabled Items
-          {' '}
-          {safeItems.length > 0 && `(${safeItems.length})`}
+          {safeItems.length > 0
+            ? t('market.bot.disabledItems.disabledItemsCount', { count: safeItems.length })
+            : t('market.bot.disabledItems.disabledItemsHeading')}
         </span>
         {disabledRows.length === 0
           ? (
-              <p className="text-xs text-muted">No items are currently disabled.</p>
+              <p className="text-xs text-muted">{t('market.bot.disabledItems.noDisabledItems')}</p>
             )
           : (
               <DataTable<DisabledRow, RowKey>
-                aria-label="Disabled items"
+                aria-label={t('market.bot.disabledItems.ariaLabel')}
                 className="flex-1 min-h-0"
                 columns={COLUMNS}
                 rows={disabledRows}
@@ -149,7 +151,7 @@ export default function DisabledItemsManager({ config, onSaved }: Props) {
                     case 'actions':
                       return (
                         <Button size="sm" variant="danger-soft" onPress={() => remove(r.template_id)}>
-                          Remove
+                          {t('common.remove')}
                         </Button>
                       )
                   }

@@ -7,6 +7,8 @@ type Item<K extends string> = {
   sublabel?: ReactNode
   /** Optional right-aligned hint (e.g. "18 items" count chip). */
   hint?: ReactNode
+  /** Indentation level (0 = top-level, 1 = child item). */
+  depth?: number
 }
 
 type Props<K extends string> = {
@@ -51,7 +53,8 @@ export function SideNav<K extends string>({
               key={item.key}
               onClick={() => onSelect(item.key)}
               className={
-                'text-left px-3 py-2 rounded-[var(--radius)] text-sm transition-colors flex items-start gap-2 '
+                'text-left rounded-[var(--radius)] text-sm transition-colors flex items-start gap-2 '
+                + (item.depth ? 'pl-6 pr-3 py-1.5 ' : 'px-3 py-2 ')
                 + (isActive
                   ? 'bg-accent text-accent-foreground font-semibold'
                   : 'text-foreground hover:bg-surface-hover')

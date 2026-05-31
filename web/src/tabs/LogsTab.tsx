@@ -1,28 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, Chip, Spinner, toast } from '@heroui/react'
 import { api, getWsBase } from '../api/client'
 import type { LogPod, CheatEntry } from '../api/client'
 import { DataTable, Icon, SideNav, type Column } from '../dune-ui'
-import { useStatus } from '../hooks/useStatus'
 
 type ActiveView = 'pod' | 'cheats'
 type NavKey = 'cheats' | `pod:${string}`
 
 type CheatKey = 'time' | 'character' | 'cheat_type'
 
-const CHEAT_COLUMNS: Column<CheatKey>[] = [
-  { key: 'time', label: 'Time', width: 180 },
-  { key: 'character', label: 'Character', minWidth: 200 },
-  { key: 'cheat_type', label: 'Cheat Type', minWidth: 200 },
-]
+export default function LogsTab({ control }: { control?: string }) {
+  const { t } = useTranslation()
 
-export default function LogsTab() {
   // Control planes that surface log files (amp, docker, local) get
   // file-oriented labels; kubectl keeps "Pods".
-  const control = useStatus()?.control
   const isFileBased = control === 'amp' || control === 'docker' || control === 'local'
-  const sourceLabel = isFileBased ? 'Log Files' : 'Pods'
-  const itemLabel = isFileBased ? 'log file' : 'pod'
+  const sourceLabel = isFileBased ? t('logs.logFiles') : t('logs.pods')
+  const itemLabel = isFileBased ? t('logs.logFileSingular') : t('logs.podSingular')
+
+  const CHEAT_COLUMNS: Column<CheatKey>[] = [
+    { key: 'time', label: t('logs.columns.time'), width: 180 },
+    { key: 'character', label: t('logs.columns.character'), minWidth: 200 },
+    { key: 'cheat_type', label: t('logs.columns.cheatType'), minWidth: 200 },
+  ]
 
   const [pods, setPods] = useState<LogPod[]>([])
   const [podsLoading, setPodsLoading] = useState(false)
@@ -44,9 +45,9 @@ export default function LogsTab() {
       .then(() => setPodsLoading(true))
       .then(() => api.logs.pods())
       .then(setPods)
-      .catch((e: unknown) => toast.danger(`Failed to load pods: ${e instanceof Error ? e.message : String(e)}`))
+      .catch((e: unknown) => toast.danger(t('logs.failedToLoad', { message: e instanceof Error ? e.message : String(e) })))
       .finally(() => setPodsLoading(false))
-  }, [])
+  }, [t])
 
   useEffect(() => {
     loadPods()
@@ -101,7 +102,7 @@ export default function LogsTab() {
       linesRef.current.push(event.data as string)
     }
     ws.onerror = () => {
-      toast.danger('WebSocket error')
+      toast.danger(t('logs.wsError'))
     }
     ws.onclose = () => {
       setConnected(false)
@@ -111,7 +112,7 @@ export default function LogsTab() {
         linesRef.current = []
       }
     }
-  }, [startFlush, stopFlush])
+  }, [startFlush, stopFlush, t])
 
   const disconnect = useCallback(() => {
     if (wsRef.current) {
@@ -150,7 +151,7 @@ export default function LogsTab() {
   }
 
   const navItems = [
-    { key: 'cheats' as NavKey, label: 'Cheats (7d)', sublabel: 'Anti-cheat log' },
+    { key: 'cheats' as NavKey, label: t('logs.cheats7d'), sublabel: t('logs.antiCheatLog') },
     ...pods.map((p) => ({
       key: `pod:${p.namespace}/${p.name}` as NavKey,
       label: <span className="font-mono">{p.name}</span>,
@@ -180,7 +181,7 @@ export default function LogsTab() {
         items={navItems}
         active={activeKey}
         onSelect={handleNavSelect}
-        title={`${sourceLabel} (${pods.length})`}
+        title={t('logs.sourceTitle', { label: sourceLabel, count: pods.length })}
         titleAction={(
           <Button size="sm" variant="ghost" isDisabled={podsLoading} onPress={loadPods}>
             {podsLoading ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
@@ -193,11 +194,9 @@ export default function LogsTab() {
           ? (
               <>
                 <div className="flex items-center gap-3 shrink-0">
-                  <h3 className="text-base font-semibold text-accent flex-1">Anti-Cheat Events (7d)</h3>
+                  <h3 className="text-base font-semibold text-accent flex-1">{t('logs.antiCheatTitle')}</h3>
                   <span className="text-xs text-muted">
-                    {cheats.length}
-                    {' '}
-                    events
+                    {t('logs.eventsCount', { count: cheats.length })}
                   </span>
                   <Button size="sm" variant="outline" onPress={loadCheats} isDisabled={cheatsLoading}>
                     {cheatsLoading
@@ -206,7 +205,7 @@ export default function LogsTab() {
                           <>
                             <Icon name="refresh-cw" />
                             {' '}
-                            Refresh
+                            {t('common.refresh')}
                           </>
                         )}
                   </Button>
@@ -218,7 +217,7 @@ export default function LogsTab() {
                     )
                   : (
                       <DataTable<CheatEntry, CheatKey>
-                        aria-label="Anti-cheat events"
+                        aria-label={t('logs.antiCheatLabel')}
                         className="min-h-0 max-h-full"
                         columns={CHEAT_COLUMNS}
                         rows={cheats}
@@ -229,7 +228,7 @@ export default function LogsTab() {
                           if (k === 'character') return c.character_name
                           return c.cheat_type
                         }}
-                        emptyState={<div className="py-8 text-center text-muted">No cheat events found in the last 7 days.</div>}
+                        emptyState={<div className="py-8 text-center text-muted">{t('logs.noCheatEvents')}</div>}
                         renderCell={(c, key) => {
                           switch (key) {
                             case 'time': return <span className="font-mono text-muted">{c.event_time}</span>
@@ -256,29 +255,33 @@ export default function LogsTab() {
                     color={connected ? 'success' : 'default'}
                     variant="soft"
                   >
-                    {connected ? `● Connected · ${selectedPod?.name}` : selectedPod ? '○ Disconnected' : `○ Select a ${itemLabel}`}
+                    {connected
+                      ? t('logs.connectedPod', { pod: selectedPod?.name })
+                      : selectedPod
+                        ? t('logs.disconnected')
+                        : t('logs.selectSource', { label: itemLabel })}
                   </Chip>
                   <div className="flex-1" />
-                  <Checkbox isSelected={autoScroll} onChange={setAutoScroll}>Auto-scroll</Checkbox>
+                  <Checkbox isSelected={autoScroll} onChange={setAutoScroll}>{t('logs.autoScroll')}</Checkbox>
                   {selectedPod && connected && (
                     <Button size="sm" variant="danger-soft" onPress={disconnect}>
                       <Icon name="square" />
                       {' '}
-                      Stop
+                      {t('logs.stop')}
                     </Button>
                   )}
                   {selectedPod && !connected && (
                     <Button size="sm" variant="outline" onPress={() => connectPod(selectedPod)}>
                       <Icon name="play" />
                       {' '}
-                      Reconnect
+                      {t('logs.reconnect')}
                     </Button>
                   )}
                   {displayLines.length > 0 && (
                     <Button size="sm" variant="ghost" onPress={exportLogs}>
                       <Icon name="download" />
                       {' '}
-                      Export
+                      {t('common.export')}
                     </Button>
                   )}
                   {displayLines.length > 0 && (
@@ -292,13 +295,11 @@ export default function LogsTab() {
                     >
                       <Icon name="trash-2" />
                       {' '}
-                      Clear
+                      {t('logs.clear')}
                     </Button>
                   )}
                   <span className="text-xs text-muted">
-                    {displayLines.length}
-                    {' '}
-                    lines
+                    {t('logs.linesCount', { count: displayLines.length })}
                   </span>
                 </div>
 
@@ -308,8 +309,8 @@ export default function LogsTab() {
                 >
                   {displayLines.length === 0
                     ? (selectedPod
-                        ? (connected ? 'Waiting for log lines...' : 'Disconnected.')
-                        : `Select a ${itemLabel} from the left panel to start streaming logs.`)
+                        ? (connected ? t('logs.waitingForLines') : t('logs.disconnectedState'))
+                        : t('logs.selectFromPanel', { label: itemLabel }))
                     : displayLines.join('\n')}
                 </pre>
               </>

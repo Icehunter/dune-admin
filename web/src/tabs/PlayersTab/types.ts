@@ -13,15 +13,15 @@ export type PacksData = {
 }
 
 export const ACTION_SECTIONS: { key: ActionSection, label: string }[] = [
-  { key: 'resources', label: 'Stats' },
-  { key: 'specs', label: 'Specs' },
-  { key: 'progression', label: 'Progression' },
-  { key: 'contracts', label: 'Contracts' },
-  { key: 'journey', label: 'Journey' },
-  { key: 'admin', label: 'Admin' },
-  { key: 'tags', label: 'Tags' },
-  { key: 'history', label: 'History' },
-  { key: 'experimental', label: 'Experimental' },
+  { key: 'resources', label: 'players.actions.sections.resources' },
+  { key: 'specs', label: 'players.actions.sections.specs' },
+  { key: 'progression', label: 'players.actions.sections.progression' },
+  { key: 'contracts', label: 'players.actions.sections.contracts' },
+  { key: 'journey', label: 'players.actions.sections.journey' },
+  { key: 'admin', label: 'players.actions.sections.admin' },
+  { key: 'tags', label: 'players.actions.sections.tags' },
+  { key: 'history', label: 'players.actions.sections.history' },
+  { key: 'experimental', label: 'players.actions.sections.experimental' },
 ]
 
 export const PLAYER_COLUMNS: { key: PlayerSortKey, label: string }[] = [

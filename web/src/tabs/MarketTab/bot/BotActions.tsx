@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Button, Spinner, toast } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { BotStatus } from '../../../api/client'
 import { Icon, ConfirmDialog } from '../../../dune-ui'
@@ -12,6 +13,7 @@ type Props = {
 type BusyOp = 'start' | 'stop' | 'restart' | 'cleanup'
 
 export default function BotActions({ status, onRefresh }: Props) {
+  const { t } = useTranslation()
   const [busy, setBusy] = useState<BusyOp | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
@@ -19,13 +21,21 @@ export default function BotActions({ status, onRefresh }: Props) {
     setBusy(cmd)
     try {
       const res = await api.marketBot.lifecycle(cmd)
-      const actionLabel = cmd === 'start' ? 'resume' : cmd === 'stop' ? 'pause' : 'reinitialize'
-      toast.success(`Bot ${actionLabel}: ${res.output || 'ok'}`)
+      const successKey = cmd === 'start'
+        ? 'market.bot.actions.resumeSuccess'
+        : cmd === 'stop'
+          ? 'market.bot.actions.pauseSuccess'
+          : 'market.bot.actions.reinitializeSuccess'
+      toast.success(t(successKey, { output: res.output || 'ok' }))
       setTimeout(onRefresh, 1500)
     }
     catch (e: unknown) {
-      const actionLabel = cmd === 'start' ? 'resume' : cmd === 'stop' ? 'pause' : 'reinitialize'
-      toast.danger(`Failed to ${actionLabel} bot: ${e instanceof Error ? e.message : String(e)}`)
+      const failKey = cmd === 'start'
+        ? 'market.bot.actions.resumeFailed'
+        : cmd === 'stop'
+          ? 'market.bot.actions.pauseFailed'
+          : 'market.bot.actions.reinitializeFailed'
+      toast.danger(t(failKey, { message: e instanceof Error ? e.message : String(e) }))
     }
     finally {
       setBusy(null)
@@ -37,11 +47,11 @@ export default function BotActions({ status, onRefresh }: Props) {
     setBusy('cleanup')
     try {
       const res = await api.marketBot.cleanup()
-      toast.success(`Wiped ${res.orders_deleted} listings (${res.items_deleted} items)`)
+      toast.success(t('market.bot.actions.wipedListings', { orders: res.orders_deleted, items: res.items_deleted }))
       setTimeout(onRefresh, 1500)
     }
     catch (e: unknown) {
-      toast.danger(`Cleanup failed: ${e instanceof Error ? e.message : String(e)}`)
+      toast.danger(t('market.bot.actions.cleanupFailed', { message: e instanceof Error ? e.message : String(e) }))
     }
     finally {
       setBusy(null)
@@ -57,7 +67,7 @@ export default function BotActions({ status, onRefresh }: Props) {
         {dormant
           ? (
               <span className="text-xs text-muted">
-                Bot disabled — enable it in the Server tab to use lifecycle controls.
+                {t('market.bot.actions.dormantHint')}
               </span>
             )
           : (
@@ -69,7 +79,7 @@ export default function BotActions({ status, onRefresh }: Props) {
                   onPress={() => run('start')}
                 >
                   {busy === 'start' ? <Spinner size="sm" color="current" /> : <Icon name="play" />}
-                  Resume
+                  {t('market.bot.actions.resume')}
                 </Button>
                 <Button
                   size="sm"
@@ -78,7 +88,7 @@ export default function BotActions({ status, onRefresh }: Props) {
                   onPress={() => run('stop')}
                 >
                   {busy === 'stop' ? <Spinner size="sm" color="current" /> : <Icon name="square" />}
-                  Pause
+                  {t('market.bot.actions.pause')}
                 </Button>
                 <Button
                   size="sm"
@@ -87,7 +97,7 @@ export default function BotActions({ status, onRefresh }: Props) {
                   onPress={() => run('restart')}
                 >
                   {busy === 'restart' ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
-                  Reinitialize
+                  {t('market.bot.actions.reinitialize')}
                 </Button>
               </>
             )}
@@ -99,15 +109,15 @@ export default function BotActions({ status, onRefresh }: Props) {
           onPress={() => setConfirmOpen(true)}
         >
           {busy === 'cleanup' ? <Spinner size="sm" color="current" /> : <Icon name="trash-2" />}
-          Wipe Listings
+          {t('market.bot.actions.wipeListings')}
         </Button>
       </div>
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Wipe all bot listings?"
-        description="This deletes every active Revy listing on the exchange. Player listings, fulfilled-order history, and Revy's Solari balance are untouched. The next list tick will repopulate listings from the catalog."
-        confirmLabel="Wipe Listings"
+        title={t('market.bot.actions.wipeListingsTitle')}
+        description={t('market.bot.actions.wipeListingsDesc')}
+        confirmLabel={t('market.bot.actions.wipeListingsConfirm')}
         onConfirm={runCleanup}
         onCancel={() => setConfirmOpen(false)}
       />

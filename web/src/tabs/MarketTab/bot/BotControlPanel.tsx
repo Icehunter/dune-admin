@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button, Modal, Spinner, Tabs } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { BotStatus, BotConfig } from '../../../api/client'
 import { Icon } from '../../../dune-ui'
@@ -16,6 +17,7 @@ type Props = {
 }
 
 export default function BotControlPanel({ open, onClose }: Props) {
+  const { t } = useTranslation()
   const [status, setStatus] = useState<BotStatus | null>(null)
   const [config, setConfig] = useState<BotConfig | null>(null)
   const [statusLoading, setStatusLoading] = useState(false)
@@ -59,7 +61,7 @@ export default function BotControlPanel({ open, onClose }: Props) {
           <Modal.Dialog className="h-[92vh] flex flex-col dialog-surface-alt">
             <Modal.CloseTrigger />
             <Modal.Header>
-              <Modal.Heading>Bot Control — Revy</Modal.Heading>
+              <Modal.Heading>{t('market.bot.panelTitle')}</Modal.Heading>
             </Modal.Header>
 
             <Modal.Body className="flex flex-col gap-4 overflow-y-auto flex-1 pr-1 min-h-0">
@@ -84,21 +86,21 @@ export default function BotControlPanel({ open, onClose }: Props) {
               {/* Tabs — flex-1 so logs panel can fill the remaining height */}
               <Tabs selectedKey={activeTab} onSelectionChange={(k) => setActiveTab(String(k))} className="flex flex-col flex-1 min-h-0">
                 <Tabs.ListContainer className="shrink-0">
-                  <Tabs.List aria-label="Bot sections">
+                  <Tabs.List aria-label={t('market.bot.botSectionsLabel')}>
                     <Tabs.Tab id="config">
-                      Config
+                      {t('market.bot.config')}
                       <Tabs.Indicator />
                     </Tabs.Tab>
                     <Tabs.Tab id="disabled">
-                      Disabled Items
+                      {t('market.bot.disabledItems')}
                       <Tabs.Indicator />
                     </Tabs.Tab>
                     <Tabs.Tab id="server">
-                      Server
+                      {t('market.bot.server')}
                       <Tabs.Indicator />
                     </Tabs.Tab>
                     <Tabs.Tab id="logs">
-                      Logs
+                      {t('market.bot.logs')}
                       <Tabs.Indicator />
                     </Tabs.Tab>
                   </Tabs.List>
@@ -114,7 +116,7 @@ export default function BotControlPanel({ open, onClose }: Props) {
                           <BotConfigEditor ref={editorRef} config={config} onSaved={setConfig} />
                         )
                       : (
-                          <p className="text-xs text-muted">Config unavailable.</p>
+                          <p className="text-xs text-muted">{t('market.bot.configUnavailable')}</p>
                         )}
                 </Tabs.Panel>
 
@@ -128,7 +130,7 @@ export default function BotControlPanel({ open, onClose }: Props) {
                           <DisabledItemsManager config={config} onSaved={setConfig} />
                         )
                       : (
-                          <p className="text-xs text-muted">Config unavailable.</p>
+                          <p className="text-xs text-muted">{t('market.bot.configUnavailable')}</p>
                         )}
                 </Tabs.Panel>
 
@@ -160,6 +162,7 @@ interface ConfigFooterProps {
 }
 
 function ConfigFooter({ editorRef, initialEnabled, onReload }: ConfigFooterProps) {
+  const { t } = useTranslation()
   const [saving, setSaving] = useState(false)
   const [reloading, setReloading] = useState(false)
   const [enabled, setEnabledLocal] = useState(initialEnabled)
@@ -176,10 +179,10 @@ function ConfigFooter({ editorRef, initialEnabled, onReload }: ConfigFooterProps
           }}
           className="accent-[var(--color-accent)]"
         />
-        Ticking enabled
+        {t('market.bot.tickingEnabled')}
       </label>
       <Button size="sm" variant="ghost" onPress={() => editorRef.current?.reset()}>
-        Reset
+        {t('market.bot.reset')}
       </Button>
       <Button
         size="sm"
@@ -191,7 +194,7 @@ function ConfigFooter({ editorRef, initialEnabled, onReload }: ConfigFooterProps
         }}
       >
         {reloading ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
-        Reload Config
+        {t('market.bot.reloadConfig')}
       </Button>
       <Button
         size="sm"
@@ -204,7 +207,7 @@ function ConfigFooter({ editorRef, initialEnabled, onReload }: ConfigFooterProps
         }}
       >
         {saving ? <Spinner size="sm" color="current" /> : null}
-        Save Config
+        {t('market.bot.saveConfig')}
       </Button>
     </div>
   )

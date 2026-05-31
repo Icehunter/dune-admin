@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@heroui/react'
+import { useTranslation } from 'react-i18next'
 import { Icon } from '../../dune-ui'
 
 type Props = {
@@ -156,6 +157,7 @@ function TreeNode({ node, selected, depth, expanded, onToggle, onSelect }: TreeN
 }
 
 export default function MarketSidebar({ categories, selected, onSelect }: Props) {
+  const { t } = useTranslation()
   const { items, schematics } = useMemo(() => buildTree(categories), [categories])
   const [collapsed, setCollapsed] = useState(false)
 
@@ -181,7 +183,7 @@ export default function MarketSidebar({ categories, selected, onSelect }: Props)
   if (collapsed) {
     return (
       <div className="flex flex-col items-center gap-1 shrink-0">
-        <Button size="sm" variant="ghost" isIconOnly aria-label="Expand sidebar" onPress={() => setCollapsed(false)}>
+        <Button size="sm" variant="ghost" isIconOnly aria-label={t('market.sidebar.expandAriaLabel')} onPress={() => setCollapsed(false)}>
           <Icon name="chevron-right" />
         </Button>
       </div>
@@ -191,8 +193,8 @@ export default function MarketSidebar({ categories, selected, onSelect }: Props)
   return (
     <div className="w-48 shrink-0 flex flex-col gap-0.5 overflow-y-auto pr-1">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-semibold text-muted uppercase tracking-wider">Categories</span>
-        <Button size="sm" variant="ghost" isIconOnly aria-label="Collapse sidebar" onPress={() => setCollapsed(true)}>
+        <span className="text-xs font-semibold text-muted uppercase tracking-wider">{t('market.sidebar.categories')}</span>
+        <Button size="sm" variant="ghost" isIconOnly aria-label={t('market.sidebar.collapseAriaLabel')} onPress={() => setCollapsed(true)}>
           <Icon name="chevron-left" />
         </Button>
       </div>
@@ -203,7 +205,7 @@ export default function MarketSidebar({ categories, selected, onSelect }: Props)
         className="w-full justify-start text-sm mb-1"
         onPress={() => onSelect('')}
       >
-        All Items
+        {t('market.sidebar.allItems')}
       </Button>
 
       {items.map((node) => (
@@ -222,7 +224,7 @@ export default function MarketSidebar({ categories, selected, onSelect }: Props)
         <>
           <div className="my-2 border-t border-border/40" />
           <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wider px-1 mb-0.5">
-            Schematics
+            {t('market.sidebar.schematics')}
           </span>
           {schematics.map((node) => (
             <TreeNode

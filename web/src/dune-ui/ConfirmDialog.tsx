@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { AlertDialog, Button } from '@heroui/react'
 
 type Props = {
@@ -9,7 +10,8 @@ type Props = {
   onCancel: () => void
 }
 
-export function ConfirmDialog({ open, title, description, confirmLabel = 'Confirm', onConfirm, onCancel }: Props) {
+export function ConfirmDialog({ open, title, description, confirmLabel, onConfirm, onCancel }: Props) {
+  const { t } = useTranslation()
   return (
     <AlertDialog.Backdrop isOpen={open} onOpenChange={(v) => !v && onCancel()}>
       <AlertDialog.Container size="sm">
@@ -22,8 +24,8 @@ export function ConfirmDialog({ open, title, description, confirmLabel = 'Confir
             <p className="text-sm text-muted">{description}</p>
           </AlertDialog.Body>
           <AlertDialog.Footer>
-            <Button slot="close" variant="ghost" onPress={onCancel}>Cancel</Button>
-            <Button slot="close" variant="danger-soft" onPress={onConfirm}>{confirmLabel}</Button>
+            <Button slot="close" variant="ghost" onPress={onCancel}>{t('common.cancel')}</Button>
+            <Button slot="close" variant="danger-soft" onPress={onConfirm}>{confirmLabel ?? t('common.confirm')}</Button>
           </AlertDialog.Footer>
         </AlertDialog.Dialog>
       </AlertDialog.Container>

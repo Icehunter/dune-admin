@@ -324,6 +324,7 @@ as the AMP user.
 control: amp
 amp_instance:   DuneAwakening01
 amp_container:  AMP_DuneAwakening01       # default: AMP_<instance>
+amp_container_runtime: podman             # podman (default) | docker — game-server container CLI
 amp_user:       amp
 amp_log_path:   /AMP/duneawakening/logs   # in-container log dir
 director_url:   http://127.0.0.1:11717    # optional — enables /director/ proxy
@@ -348,12 +349,12 @@ Narrow `tee` to specific INI paths under `server_ini_dir` in production.
 | `GetStatus` | Lists `DuneSandboxServer-Linux-Shipping` host processes; reports container DB phase |
 | `ExecCommand` | `sudo -i -u <amp_user> ampinstmgr -s/-q <amp_instance>` |
 | `ListProcesses` | Host `ps` for game-server processes, decorated with map/port/partition |
-| `ListLogSources` | `podman exec <container> ls <amp_log_path>` |
-| `StreamLog` | `podman exec <container> tail -F <amp_log_path>/<name>` |
+| `ListLogSources` | `<runtime> exec <container> ls <amp_log_path>` (runtime per `amp_container_runtime`) |
+| `StreamLog` | `<runtime> exec <container> tail -F <amp_log_path>/<name>` |
 | `CaptureJWT` | Extracts `ServiceAuthToken` from game-server process args on host |
 | `ListExchanges` / `EnsureCaptureUser` | `rabbitmqctl` via `broker_exec_prefix` |
 | `DiscoverIniDir` | Returns `server_ini_dir` (or derives conventional AMP path) |
-| `ReadDefaultINI` | `podman exec <container> find / -name <file>` then `cat` |
+| `ReadDefaultINI` | `<runtime> exec <container> find / -name <file>` then `cat` |
 
 `ampExecutor.WriteFile` pipes content through `sudo -i -u <amp_user> tee <path> > /dev/null`.
 Changes require a Dune instance restart via `ExecCommand("restart")`.

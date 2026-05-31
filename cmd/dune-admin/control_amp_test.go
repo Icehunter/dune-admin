@@ -167,3 +167,86 @@ func TestAmpDiscoverIniDir_ExplicitConfigSkipsProbe(t *testing.T) {
 		t.Errorf("got %q, want %q", dir, "/custom/ini/dir")
 	}
 }
+
+// TestAmpRuntimeCLI_DefaultsToPodman verifies the container-runtime selector
+// defaults to podman (backward compatible) and honours an explicit docker.
+func TestAmpRuntimeCLI_DefaultsToPodman(t *testing.T) {
+	t.Parallel()
+	if got := (&ampControl{}).runtimeCLI(); got != "podman" {
+		t.Errorf("empty containerRuntime: got %q, want podman", got)
+	}
+	if got := (&ampControl{containerRuntime: "docker"}).runtimeCLI(); got != "docker" {
+		t.Errorf("explicit docker: got %q, want docker", got)
+	}
+	if got := (&ampControl{containerRuntime: "podman"}).runtimeCLI(); got != "podman" {
+		t.Errorf("explicit podman: got %q, want podman", got)
+	}
+}
+
+// TestAmpWrapInContainer_RuntimeSelection verifies wrapInContainer emits the
+// configured container runtime as `<rt> exec` in container mode, defaulting to
+// podman when unset.
+func TestAmpWrapInContainer_RuntimeSelection(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		runtime    string
+		wantSub    string
+		notWantSub string
+	}{
+		{"default empty -> podman", "", "podman exec AMP_X", "docker"},
+		{"explicit podman", "podman", "podman exec AMP_X", "docker"},
+		{"docker", "docker", "docker exec AMP_X", "podman"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &ampControl{ampUser: "amp", container: "AMP_X", useContainer: true, containerRuntime: tt.runtime}
+			got := c.wrapInContainer("ls /tmp")
+			if !strings.Contains(got, tt.wantSub) {
+				t.Errorf("wrapInContainer = %q, want substring %q", got, tt.wantSub)
+			}
+			if tt.notWantSub != "" && strings.Contains(got, tt.notWantSub) {
+				t.Errorf("wrapInContainer = %q, must not contain %q", got, tt.notWantSub)
+			}
+		})
+	}
+}
+
+// TestAmpWrapInContainer_NativeIgnoresRuntime verifies native mode never wraps
+// in a container runtime even when one is configured.
+func TestAmpWrapInContainer_NativeIgnoresRuntime(t *testing.T) {
+	t.Parallel()
+	c := &ampControl{ampUser: "amp", useContainer: false, containerRuntime: "docker"}
+	got := c.wrapInContainer("ls")
+	if strings.Contains(got, "docker") || strings.Contains(got, "podman") || strings.Contains(got, "exec") {
+		t.Errorf("native wrapInContainer must not reference a container runtime: %q", got)
+	}
+}
+
+// TestAmpBuildRabbitmqctl_RuntimeSelection verifies the rabbitmqctl trampoline
+// is wrapped in the configured container runtime.
+func TestAmpBuildRabbitmqctl_RuntimeSelection(t *testing.T) {
+	t.Parallel()
+	c := &ampControl{ampUser: "amp", container: "AMP_X", useContainer: true, containerRuntime: "docker"}
+	cmd := c.buildRabbitmqctl("mq-admin", "status")
+	if !strings.Contains(cmd, "docker exec AMP_X") {
+		t.Errorf("buildRabbitmqctl = %q, want 'docker exec AMP_X'", cmd)
+	}
+	if strings.Contains(cmd, "podman") {
+		t.Errorf("buildRabbitmqctl must not reference podman when runtime=docker: %q", cmd)
+	}
+}
+
+// TestAmpListLogSources_UsesConfiguredRuntime is an end-to-end check that the
+// runtime selection flows through a real ControlPlane method to the executor.
+func TestAmpListLogSources_UsesConfiguredRuntime(t *testing.T) {
+	t.Parallel()
+	exec := &fakeAMPExecutor{out: "game.log\nserver.log\n"}
+	c := &ampControl{container: "AMP_X", ampUser: "amp", logPath: "/AMP/duneawakening/logs", useContainer: true, containerRuntime: "docker"}
+	if _, err := c.ListLogSources(context.Background(), exec); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(exec.cmd, "docker exec AMP_X") {
+		t.Errorf("ListLogSources cmd = %q, want 'docker exec AMP_X'", exec.cmd)
+	}
+}

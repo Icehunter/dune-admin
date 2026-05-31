@@ -48,6 +48,7 @@ func addAmpManifestFields(m map[string]any, cfg *appConfig, control string) {
 	}
 	addIfNonEmpty(m, "amp_instance", cfg.AmpInstance)
 	addIfNonEmpty(m, "amp_container", cfg.AmpContainer)
+	addIfNonEmpty(m, "amp_container_runtime", cfg.AmpContainerRuntime)
 	addIfNonEmpty(m, "amp_user", cfg.AmpUser)
 	addIfNonEmpty(m, "amp_log_path", cfg.AmpLogPath)
 	if cfg.AmpUseContainer != nil {

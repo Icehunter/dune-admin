@@ -14,8 +14,9 @@ import (
 // ampControl implements ControlPlane for CubeCoders AMP installations. AMP can
 // run the game server in two modes:
 //
-//   - containerised: game processes run inside a podman container. Log/INI access
-//     and broker control require `podman exec`. Set useContainer = true.
+//   - containerised: game processes run inside a container (podman or docker).
+//     Log/INI access and broker control require `<runtime> exec`; choose the
+//     runtime with containerRuntime. Set useContainer = true.
 //   - native: game processes run directly on the host as the AMP user. Logs and
 //     INI files are on the host filesystem; rabbitmqctl is on the host PATH. Set
 //     useContainer = false.
@@ -26,14 +27,15 @@ import (
 // All instance- and container-specific names come from config; this provider
 // is not specialised to any particular AMP install.
 type ampControl struct {
-	instance     string // ampinstmgr instance name (e.g. "MehDune01")
-	container    string // podman container name (only used when useContainer=true)
-	ampUser      string // OS user that owns the AMP instance (default "amp")
-	logPath      string // log directory — in-container path if containerised, host path if native
-	directorURL  string // optional Battlegroup Director URL for status/exchange discovery
-	iniDir       string // host path to UserGame.ini directory (configured)
-	useContainer bool   // true: wrap in-container ops in `podman exec`; false: run on host directly
-	dataRoot     string // per-game data root (default /AMP/duneawakening)
+	instance         string // ampinstmgr instance name (e.g. "MehDune01")
+	container        string // container name (only used when useContainer=true)
+	ampUser          string // OS user that owns the AMP instance (default "amp")
+	logPath          string // log directory — in-container path if containerised, host path if native
+	directorURL      string // optional Battlegroup Director URL for status/exchange discovery
+	iniDir           string // host path to UserGame.ini directory (configured)
+	useContainer     bool   // true: wrap in-container ops in `<runtime> exec`; false: run on host directly
+	containerRuntime string // "podman" (default) or "docker"; CLI for `<rt> exec` in container mode
+	dataRoot         string // per-game data root (default /AMP/duneawakening)
 }
 
 func (c *ampControl) Name() string { return "amp" }
@@ -171,17 +173,27 @@ func (c *ampControl) ListProcesses(_ context.Context, exec Executor) ([]ProcessI
 	return infos, c.container, nil
 }
 
+// runtimeCLI returns the container CLI used to wrap in-container operations as
+// `<rt> exec` when useContainer is true. Defaults to podman when unset so
+// existing (podman) installs are unaffected.
+func (c *ampControl) runtimeCLI() string {
+	if c.containerRuntime == "" {
+		return "podman"
+	}
+	return c.containerRuntime
+}
+
 // wrapInContainer returns a command string that, when executed via the host
 // executor, runs the given remote command. In container mode this is wrapped
-// in `sudo -i -u <ampUser> podman exec <container> sh -c '<remoteCmd>'`. In
+// in `sudo -i -u <ampUser> <runtime> exec <container> sh -c '<remoteCmd>'`. In
 // native mode it's wrapped in `sudo -i -u <ampUser> sh -c '<remoteCmd>'`.
 //
 // The remote command is single-quoted; the caller MUST NOT embed single quotes
 // in the command itself.
 func (c *ampControl) wrapInContainer(remoteCmd string) string {
 	if c.useContainer {
-		return fmt.Sprintf("sudo -i -u %s podman exec %s sh -c %s",
-			c.ampUser, c.container, shellQuote(remoteCmd))
+		return fmt.Sprintf("sudo -i -u %s %s exec %s sh -c %s",
+			c.ampUser, c.runtimeCLI(), c.container, shellQuote(remoteCmd))
 	}
 	return fmt.Sprintf("sudo -i -u %s sh -c %s", c.ampUser, shellQuote(remoteCmd))
 }
@@ -297,8 +309,8 @@ func (c *ampControl) buildRabbitmqctl(broker, args string) string {
 			"--node %s %s",
 		home, mq, node, args)
 	if c.useContainer && c.container != "" {
-		return fmt.Sprintf("sudo -i -u %s podman exec %s sh -c %s",
-			c.ampUser, c.container, shellQuote(inner))
+		return fmt.Sprintf("sudo -i -u %s %s exec %s sh -c %s",
+			c.ampUser, c.runtimeCLI(), c.container, shellQuote(inner))
 	}
 	return fmt.Sprintf("sudo -i -u %s sh -c %s", c.ampUser, shellQuote(inner))
 }

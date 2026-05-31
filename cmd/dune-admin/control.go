@@ -110,14 +110,15 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 			useContainer = *cfg.AmpUseContainer
 		}
 		return &ampControl{
-			instance:     cfg.AmpInstance,
-			container:    container,
-			ampUser:      user,
-			logPath:      cfg.AmpLogPath,
-			directorURL:  cfg.DirectorURL,
-			iniDir:       cfg.ServerIniDir,
-			useContainer: useContainer,
-			dataRoot:     cfg.AmpDataRoot,
+			instance:         cfg.AmpInstance,
+			container:        container,
+			ampUser:          user,
+			logPath:          cfg.AmpLogPath,
+			directorURL:      cfg.DirectorURL,
+			iniDir:           cfg.ServerIniDir,
+			useContainer:     useContainer,
+			containerRuntime: cfg.AmpContainerRuntime,
+			dataRoot:         cfg.AmpDataRoot,
 		}
 	default:
 		return &localControl{

@@ -159,8 +159,12 @@ type appConfig struct {
 	AmpUser         string `yaml:"amp_user"          json:"amp_user"`
 	AmpLogPath      string `yaml:"amp_log_path"      json:"amp_log_path"`
 	AmpUseContainer *bool  `yaml:"amp_use_container" json:"amp_use_container"`
-	AmpDataRoot     string `yaml:"amp_data_root"     json:"amp_data_root"`
-	DirectorURL     string `yaml:"director_url"      json:"director_url"`
+	// AmpContainerRuntime selects the container CLI used for in-container ops
+	// (logs/INI/rabbitmqctl) when AmpUseContainer is true: "podman" (default)
+	// or "docker". Empty → podman, so existing installs are unaffected.
+	AmpContainerRuntime string `yaml:"amp_container_runtime" json:"amp_container_runtime"`
+	AmpDataRoot         string `yaml:"amp_data_root"     json:"amp_data_root"`
+	DirectorURL         string `yaml:"director_url"      json:"director_url"`
 
 	// ── Embedded market bot ────────────────────────────────────────────────
 	// MarketBotEnabled starts the market bot as an in-process goroutine.

@@ -58,6 +58,7 @@ server_ini_dir: /home/amp/.ampdata/instances/DuneAwakening01/duneawakening/serve
 
 # Optional:
 amp_use_container: true
+amp_container_runtime: docker   # podman (default) | docker — match your AMP container backend
 amp_data_root: /AMP/duneawakening
 director_url: http://127.0.0.1:11717
 broker_exec_prefix: "sudo -i -u amp podman exec AMP_DuneAwakening01"

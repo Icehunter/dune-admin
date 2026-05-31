@@ -445,7 +445,7 @@
       "panelTitle": "Bot-Steuerung — Revy",
       "botSectionsLabel": "Bot-Bereiche",
       "config": "Konfiguration",
-      "disabledItems": "Deaktivierte Gegenstände",
+      "disabledItemsTab": "Deaktivierte Gegenstände",
       "server": "Server",
       "logs": "Protokolle",
       "configUnavailable": "Konfiguration nicht verfügbar.",

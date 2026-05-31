@@ -207,7 +207,7 @@ export function GiveItemsView({ player }: Props) {
             min={1}
             value={qty}
             onChange={setQty}
-            className="w-44 shrink-0"
+            className="w-56 shrink-0"
           />
           <NumberInput
             prefix={t('players.give.quality')}
@@ -215,7 +215,7 @@ export function GiveItemsView({ player }: Props) {
             min={0}
             value={quality}
             onChange={setQuality}
-            className="w-44 shrink-0"
+            className="w-56 shrink-0"
           />
           <Button size="sm" onPress={addToStaged} isDisabled={!selected} className="shrink-0">
             <Icon name="plus" />
@@ -239,7 +239,7 @@ export function GiveItemsView({ player }: Props) {
                     min={1}
                     value={item.qty}
                     onChange={(v) => updateStaged(idx, 'qty', v)}
-                    className="w-44"
+                    className="w-56"
                   />
                   <NumberInput
                     ariaLabel={`${t('players.give.quality')} for ${item.template}`}
@@ -247,7 +247,7 @@ export function GiveItemsView({ player }: Props) {
                     min={0}
                     value={item.quality}
                     onChange={(v) => updateStaged(idx, 'quality', v)}
-                    className="w-44"
+                    className="w-56"
                   />
                   <Button
                     size="sm"

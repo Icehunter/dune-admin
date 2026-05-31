@@ -33,6 +33,7 @@
 ## Task 1: Create `dune-ui/NumberInput` component
 
 **Files:**
+
 - Create: `web/src/dune-ui/NumberInput.tsx`
 - Modify: `web/src/dune-ui/index.ts`
 
@@ -117,6 +118,7 @@ git commit -m "feat(dune-ui): add NumberInput wrapper around HeroUI NumberField"
 ## Task 2: Welcome Kits — HeroUI Select for dropdowns + NumberInput for scan interval
 
 **Files:**
+
 - Modify: `web/src/tabs/WelcomePackageTab.tsx`
 
 The file currently imports `{ Button, Spinner, toast }` from `@heroui/react`. The `Field` helper and `INPUT_CLS` constant are local.
@@ -302,6 +304,7 @@ git commit -m "feat(welcome-kits): replace raw selects with HeroUI Select + Numb
 ## Task 3: Welcome Kits — search-then-add item flow
 
 **Files:**
+
 - Modify: `web/src/tabs/WelcomePackageTab.tsx`
 
 - [ ] **Step 1: Add template state and imports**
@@ -502,6 +505,7 @@ git commit -m "feat(welcome-kits): search-then-add item flow matching Give Items
 ## Task 4: GiveItemsView — NumberInput sweep
 
 **Files:**
+
 - Modify: `web/src/tabs/PlayersTab/views/GiveItemsView.tsx`
 
 The file currently imports `InputGroup` from `@heroui/react` and uses it for qty/quality in the add row. The staged list uses `Input` with `type="number"`.
@@ -644,6 +648,7 @@ git commit -m "feat(players): NumberInput for Give Items qty/quality fields"
 ## Task 5: GiveItemsModal — NumberInput sweep
 
 **Files:**
+
 - Modify: `web/src/tabs/PlayersTab/modals/GiveItemsModal.tsx`
 
 This file has the same qty/quality pattern as GiveItemsView (lines 218–240 add row, 264–279 staged list).
@@ -763,6 +768,7 @@ git commit -m "feat(players): NumberInput for Give Items Modal qty/quality field
 ## Task 6: StorageTab — NumberInput sweep
 
 **Files:**
+
 - Modify: `web/src/tabs/StorageTab.tsx`
 
 Same pattern as GiveItemsView: `InputGroup` on add row (lines ~415–438), `Input type="number"` on staged list (lines ~461–476).
@@ -877,6 +883,7 @@ git commit -m "feat(storage): NumberInput for Storage qty/quality fields"
 ## Task 7: ActionsView + PlayerActionsModal — NumberInput in `numInput` helper
 
 **Files:**
+
 - Modify: `web/src/tabs/PlayersTab/views/ActionsView.tsx`
 - Modify: `web/src/tabs/PlayersTab/modals/PlayerActionsModal.tsx`
 
@@ -941,6 +948,7 @@ git commit -m "feat(players): NumberInput in Actions numInput helper"
 ## Task 8: BotConfigEditor — NumberInput sweep
 
 **Files:**
+
 - Modify: `web/src/tabs/MarketTab/bot/BotConfigEditor.tsx`
 
 Six `type="number"` inputs: `max_buys` (line 108), `listings_per_grade` (line 116), `buyPct` (line 125), `grade_multipliers` (line 158), `rarity_multipliers` (line 177), `vendor_multipliers` (line 197). Note: `list_interval` and `buy_interval` do NOT have `type="number"` — they are plain text (cron strings). Do NOT change those.
@@ -1122,6 +1130,7 @@ git commit -m "feat(market-bot): NumberInput for bot config number fields"
 ## Task 9: BattlegroupTab — NumberInput sweep
 
 **Files:**
+
 - Modify: `web/src/tabs/BattlegroupTab/index.tsx`
 
 Two `<Input type="number">` fields: `broadcastDuration` (line ~209–217) and `shutdownDelay` (line ~273–281).
@@ -1204,6 +1213,7 @@ git commit -m "feat(battlegroup): NumberInput for duration fields"
 ## Task 10: DatabaseTab — NumberInput sweep
 
 **Files:**
+
 - Modify: `web/src/tabs/DatabaseTab.tsx`
 
 One field: `limitInput` (line ~338–346), currently `string` state `useState('20')`. Change state to `number`.
@@ -1286,6 +1296,7 @@ git commit -m "feat(database): NumberInput for query limit field"
 ## Task 11: ServerSettingsTab — NumberInput sweep
 
 **Files:**
+
 - Modify: `web/src/tabs/ServerSettingsTab.tsx`
 
 One conditional `<input type="number">` inside a ternary that renders bool/string/number inputs. The `onChange` is `onChange(e.target.value)` — a string callback. The `value` is `display` (a string). Adapt to `Number(display) || 0` and `onChange(String(v))`.
@@ -1343,6 +1354,7 @@ git commit -m "feat(server-settings): NumberInput for numeric setting fields"
 ## Task 12: SettingsConfigForm — NumberInput sweep
 
 **Files:**
+
 - Modify: `web/src/components/SettingsConfigForm.tsx`
 
 Two `<TI type="number">` calls: `db_port` (line ~240) and `scrip_currency` (line ~403). `TI` uses `onChange: (v: string) => void`. Adapt: `onChange={(v) => set('field')(String(v))}`.

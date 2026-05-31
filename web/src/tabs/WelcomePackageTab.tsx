@@ -210,7 +210,7 @@ export default function WelcomePackageTab() {
           {t('welcome.enabledHint')}
         </p>
 
-        <div className="flex flex-wrap items-end gap-4 mt-3">
+        <div className="flex flex-wrap items-center gap-4 mt-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted">{t('welcome.activeVersion')}</label>
             <Select
@@ -245,7 +245,7 @@ export default function WelcomePackageTab() {
             step={5}
             value={scanSecs}
             onChange={setScanSecs}
-            className="w-44"
+            className="w-56"
           />
         </div>
       </Panel>
@@ -260,7 +260,7 @@ export default function WelcomePackageTab() {
                 aria-label={t('welcome.editingVersion')}
                 selectedKey={selected || null}
                 onSelectionChange={(k) => setSelected(k ? String(k) : '')}
-                className="w-44"
+                className="w-56"
               >
                 <Select.Trigger>
                   <Select.Value>{!selected ? '— select —' : selected + (selected === activeVersion ? ' (active)' : '')}</Select.Value>
@@ -326,7 +326,7 @@ export default function WelcomePackageTab() {
                 </div>
 
                 {/* Add row */}
-                <div className="flex items-end gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-3">
                   <div className="relative flex-1">
                     <SearchField
                       value={addQuery}
@@ -370,7 +370,7 @@ export default function WelcomePackageTab() {
                     min={1}
                     value={addQty}
                     onChange={setAddQty}
-                    className="w-44 shrink-0"
+                    className="w-56 shrink-0"
                   />
                   <NumberInput
                     prefix="Quality"
@@ -378,7 +378,7 @@ export default function WelcomePackageTab() {
                     min={0}
                     value={addQuality}
                     onChange={setAddQuality}
-                    className="w-44 shrink-0"
+                    className="w-56 shrink-0"
                   />
                   <Button size="sm" onPress={addItem} isDisabled={!addSelected} className="shrink-0">
                     <Icon name="plus" />
@@ -404,7 +404,7 @@ export default function WelcomePackageTab() {
                         min={1}
                         value={it.qty}
                         onChange={(v) => setItem(i, { qty: v })}
-                        className="w-44 shrink-0"
+                        className="w-56 shrink-0"
                       />
                       <NumberInput
                         ariaLabel="Quality"
@@ -412,7 +412,7 @@ export default function WelcomePackageTab() {
                         min={0}
                         value={it.quality}
                         onChange={(v) => setItem(i, { quality: v })}
-                        className="w-44 shrink-0"
+                        className="w-56 shrink-0"
                       />
                       <Button size="sm" variant="danger-soft" onPress={() => removeItem(i)} aria-label={t('welcome.removeItem')}>
                         <Icon name="x" />

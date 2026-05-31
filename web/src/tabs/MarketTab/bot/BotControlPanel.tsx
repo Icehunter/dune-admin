@@ -92,7 +92,7 @@ export default function BotControlPanel({ open, onClose }: Props) {
                       <Tabs.Indicator />
                     </Tabs.Tab>
                     <Tabs.Tab id="disabled">
-                      {t('market.bot.disabledItems')}
+                      {t('market.bot.disabledItemsTab')}
                       <Tabs.Indicator />
                     </Tabs.Tab>
                     <Tabs.Tab id="server">

@@ -445,7 +445,7 @@
       "panelTitle": "Bot Control — Revy",
       "botSectionsLabel": "Bot sections",
       "config": "Config",
-      "disabledItems": "Disabled Items",
+      "disabledItemsTab": "Disabled Items",
       "server": "Server",
       "logs": "Logs",
       "configUnavailable": "Config unavailable.",

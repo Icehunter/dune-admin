@@ -163,8 +163,8 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
             <Field key={i} label={GRADE_LABELS[i] ?? `Grade ${i}`} hint={`×${mult.toFixed(2)}`}>
               <NumberInput
                 ariaLabel={GRADE_LABELS[i] ?? `Grade ${i}`}
-                step={0.05}
-                min={0.01}
+                step={0.01}
+                min={0}
                 value={mult}
                 onChange={(v) => setGrade(i, v)}
                 showButtons={false}
@@ -183,8 +183,8 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
             <Field key={rarity} label={capitalize(rarity)} hint={`×${(mult as number).toFixed(2)}`}>
               <NumberInput
                 ariaLabel={capitalize(rarity)}
-                step={0.1}
-                min={0.01}
+                step={0.01}
+                min={0}
                 value={mult as number}
                 onChange={(v) => setRarity(rarity, v)}
                 showButtons={false}
@@ -204,8 +204,8 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
               <Field key={rarity} label={capitalize(rarity)} hint={`×${(mult as number).toFixed(2)}`}>
                 <NumberInput
                   ariaLabel={capitalize(rarity)}
-                  step={0.1}
-                  min={0.01}
+                  step={0.01}
+                  min={0}
                   value={mult as number}
                   onChange={(v) => setVendor(rarity, v)}
                   showButtons={false}

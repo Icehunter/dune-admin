@@ -6,6 +6,7 @@
 ## Summary
 
 Three related improvements:
+
 1. Add a `dune-ui/NumberInput` wrapper around HeroUI `NumberField` and sweep all 27 `type="number"` inputs in the codebase to use it.
 2. Overhaul Welcome Kits (`WelcomePackageTab.tsx`) — replace raw `<select>` elements with HeroUI `Select`, adopt a search-then-add item flow identical to Give Items.
 3. All qty/quality fields across StorageTab, GiveItemsView, GiveItemsModal, etc. move to `NumberInput`.
@@ -58,6 +59,7 @@ interface NumberInputProps {
 ### 2a — Dropdowns → HeroUI `Select`
 
 Replace both raw `<select>` elements:
+
 - **Active version** select → `Select` with `Select.Trigger` / `Select.Value` / `Select.Indicator` / `Select.Popover` / `ListBox` / `ListBox.Item`. Includes "— none —" option as an empty-string item.
 - **Editing version** select → same pattern.
 
@@ -90,6 +92,7 @@ const [addQuality, setAddQuality] = useState(0)
 ```
 
 Load templates on mount alongside the existing config load:
+
 ```ts
 api.players.templates().then(setTemplates).catch(() => {})
 ```
@@ -109,6 +112,7 @@ api.players.templates().then(setTemplates).catch(() => {})
 #### Item list (below add row)
 
 Each row:
+
 ```
 [ font-mono template name (read-only) ]  [ NumberInput qty ]  [ NumberInput quality ]  [ trash Button ]
 ```

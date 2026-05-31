@@ -99,7 +99,7 @@ export default function WelcomePackageTab() {
       const cfg: WelcomePackageConfig = { enabled, scan_interval_secs: scanSecs, active_version: activeVersion, packages }
       applyConfig(await api.welcomePackage.saveConfig(cfg))
       toast.success(enabled
-        ? `Welcome package enabled — granting "${activeVersion}" within one scan tick`
+        ? `Enabled — granting "${activeVersion}" within one scan tick`
         : 'Welcome package saved (disabled)')
     }
     catch (e) {

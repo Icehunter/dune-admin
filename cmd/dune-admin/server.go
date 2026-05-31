@@ -175,6 +175,9 @@ func startServer(addr string) {
 	mux.HandleFunc("GET /api/v1/database/search", handleDBSearch)
 	mux.HandleFunc("POST /api/v1/database/sql", handleDBSQL)
 
+	// ── live map ────────────────────────────────────────────────────────────────
+	mux.HandleFunc("GET /api/v1/map/markers", handleGetMapMarkers)
+
 	// ── logs ──────────────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/v1/logs/pods", handleLogPods)
 	mux.HandleFunc("GET /api/v1/logs/stream", handleLogStream)

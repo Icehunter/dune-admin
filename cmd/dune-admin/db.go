@@ -4708,6 +4708,99 @@ func cmdTeleportPlayerToCoords(flsID string, partitionID int64, x, y, z float64)
 	}
 }
 
+// ── live map commands ─────────────────────────────────────────────────────────
+
+// liveMapKeys is the allow-list of maps the Live Map supports (v1: open-world
+// only). The value is the gameplay partition index for that map — not used by
+// the read query (which filters by a.map) but kept here as the single source of
+// truth for teleport routing (Phase 3) and to gate caller-supplied input.
+var liveMapKeys = map[string]int64{
+	"HaggaBasin": 1,
+	"DeepDesert": 8,
+}
+
+// validateMapKey rejects any map the Live Map does not support, so caller input
+// can never reach the query as an unexpected value.
+func validateMapKey(key string) error {
+	if key == "" {
+		return fmt.Errorf("map required")
+	}
+	if _, ok := liveMapKeys[key]; !ok {
+		return fmt.Errorf("unsupported map: %q", key)
+	}
+	return nil
+}
+
+// cmdFetchMapMarkers returns every plottable entity (players + vehicles) on the
+// given map, reading positions from dune.actors.transform. Bases are added in
+// Phase 2b. The map key is validated, then passed as a bound parameter.
+func cmdFetchMapMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string) ([]mapMarker, error) {
+	if err := validateMapKey(mapKey); err != nil {
+		return nil, err
+	}
+
+	markers := []mapMarker{}
+
+	// Players: position is the player's pawn actor transform.
+	playerRows, err := pool.Query(ctx, `
+		SELECT a.id,
+		       COALESCE(NULLIF(ps.character_name, ''), 'Unknown') AS name,
+		       COALESCE(ps.online_status::text, '') AS online_status,
+		       COALESCE(a.partition_id, 0) AS partition_id,
+		       COALESCE(convert_from(e.encrypted_funcom_id, 'UTF8'), '') AS fls_id,
+		       ((a.transform).location).x,
+		       ((a.transform).location).y,
+		       ((a.transform).location).z
+		FROM dune.actors a
+		JOIN dune.player_state ps ON ps.player_pawn_id = a.id
+		LEFT JOIN dune.encrypted_accounts e ON e.id = ps.account_id
+		WHERE a.map = $1 AND a.transform IS NOT NULL`, mapKey)
+	if err != nil {
+		return nil, fmt.Errorf("query player markers: %w", err)
+	}
+	defer playerRows.Close()
+	for playerRows.Next() {
+		m := mapMarker{Type: "player", Map: mapKey}
+		if err := playerRows.Scan(&m.ID, &m.Name, &m.OnlineStatus, &m.PartitionID, &m.FLSID, &m.X, &m.Y, &m.Z); err != nil {
+			return nil, fmt.Errorf("scan player marker: %w", err)
+		}
+		markers = append(markers, m)
+	}
+	if err := playerRows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate player markers: %w", err)
+	}
+
+	// Vehicles: dune.vehicles joined to its actor row for transform + class.
+	vehicleRows, err := pool.Query(ctx, `
+		SELECT a.id,
+		       a.class,
+		       COALESCE(a.partition_id, 0) AS partition_id,
+		       ((a.transform).location).x,
+		       ((a.transform).location).y,
+		       ((a.transform).location).z
+		FROM dune.vehicles v
+		JOIN dune.actors a ON a.id = v.id
+		WHERE a.map = $1 AND a.transform IS NOT NULL`, mapKey)
+	if err != nil {
+		return nil, fmt.Errorf("query vehicle markers: %w", err)
+	}
+	defer vehicleRows.Close()
+	for vehicleRows.Next() {
+		m := mapMarker{Type: "vehicle", Map: mapKey}
+		if err := vehicleRows.Scan(&m.ID, &m.Class, &m.PartitionID, &m.X, &m.Y, &m.Z); err != nil {
+			return nil, fmt.Errorf("scan vehicle marker: %w", err)
+		}
+		m.Class = shortClass(m.Class)
+		m.Name = m.Class
+		markers = append(markers, m)
+	}
+	if err := vehicleRows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate vehicle markers: %w", err)
+	}
+
+	return markers, nil
+}
+
 // ── storage container commands ────────────────────────────────────────────────
 
 type storageContainerRow struct {

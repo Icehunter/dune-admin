@@ -240,12 +240,6 @@ export function GiveItemsModal({ player, open, onClose }: Props) {
 
                       {staged.length > 0 && (
                         <>
-                          <div className="flex items-center gap-2 px-3 shrink-0">
-                            <span className="flex-1" />
-                            <span className="text-xs w-20 text-center text-muted">{t('players.give.qty')}</span>
-                            <span className="text-xs w-20 text-center text-muted">{t('players.give.quality')}</span>
-                            <span className="w-6" />
-                          </div>
                           <div className="flex flex-col gap-1 overflow-y-auto flex-1 min-h-0">
                             {staged.map((item, idx) => (
                               <div
@@ -255,17 +249,19 @@ export function GiveItemsModal({ player, open, onClose }: Props) {
                                 <span className="flex-1 font-mono">{item.template}</span>
                                 <NumberInput
                                   ariaLabel={`${t('players.give.qty')} for ${item.template}`}
+                                  prefix={t('players.give.qty')}
                                   min={1}
                                   value={item.qty}
                                   onChange={(v) => updateStaged(idx, 'qty', v)}
-                                  className="w-24"
+                                  className="w-36"
                                 />
                                 <NumberInput
                                   ariaLabel={`${t('players.give.quality')} for ${item.template}`}
+                                  prefix={t('players.give.quality')}
                                   min={0}
                                   value={item.quality}
                                   onChange={(v) => updateStaged(idx, 'quality', v)}
-                                  className="w-24"
+                                  className="w-36"
                                 />
                                 <Button
                                   size="sm"

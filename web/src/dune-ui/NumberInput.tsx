@@ -7,6 +7,7 @@ interface NumberInputProps {
   max?: number
   step?: number
   label?: string
+  prefix?: string
   ariaLabel?: string
   isDisabled?: boolean
   className?: string
@@ -20,6 +21,7 @@ export function NumberInput({
   max,
   step = 1,
   label,
+  prefix,
   ariaLabel,
   isDisabled,
   className,
@@ -35,12 +37,18 @@ export function NumberInput({
       isDisabled={isDisabled}
       aria-label={ariaLabel ?? label}
       variant="secondary"
+      fullWidth
       className={className}
     >
       {label && <Label className="text-xs text-muted">{label}</Label>}
-      <NumberField.Group>
+      <NumberField.Group className="w-full">
+        {prefix && (
+          <span className="px-2 text-xs text-muted shrink-0 flex items-center border-r border-border">
+            {prefix}
+          </span>
+        )}
         {showButtons && <NumberField.DecrementButton />}
-        <NumberField.Input style={{ textAlign: 'center' }} />
+        <NumberField.Input className="flex-1 min-w-0" style={{ textAlign: 'center' }} />
         {showButtons && <NumberField.IncrementButton />}
       </NumberField.Group>
     </NumberField>

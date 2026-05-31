@@ -245,7 +245,7 @@ export default function WelcomePackageTab() {
             step={5}
             value={scanSecs}
             onChange={setScanSecs}
-            className="w-28"
+            className="w-36"
           />
         </div>
       </Panel>
@@ -398,17 +398,19 @@ export default function WelcomePackageTab() {
                       <span className="flex-1 min-w-0 truncate font-mono text-foreground">{it.template}</span>
                       <NumberInput
                         ariaLabel="Qty"
+                        prefix="Qty"
                         min={1}
                         value={it.qty}
                         onChange={(v) => setItem(i, { qty: v })}
-                        className="w-32 shrink-0"
+                        className="w-36 shrink-0"
                       />
                       <NumberInput
                         ariaLabel="Quality"
+                        prefix="Quality"
                         min={0}
                         value={it.quality}
                         onChange={(v) => setItem(i, { quality: v })}
-                        className="w-32 shrink-0"
+                        className="w-36 shrink-0"
                       />
                       <Button size="sm" variant="danger-soft" onPress={() => removeItem(i)} aria-label={t('welcome.removeItem')}>
                         <Icon name="x" />
@@ -449,7 +451,7 @@ export default function WelcomePackageTab() {
         </div>
       </Panel>
 
-      <Panel className="min-h-0 flex flex-col">
+      <Panel>
         <SectionLabel>
           {t('welcome.grantsTitle')}
           {' '}
@@ -459,7 +461,7 @@ export default function WelcomePackageTab() {
         </SectionLabel>
         <DataTable<WelcomeGrantRecord, GrantKey>
           aria-label={t('welcome.grantsLabel')}
-          className="min-h-0 max-h-full mt-1"
+          className="mt-1"
           columns={GRANT_COLUMNS}
           rows={grants}
           rowId={(g) => `${g.fls_id}:${g.package_version}:${g.account_id}`}

@@ -213,7 +213,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
               value={broadcastDuration}
               onChange={setBroadcastDuration}
               showButtons={false}
-              className="w-20"
+              className="w-24"
             />
             <div className="flex-1" />
             <Button
@@ -277,7 +277,7 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
               value={shutdownDelay}
               onChange={setShutdownDelay}
               showButtons={false}
-              className="w-20"
+              className="w-24"
             />
           </div>
           <div className="flex gap-2 mt-auto">

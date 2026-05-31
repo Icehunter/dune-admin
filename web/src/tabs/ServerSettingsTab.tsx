@@ -205,7 +205,7 @@ function SettingRow({
                   value={Number(display) || 0}
                   onChange={(v) => onChange(String(v))}
                   showButtons={false}
-                  className="w-28"
+                  className="w-32"
                 />
               )}
         {(item.source === 'userGame' || item.source === 'userEngine') && (

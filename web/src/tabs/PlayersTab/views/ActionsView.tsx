@@ -404,7 +404,7 @@ export function ActionsView({ player }: Props) {
       max={max}
       value={val}
       onChange={(v) => set(Math.max(min, Math.min(max, v)))}
-      className="w-28"
+      className="w-40"
     />
   )
 

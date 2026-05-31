@@ -129,7 +129,7 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
                 value={buyPct}
                 onChange={setBuyPct}
                 showButtons={false}
-                className="w-20"
+                className="w-28"
               />
               <span className="text-sm text-muted">%</span>
             </div>
@@ -168,7 +168,7 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
                 value={mult}
                 onChange={(v) => setGrade(i, v)}
                 showButtons={false}
-                className="w-24"
+                className="w-28"
               />
             </Field>
           ))}
@@ -188,7 +188,7 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
                 value={mult as number}
                 onChange={(v) => setRarity(rarity, v)}
                 showButtons={false}
-                className="w-24"
+                className="w-28"
               />
             </Field>
           ))}
@@ -209,7 +209,7 @@ const BotConfigEditor = forwardRef<ConfigEditorHandle, Props>(function BotConfig
                   value={mult as number}
                   onChange={(v) => setVendor(rarity, v)}
                   showButtons={false}
-                  className="w-24"
+                  className="w-28"
                 />
               </Field>
             ))}

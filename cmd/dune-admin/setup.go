@@ -462,7 +462,7 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 	fmt.Println()
 
 	fmt.Println("AMP topology:")
-	fmt.Println("  container — game server runs inside `podman exec AMP_<instance>` (default template)")
+	fmt.Println("  container — game server runs inside the AMP container (podman or docker)")
 	fmt.Println("  native    — game server runs directly on the host as the AMP user")
 	topology := ask("Topology [container/native]", defaultTopology)
 	useContainer := topology != "native"
@@ -494,7 +494,8 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 
 	if useContainer {
 		defaultContainer := "AMP_" + cfg.AmpInstance
-		cfg.AmpContainer = ask("Podman container name", defaultContainer)
+		cfg.AmpContainer = ask("Container name", defaultContainer)
+		cfg.AmpContainerRuntime = ask("Container runtime [podman/docker]", "podman")
 	}
 	cfg.AmpLogPath = ask("Log directory", defaultLogPath)
 	cfg.DirectorURL = ask("Battlegroup Director URL (optional)", "http://127.0.0.1:11717")
@@ -508,7 +509,11 @@ func runAmpSetup(ask func(string, string) string, ok, fail func(string), cfg *ap
 	fmt.Println("RabbitMQ broker (used by capture mode AND live RMQ commands):")
 	var defaultBrokerPrefix string
 	if useContainer {
-		defaultBrokerPrefix = fmt.Sprintf("sudo -i -u %s podman exec %s", cfg.AmpUser, cfg.AmpContainer)
+		runtime := cfg.AmpContainerRuntime
+		if runtime == "" {
+			runtime = "podman"
+		}
+		defaultBrokerPrefix = fmt.Sprintf("sudo -i -u %s %s exec %s", cfg.AmpUser, runtime, cfg.AmpContainer)
 	} else {
 		defaultBrokerPrefix = fmt.Sprintf("sudo -i -u %s", cfg.AmpUser)
 	}

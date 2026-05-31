@@ -94,6 +94,25 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const [reconnecting, setReconnecting] = useState(false)
+
+  // Re-establish backend connections (DB + control plane) without a service
+  // restart — used by the header Reconnect button when the DB shows disconnected
+  // (e.g. dune-admin came up before the database was ready).
+  const handleReconnect = async () => {
+    setReconnecting(true)
+    try {
+      const s = await api.reconnect()
+      if (s.db_connected) toast.success(t('app.reconnected'))
+      else toast.danger(t('app.reconnectFailed', { error: 'database still unreachable' }))
+    }
+    catch (e) {
+      toast.danger(t('app.reconnectFailed', { error: e instanceof Error ? e.message : String(e) }))
+    }
+    finally {
+      setReconnecting(false)
+    }
+  }
 
   // Left-sidebar navigation, grouped to mirror the product's structure
   // (operator tooling today; a Player Portal group lands here later).
@@ -228,6 +247,16 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
         <div className="flex items-center gap-3">
           {status?.executor === 'ssh' && <ConnectionBadge label="SSH" connected={status.ssh_connected} />}
           <ConnectionBadge label="DB" connected={status?.db_connected ?? false} />
+          {status && !status.db_connected && (
+            <Button
+              size="sm"
+              variant="outline"
+              isDisabled={reconnecting}
+              onPress={handleReconnect}
+            >
+              {reconnecting ? t('app.reconnecting') : t('app.reconnect')}
+            </Button>
+          )}
           {status?.pod_ns && (
             <span className="text-xs text-muted">
               ns:

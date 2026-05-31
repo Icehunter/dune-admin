@@ -75,6 +75,9 @@ func connectAll() error {
 	}
 	globalExecutor = exec
 
+	// kubectl needs DB-pod discovery (via the executor, not the DB) to learn the
+	// namespace before the control plane and DB connect. A discovery failure is
+	// fatal — without a namespace there is nothing to drive the control plane.
 	if ctrl == "kubectl" {
 		ns, pod, podIP, err := discoverDBPod(exec)
 		if err != nil {
@@ -93,25 +96,28 @@ func connectAll() error {
 		if s, ok := exec.(*sshExecutor); ok {
 			globalSSH = s.client
 		}
-		pool, err := connectDB(context.Background(), cfg.DBUser, cfg.DBPass)
-		if err != nil {
-			exec.Close()
-			globalExecutor = nil
-			globalSSH = nil
-			return fmt.Errorf("DB connect: %w", err)
-		}
-		globalDB = pool
-	} else {
-		pool, err := connectDBDirect(context.Background(), cfg)
-		if err != nil {
-			exec.Close()
-			globalExecutor = nil
-			return fmt.Errorf("DB connect: %w", err)
-		}
-		globalDB = pool
 	}
 
+	// The control plane (logs, battlegroup, server control) does not depend on
+	// the database. Establish it before connecting the DB so a DB outage never
+	// disables it — the DB can be re-established later via /api/v1/reconnect
+	// without losing control-plane functionality.
 	globalControl = newControlPlane(ctrl, cfg)
+
+	// DB connect is best-effort: on failure keep the executor + control plane
+	// intact and return the error so the caller can surface it (main starts the
+	// server anyway; the systemd watchdog or a manual reconnect retries the DB).
+	var pool *pgxpool.Pool
+	if ctrl == "kubectl" {
+		pool, err = connectDB(context.Background(), cfg.DBUser, cfg.DBPass)
+	} else {
+		pool, err = connectDBDirect(context.Background(), cfg)
+	}
+	if err != nil {
+		globalDB = nil
+		return fmt.Errorf("DB connect: %w", err)
+	}
+	globalDB = pool
 	return nil
 }
 

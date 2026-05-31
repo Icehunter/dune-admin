@@ -218,10 +218,6 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
               Broker
               <Tabs.Indicator />
             </Tabs.Tab>
-            <Tabs.Tab id="marketbot">
-              Market Bot
-              <Tabs.Indicator />
-            </Tabs.Tab>
             <Tabs.Tab id="advanced">
               Advanced
               <Tabs.Indicator />
@@ -388,42 +384,6 @@ export default function SettingsConfigForm({ saveRef, onSavingChange }: Props) {
               <div className="sm:col-span-2">
                 <CB label="Use TLS (amqps://)" checked={cfg.broker_tls} onChange={setBool('broker_tls')} />
               </div>
-            </G2>
-          </Panel>
-        </Tabs.Panel>
-
-        {/* ── Market Bot ─────────────────────────────────────────────────── */}
-        <Tabs.Panel id="marketbot" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
-          <Panel>
-            <SectionLabel>Mode</SectionLabel>
-            <p className="text-xs text-muted mt-1 mb-3">
-              {'Set '}
-              <code className="font-mono bg-surface-secondary px-1 rounded">
-                market_bot_enabled: true
-              </code>
-              {' in '}
-              <code className="font-mono bg-surface-secondary px-1 rounded">
-                ~/.dune-admin/config.yaml
-              </code>
-              {' to run the embedded bot. Runtime pause/resume is in the Bot Control panel on the Market tab.'}
-            </p>
-            <G2>
-              <F label="Remote URL" hint="forward to standalone bot instead">
-                <TI value={cfg.market_bot_remote_url} onChange={set('market_bot_remote_url')} placeholder="http://host:9191" />
-              </F>
-              <F label="Remote token">
-                <TI value={cfg.market_bot_remote_token} onChange={set('market_bot_remote_token')} type="password" placeholder={MASKED} />
-              </F>
-            </G2>
-          </Panel>
-
-          <Panel>
-            <SectionLabel>Paths (embedded bot)</SectionLabel>
-            <p className="text-xs text-muted -mt-1">Tuning (intervals, threshold) is managed in the Bot Control panel.</p>
-            <G2>
-              <F label="Cache DB"><TI value={cfg.market_bot_cache_db} onChange={set('market_bot_cache_db')} placeholder="~/.dune-admin/market-bot-cache.db" /></F>
-              <F label="Item data"><TI value={cfg.market_bot_item_data} onChange={set('market_bot_item_data')} placeholder="item-data.json" /></F>
-              <F label="State path"><TI value={cfg.market_bot_state} onChange={set('market_bot_state')} placeholder="~/.dune-admin/market-bot-state.json" /></F>
             </G2>
           </Panel>
         </Tabs.Panel>

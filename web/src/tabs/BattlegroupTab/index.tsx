@@ -4,7 +4,7 @@ import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { Button, Input, Select, ListBox, Spinner, toast, TextField } from '@heroui/react'
 import { api } from '../../api/client'
 import type { BackupFile } from '../../api/client'
-import { PageHeader, InfoCard, SectionDivider, Icon } from '../../dune-ui'
+import { NumberInput, PageHeader, InfoCard, SectionDivider, Icon } from '../../dune-ui'
 
 import { phaseColor } from './helpers'
 import { ACTIONS, INIT_WARN_MS, type ActionDef, type DetailedStatus } from './types'
@@ -206,14 +206,14 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
           </TextField>
           <div className="flex items-center gap-2">
             <label className="text-xs text-muted shrink-0">{t('battlegroup.durationLabel')}</label>
-            <Input
-              type="number"
+            <NumberInput
+              ariaLabel={t('battlegroup.durationLabel')}
               min={5}
               max={300}
               value={broadcastDuration}
-              onChange={(e) => setBroadcastDuration(Math.max(5, parseInt(e.target.value) || 30))}
+              onChange={setBroadcastDuration}
+              showButtons={false}
               className="w-20"
-              aria-label="Duration"
             />
             <div className="flex-1" />
             <Button
@@ -270,14 +270,14 @@ export default function BattlegroupTab({ isActive = false }: { isActive?: boolea
           </div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-muted shrink-0">{t('battlegroup.shutdownDelay')}</label>
-            <Input
-              type="number"
+            <NumberInput
+              ariaLabel={t('battlegroup.shutdownDelayLabel')}
               min={1}
               max={120}
               value={shutdownDelay}
-              onChange={(e) => setShutdownDelay(Math.max(1, parseInt(e.target.value) || 10))}
+              onChange={setShutdownDelay}
+              showButtons={false}
               className="w-20"
-              aria-label={t('battlegroup.shutdownDelayLabel')}
             />
           </div>
           <div className="flex gap-2 mt-auto">

@@ -62,7 +62,7 @@ const NAV_GROUPS: { title: string, items: { key: TabId, label: string }[] }[] = 
   {
     title: 'Economy',
     items: [
-      { key: 'market', label: 'Market' },
+      { key: 'market', label: 'Market Bot' },
       { key: 'welcome', label: 'Welcome Kits' },
     ],
   },

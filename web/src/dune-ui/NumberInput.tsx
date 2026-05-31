@@ -34,6 +34,7 @@ export function NumberInput({
       step={step}
       isDisabled={isDisabled}
       aria-label={ariaLabel ?? label}
+      variant="secondary"
       className={className}
     >
       {label && <Label className="text-xs text-muted">{label}</Label>}

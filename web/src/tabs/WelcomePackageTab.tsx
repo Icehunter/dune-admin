@@ -170,7 +170,7 @@ export default function WelcomePackageTab() {
   }
 
   return (
-    <div className="flex flex-col h-full gap-3 min-h-0 overflow-auto">
+    <div className="flex flex-col h-full gap-3 min-h-0 overflow-auto pr-1">
       <PageHeader
         title="Welcome Kits"
         subtitle="Auto-grants a configured item package to every player once, on first login."
@@ -310,7 +310,7 @@ export default function WelcomePackageTab() {
               <p className="text-xs text-muted mt-3">No package selected. Add a version to start.</p>
             )
           : (
-              <div className="mt-3 max-w-2xl">
+              <div className="mt-3">
                 <div className="text-xs text-muted mb-2">
                   Items in
                   {' '}
@@ -365,14 +365,14 @@ export default function WelcomePackageTab() {
                     min={1}
                     value={addQty}
                     onChange={setAddQty}
-                    className="w-24 shrink-0"
+                    className="w-32 shrink-0"
                   />
                   <NumberInput
                     ariaLabel="Quality"
                     min={0}
                     value={addQuality}
                     onChange={setAddQuality}
-                    className="w-24 shrink-0"
+                    className="w-32 shrink-0"
                   />
                   <Button size="sm" onPress={addItem} isDisabled={!addSelected} className="shrink-0">
                     <Icon name="plus" />
@@ -397,17 +397,17 @@ export default function WelcomePackageTab() {
                         min={1}
                         value={it.qty}
                         onChange={(v) => setItem(i, { qty: v })}
-                        className="w-24 shrink-0"
+                        className="w-32 shrink-0"
                       />
                       <NumberInput
                         ariaLabel="Quality"
                         min={0}
                         value={it.quality}
                         onChange={(v) => setItem(i, { quality: v })}
-                        className="w-24 shrink-0"
+                        className="w-32 shrink-0"
                       />
-                      <Button size="sm" variant="ghost" onPress={() => removeItem(i)} aria-label="Remove item">
-                        <Icon name="trash-2" />
+                      <Button size="sm" variant="danger-soft" onPress={() => removeItem(i)} aria-label="Remove item">
+                        <Icon name="x" />
                       </Button>
                     </div>
                   ))}

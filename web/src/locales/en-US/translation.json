@@ -53,10 +53,22 @@
     "blueprints": "Blueprints",
     "bases": "Bases",
     "storage": "Storage",
+    "liveMap": "Live Map",
     "server": "Server Settings",
     "market": "Market Bot",
     "welcome": "Welcome Kits",
     "adminSections": "Admin sections"
+  },
+  "liveMap": {
+    "title": "Live Map",
+    "subtitle": "Players, vehicles and bases on the live map",
+    "players": "Players",
+    "vehicles": "Vehicles",
+    "total": "Total",
+    "updated": "updated at {{time}}",
+    "unsupported": "Live map is not available on this server.",
+    "placeholderNote": "Placeholder grid — real map image pending calibration",
+    "failedToLoad": "Failed to load map: {{message}}"
   },
   "battlegroup": {
     "statusTitle": "Battlegroup Status",

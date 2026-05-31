@@ -7,6 +7,7 @@ import { useStatus } from './hooks/useStatus'
 import SettingsConfigForm from './components/SettingsConfigForm'
 import { LanguageSelector } from './components/LanguageSelector'
 import BattlegroupTab from './tabs/BattlegroupTab'
+import LiveMapTab from './tabs/LiveMapTab'
 import PlayersTab from './tabs/PlayersTab'
 import DatabaseTab from './tabs/DatabaseTab'
 import LogsTab from './tabs/LogsTab'
@@ -28,6 +29,7 @@ const TAB_IDS = [
   'blueprints',
   'bases',
   'storage',
+  'livemap',
   'server',
   'market',
   'welcome',
@@ -54,6 +56,7 @@ const DB_SECTIONS: { key: string, label: string, depth: number }[] = [
 // Memoized at module level so identity is stable — prevents all inactive tabs from
 // re-rendering whenever AppCore re-renders (e.g. router location change, useStatus poll).
 const MBattlegroupTab = memo(BattlegroupTab)
+const MLiveMapTab = memo(LiveMapTab)
 const MPlayersTab = memo(PlayersTab)
 const MDatabaseTab = memo(DatabaseTab)
 const MLogsTab = memo(LogsTab)
@@ -130,6 +133,7 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
       title: t('nav.groups.playerWorld'),
       items: [
         { key: 'players' as TabId, label: t('nav.players') },
+        { key: 'livemap' as TabId, label: t('nav.liveMap') },
         { key: 'storage' as TabId, label: t('nav.storage') },
         { key: 'bases' as TabId, label: t('nav.bases') },
         { key: 'blueprints' as TabId, label: t('nav.blueprints') },
@@ -466,6 +470,9 @@ function AppCore({ isSignedIn }: { isSignedIn: boolean }) {
           </TabPane>
           <TabPane active={currentTab === 'storage'}>
             <MStorageTab />
+          </TabPane>
+          <TabPane active={currentTab === 'livemap'}>
+            <MLiveMapTab isActive={currentTab === 'livemap'} />
           </TabPane>
           <TabPane active={currentTab === 'server'}>
             <MServerSettingsTab />

@@ -252,6 +252,19 @@ export type BlueprintRow = {
   placeables: number
   name?: string
 }
+export type MapMarker = {
+  type: string
+  id: number
+  name: string
+  class?: string
+  map: string
+  partition_id: number
+  x: number
+  y: number
+  z: number
+  online_status?: string
+  fls_id?: string
+}
 export type BaseRow = {
   id: number
   name: string
@@ -731,6 +744,10 @@ export const api = {
     sample: (table: string, limit = 20) => req<{ table: string, headers: string[], rows: string[][] }>('GET', `/database/sample?table=${encodeURIComponent(table)}&limit=${limit}`),
     search: (term: string) => req<{ headers: string[], rows: string[][] }>('GET', `/database/search?term=${encodeURIComponent(term)}`),
     sql: (sql: string) => req<{ headers: string[], rows: string[][], truncated: boolean }>('POST', '/database/sql', { sql }),
+  },
+
+  map: {
+    markers: (mapKey: string) => req<MapMarker[]>('GET', `/map/markers?map=${encodeURIComponent(mapKey)}`),
   },
 
   logs: {

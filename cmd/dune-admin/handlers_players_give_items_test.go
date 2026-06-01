@@ -58,6 +58,7 @@ func TestProcessGiveItems(t *testing.T) {
 			}
 			return msgMutate{ok: "done"}, true
 		},
+		needsDBPath: func(string) bool { return false },
 	})
 
 	if len(given) != 2 || given[0] != "A" || given[1] != "B" {
@@ -91,6 +92,7 @@ func TestProcessGiveItems_DBFailureReasons(t *testing.T) {
 			}
 			return msgMutate{err: errors.New("db failed")}, true
 		},
+		needsDBPath: func(string) bool { return false },
 	})
 
 	if len(given) != 0 {
@@ -104,5 +106,67 @@ func TestProcessGiveItems_DBFailureReasons(t *testing.T) {
 	}
 	if skipped[1].Template != "Y" || skipped[1].Reason != "db failed" {
 		t.Fatalf("unexpected second skipped entry: %+v", skipped[1])
+	}
+}
+
+func TestProcessGiveItems_SchematicUsesDBPath(t *testing.T) {
+	t.Parallel()
+
+	req := giveItemsRequest{
+		PlayerID: 11,
+		Items:    []giveItemInput{{Template: "SchematicPattern_Sword", Qty: 1, Quality: 0}},
+	}
+
+	var rmqCalled bool
+	var dbCalled bool
+	processGiveItems(context.Background(), req, true, "fls-abc", giveItemsDeps{
+		checkCapacity: func(context.Context, int64, string, int64) error { return nil },
+		rmqAdd: func(string, string, int, float64) error {
+			rmqCalled = true
+			return nil
+		},
+		dbGive: func(_ int64, _ string, _, _ int64) (msgMutate, bool) {
+			dbCalled = true
+			return msgMutate{ok: "done"}, true
+		},
+		needsDBPath: func(template string) bool { return template == "SchematicPattern_Sword" },
+	})
+
+	if rmqCalled {
+		t.Fatal("schematic with quality=0 should not use RMQ path")
+	}
+	if !dbCalled {
+		t.Fatal("schematic with quality=0 should use DB path")
+	}
+}
+
+func TestProcessGiveItems_AugmentUsesDBPath(t *testing.T) {
+	t.Parallel()
+
+	req := giveItemsRequest{
+		PlayerID: 11,
+		Items:    []giveItemInput{{Template: "Augment_ArmorPiercing", Qty: 1, Quality: 0}},
+	}
+
+	var rmqCalled bool
+	var dbCalled bool
+	processGiveItems(context.Background(), req, true, "fls-abc", giveItemsDeps{
+		checkCapacity: func(context.Context, int64, string, int64) error { return nil },
+		rmqAdd: func(string, string, int, float64) error {
+			rmqCalled = true
+			return nil
+		},
+		dbGive: func(_ int64, _ string, _, _ int64) (msgMutate, bool) {
+			dbCalled = true
+			return msgMutate{ok: "done"}, true
+		},
+		needsDBPath: func(template string) bool { return template == "Augment_ArmorPiercing" },
+	})
+
+	if rmqCalled {
+		t.Fatal("augment item with quality=0 should not use RMQ path")
+	}
+	if !dbCalled {
+		t.Fatal("augment item with quality=0 should use DB path")
 	}
 }

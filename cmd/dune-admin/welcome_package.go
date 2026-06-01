@@ -111,6 +111,7 @@ func welcomeGrantViaGiveItems(ctx context.Context, pawnID int64, flsID string, i
 			msg, ok := cmdGiveItem(playerID, template, qty, quality)().(msgMutate)
 			return msg, ok
 		},
+		needsDBPath: itemNeedsDBPath,
 	})
 	reasons := make([]string, 0, len(skipped))
 	for _, s := range skipped {

@@ -236,6 +236,36 @@ func handleGetJourney(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/give-item [post]
+// tryGiveItemViaRMQ attempts to deliver an item to an online player via the RMQ
+// server command path (instant, no relog needed). Returns true if the request
+// was handled (success or error written to w), false if the caller should fall
+// through to the DB path. RMQ is skipped for quality > 0 or for item types
+// (schematics, augments) where grade is stored as quality_level in the DB.
+func tryGiveItemViaRMQ(w http.ResponseWriter, playerID int64, template string, qty int64) bool {
+	ctx := context.Background()
+	if checkPlayerOffline(ctx, playerID) == nil {
+		return false
+	}
+	if err := checkInventoryCapacity(ctx, playerID, template, qty); err != nil {
+		jsonErr(w, err, 400)
+		return true
+	}
+	flsID, err := flsIDFromActorID(ctx, playerID)
+	if err != nil {
+		jsonErr(w, fmt.Errorf("resolve player: %w", err), 404)
+		return true
+	}
+	if err := rmqAddItemToInventory(flsID, template, int(qty), 1.0); err != nil {
+		jsonErr(w, err, 500)
+		return true
+	}
+	jsonOK(w, map[string]any{
+		"ok":   fmt.Sprintf("sent %d × %s to online player %d via server command (instant)", qty, template, playerID),
+		"path": "rmq",
+	})
+	return true
+}
+
 func handleGiveItem(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		PlayerID int64  `json:"player_id"`
@@ -248,34 +278,16 @@ func handleGiveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Route online + quality-0 items through RMQ (instant, no relog needed).
-	// RMQ AddItemToInventory has no Quality field so the DB path is required for quality > 0.
-	if req.Quality == 0 {
-		ctx := context.Background()
-		if checkPlayerOffline(ctx, req.PlayerID) != nil {
-			// Player is online — use RMQ path.
-			if err := checkInventoryCapacity(ctx, req.PlayerID, req.Template, req.Qty); err != nil {
-				jsonErr(w, err, 400)
-				return
-			}
-			flsID, err := flsIDFromActorID(ctx, req.PlayerID)
-			if err != nil {
-				jsonErr(w, fmt.Errorf("resolve player: %w", err), 404)
-				return
-			}
-			if err := rmqAddItemToInventory(flsID, req.Template, int(req.Qty), 1.0); err != nil {
-				jsonErr(w, err, 500)
-				return
-			}
-			jsonOK(w, map[string]any{
-				"ok":   fmt.Sprintf("sent %d × %s to online player %d via server command (instant)", req.Qty, req.Template, req.PlayerID),
-				"path": "rmq",
-			})
+	// RMQ path: online player, quality=0, and item grade doesn't matter.
+	// Schematics and augment items are excluded — their quality_level must be
+	// stored explicitly in the DB; the RMQ command has no grade field.
+	if req.Quality == 0 && !itemNeedsDBPath(req.Template) {
+		if tryGiveItemViaRMQ(w, req.PlayerID, req.Template, req.Qty) {
 			return
 		}
 	}
 
-	// DB path: offline player or quality > 0.
+	// DB path: offline player, quality > 0, or grade-sensitive item.
 	msg, ok := cmdGiveItem(req.PlayerID, req.Template, req.Qty, req.Quality)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
@@ -308,6 +320,7 @@ type giveItemsDeps struct {
 	checkCapacity func(context.Context, int64, string, int64) error
 	rmqAdd        func(string, string, int, float64) error
 	dbGive        func(int64, string, int64, int64) (msgMutate, bool)
+	needsDBPath   func(string) bool
 }
 
 func resolveGiveItemsOnlinePath(
@@ -327,8 +340,21 @@ func resolveGiveItemsOnlinePath(
 	return true, flsID
 }
 
+// itemNeedsDBPath reports whether the item must bypass the RMQ path so that its
+// quality_level is stored explicitly. Schematics and augmentation-category items
+// have grade-dependent behaviour that the RMQ AddItemToInventory command cannot
+// express (it has no quality/grade field).
+func itemNeedsDBPath(template string) bool {
+	rule, ok := itemRuleLookup(template)
+	if !ok {
+		return false
+	}
+	return rule.IsSchematic || strings.Contains(strings.ToLower(rule.Category), "augment")
+}
+
 func processOneGiveItem(ctx context.Context, playerID int64, item giveItemInput, online bool, flsID string, deps giveItemsDeps) (string, *skippedItem) {
-	if online && item.Quality == 0 {
+	needsDB := deps.needsDBPath != nil && deps.needsDBPath(item.Template)
+	if online && item.Quality == 0 && !needsDB {
 		if err := deps.checkCapacity(ctx, playerID, item.Template, item.Qty); err != nil {
 			return "", &skippedItem{Template: item.Template, Reason: err.Error()}
 		}
@@ -392,6 +418,7 @@ func handleGiveItems(w http.ResponseWriter, r *http.Request) {
 			msg, ok := cmdGiveItem(playerID, template, qty, quality)().(msgMutate)
 			return msg, ok
 		},
+		needsDBPath: itemNeedsDBPath,
 	})
 
 	jsonOK(w, map[string]any{"given": given, "skipped": skipped})

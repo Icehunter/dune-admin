@@ -153,13 +153,21 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
               {markers.map((m) => {
                 const fx = clamp01((m.x - cfg.minX) / (cfg.maxX - cfg.minX))
                 const fy = clamp01((m.y - cfg.minY) / (cfg.maxY - cfg.minY))
+                const isPlayer = m.type === 'player'
                 return (
                   <div
                     key={`${m.type}-${m.id}`}
-                    className="group absolute -translate-x-1/2 -translate-y-1/2"
+                    className={`group absolute -translate-x-1/2 -translate-y-1/2 ${isPlayer ? 'z-20' : 'z-10'} hover:z-30`}
                     style={{ left: `${fx * 100}%`, top: `${(1 - fy) * 100}%` }}
                   >
-                    <div className={`h-2.5 w-2.5 rounded-full ${markerDot(m.type)}`} />
+                    <div
+                      className={`rounded-full ${markerDot(m.type)} ${isPlayer ? 'h-4 w-4' : 'h-2.5 w-2.5'}`}
+                      style={{
+                        boxShadow: isPlayer
+                          ? '0 0 0 2px var(--color-surface), 0 0 10px 2px var(--color-primary)'
+                          : '0 0 0 1.5px var(--color-surface)',
+                      }}
+                    />
                     <div className="absolute left-3 top-0 z-10 hidden whitespace-nowrap rounded border border-border bg-surface px-2 py-1 text-[11px] text-foreground group-hover:block">
                       <div className="font-medium">{m.name || `${m.type} ${m.id}`}</div>
                       <div className="text-muted">

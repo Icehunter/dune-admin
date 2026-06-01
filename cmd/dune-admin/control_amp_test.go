@@ -104,6 +104,56 @@ func TestListGameProcesses_EmptyOnExecErrorWithoutOutput(t *testing.T) {
 	}
 }
 
+func TestListGameProcesses_NoContainer(t *testing.T) {
+	t.Parallel()
+
+	ctrl := &ampControl{useContainer: false}
+	exec := &fakeAMPExecutor{out: ""}
+	_, err := ctrl.listGameProcesses(exec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(exec.cmd, " exec ") {
+		t.Fatalf("expected no container wrapping for useContainer=false, got cmd: %q", exec.cmd)
+	}
+	if !strings.Contains(exec.cmd, "DuneSandboxServer") {
+		t.Fatalf("expected ps command for DuneSandboxServer, got: %q", exec.cmd)
+	}
+}
+
+func TestListGameProcesses_WithContainer(t *testing.T) {
+	t.Parallel()
+
+	ctrl := &ampControl{
+		useContainer:     true,
+		container:        "AMP_Dune01",
+		ampUser:          "amp",
+		containerRuntime: "podman",
+	}
+	exec := &fakeAMPExecutor{out: ""}
+	_, err := ctrl.listGameProcesses(exec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(exec.cmd, "podman exec AMP_Dune01") {
+		t.Fatalf("expected podman exec wrapping, got cmd: %q", exec.cmd)
+	}
+	if !strings.Contains(exec.cmd, "DuneSandboxServer") {
+		t.Fatalf("expected ps command inside wrapper, got: %q", exec.cmd)
+	}
+}
+
+func TestListGameProcesses_WithContainer_MissingContainerName(t *testing.T) {
+	t.Parallel()
+
+	ctrl := &ampControl{useContainer: true, container: "", ampUser: "amp"}
+	exec := &fakeAMPExecutor{out: ""}
+	_, err := ctrl.listGameProcesses(exec)
+	if err == nil {
+		t.Fatal("expected error when useContainer=true but container name is empty")
+	}
+}
+
 // TestAmpDiscoverIniDir_PrefersUE5SavedPath verifies that when
 // ue5-saved/UserSettings/UserGame.ini exists (install.sh layout),
 // DiscoverIniDir returns that sub-directory rather than the base state dir.

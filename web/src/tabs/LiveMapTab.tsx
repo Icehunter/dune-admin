@@ -23,7 +23,7 @@ type MapCfg = {
 // game's reference Hagga map) pending real calibration against the screenshot —
 // flipX/flipY correct mirror orientation once we have reference points.
 const MAPS: MapCfg[] = [
-  { key: 'HaggaBasin', label: 'Hagga Basin', image: 'hagga-basin.png', minX: -456752, maxX: 354547, minY: -450630, maxY: 353822 },
+  { key: 'HaggaBasin', label: 'Hagga Basin', image: 'hagga-basin.png', minX: -424380, maxX: 386919, minY: -637335, maxY: 167117 },
   { key: 'DeepDesert', label: 'Deep Desert', minX: -1300000, maxX: 1200000, minY: -1300000, maxY: 1200000 },
 ]
 

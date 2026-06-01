@@ -69,6 +69,11 @@
     "unsupported": "Live map is not available on this server.",
     "placeholderNote": "Placeholder grid — real map image pending calibration",
     "calibrating": "Hagga Basin map — calibrating marker positions",
+    "calibrate": "Calibrate",
+    "clear": "Clear",
+    "calibActive": "Calibration mode — click on the map exactly where your character is standing.",
+    "calibPoints": "{{n}} point(s) captured — needs 2+, far apart, to solve.",
+    "calibNoPlayer": "No online player to anchor calibration to.",
     "failedToLoad": "Failed to load map: {{message}}"
   },
   "battlegroup": {

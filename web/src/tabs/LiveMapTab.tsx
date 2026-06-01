@@ -1,36 +1,39 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Spinner, toast } from '@heroui/react'
+import { MapContainer, ImageOverlay, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet'
+import { CRS, type LatLngBoundsExpression } from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { api, ApiError } from '../api/client'
 import type { MapMarker } from '../api/client'
 import { Icon, PageHeader } from '../dune-ui'
 
-// Placeholder world->fraction bounds per map. Round, self-chosen approximations
-// used only until a real (GPL-clean) base map image is calibrated in (Phase 0).
-type MapCfg = {
-  key: string
-  label: string
-  image?: string // file in web/public, e.g. 'hagga-basin.png'
-  minX: number
-  maxX: number
-  minY: number
-  maxY: number
-  flipX?: boolean
-  flipY?: boolean
+// The map image is a square; CRS.Simple uses image-pixel space as the coordinate
+// system. lat = up-fraction * H, lng = left-fraction * W.
+const IMG_W = 1200
+const IMG_H = 1200
+const IMAGE_BOUNDS: LatLngBoundsExpression = [[0, 0], [IMG_H, IMG_W]]
+const POLL_MS = 10000
+
+// Marker fill colors. Leaflet draws markers as SVG, which can't consume the
+// Tailwind/CSS semantic tokens, so these data-viz colors are intentionally literal.
+const MARKER_COLOR: Record<string, string> = {
+  player: '#3b9dff',
+  vehicle: '#5fd35a',
+  base: '#e0a13a',
 }
 
-// World->image calibration. Hagga bounds are an initial GUESS (from the same
-// game's reference Hagga map) pending real calibration against the screenshot —
-// flipX/flipY correct mirror orientation once we have reference points.
+type Bounds = { minX: number, maxX: number, minY: number, maxY: number, flipX?: boolean, flipY?: boolean }
+type MapCfg = Bounds & { key: string, label: string, image?: string }
+
 const MAPS: MapCfg[] = [
-  // Calibrated from three in-game reference points (Crossroad Depot col3/rowF, Anvil col8/rowE,
-  // I10 col10/rowI). Isotropic fit (~815k world units per image span) anchored on the two most
-  // separated points (Depot<->I10); world Y is inverted (flipY). Depot + I10 land exact; Anvil ~half a cell off.
+  // Calibrated from three in-game reference points; isotropic ~815k units/span, flipY.
+  // Refine live via the Calibrate tool (persists to localStorage), then bake the numbers here.
   { key: 'HaggaBasin', label: 'Hagga Basin', image: 'hagga-basin.png', minX: -425305, maxX: 389695, minY: -496859, maxY: 318141, flipY: true },
   { key: 'DeepDesert', label: 'Deep Desert', minX: -1300000, maxX: 1200000, minY: -1300000, maxY: 1200000 },
 ]
 
-const POLL_MS = 10000
+const CALIB_LS_KEY = 'dune_admin_livemap_calib'
 
 function clamp01(v: number): number {
   if (v < 0) return 0
@@ -38,15 +41,76 @@ function clamp01(v: number): number {
   return v
 }
 
-function markerDot(type: string): string {
-  switch (type) {
-    case 'player':
-      return 'bg-primary'
-    case 'vehicle':
-      return 'bg-success'
-    default:
-      return 'bg-danger'
+function worldToLatLng(x: number, y: number, cfg: Bounds): [number, number] {
+  const rawX = (x - cfg.minX) / (cfg.maxX - cfg.minX)
+  const rawY = (y - cfg.minY) / (cfg.maxY - cfg.minY)
+  const fracX = clamp01(cfg.flipX ? 1 - rawX : rawX)
+  const fracYup = clamp01(cfg.flipY ? 1 - rawY : rawY)
+  return [fracYup * IMG_H, fracX * IMG_W]
+}
+
+type CalibPoint = { wx: number, wy: number, fracX: number, fracYup: number }
+
+// Solve world->image bounds from the first and last calibration points (most
+// separated). fracYup is linear in y; a negative slope means the Y axis is flipped.
+function solveBounds(pts: CalibPoint[]): Bounds | null {
+  if (pts.length < 2) return null
+  const a = pts[0]
+  const b = pts[pts.length - 1]
+  if (b.wx === a.wx || b.wy === a.wy || b.fracX === a.fracX || b.fracYup === a.fracYup) return null
+
+  const sX = (b.fracX - a.fracX) / (b.wx - a.wx)
+  const iX = a.fracX - sX * a.wx
+  const minX = -iX / sX
+  const maxX = (1 - iX) / sX
+
+  const sY = (b.fracYup - a.fracYup) / (b.wy - a.wy)
+  const iY = a.fracYup - sY * a.wy
+  const flipY = sY < 0
+  let minY: number
+  let maxY: number
+  if (!flipY) {
+    const R = 1 / sY
+    minY = -iY * R
+    maxY = minY + R
   }
+  else {
+    const R = -1 / sY
+    minY = (iY - 1) * R
+    maxY = minY + R
+  }
+  return { minX, maxX, minY, maxY, flipY }
+}
+
+function loadCalib(): Record<string, Bounds> {
+  try {
+    return JSON.parse(localStorage.getItem(CALIB_LS_KEY) ?? '{}') as Record<string, Bounds>
+  }
+  catch {
+    return {}
+  }
+}
+
+// Keeps the leaflet map sized correctly when the tab becomes visible again
+// (it lives in a display:none TabPane while inactive, which zeroes its size).
+function InvalidateOnActive({ active }: { active: boolean }) {
+  const map = useMap()
+  useEffect(() => {
+    if (active) {
+      const id = setTimeout(() => map.invalidateSize(), 50)
+      return () => clearTimeout(id)
+    }
+  }, [active, map])
+  return null
+}
+
+function CalibrationCapture({ active, onPick }: { active: boolean, onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      if (active) onPick(e.latlng.lat, e.latlng.lng)
+    },
+  })
+  return null
 }
 
 export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) {
@@ -56,8 +120,15 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
   const [loading, setLoading] = useState(false)
   const [unsupported, setUnsupported] = useState(false)
   const [updatedLabel, setUpdatedLabel] = useState<string>('')
+  const [calibrating, setCalibrating] = useState(false)
+  const [calibPoints, setCalibPoints] = useState<CalibPoint[]>([])
+  const [calibOverride, setCalibOverride] = useState<Record<string, Bounds>>(() => loadCalib())
 
-  const cfg = MAPS.find((m) => m.key === mapKey) ?? MAPS[0]
+  const baseCfg = MAPS.find((m) => m.key === mapKey) ?? MAPS[0]
+  const effCfg: MapCfg = useMemo(
+    () => ({ ...baseCfg, ...(calibOverride[mapKey] ?? {}) }),
+    [baseCfg, calibOverride, mapKey],
+  )
 
   const load = useCallback((key: string) => {
     Promise.resolve()
@@ -71,12 +142,8 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
         setUpdatedLabel(new Date().toLocaleTimeString())
       })
       .catch((e: unknown) => {
-        if (e instanceof ApiError && e.status === 404) {
-          setUnsupported(true)
-        }
-        else {
-          toast.danger(t('liveMap.failedToLoad', { message: e instanceof Error ? e.message : String(e) }))
-        }
+        if (e instanceof ApiError && e.status === 404) setUnsupported(true)
+        else toast.danger(t('liveMap.failedToLoad', { message: e instanceof Error ? e.message : String(e) }))
         setMarkers([])
       })
       .finally(() => setLoading(false))
@@ -91,6 +158,54 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
 
   const playerCount = markers.filter((m) => m.type === 'player').length
   const vehicleCount = markers.filter((m) => m.type === 'vehicle').length
+
+  // Players render last so they sit on top of co-located vehicles.
+  const ordered = useMemo(
+    () => [...markers].sort((a, b) => (a.type === 'player' ? 1 : 0) - (b.type === 'player' ? 1 : 0)),
+    [markers],
+  )
+
+  const handleCalibPick = useCallback((lat: number, lng: number) => {
+    const player = markers.find((m) => m.type === 'player')
+    if (!player) {
+      toast.danger(t('liveMap.calibNoPlayer'))
+      return
+    }
+    setCalibPoints((prev) => {
+      const next = [...prev, { wx: player.x, wy: player.y, fracX: lng / IMG_W, fracYup: lat / IMG_H }]
+      const solved = solveBounds(next)
+      if (solved) {
+        setCalibOverride((c) => {
+          const merged = { ...c, [mapKey]: solved }
+          try {
+            localStorage.setItem(CALIB_LS_KEY, JSON.stringify(merged))
+          }
+          catch { /* ignore quota errors */ }
+          return merged
+        })
+      }
+      return next
+    })
+  }, [markers, mapKey, t])
+
+  const clearCalib = useCallback(() => {
+    setCalibPoints([])
+    setCalibOverride((c) => {
+      const merged = { ...c }
+      delete merged[mapKey]
+      try {
+        localStorage.setItem(CALIB_LS_KEY, JSON.stringify(merged))
+      }
+      catch { /* ignore */ }
+      return merged
+    })
+  }, [mapKey])
+
+  const solvedStr = useMemo(() => {
+    const b = calibOverride[mapKey]
+    if (!b) return ''
+    return `minX: ${Math.round(b.minX)}, maxX: ${Math.round(b.maxX)}, minY: ${Math.round(b.minY)}, maxY: ${Math.round(b.maxY)}, flipY: ${!!b.flipY}`
+  }, [calibOverride, mapKey])
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
@@ -108,7 +223,7 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
         </Button>
       </PageHeader>
 
-      <div className="flex gap-2 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
         {MAPS.map((m) => (
           <Button
             key={m.key}
@@ -119,18 +234,28 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
             {m.label}
           </Button>
         ))}
+        <Button size="sm" variant={calibrating ? 'primary' : 'outline'} onPress={() => setCalibrating((v) => !v)}>
+          <Icon name="crosshair" />
+          {' '}
+          {t('liveMap.calibrate')}
+        </Button>
+        {calibrating && (
+          <Button size="sm" variant="outline" onPress={clearCalib}>
+            {t('liveMap.clear')}
+          </Button>
+        )}
       </div>
 
-      <div className="flex gap-4 shrink-0 text-xs text-muted">
+      <div className="flex flex-wrap gap-4 shrink-0 text-xs text-muted">
         <span>
-          <span className="text-primary">●</span>
+          <span style={{ color: MARKER_COLOR.player }}>●</span>
           {' '}
           {t('liveMap.players')}
           {': '}
           {playerCount}
         </span>
         <span>
-          <span className="text-success">●</span>
+          <span style={{ color: MARKER_COLOR.vehicle }}>●</span>
           {' '}
           {t('liveMap.vehicles')}
           {': '}
@@ -141,81 +266,82 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
           {': '}
           {markers.length}
         </span>
-        {updatedLabel !== '' && (
-          <span className="ml-auto">
-            {t('liveMap.updated', { time: updatedLabel })}
-          </span>
-        )}
+        {updatedLabel !== '' && <span className="ml-auto">{t('liveMap.updated', { time: updatedLabel })}</span>}
       </div>
+
+      {calibrating && (
+        <div className="shrink-0 rounded-[var(--radius)] border border-border bg-surface px-3 py-2 text-xs">
+          <div className="text-accent">{t('liveMap.calibActive')}</div>
+          <div className="text-muted">
+            {t('liveMap.calibPoints', { n: calibPoints.length })}
+          </div>
+          {solvedStr && <div className="mt-1 font-mono text-foreground break-all">{solvedStr}</div>}
+        </div>
+      )}
 
       {unsupported
         ? (
             <div className="py-8 text-center text-sm text-muted">{t('liveMap.unsupported')}</div>
           )
         : (
-            <div className="flex flex-1 min-h-0 items-center justify-center">
-              <div
-                className="relative aspect-square h-full max-w-full overflow-hidden rounded-[var(--radius)] border border-border bg-surface"
-                style={cfg.image
-                  ? { backgroundImage: `url(${import.meta.env.BASE_URL}${cfg.image})`, backgroundSize: '100% 100%' }
-                  : undefined}
+            <div className="relative flex-1 min-h-0 overflow-hidden rounded-[var(--radius)] border border-border">
+              <MapContainer
+                crs={CRS.Simple}
+                bounds={IMAGE_BOUNDS}
+                minZoom={-3}
+                maxZoom={4}
+                zoomSnap={0.25}
+                attributionControl={false}
+                style={{ height: '100%', width: '100%', background: 'var(--color-surface)', cursor: calibrating ? 'crosshair' : 'grab' }}
               >
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-25"
-                  style={{
-                    backgroundImage:
-                      'linear-gradient(var(--color-surface-alt) 1px, transparent 1px), linear-gradient(90deg, var(--color-surface-alt) 1px, transparent 1px)',
-                    backgroundSize: '10% 10%',
-                  }}
-                />
-                <div className="absolute left-2 top-2 rounded bg-surface/80 px-1.5 py-0.5 text-[10px] text-muted">
-                  {cfg.image ? t('liveMap.calibrating') : t('liveMap.placeholderNote')}
-                </div>
-
-                {markers.map((m) => {
-                  const rawX = (m.x - cfg.minX) / (cfg.maxX - cfg.minX)
-                  const rawY = (m.y - cfg.minY) / (cfg.maxY - cfg.minY)
-                  const leftPct = clamp01(cfg.flipX ? 1 - rawX : rawX) * 100
-                  const topPct = clamp01(cfg.flipY ? rawY : 1 - rawY) * 100
+                <InvalidateOnActive active={isActive} />
+                <CalibrationCapture active={calibrating} onPick={handleCalibPick} />
+                {effCfg.image && (
+                  <ImageOverlay key={mapKey} url={`${import.meta.env.BASE_URL}${effCfg.image}`} bounds={IMAGE_BOUNDS} />
+                )}
+                {ordered.map((m) => {
+                  const [lat, lng] = worldToLatLng(m.x, m.y, effCfg)
                   const isPlayer = m.type === 'player'
                   return (
-                    <div
+                    <CircleMarker
                       key={`${m.type}-${m.id}`}
-                      className={`group absolute -translate-x-1/2 -translate-y-1/2 ${isPlayer ? 'z-20' : 'z-10'} hover:z-30`}
-                      style={{ left: `${leftPct}%`, top: `${topPct}%` }}
+                      center={[lat, lng]}
+                      radius={isPlayer ? 7 : 5}
+                      pathOptions={{
+                        color: '#0b0b0b',
+                        weight: 1.5,
+                        fillColor: MARKER_COLOR[m.type] ?? MARKER_COLOR.base,
+                        fillOpacity: 1,
+                      }}
                     >
-                      <div
-                        className={`rounded-full ${markerDot(m.type)} ${isPlayer ? 'h-4 w-4' : 'h-2.5 w-2.5'}`}
-                        style={{
-                          boxShadow: isPlayer
-                            ? '0 0 0 2px var(--color-surface), 0 0 10px 2px var(--color-primary)'
-                            : '0 0 0 1.5px var(--color-surface)',
-                        }}
-                      />
-                      <div className="absolute left-3 top-0 z-10 hidden whitespace-nowrap rounded border border-border bg-surface px-2 py-1 text-[11px] text-foreground group-hover:block">
+                      <Tooltip>
                         <div className="font-medium">{m.name || `${m.type} ${m.id}`}</div>
-                        <div className="text-muted">
+                        <div>
                           {m.type}
                           {m.online_status ? ` · ${m.online_status}` : ''}
                         </div>
-                        <div className="font-mono text-muted">
+                        <div>
                           {Math.round(m.x)}
                           {', '}
                           {Math.round(m.y)}
                           {', '}
                           {Math.round(m.z)}
                         </div>
-                      </div>
-                    </div>
+                      </Tooltip>
+                    </CircleMarker>
                   )
                 })}
-
-                {loading && markers.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Spinner size="lg" />
-                  </div>
-                )}
-              </div>
+                {calibrating && calibPoints.map((p, i) => (
+                  <CircleMarker
+                    key={`calib-${i}`}
+                    center={[p.fracYup * IMG_H, p.fracX * IMG_W]}
+                    radius={5}
+                    pathOptions={{ color: '#ffffff', weight: 2, fillColor: '#ff2bd6', fillOpacity: 0.9 }}
+                  >
+                    <Tooltip>{`calib ${i + 1}`}</Tooltip>
+                  </CircleMarker>
+                ))}
+              </MapContainer>
             </div>
           )}
     </div>

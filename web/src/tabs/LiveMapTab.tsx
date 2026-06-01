@@ -226,6 +226,15 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
         </Button>
       </PageHeader>
 
+      <div className="shrink-0 flex items-start gap-2 rounded-[var(--radius)] border border-border bg-surface px-3 py-2 text-xs">
+        <Icon name="flask-conical" className="size-4 shrink-0 mt-0.5 text-accent" />
+        <div>
+          <span className="font-medium text-accent">{t('liveMap.betaTitle')}</span>
+          {' '}
+          <span className="text-muted">{t('liveMap.betaBody')}</span>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-2 shrink-0">
         {MAPS.map((m) => (
           <Button

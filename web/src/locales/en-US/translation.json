@@ -62,6 +62,8 @@
   "liveMap": {
     "title": "Live Map",
     "subtitle": "Players, vehicles and bases on the live map",
+    "betaTitle": "Beta — Work in Progress",
+    "betaBody": "This feature is under active development. Some functionality is still changing and may not be final.",
     "players": "Players",
     "vehicles": "Vehicles",
     "total": "Total",

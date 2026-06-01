@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 
 	"github.com/jackc/pgx/v5"
@@ -118,6 +119,14 @@ func connectAll() error {
 		return fmt.Errorf("DB connect: %w", err)
 	}
 	globalDB = pool
+
+	// Best-effort: ensure the GM/Server chat persona exists for admin messaging
+	// (whisper, map announce). Idempotent (ON CONFLICT DO NOTHING); a failure here
+	// must never block startup or reconnect, so it is logged and swallowed.
+	if err := cmdEnsureGMIdentity(context.Background()); err != nil {
+		log.Printf("connectAll: ensure GM identity: %v", err)
+	}
+
 	return nil
 }
 

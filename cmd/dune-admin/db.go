@@ -72,8 +72,8 @@ func cmdFetchPlayers() Msg {
 		LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
 		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id
 		LEFT JOIN dune.player_faction pf ON pf.actor_id = a.id
-		WHERE a.class ILIKE '%PlayerCharacter%'
-		ORDER BY a.id`)
+		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
+		ORDER BY a.id`, gmIdentityAccountID)
 	if err != nil {
 		return msgPlayers{err: err}
 	}
@@ -730,7 +730,7 @@ func listWelcomeOnlineAccounts(ctx context.Context) ([]welcomeAccount, error) {
 		FROM dune.player_state ps
 		JOIN dune.actors a ON a.id = ps.player_pawn_id
 		JOIN dune.accounts ac ON ac.id = a.owner_account_id
-		WHERE ps.online_status = 'Online' AND ps.player_pawn_id IS NOT NULL`)
+		WHERE ps.online_status = 'Online' AND ps.player_pawn_id IS NOT NULL AND ps.account_id <> $1`, gmIdentityAccountID)
 	if err != nil {
 		return nil, fmt.Errorf("list welcome accounts: %w", err)
 	}
@@ -980,6 +980,164 @@ func rawFuncomID(ctx context.Context, accountID int64) (string, error) {
 	return id, err
 }
 
+// Seeded "GM/Server" chat persona sentinels. The account id is held in a high,
+// out-of-range slot so it never collides with a real player (Phase 0 recon: real
+// accounts max out near id 2, actors near 54) and so operator-facing queries can
+// exclude it. The actor ids derive from the account id. Single source of truth;
+// the seed routine and the blast-radius exclusions both key off these.
+const (
+	gmIdentityAccountID     int64  = 9000001
+	gmIdentityHexID         string = "DA5EBA11DA5EBA11" // accounts."user" (AMQP user_id)
+	gmIdentityFuncomID      string = "GM#0001"          // chat id (m_FuncomIdFrom)
+	gmIdentityCharacterName string = "GM"               // in-game display name
+)
+
+// errGMNotProvisioned signals that the GM/Server chat persona has not been seeded
+// yet, so admin chat cannot resolve a sender identity. Mapped to 503 by handlers.
+var errGMNotProvisioned = errors.New("gm identity not provisioned")
+
+// cmdGetGMIdentity reads the seeded GM/Server persona used as the sender for admin
+// chat. Returns its hex FLS id (the AMQP user_id) and funcom id (m_FuncomIdFrom).
+// Reads the dune.accounts VIEW, which decrypts funcom_id from the encrypted base
+// table — so this stays correct even if user-data encryption is enabled. Returns
+// errGMNotProvisioned if the identity row does not exist yet.
+func cmdGetGMIdentity(ctx context.Context) (gmIdentity, error) {
+	gm := gmIdentity{AccountID: gmIdentityAccountID}
+	err := globalDB.QueryRow(ctx, `
+		SELECT "user", funcom_id
+		FROM dune.accounts
+		WHERE id = $1`, gmIdentityAccountID).Scan(&gm.HexID, &gm.FuncomID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gmIdentity{}, errGMNotProvisioned
+	}
+	if err != nil {
+		return gmIdentity{}, fmt.Errorf("read gm identity: %w", err)
+	}
+	return gm, nil
+}
+
+// cmdResolveRecipientChatIdentity resolves a whisper recipient by account id into
+// the values the whisper wire body needs: funcom id (m_SubChannelId + AMQP routing
+// key) and character name (m_UserNameTo). Reads the decrypting accounts/player_state
+// views so it is correct regardless of the user-data encryption setting.
+func cmdResolveRecipientChatIdentity(ctx context.Context, accountID int64) (funcomID, charName string, err error) {
+	err = globalDB.QueryRow(ctx, `
+		SELECT a.funcom_id, COALESCE(ps.character_name, '')
+		FROM dune.accounts a
+		LEFT JOIN dune.player_state ps ON ps.account_id = a.id
+		WHERE a.id = $1`, accountID).Scan(&funcomID, &charName)
+	if err != nil {
+		return "", "", fmt.Errorf("resolve recipient %d: %w", accountID, err)
+	}
+	return funcomID, charName, nil
+}
+
+// gmSeed holds the fixed values written for the GM/Server persona. Centralised so
+// the sentinel ids, the actor class paths (which MUST match the live schema or the
+// game's player-info lookup fails), and the blast-radius-safe defaults are testable
+// and have one source of truth. Class paths + partition are from Phase 0 recon.
+type gmSeed struct {
+	AccountID       int64
+	HexID           string
+	FuncomID        string
+	CharacterName   string
+	ControllerID    int64
+	StateID         int64
+	PawnID          int64
+	ControllerClass string
+	StateClass      string
+	PawnClass       string
+	Map             string
+	PartitionID     int64
+	DimensionIndex  int
+	OnlineStatus    string
+	LifeState       string
+}
+
+func gmSeedSpec() gmSeed {
+	return gmSeed{
+		AccountID:       gmIdentityAccountID,
+		HexID:           gmIdentityHexID,
+		FuncomID:        gmIdentityFuncomID,
+		CharacterName:   gmIdentityCharacterName,
+		ControllerID:    gmIdentityAccountID*100 + 1, // 900000101
+		StateID:         gmIdentityAccountID*100 + 2, // 900000102
+		PawnID:          gmIdentityAccountID*100 + 3, // 900000103
+		ControllerClass: "/Game/Dune/Characters/Player/BP_DunePlayerController.BP_DunePlayerController_C",
+		StateClass:      "/Script/DuneSandbox.DunePlayerState",
+		PawnClass:       "/Game/Dune/Characters/Player/BP_DunePlayerCharacter.BP_DunePlayerCharacter_C",
+		Map:             "HaggaBasin",
+		PartitionID:     1,
+		DimensionIndex:  0,
+		OnlineStatus:    "Offline", // blast-radius safe; flip to Online only if verify needs it
+		LifeState:       "Alive",
+	}
+}
+
+// cmdEnsureGMIdentity idempotently seeds the GM/Server persona used as the sender
+// for admin chat. It writes the BASE tables (dune.accounts / dune.player_state are
+// VIEWS over them, per Phase 0 recon) plus the three linked actor rows the game's
+// player-info lookup requires. Names go through dune.encrypt_user_data so the seed
+// stays correct if user-data encryption is ever enabled. actors.transform is left
+// NULL so the GM never plots on the live map. Safe to call on every startup
+// (ON CONFLICT DO NOTHING); the connectAll wiring logs-and-continues on failure.
+func cmdEnsureGMIdentity(ctx context.Context) error {
+	if globalDB == nil {
+		return fmt.Errorf("not connected")
+	}
+	s := gmSeedSpec()
+
+	tx, err := globalDB.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin gm seed: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO dune.encrypted_accounts (id, "user", encrypted_funcom_id, takeoverable, platform_id, platform_name)
+		VALUES ($1, $2, dune.encrypt_user_data($3), false, 'dune-admin', 'DuneAdmin')
+		ON CONFLICT DO NOTHING`, s.AccountID, s.HexID, s.FuncomID); err != nil {
+		return fmt.Errorf("seed gm account: %w", err)
+	}
+
+	actors := []struct {
+		id    int64
+		class string
+	}{
+		{s.ControllerID, s.ControllerClass},
+		{s.StateID, s.StateClass},
+		{s.PawnID, s.PawnClass},
+	}
+	for _, a := range actors {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO dune.actors (id, class, map, partition_id, dimension_index, gas_attributes, properties, owner_account_id, serial)
+			VALUES ($1, $2, $3, $4, $5, '{}'::jsonb, '{}'::jsonb, $6, 1)
+			ON CONFLICT DO NOTHING`,
+			a.id, a.class, s.Map, s.PartitionID, s.DimensionIndex, s.AccountID); err != nil {
+			return fmt.Errorf("seed gm actor %d: %w", a.id, err)
+		}
+	}
+
+	// server_id reuses a real one if any player has logged in (the game's lookup
+	// expects a valid server). NULL is acceptable on a never-populated DB.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO dune.encrypted_player_state
+			(account_id, encrypted_character_name, life_state, online_status, is_coriolis_processed,
+			 server_id, player_controller_id, player_pawn_id, player_state_id, last_login_time)
+		VALUES ($1, dune.encrypt_user_data($2), $3::dune.playerlifestate, $4::dune.playerconnectionstatus, false,
+			(SELECT server_id FROM dune.encrypted_player_state WHERE server_id IS NOT NULL LIMIT 1),
+			$5, $6, $7, now())
+		ON CONFLICT DO NOTHING`,
+		s.AccountID, s.CharacterName, s.LifeState, s.OnlineStatus, s.ControllerID, s.PawnID, s.StateID); err != nil {
+		return fmt.Errorf("seed gm player_state: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit gm seed: %w", err)
+	}
+	return nil
+}
+
 func cmdGrantReturningPlayerAward(accountID int64) Cmd {
 	return func() Msg {
 		if globalDB == nil {
@@ -1116,7 +1274,8 @@ func cmdFetchOnlineState() Msg {
 		       COALESCE(to_char(ps.last_avatar_activity AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS'), '')
 		FROM dune.player_state ps
 		LEFT JOIN dune.actors a ON a.id = ps.player_controller_id
-		ORDER BY ps.online_status DESC, ps.last_avatar_activity DESC`)
+		WHERE ps.account_id <> $1
+		ORDER BY ps.online_status DESC, ps.last_avatar_activity DESC`, gmIdentityAccountID)
 	if err != nil {
 		return msgOnlineState{err: err}
 	}
@@ -4770,7 +4929,7 @@ func cmdListBases() Msg {
 // cmdFetchOnlineAccountIDs returns the account IDs of all players currently
 // marked Online in player_state. Used by the session poller.
 func cmdFetchOnlineAccountIDs(ctx context.Context, pool *pgxpool.Pool) ([]int64, error) {
-	rows, err := pool.Query(ctx, `SELECT account_id FROM dune.player_state WHERE online_status = 'Online'`)
+	rows, err := pool.Query(ctx, `SELECT account_id FROM dune.player_state WHERE online_status = 'Online' AND account_id <> $1`, gmIdentityAccountID)
 	if err != nil {
 		return nil, fmt.Errorf("fetch online account ids: %w", err)
 	}

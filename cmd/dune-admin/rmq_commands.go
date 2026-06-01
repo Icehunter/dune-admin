@@ -63,94 +63,63 @@ func publishServerCommand(fields map[string]any) error {
 
 // ── courier (chat) publish ────────────────────────────────────────────────────
 
-// publishCourierMessage publishes a chat / courier message to the game broker.
-// Unlike publishServerCommand (which goes to exchange=heartbeats,
-// routingKey=notifications via the ServerCommand AuthToken-protected envelope),
-// courier messages are routed by exchange + routingKey directly — exchange is
-// chat-channel-specific (chat.whispers, chat.faction.{id}, ...) and routing key
-// varies by channel (target FLS for whispers, "" for faction broadcasts, etc.).
+// buildCourierPublishExpr builds the rabbitmqctl eval Erlang expression that
+// publishes a chat/courier message. Publishing via eval (rather than an AMQP
+// client) is what lets us set the P_basic user_id to an arbitrary sender FLS id —
+// the broker would otherwise force user_id to match the authenticated connection,
+// and a synthetic "fls" sender is silently dropped by the game.
 //
-// EXPERIMENTAL — Adain's chat-and-courier.md documents the wire format from
-// IDA/DWARF analysis but explicitly notes "live external publish recipe still
-// not pinned." This is the first attempt at sending one of these as an external
-// operator. If the game ignores the message or the broker rejects it, see
-// chat-and-courier.md and iterate the basic_properties or body shape.
-//
-// body should be the JSON-serialized FCourierMessageContent — caller's
-// responsibility. typeStr is the AMQP basic_properties `type` value, set to
-// "12" for text_chat per the FNotificationsSystemMessage type-byte mapping.
-func publishCourierMessage(exchange, routingKey string, body []byte, typeStr string) error {
-	bodyB64 := base64.StdEncoding.EncodeToString(body)
-	msgID := fmt.Sprintf("dune-admin-chat-%d", time.Now().UnixMilli())
-
-	// AMQP basic_properties P_basic record order:
-	//   content_type, content_encoding, headers, delivery_mode, priority,
-	//   correlation_id, reply_to, expiration, message_id, timestamp, type,
-	//   user_id, app_id, cluster_id
-	// We set type to the courier message-type byte string ("12") and reuse
-	// the fls / fls_backend user/app identity that the game expects.
-	erlang := fmt.Sprintf(
+// P_basic record order: content_type, content_encoding, headers, delivery_mode,
+// priority, correlation_id, reply_to, expiration, message_id, timestamp, type,
+// user_id, app_id, cluster_id. We set type to the notification type NAME (e.g.
+// "text_chat"), user_id to the sender's hex FLS id, and app_id to fls_backend.
+func buildCourierPublishExpr(exchange, routingKey, bodyB64, msgID, amqpType, userID string) string {
+	return fmt.Sprintf(
 		`Body = base64:decode(<<"%s">>),`+
 			`XName = rabbit_misc:r(<<"/">>, exchange, <<"%s">>),`+
 			`X = rabbit_exchange:lookup_or_die(XName),`+
 			`MsgId = <<"%s">>,`+
 			`P = {list_to_atom("P_basic"), <<"Content">>, undefined, [], undefined,`+
 			` undefined, undefined, undefined, undefined, MsgId, undefined,`+
-			` <<"%s">>, <<"fls">>, <<"fls_backend">>, undefined},`+
+			` <<"%s">>, <<"%s">>, <<"fls_backend">>, undefined},`+
 			`Content = rabbit_basic:build_content(P, Body),`+
 			`{ok, Msg} = rabbit_basic:message(XName, <<"%s">>, Content),`+
 			`rabbit_queue_type:publish_at_most_once(X, Msg).`,
-		bodyB64, exchange, msgID, typeStr, routingKey)
+		bodyB64, exchange, msgID, amqpType, userID, routingKey)
+}
 
+// publishCourierMessageAs publishes a chat/courier message to the game broker as
+// a specific sender identity. exchange + routingKey select the chat channel
+// (e.g. chat.whispers + recipient funcom id); amqpType is the notification type
+// name ("text_chat"); userID is the sender's hex FLS id (the GM/Server persona).
+// body is the already-serialized FCourierMessageContent envelope.
+func publishCourierMessageAs(exchange, routingKey string, body []byte, amqpType, userID string) error {
 	if globalControl == nil || globalExecutor == nil {
 		return fmt.Errorf("control plane not connected")
 	}
-	out, err := globalControl.EvalOnGameBroker(context.Background(), globalExecutor, erlang)
+	bodyB64 := base64.StdEncoding.EncodeToString(body)
+	msgID := fmt.Sprintf("dune-admin-chat-%d", time.Now().UnixMilli())
+	expr := buildCourierPublishExpr(exchange, routingKey, bodyB64, msgID, amqpType, userID)
+	out, err := globalControl.EvalOnGameBroker(context.Background(), globalExecutor, expr)
 	if err != nil {
 		return fmt.Errorf("publish courier message: %w (output: %s)", err, out)
 	}
 	return nil
 }
 
-// rmqSendWhisper sends a private chat message ("whisper") to one player.
-// The target sees it in their whispers chat tab; only they receive it.
-//
-// senderName is the display name shown on the whisper. impersonatedFlsID is
-// optional — if non-empty, the message appears to come from that FLS player
-// (admin-only feature, useful for "GM" personas). Leave empty for an unsigned
-// admin whisper.
-func rmqSendWhisper(targetFlsID, targetName, senderName, message, impersonatedFlsID string) error {
-	// FChatMessageData per chat-and-courier.md. JSON field names match the C++
-	// member names with the m_ prefix stripped (broadcast struct uses the same
-	// convention).
-	chatMsg := map[string]any{
-		"Id":                  fmt.Sprintf("%d", time.Now().UnixNano()),
-		"ChannelType":         "ETextChatChannelType::Whispers",
-		"FuncomIdFrom":        impersonatedFlsID,
-		"UserNameTo":          targetName,
-		"Message":             map[string]any{"Body": message},
-		"TimeStamp":           time.Now().UTC().Format(time.RFC3339),
-		"bUseSpoofedUserName": senderName != "",
-		"SpoofedUserNameFrom": map[string]any{"AuthorName": senderName},
-	}
-	chatJSON, err := json.Marshal(chatMsg)
+// rmqSendWhisper sends a private chat message ("whisper") to one player, shown in
+// the target's Whispers tab. The whisper is attributed to the seeded GM/Server
+// persona: senderFuncomID is that identity's funcom id (m_FuncomIdFrom) and
+// senderHexID is its hex FLS id (the AMQP user_id the game resolves the sender
+// name from). recipientFuncomID is the target's funcom id (m_SubChannelId and the
+// whisper routing key); recipientName is the target's character name
+// (m_UserNameTo). The exact wire shape is pinned by buildWhisperBody.
+func rmqSendWhisper(senderFuncomID, senderHexID, recipientFuncomID, recipientName, message string) error {
+	body, err := buildWhisperBody(newCourierMessageID(), senderFuncomID, recipientFuncomID, recipientName, message, time.Now())
 	if err != nil {
-		return fmt.Errorf("marshal chat message: %w", err)
+		return err
 	}
-
-	// FCourierMessageContent: outer wrapper with stringified inner Content +
-	// Type discriminator.
-	envelope := map[string]any{
-		"Content": string(chatJSON),
-		"Type":    "ECourierMessageType::TextChat",
-	}
-	envelopeJSON, err := json.Marshal(envelope)
-	if err != nil {
-		return fmt.Errorf("marshal courier envelope: %w", err)
-	}
-
-	// Whisper routing: exchange=chat.whispers, routing key=target's FLS id.
-	return publishCourierMessage("chat.whispers", targetFlsID, envelopeJSON, "12")
+	return publishCourierMessageAs("chat.whispers", recipientFuncomID, body, "text_chat", senderHexID)
 }
 
 // ── typed wrappers ────────────────────────────────────────────────────────────

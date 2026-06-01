@@ -1656,12 +1656,7 @@ export function ActionsView({ player }: Props) {
                       onPress={() =>
                         run(
                           () =>
-                            api.chat.whisper(
-                              player.fls_id,
-                              player.name,
-                              whisperSenderName.trim() || 'GM',
-                              whisperText.trim(),
-                            ),
+                            api.chat.whisper(player.account_id, whisperText.trim()),
                           t('players.actions.admin.whisperSent', { player: player.name }),
                         ).then(() => setWhisperText(''))}
                     >

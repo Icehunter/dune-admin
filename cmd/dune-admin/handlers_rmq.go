@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -391,50 +393,78 @@ func handleRMQSpawnVehicle(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"ok": fmt.Sprintf("spawn %s command sent for %s", req.ClassName, req.FlsID)})
 }
 
-// @Summary Send whisper message to a player via RabbitMQ (experimental)
-// @Tags players
+// whisperDeps are the injected dependencies for processWhisper so the
+// orchestration can be unit-tested without a live DB or broker.
+type whisperDeps struct {
+	getGM        func(context.Context) (gmIdentity, error)
+	resolveRecip func(ctx context.Context, accountID int64) (funcomID, charName string, err error)
+	send         func(senderFuncomID, senderHexID, recipientFuncomID, recipientName, message string) error
+}
+
+// processWhisper resolves the GM/Server sender and the recipient identities, then
+// sends the whisper. The seeded GM persona is the sender (its funcom id and hex
+// FLS id); the recipient is looked up by account id. Returns the underlying error
+// so the handler can map errGMNotProvisioned to 503.
+func processWhisper(ctx context.Context, accountID int64, message string, d whisperDeps) error {
+	gm, err := d.getGM(ctx)
+	if err != nil {
+		return err
+	}
+	recipientFuncomID, recipientName, err := d.resolveRecip(ctx, accountID)
+	if err != nil {
+		return err
+	}
+	return d.send(gm.FuncomID, gm.HexID, recipientFuncomID, recipientName, message)
+}
+
+// @Summary Send a whisper to a player from the GM/Server persona
+// @Tags chat
 // @Accept json
 // @Produce json
-// @Param body body object true "Target FLS ID, target name, sender name, message, and optional impersonated FLS ID"
+// @Param body body object true "Recipient account id and message"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
+// @Failure 503 {object} map[string]string
 // @Router /api/v1/chat/whisper [post]
-// GET /api/v1/players/{id}/player-ids
 // POST /api/v1/chat/whisper
 //
-// EXPERIMENTAL — first attempt at an external chat publish per Adain's
-// chat-and-courier.md. The wire format is reconstructed from IDA/DWARF
-// evidence; live external publish wasn't pinned by Adain, so the message
-// may be silently dropped by the game even though the broker accepts it.
-// Iterate based on what the target sees in-game.
+// Sends a private chat message to one player, shown in their Whispers tab and
+// attributed to the seeded GM/Server persona. The exact wire shape is pinned by
+// buildWhisperBody against the live-confirmed protocol.
 func handleRMQWhisper(w http.ResponseWriter, r *http.Request) {
+	if globalDB == nil {
+		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
+		return
+	}
 	var req struct {
-		TargetFlsID       string `json:"target_fls_id"`
-		TargetName        string `json:"target_name"`
-		SenderName        string `json:"sender_name"`
-		Message           string `json:"message"`
-		ImpersonatedFlsID string `json:"impersonated_fls_id,omitempty"`
+		AccountID int64  `json:"account_id"`
+		Message   string `json:"message"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
 	}
-	if req.TargetFlsID == "" || req.Message == "" {
-		jsonErr(w, fmt.Errorf("target_fls_id and message required"), 400)
+	if req.AccountID == 0 || req.Message == "" {
+		jsonErr(w, fmt.Errorf("account_id and message required"), 400)
 		return
 	}
-	if req.SenderName == "" {
-		req.SenderName = "GM"
-	}
-	if err := rmqSendWhisper(req.TargetFlsID, req.TargetName, req.SenderName, req.Message, req.ImpersonatedFlsID); err != nil {
-		jsonErr(w, err, 500)
-		return
-	}
-	jsonOK(w, map[string]string{
-		"ok":   fmt.Sprintf("whisper sent to %s (broker accepted; in-game delivery is experimental)", req.TargetFlsID),
-		"note": "Adain's chat publish recipe is not live-tested externally — check the target's whispers tab to confirm delivery.",
+
+	err := processWhisper(r.Context(), req.AccountID, req.Message, whisperDeps{
+		getGM:        cmdGetGMIdentity,
+		resolveRecip: cmdResolveRecipientChatIdentity,
+		send:         rmqSendWhisper,
 	})
+	if errors.Is(err, errGMNotProvisioned) {
+		jsonErr(w, err, http.StatusServiceUnavailable)
+		return
+	}
+	if err != nil {
+		log.Printf("handleRMQWhisper: %v", err)
+		jsonErr(w, fmt.Errorf("failed to send whisper"), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, map[string]string{"ok": fmt.Sprintf("whisper sent to account %d", req.AccountID)})
 }
 
 // @Summary Resolve actor ID to both ID forms and render a sample RMQ envelope

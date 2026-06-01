@@ -714,19 +714,11 @@ export const api = {
   },
 
   chat: {
-    // EXPERIMENTAL — first attempt at sending a chat whisper from outside the
-    // game per Adain's chat-and-courier.md. Broker should accept the publish;
-    // in-game delivery is unverified.
-    whisper: (
-      target_fls_id: string,
-      target_name: string,
-      sender_name: string,
-      message: string,
-      impersonated_fls_id?: string,
-    ) =>
-      req<MutateResult & { note?: string }>('POST', '/chat/whisper', {
-        target_fls_id, target_name, sender_name, message, impersonated_fls_id,
-      }),
+    // Whisper a single player from the seeded GM/Server persona. Identified by
+    // recipient account id; the backend resolves the chat identity and attributes
+    // the message to the GM persona.
+    whisper: (account_id: number, message: string) =>
+      req<MutateResult>('POST', '/chat/whisper', { account_id, message }),
   },
 
   contracts: {

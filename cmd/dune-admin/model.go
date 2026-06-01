@@ -22,6 +22,16 @@ type playerInfo struct {
 	OnlineStatus string `json:"online_status"`
 }
 
+// gmIdentity is the seeded "GM/Server" persona used as the sender for admin chat
+// (whisper, map announcement). HexID is the AMQP user_id (accounts."user") the
+// game resolves the visible sender name from; FuncomID is the chat id shown
+// in-game (m_FuncomIdFrom).
+type gmIdentity struct {
+	AccountID int64  `json:"account_id"`
+	HexID     string `json:"hex_id"`
+	FuncomID  string `json:"funcom_id"`
+}
+
 type journeyNode struct {
 	NodeID           string `json:"node_id"`
 	IsComplete       bool   `json:"is_complete"`

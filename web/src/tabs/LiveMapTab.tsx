@@ -23,10 +23,10 @@ type MapCfg = {
 // game's reference Hagga map) pending real calibration against the screenshot —
 // flipX/flipY correct mirror orientation once we have reference points.
 const MAPS: MapCfg[] = [
-  // Calibrated from two in-game reference points (Crossroad Depot col3/rowF, Anvil col8/rowE).
-  // World Y is inverted on the map (flipY). X scale is solid; Y scale is from two close rows —
-  // refine with a far-vertical (row A/J) reference if distant markers drift.
-  { key: 'HaggaBasin', label: 'Hagga Basin', image: 'hagga-basin.png', minX: -417140, maxX: 365200, minY: -650828, maxY: 539707, flipY: true },
+  // Calibrated from three in-game reference points (Crossroad Depot col3/rowF, Anvil col8/rowE,
+  // I10 col10/rowI). Isotropic fit (~815k world units per image span) anchored on the two most
+  // separated points (Depot<->I10); world Y is inverted (flipY). Depot + I10 land exact; Anvil ~half a cell off.
+  { key: 'HaggaBasin', label: 'Hagga Basin', image: 'hagga-basin.png', minX: -425305, maxX: 389695, minY: -496859, maxY: 318141, flipY: true },
   { key: 'DeepDesert', label: 'Deep Desert', minX: -1300000, maxX: 1200000, minY: -1300000, maxY: 1200000 },
 ]
 

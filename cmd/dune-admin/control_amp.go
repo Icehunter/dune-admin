@@ -136,7 +136,11 @@ func parseAMPGameProcess(line string) (ampGameProcess, bool) {
 }
 
 func (c *ampControl) listGameProcesses(exec Executor) ([]ampGameProcess, error) {
-	out, err := exec.Exec(`ps -eo pid,args --no-headers 2>/dev/null | grep 'DuneSandboxServer-Linux-Shipping' | grep -v grep`)
+	cmd := `ps -eo pid,args --no-headers 2>/dev/null | grep 'DuneSandboxServer-Linux-Shipping' | grep -v grep`
+	if c.useContainer {
+		cmd = c.wrapInContainer(cmd)
+	}
+	out, err := exec.Exec(cmd)
 	if err != nil && strings.TrimSpace(out) == "" {
 		return []ampGameProcess{}, nil
 	}

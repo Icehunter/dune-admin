@@ -68,6 +68,7 @@
     "updated": "updated at {{time}}",
     "unsupported": "Live map is not available on this server.",
     "placeholderNote": "Placeholder grid — real map image pending calibration",
+    "calibrating": "Hagga Basin map — calibrating marker positions",
     "failedToLoad": "Failed to load map: {{message}}"
   },
   "battlegroup": {

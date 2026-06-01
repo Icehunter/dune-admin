@@ -7,10 +7,23 @@ import { Icon, PageHeader } from '../dune-ui'
 
 // Placeholder world->fraction bounds per map. Round, self-chosen approximations
 // used only until a real (GPL-clean) base map image is calibrated in (Phase 0).
-type MapCfg = { key: string, label: string, minX: number, maxX: number, minY: number, maxY: number }
+type MapCfg = {
+  key: string
+  label: string
+  image?: string // file in web/public, e.g. 'hagga-basin.png'
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+  flipX?: boolean
+  flipY?: boolean
+}
 
+// World->image calibration. Hagga bounds are an initial GUESS (from the same
+// game's reference Hagga map) pending real calibration against the screenshot —
+// flipX/flipY correct mirror orientation once we have reference points.
 const MAPS: MapCfg[] = [
-  { key: 'HaggaBasin', label: 'Hagga Basin', minX: -500000, maxX: 400000, minY: -500000, maxY: 400000 },
+  { key: 'HaggaBasin', label: 'Hagga Basin', image: 'hagga-basin.png', minX: -456752, maxX: 354547, minY: -450630, maxY: 353822 },
   { key: 'DeepDesert', label: 'Deep Desert', minX: -1300000, maxX: 1200000, minY: -1300000, maxY: 1200000 },
 ]
 
@@ -137,60 +150,69 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
             <div className="py-8 text-center text-sm text-muted">{t('liveMap.unsupported')}</div>
           )
         : (
-            <div className="relative flex-1 min-h-0 overflow-hidden rounded-[var(--radius)] border border-border bg-surface">
+            <div className="flex flex-1 min-h-0 items-center justify-center">
               <div
-                className="absolute inset-0 opacity-40"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(var(--color-surface-alt) 1px, transparent 1px), linear-gradient(90deg, var(--color-surface-alt) 1px, transparent 1px)',
-                  backgroundSize: '40px 40px',
-                }}
-              />
-              <div className="absolute left-2 top-2 rounded bg-surface px-1.5 py-0.5 text-[10px] text-muted">
-                {t('liveMap.placeholderNote')}
-              </div>
+                className="relative aspect-square h-full max-w-full overflow-hidden rounded-[var(--radius)] border border-border bg-surface"
+                style={cfg.image
+                  ? { backgroundImage: `url(${import.meta.env.BASE_URL}${cfg.image})`, backgroundSize: '100% 100%' }
+                  : undefined}
+              >
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-25"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(var(--color-surface-alt) 1px, transparent 1px), linear-gradient(90deg, var(--color-surface-alt) 1px, transparent 1px)',
+                    backgroundSize: '10% 10%',
+                  }}
+                />
+                <div className="absolute left-2 top-2 rounded bg-surface/80 px-1.5 py-0.5 text-[10px] text-muted">
+                  {cfg.image ? t('liveMap.calibrating') : t('liveMap.placeholderNote')}
+                </div>
 
-              {markers.map((m) => {
-                const fx = clamp01((m.x - cfg.minX) / (cfg.maxX - cfg.minX))
-                const fy = clamp01((m.y - cfg.minY) / (cfg.maxY - cfg.minY))
-                const isPlayer = m.type === 'player'
-                return (
-                  <div
-                    key={`${m.type}-${m.id}`}
-                    className={`group absolute -translate-x-1/2 -translate-y-1/2 ${isPlayer ? 'z-20' : 'z-10'} hover:z-30`}
-                    style={{ left: `${fx * 100}%`, top: `${(1 - fy) * 100}%` }}
-                  >
+                {markers.map((m) => {
+                  const rawX = (m.x - cfg.minX) / (cfg.maxX - cfg.minX)
+                  const rawY = (m.y - cfg.minY) / (cfg.maxY - cfg.minY)
+                  const leftPct = clamp01(cfg.flipX ? 1 - rawX : rawX) * 100
+                  const topPct = clamp01(cfg.flipY ? rawY : 1 - rawY) * 100
+                  const isPlayer = m.type === 'player'
+                  return (
                     <div
-                      className={`rounded-full ${markerDot(m.type)} ${isPlayer ? 'h-4 w-4' : 'h-2.5 w-2.5'}`}
-                      style={{
-                        boxShadow: isPlayer
-                          ? '0 0 0 2px var(--color-surface), 0 0 10px 2px var(--color-primary)'
-                          : '0 0 0 1.5px var(--color-surface)',
-                      }}
-                    />
-                    <div className="absolute left-3 top-0 z-10 hidden whitespace-nowrap rounded border border-border bg-surface px-2 py-1 text-[11px] text-foreground group-hover:block">
-                      <div className="font-medium">{m.name || `${m.type} ${m.id}`}</div>
-                      <div className="text-muted">
-                        {m.type}
-                        {m.online_status ? ` · ${m.online_status}` : ''}
-                      </div>
-                      <div className="font-mono text-muted">
-                        {Math.round(m.x)}
-                        {', '}
-                        {Math.round(m.y)}
-                        {', '}
-                        {Math.round(m.z)}
+                      key={`${m.type}-${m.id}`}
+                      className={`group absolute -translate-x-1/2 -translate-y-1/2 ${isPlayer ? 'z-20' : 'z-10'} hover:z-30`}
+                      style={{ left: `${leftPct}%`, top: `${topPct}%` }}
+                    >
+                      <div
+                        className={`rounded-full ${markerDot(m.type)} ${isPlayer ? 'h-4 w-4' : 'h-2.5 w-2.5'}`}
+                        style={{
+                          boxShadow: isPlayer
+                            ? '0 0 0 2px var(--color-surface), 0 0 10px 2px var(--color-primary)'
+                            : '0 0 0 1.5px var(--color-surface)',
+                        }}
+                      />
+                      <div className="absolute left-3 top-0 z-10 hidden whitespace-nowrap rounded border border-border bg-surface px-2 py-1 text-[11px] text-foreground group-hover:block">
+                        <div className="font-medium">{m.name || `${m.type} ${m.id}`}</div>
+                        <div className="text-muted">
+                          {m.type}
+                          {m.online_status ? ` · ${m.online_status}` : ''}
+                        </div>
+                        <div className="font-mono text-muted">
+                          {Math.round(m.x)}
+                          {', '}
+                          {Math.round(m.y)}
+                          {', '}
+                          {Math.round(m.z)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
 
-              {loading && markers.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Spinner size="lg" />
-                </div>
-              )}
+                {loading && markers.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Spinner size="lg" />
+                  </div>
+                )}
+              </div>
             </div>
           )}
     </div>

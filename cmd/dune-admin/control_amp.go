@@ -138,6 +138,9 @@ func parseAMPGameProcess(line string) (ampGameProcess, bool) {
 func (c *ampControl) listGameProcesses(exec Executor) ([]ampGameProcess, error) {
 	cmd := `ps -eo pid,args --no-headers 2>/dev/null | grep 'DuneSandboxServer-Linux-Shipping' | grep -v grep`
 	if c.useContainer {
+		if c.container == "" {
+			return nil, fmt.Errorf("amp_container not configured")
+		}
 		cmd = c.wrapInContainer(cmd)
 	}
 	out, err := exec.Exec(cmd)

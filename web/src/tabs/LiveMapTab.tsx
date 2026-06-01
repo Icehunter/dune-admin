@@ -27,9 +27,9 @@ type Bounds = { minX: number, maxX: number, minY: number, maxY: number, flipX?: 
 type MapCfg = Bounds & { key: string, label: string, image?: string }
 
 const MAPS: MapCfg[] = [
-  // Calibrated from three in-game reference points; isotropic ~815k units/span, flipY.
+  // Calibrated from ~14 in-game click points spanning the whole map (near-isotropic: X~788k, Y~838k span).
   // Refine live via the Calibrate tool (persists to localStorage), then bake the numbers here.
-  { key: 'HaggaBasin', label: 'Hagga Basin', image: 'hagga-basin.png', minX: -425305, maxX: 389695, minY: -496859, maxY: 318141, flipY: true },
+  { key: 'HaggaBasin', label: 'Hagga Basin', image: 'hagga-basin.png', minX: -437871, maxX: 350539, minY: -462011, maxY: 376267, flipY: true },
   { key: 'DeepDesert', label: 'Deep Desert', minX: -1300000, maxX: 1200000, minY: -1300000, maxY: 1200000 },
 ]
 

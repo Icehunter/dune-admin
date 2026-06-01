@@ -13,7 +13,10 @@ import { Icon, PageHeader } from '../dune-ui'
 const IMG_W = 1200
 const IMG_H = 1200
 const IMAGE_BOUNDS: LatLngBoundsExpression = [[0, 0], [IMG_H, IMG_W]]
-const POLL_MS = 10000
+// Auto-refresh interval. The game persists actor position on a ~60s save tick
+// (measured via the actors.serial counter), so polling faster than this gains
+// no freshness — 30s keeps the view current without redundant reads.
+const POLL_MS = 30000
 
 // Marker fill colors. Leaflet draws markers as SVG, which can't consume the
 // Tailwind/CSS semantic tokens, so these data-viz colors are intentionally literal.

@@ -60,7 +60,45 @@
     "server": "サーバー設定",
     "market": "マーケットBot",
     "welcome": "ウェルカムキット",
-    "adminSections": "管理者セクション"
+    "adminSections": "管理者セクション",
+    "liveMap": "ライブマップ"
+  },
+  "liveMap": {
+    "title": "ライブマップ",
+    "subtitle": "ライブマップ上のプレイヤー、乗り物、拠点",
+    "betaTitle": "ベータ — 開発中",
+    "betaBody": "この機能は現在開発中です。一部の機能はまだ変更される可能性があります。",
+    "players": "プレイヤー",
+    "vehicles": "乗り物",
+    "total": "合計",
+    "updated": "{{time}}に更新",
+    "unsupported": "このサーバーではライブマップを利用できません。",
+    "placeholderNote": "仮グリッド — 実際のマップ画像は較正待ちです",
+    "calibrating": "ハッガ盆地マップ — マーカー位置を較正中",
+    "calibrate": "較正",
+    "clear": "クリア",
+    "calibActive": "較正モード — キャラクターが立っている場所をマップ上でクリックしてください。",
+    "calibPoints": "{{n}}点取得済み — 解決には離れた2点以上が必要です。",
+    "calibNoPlayer": "較正のアンカーとなるオンラインプレイヤーがいません。",
+    "failedToLoad": "マップの読み込みに失敗しました：{{message}}",
+    "filter": "フィルター",
+    "filterLive": "ライブ",
+    "filterStatic": "固定スポーン",
+    "filterBases": "拠点",
+    "filterResources": "資源",
+    "filterLocations": "場所",
+    "filterNPCs": "NPC",
+    "filterVendors": "商人",
+    "filterLandsraad": "Landsraad",
+    "filterStaticObjects": "固定オブジェクト",
+    "teleportMode": "テレポートモード",
+    "teleportModeActive": "マップをクリックして目的地を設定",
+    "teleportPlayer": "テレポートするプレイヤー",
+    "teleportHere": "ここへテレポート",
+    "teleportSelectPlayer": "プレイヤーを選択…",
+    "teleportSent": "テレポートを送信しました",
+    "spawnsLoaded": "{{count}}個の固定マーカーを読み込みました",
+    "spawnTooltipCoords": "{{x}}, {{y}}"
   },
   "battlegroup": {
     "statusTitle": "バトルグループ状態",
@@ -211,15 +249,42 @@
         "loadingPresets": "読み込み中…",
         "noPresets": "利用可能なプリセットはありません",
         "presets": {
-          "skip_npe": { "name": "NPE（新規プレイヤー体験）をスキップ", "desc": "チュートリアル/NPEを完了済みとしてマークします。入門を必要としない経験豊富なプレイヤーに便利です。" },
-          "a_new_beginning": { "name": "完了: A New Beginning", "desc": "メインストーリーの導入 — Stillsuitの製作、リソースの収集、ファブリケーター研究。序盤のゲームをアンロックします。" },
-          "find_the_fremen": { "name": "完了: Find the Fremen (Trials of Aql)", "desc": "7つの試練、Sietch、エピローグをすべて含みます。Fremkit（Stillsuit、Thumper、Cryss Knifeなど）をアンロックし、第1幕を完了します。" },
-          "act1_complete": { "name": "完了: 第1幕すべて", "desc": "A New Beginning + Find the Fremenを合わせたもの。プレイヤーは第2幕の準備ができた状態で始まります。" },
-          "vermillius_intro": { "name": "スキップ: Vermillius Gap チュートリアル", "desc": "Vermillius Gapのすべてのチュートリアルクエスト（研究、製作、探索）を完了します。タグの副作用なし — 純粋なチュートリアルスキップ。" },
-          "deep_desert_intro": { "name": "スキップ: 深砂漠の導入", "desc": "深砂漠のサイドクエストチェーンを完了します。" },
-          "taxation_intro": { "name": "スキップ: 課税 / 交換チュートリアル", "desc": "交換/旅行チュートリアルチェーンを完了します。" },
-          "overland_intro": { "name": "スキップ: オーバーランドマップ導入", "desc": "オーバーランドマップのサイドクエストチェーンを完了します（Hark Landsraadミッション、キーストーン）。" },
-          "unlock_all_lore": { "name": "全ロアをアンロック（Dunipedia）", "desc": "すべてのDunipediaエントリを公開します：既知の宇宙、ランドマーク、友好的な砂漠のマニュアル、アラキスをめぐる戦争。" }
+          "skip_npe": {
+            "name": "NPE（新規プレイヤー体験）をスキップ",
+            "desc": "チュートリアル/NPEを完了済みとしてマークします。入門を必要としない経験豊富なプレイヤーに便利です。"
+          },
+          "a_new_beginning": {
+            "name": "完了: A New Beginning",
+            "desc": "メインストーリーの導入 — Stillsuitの製作、リソースの収集、ファブリケーター研究。序盤のゲームをアンロックします。"
+          },
+          "find_the_fremen": {
+            "name": "完了: Find the Fremen (Trials of Aql)",
+            "desc": "7つの試練、Sietch、エピローグをすべて含みます。Fremkit（Stillsuit、Thumper、Cryss Knifeなど）をアンロックし、第1幕を完了します。"
+          },
+          "act1_complete": {
+            "name": "完了: 第1幕すべて",
+            "desc": "A New Beginning + Find the Fremenを合わせたもの。プレイヤーは第2幕の準備ができた状態で始まります。"
+          },
+          "vermillius_intro": {
+            "name": "スキップ: Vermillius Gap チュートリアル",
+            "desc": "Vermillius Gapのすべてのチュートリアルクエスト（研究、製作、探索）を完了します。タグの副作用なし — 純粋なチュートリアルスキップ。"
+          },
+          "deep_desert_intro": {
+            "name": "スキップ: 深砂漠の導入",
+            "desc": "深砂漠のサイドクエストチェーンを完了します。"
+          },
+          "taxation_intro": {
+            "name": "スキップ: 課税 / 交換チュートリアル",
+            "desc": "交換/旅行チュートリアルチェーンを完了します。"
+          },
+          "overland_intro": {
+            "name": "スキップ: オーバーランドマップ導入",
+            "desc": "オーバーランドマップのサイドクエストチェーンを完了します（Hark Landsraadミッション、キーストーン）。"
+          },
+          "unlock_all_lore": {
+            "name": "全ロアをアンロック（Dunipedia）",
+            "desc": "すべてのDunipediaエントリを公開します：既知の宇宙、ランドマーク、友好的な砂漠のマニュアル、アラキスをめぐる戦争。"
+          }
         },
         "nodes": "{{count}} 個のノード",
         "apply": "適用",

@@ -60,7 +60,45 @@
     "server": "Configurações do servidor",
     "market": "Bot do mercado",
     "welcome": "Kits de boas-vindas",
-    "adminSections": "Seções de admin"
+    "adminSections": "Seções de admin",
+    "liveMap": "Mapa ao vivo"
+  },
+  "liveMap": {
+    "title": "Mapa ao vivo",
+    "subtitle": "Jogadores, veículos e bases no mapa ao vivo",
+    "betaTitle": "Beta — Em desenvolvimento",
+    "betaBody": "Este recurso está em desenvolvimento ativo. Algumas funcionalidades ainda podem mudar.",
+    "players": "Jogadores",
+    "vehicles": "Veículos",
+    "total": "Total",
+    "updated": "atualizado às {{time}}",
+    "unsupported": "O mapa ao vivo não está disponível neste servidor.",
+    "placeholderNote": "Grade provisória — imagem do mapa aguardando calibração",
+    "calibrating": "Mapa da Bacia Hagga — calibrando posições dos marcadores",
+    "calibrate": "Calibrar",
+    "clear": "Limpar",
+    "calibActive": "Modo de calibração — clique no mapa exatamente onde seu personagem está.",
+    "calibPoints": "{{n}} ponto(s) capturado(s) — precisa de 2+, distantes, para resolver.",
+    "calibNoPlayer": "Nenhum jogador online para ancorar a calibração.",
+    "failedToLoad": "Falha ao carregar o mapa: {{message}}",
+    "filter": "Filtro",
+    "filterLive": "Ao vivo",
+    "filterStatic": "Spawns estáticos",
+    "filterBases": "Bases",
+    "filterResources": "Recursos",
+    "filterLocations": "Locais",
+    "filterNPCs": "NPCs",
+    "filterVendors": "Vendedores",
+    "filterLandsraad": "Landsraad",
+    "filterStaticObjects": "Objetos estáticos",
+    "teleportMode": "Modo de teletransporte",
+    "teleportModeActive": "Clique no mapa para definir o destino",
+    "teleportPlayer": "Jogador para teletransportar",
+    "teleportHere": "Teletransportar aqui",
+    "teleportSelectPlayer": "Selecionar um jogador…",
+    "teleportSent": "Teletransporte enviado",
+    "spawnsLoaded": "{{count}} marcadores estáticos carregados",
+    "spawnTooltipCoords": "{{x}}, {{y}}"
   },
   "battlegroup": {
     "statusTitle": "Status do grupo de batalha",
@@ -211,15 +249,42 @@
         "loadingPresets": "Carregando…",
         "noPresets": "Nenhum preset disponível",
         "presets": {
-          "skip_npe": { "name": "Pular NPE (Experiência do Novo Jogador)", "desc": "Marca o tutorial/NPE como concluído. Útil para jogadores experientes que não precisam da introdução." },
-          "a_new_beginning": { "name": "Completar: A New Beginning", "desc": "Introdução da história principal — fabricar Stillsuit, coletar recursos, pesquisa do fabricador. Desbloqueia o início do jogo." },
-          "find_the_fremen": { "name": "Completar: Find the Fremen (Trials of Aql)", "desc": "Todos os 7 julgamentos, o Sietch e o Epílogo. Desbloqueia o Fremkit (Stillsuit, Thumper, Cryss Knife, etc.) e completa o Ato 1." },
-          "act1_complete": { "name": "Completar: Todo o Ato 1", "desc": "A New Beginning + Find the Fremen combinados. O jogador começa pronto para o Ato 2." },
-          "vermillius_intro": { "name": "Pular: Tutoriais de Vermillius Gap", "desc": "Completa todas as missões tutoriais de Vermillius Gap (pesquisa, fabricação, exploração). Sem efeitos colaterais de tags — pulo puro de tutorial." },
-          "deep_desert_intro": { "name": "Pular: Introdução ao Deserto Profundo", "desc": "Completa a cadeia de missões secundárias do Deserto Profundo." },
-          "taxation_intro": { "name": "Pular: Tutorial de Tributação / Troca", "desc": "Completa a cadeia tutorial de troca/viagem." },
-          "overland_intro": { "name": "Pular: Introdução ao Mapa de Superfície", "desc": "Completa a cadeia de missões secundárias do mapa de superfície (missões Hark Landsraad, pedras-chave)." },
-          "unlock_all_lore": { "name": "Desbloquear Todo o Lore (Dunipedia)", "desc": "Revela todas as entradas da Dunipedia: Universo Conhecido, Marcos, Manual do Deserto Amigável, Guerra por Arrakis." }
+          "skip_npe": {
+            "name": "Pular NPE (Experiência do Novo Jogador)",
+            "desc": "Marca o tutorial/NPE como concluído. Útil para jogadores experientes que não precisam da introdução."
+          },
+          "a_new_beginning": {
+            "name": "Completar: A New Beginning",
+            "desc": "Introdução da história principal — fabricar Stillsuit, coletar recursos, pesquisa do fabricador. Desbloqueia o início do jogo."
+          },
+          "find_the_fremen": {
+            "name": "Completar: Find the Fremen (Trials of Aql)",
+            "desc": "Todos os 7 julgamentos, o Sietch e o Epílogo. Desbloqueia o Fremkit (Stillsuit, Thumper, Cryss Knife, etc.) e completa o Ato 1."
+          },
+          "act1_complete": {
+            "name": "Completar: Todo o Ato 1",
+            "desc": "A New Beginning + Find the Fremen combinados. O jogador começa pronto para o Ato 2."
+          },
+          "vermillius_intro": {
+            "name": "Pular: Tutoriais de Vermillius Gap",
+            "desc": "Completa todas as missões tutoriais de Vermillius Gap (pesquisa, fabricação, exploração). Sem efeitos colaterais de tags — pulo puro de tutorial."
+          },
+          "deep_desert_intro": {
+            "name": "Pular: Introdução ao Deserto Profundo",
+            "desc": "Completa a cadeia de missões secundárias do Deserto Profundo."
+          },
+          "taxation_intro": {
+            "name": "Pular: Tutorial de Tributação / Troca",
+            "desc": "Completa a cadeia tutorial de troca/viagem."
+          },
+          "overland_intro": {
+            "name": "Pular: Introdução ao Mapa de Superfície",
+            "desc": "Completa a cadeia de missões secundárias do mapa de superfície (missões Hark Landsraad, pedras-chave)."
+          },
+          "unlock_all_lore": {
+            "name": "Desbloquear Todo o Lore (Dunipedia)",
+            "desc": "Revela todas as entradas da Dunipedia: Universo Conhecido, Marcos, Manual do Deserto Amigável, Guerra por Arrakis."
+          }
         },
         "nodes": "{{count}} nós",
         "apply": "Aplicar",

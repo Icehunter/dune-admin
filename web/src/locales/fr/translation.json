@@ -60,7 +60,45 @@
     "server": "Paramètres serveur",
     "market": "Bot du marché",
     "welcome": "Kits de bienvenue",
-    "adminSections": "Sections admin"
+    "adminSections": "Sections admin",
+    "liveMap": "Carte en direct"
+  },
+  "liveMap": {
+    "title": "Carte en direct",
+    "subtitle": "Joueurs, véhicules et bases sur la carte en direct",
+    "betaTitle": "Bêta — En cours de développement",
+    "betaBody": "Cette fonctionnalité est en développement actif. Certaines fonctionnalités peuvent encore changer.",
+    "players": "Joueurs",
+    "vehicles": "Véhicules",
+    "total": "Total",
+    "updated": "mis à jour à {{time}}",
+    "unsupported": "La carte en direct n'est pas disponible sur ce serveur.",
+    "placeholderNote": "Grille de substitution — image de carte en attente de calibration",
+    "calibrating": "Carte du bassin Hagga — calibration des positions des marqueurs",
+    "calibrate": "Calibrer",
+    "clear": "Effacer",
+    "calibActive": "Mode calibration — cliquez sur la carte exactement où se trouve votre personnage.",
+    "calibPoints": "{{n}} point(s) capturé(s) — nécessite 2+, espacés, pour résoudre.",
+    "calibNoPlayer": "Aucun joueur en ligne pour ancrer la calibration.",
+    "failedToLoad": "Échec du chargement de la carte : {{message}}",
+    "filter": "Filtre",
+    "filterLive": "En direct",
+    "filterStatic": "Spawns statiques",
+    "filterBases": "Bases",
+    "filterResources": "Ressources",
+    "filterLocations": "Lieux",
+    "filterNPCs": "PNJs",
+    "filterVendors": "Marchands",
+    "filterLandsraad": "Landsraad",
+    "filterStaticObjects": "Objets statiques",
+    "teleportMode": "Mode téléportation",
+    "teleportModeActive": "Cliquez sur la carte pour définir la destination",
+    "teleportPlayer": "Joueur à téléporter",
+    "teleportHere": "Téléporter ici",
+    "teleportSelectPlayer": "Sélectionner un joueur…",
+    "teleportSent": "Téléportation envoyée",
+    "spawnsLoaded": "{{count}} marqueurs statiques chargés",
+    "spawnTooltipCoords": "{{x}}, {{y}}"
   },
   "battlegroup": {
     "statusTitle": "État du groupe de combat",
@@ -211,15 +249,42 @@
         "loadingPresets": "Chargement…",
         "noPresets": "Aucun préréglage disponible",
         "presets": {
-          "skip_npe": { "name": "Ignorer NPE (Expérience Nouveau Joueur)", "desc": "Marque le tutoriel/NPE comme terminé. Utile pour les joueurs expérimentés qui n'ont pas besoin de l'introduction." },
-          "a_new_beginning": { "name": "Compléter : A New Beginning", "desc": "Introduction de l'histoire — fabriquer le Stillsuit, récolter des ressources, recherche du fabricateur. Débloque le début du jeu." },
-          "find_the_fremen": { "name": "Compléter : Find the Fremen (Trials of Aql)", "desc": "Les 7 épreuves, le Sietch et l'Épilogue. Débloque le Fremkit (Stillsuit, Thumper, Cryss Knife, etc.) et complète l'Acte 1." },
-          "act1_complete": { "name": "Compléter : Tout l'Acte 1", "desc": "A New Beginning + Find the Fremen combinés. Le joueur commence prêt pour l'Acte 2." },
-          "vermillius_intro": { "name": "Ignorer : Tutoriels de Vermillius Gap", "desc": "Complète toutes les quêtes tutorielles de Vermillius Gap (recherche, artisanat, exploration). Aucun effet secondaire sur les étiquettes — simple saut de tutoriel." },
-          "deep_desert_intro": { "name": "Ignorer : Introduction du Désert Profond", "desc": "Complète la chaîne de quêtes secondaires du Désert Profond." },
-          "taxation_intro": { "name": "Ignorer : Tutoriel Taxation / Échange", "desc": "Complète la chaîne tutorielle d'échange/voyage." },
-          "overland_intro": { "name": "Ignorer : Introduction de la Carte de Surface", "desc": "Complète la chaîne de quêtes secondaires de la carte de surface (missions Hark Landsraad, pierres de clé)." },
-          "unlock_all_lore": { "name": "Débloquer tout le Lore (Dunipedia)", "desc": "Révèle toutes les entrées de la Dunipedia : Univers Connu, Sites remarquables, Manuel du Désert Amical, Guerre pour Arrakis." }
+          "skip_npe": {
+            "name": "Ignorer NPE (Expérience Nouveau Joueur)",
+            "desc": "Marque le tutoriel/NPE comme terminé. Utile pour les joueurs expérimentés qui n'ont pas besoin de l'introduction."
+          },
+          "a_new_beginning": {
+            "name": "Compléter : A New Beginning",
+            "desc": "Introduction de l'histoire — fabriquer le Stillsuit, récolter des ressources, recherche du fabricateur. Débloque le début du jeu."
+          },
+          "find_the_fremen": {
+            "name": "Compléter : Find the Fremen (Trials of Aql)",
+            "desc": "Les 7 épreuves, le Sietch et l'Épilogue. Débloque le Fremkit (Stillsuit, Thumper, Cryss Knife, etc.) et complète l'Acte 1."
+          },
+          "act1_complete": {
+            "name": "Compléter : Tout l'Acte 1",
+            "desc": "A New Beginning + Find the Fremen combinés. Le joueur commence prêt pour l'Acte 2."
+          },
+          "vermillius_intro": {
+            "name": "Ignorer : Tutoriels de Vermillius Gap",
+            "desc": "Complète toutes les quêtes tutorielles de Vermillius Gap (recherche, artisanat, exploration). Aucun effet secondaire sur les étiquettes — simple saut de tutoriel."
+          },
+          "deep_desert_intro": {
+            "name": "Ignorer : Introduction du Désert Profond",
+            "desc": "Complète la chaîne de quêtes secondaires du Désert Profond."
+          },
+          "taxation_intro": {
+            "name": "Ignorer : Tutoriel Taxation / Échange",
+            "desc": "Complète la chaîne tutorielle d'échange/voyage."
+          },
+          "overland_intro": {
+            "name": "Ignorer : Introduction de la Carte de Surface",
+            "desc": "Complète la chaîne de quêtes secondaires de la carte de surface (missions Hark Landsraad, pierres de clé)."
+          },
+          "unlock_all_lore": {
+            "name": "Débloquer tout le Lore (Dunipedia)",
+            "desc": "Révèle toutes les entrées de la Dunipedia : Univers Connu, Sites remarquables, Manuel du Désert Amical, Guerre pour Arrakis."
+          }
         },
         "nodes": "{{count}} nœuds",
         "apply": "Appliquer",

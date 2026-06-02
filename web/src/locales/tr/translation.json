@@ -60,7 +60,45 @@
     "server": "Sunucu Ayarları",
     "market": "Market Botu",
     "welcome": "Karşılama Kitleri",
-    "adminSections": "Yönetici bölümleri"
+    "adminSections": "Yönetici bölümleri",
+    "liveMap": "Canlı Harita"
+  },
+  "liveMap": {
+    "title": "Canlı Harita",
+    "subtitle": "Canlı haritadaki oyuncular, araçlar ve üsler",
+    "betaTitle": "Beta — Geliştirme Aşamasında",
+    "betaBody": "Bu özellik aktif geliştirme aşamasındadır. Bazı işlevler hâlâ değişebilir.",
+    "players": "Oyuncular",
+    "vehicles": "Araçlar",
+    "total": "Toplam",
+    "updated": "{{time}} itibarıyla güncellendi",
+    "unsupported": "Canlı harita bu sunucuda kullanılamaz.",
+    "placeholderNote": "Yer tutucu ızgara — gerçek harita görüntüsü kalibrasyon bekliyor",
+    "calibrating": "Hagga Havzası haritası — işaretçi konumları kalibre ediliyor",
+    "calibrate": "Kalibre et",
+    "clear": "Temizle",
+    "calibActive": "Kalibrasyon modu — karakterinizin durduğu yeri haritada tıklayın.",
+    "calibPoints": "{{n}} nokta yakalandı — çözmek için uzak 2+ nokta gerekli.",
+    "calibNoPlayer": "Kalibrasyonu bağlamak için çevrimiçi oyuncu yok.",
+    "failedToLoad": "Harita yüklenemedi: {{message}}",
+    "filter": "Filtre",
+    "filterLive": "Canlı",
+    "filterStatic": "Statik doğuş noktaları",
+    "filterBases": "Üsler",
+    "filterResources": "Kaynaklar",
+    "filterLocations": "Konumlar",
+    "filterNPCs": "NPC'ler",
+    "filterVendors": "Satıcılar",
+    "filterLandsraad": "Landsraad",
+    "filterStaticObjects": "Statik Nesneler",
+    "teleportMode": "Işınlanma modu",
+    "teleportModeActive": "Hedefi belirlemek için haritaya tıklayın",
+    "teleportPlayer": "Işınlanacak oyuncu",
+    "teleportHere": "Buraya ışınla",
+    "teleportSelectPlayer": "Oyuncu seçin…",
+    "teleportSent": "Işınlanma gönderildi",
+    "spawnsLoaded": "{{count}} statik işaretçi yüklendi",
+    "spawnTooltipCoords": "{{x}}, {{y}}"
   },
   "battlegroup": {
     "statusTitle": "Savaş Grubu Durumu",
@@ -211,15 +249,42 @@
         "loadingPresets": "Yükleniyor…",
         "noPresets": "Mevcut önayar yok",
         "presets": {
-          "skip_npe": { "name": "NPE'yi Atla (Yeni Oyuncu Deneyimi)", "desc": "Öğretici/NPE'yi tamamlandı olarak işaretler. Girişe ihtiyaç duymayan deneyimli oyuncular için kullanışlıdır." },
-          "a_new_beginning": { "name": "Tamamla: A New Beginning", "desc": "Ana hikaye girişi — Stillsuit yapımı, kaynak toplama, fabrikatör araştırması. Oyunun erken aşamasını açar." },
-          "find_the_fremen": { "name": "Tamamla: Find the Fremen (Trials of Aql)", "desc": "Tüm 7 deneme, Sietch ve Epilog. Fremkit'i (Stillsuit, Thumper, Cryss Knife vb.) açar ve 1. Bölüm'ü tamamlar." },
-          "act1_complete": { "name": "Tamamla: 1. Bölümün Tamamı", "desc": "A New Beginning + Find the Fremen birleşik. Oyuncu 2. Bölüm için hazır başlar." },
-          "vermillius_intro": { "name": "Atla: Vermillius Gap Öğreticileri", "desc": "Tüm Vermillius Gap öğretici görevlerini tamamlar (araştırma, üretim, keşif). Etiket yan etkisi yok — saf öğretici atlama." },
-          "deep_desert_intro": { "name": "Atla: Derin Çöl Girişi", "desc": "Derin Çöl yan görev zincirini tamamlar." },
-          "taxation_intro": { "name": "Atla: Vergilendirme / Borsa Öğreticisi", "desc": "Borsa/seyahat öğretici zincirini tamamlar." },
-          "overland_intro": { "name": "Atla: Kara Haritası Girişi", "desc": "Kara haritası yan görev zincirini tamamlar (Hark Landsraad görevleri, kilit taşları)." },
-          "unlock_all_lore": { "name": "Tüm Lore'u Aç (Dunipedia)", "desc": "Tüm Dunipedia girişlerini açar: Bilinen Evren, Simgeler, Dostane Çöl El Kitabı, Arrakis İçin Savaş." }
+          "skip_npe": {
+            "name": "NPE'yi Atla (Yeni Oyuncu Deneyimi)",
+            "desc": "Öğretici/NPE'yi tamamlandı olarak işaretler. Girişe ihtiyaç duymayan deneyimli oyuncular için kullanışlıdır."
+          },
+          "a_new_beginning": {
+            "name": "Tamamla: A New Beginning",
+            "desc": "Ana hikaye girişi — Stillsuit yapımı, kaynak toplama, fabrikatör araştırması. Oyunun erken aşamasını açar."
+          },
+          "find_the_fremen": {
+            "name": "Tamamla: Find the Fremen (Trials of Aql)",
+            "desc": "Tüm 7 deneme, Sietch ve Epilog. Fremkit'i (Stillsuit, Thumper, Cryss Knife vb.) açar ve 1. Bölüm'ü tamamlar."
+          },
+          "act1_complete": {
+            "name": "Tamamla: 1. Bölümün Tamamı",
+            "desc": "A New Beginning + Find the Fremen birleşik. Oyuncu 2. Bölüm için hazır başlar."
+          },
+          "vermillius_intro": {
+            "name": "Atla: Vermillius Gap Öğreticileri",
+            "desc": "Tüm Vermillius Gap öğretici görevlerini tamamlar (araştırma, üretim, keşif). Etiket yan etkisi yok — saf öğretici atlama."
+          },
+          "deep_desert_intro": {
+            "name": "Atla: Derin Çöl Girişi",
+            "desc": "Derin Çöl yan görev zincirini tamamlar."
+          },
+          "taxation_intro": {
+            "name": "Atla: Vergilendirme / Borsa Öğreticisi",
+            "desc": "Borsa/seyahat öğretici zincirini tamamlar."
+          },
+          "overland_intro": {
+            "name": "Atla: Kara Haritası Girişi",
+            "desc": "Kara haritası yan görev zincirini tamamlar (Hark Landsraad görevleri, kilit taşları)."
+          },
+          "unlock_all_lore": {
+            "name": "Tüm Lore'u Aç (Dunipedia)",
+            "desc": "Tüm Dunipedia girişlerini açar: Bilinen Evren, Simgeler, Dostane Çöl El Kitabı, Arrakis İçin Savaş."
+          }
         },
         "nodes": "{{count}} düğüm",
         "apply": "Uygula",

@@ -60,7 +60,45 @@
     "server": "Servereinstellungen",
     "market": "Markt-Bot",
     "welcome": "Willkommenspakete",
-    "adminSections": "Admin-Bereiche"
+    "adminSections": "Admin-Bereiche",
+    "liveMap": "Live-Karte"
+  },
+  "liveMap": {
+    "title": "Live-Karte",
+    "subtitle": "Spieler, Fahrzeuge und Basen auf der Live-Karte",
+    "betaTitle": "Beta — In Entwicklung",
+    "betaBody": "Diese Funktion befindet sich in aktiver Entwicklung. Einige Funktionen können sich noch ändern.",
+    "players": "Spieler",
+    "vehicles": "Fahrzeuge",
+    "total": "Gesamt",
+    "updated": "aktualisiert um {{time}}",
+    "unsupported": "Live-Karte auf diesem Server nicht verfügbar.",
+    "placeholderNote": "Platzhalterraster — echtes Kartenbild steht noch aus",
+    "calibrating": "Hagga-Becken-Karte — Markerpositionen werden kalibriert",
+    "calibrate": "Kalibrieren",
+    "clear": "Löschen",
+    "calibActive": "Kalibrierungsmodus — klicken Sie genau dort auf die Karte, wo Ihr Charakter steht.",
+    "calibPoints": "{{n}} Punkt(e) erfasst — benötigt 2+, weit auseinander, zum Lösen.",
+    "calibNoPlayer": "Kein Online-Spieler als Kalibrierungsanker verfügbar.",
+    "failedToLoad": "Karte konnte nicht geladen werden: {{message}}",
+    "filter": "Filter",
+    "filterLive": "Live",
+    "filterStatic": "Statische Spawns",
+    "filterBases": "Basen",
+    "filterResources": "Ressourcen",
+    "filterLocations": "Orte",
+    "filterNPCs": "NPCs",
+    "filterVendors": "Händler",
+    "filterLandsraad": "Landsraad",
+    "filterStaticObjects": "Statische Objekte",
+    "teleportMode": "Teleport-Modus",
+    "teleportModeActive": "Auf die Karte klicken, um das Ziel festzulegen",
+    "teleportPlayer": "Spieler teleportieren",
+    "teleportHere": "Hierher teleportieren",
+    "teleportSelectPlayer": "Spieler auswählen…",
+    "teleportSent": "Teleport gesendet",
+    "spawnsLoaded": "{{count}} statische Marker geladen",
+    "spawnTooltipCoords": "{{x}}, {{y}}"
   },
   "battlegroup": {
     "statusTitle": "Kampfgruppenstatus",
@@ -211,15 +249,42 @@
         "loadingPresets": "Laden…",
         "noPresets": "Keine Voreinstellungen verfügbar",
         "presets": {
-          "skip_npe": { "name": "NPE überspringen (Neuspielererlebnis)", "desc": "Markiert das Tutorial/NPE als abgeschlossen. Nützlich für erfahrene Spieler, die die Einführung nicht benötigen." },
-          "a_new_beginning": { "name": "Abschließen: A New Beginning", "desc": "Story-Einführung — Stillsuit herstellen, Ressourcen sammeln, Fabrikator-Forschung. Schaltet den frühen Spielfortschritt frei." },
-          "find_the_fremen": { "name": "Abschließen: Find the Fremen (Trials of Aql)", "desc": "Alle 7 Prüfungen, das Sietch und den Epilog. Schaltet das Fremkit (Stillsuit, Thumper, Cryss Knife usw.) frei und schließt Akt 1 ab." },
-          "act1_complete": { "name": "Abschließen: Gesamter Akt 1", "desc": "A New Beginning + Find the Fremen kombiniert. Der Spieler startet bereit für Akt 2." },
-          "vermillius_intro": { "name": "Überspringen: Vermillius Gap Tutorials", "desc": "Schließt alle Vermillius Gap Tutorial-Quests ab (Forschung, Herstellung, Erkundung). Keine Tag-Nebeneffekte — reines Tutorial-Überspringen." },
-          "deep_desert_intro": { "name": "Überspringen: Tiefwüsten-Einführung", "desc": "Schließt die Nebenquestkette der Tiefen Wüste ab." },
-          "taxation_intro": { "name": "Überspringen: Besteuerungs-/Handels-Tutorial", "desc": "Schließt die Handels-/Reise-Tutorial-Kette ab." },
-          "overland_intro": { "name": "Überspringen: Überlandkarten-Einführung", "desc": "Schließt die Nebenquestkette der Überlandkarte ab (Hark Landsraad-Missionen, Schlüsselsteine)." },
-          "unlock_all_lore": { "name": "Gesamtes Lore freischalten (Dunipedia)", "desc": "Enthüllt alle Dunipedia-Einträge: Bekanntes Universum, Wahrzeichen, Handbuch der freundlichen Wüste, Krieg um Arrakis." }
+          "skip_npe": {
+            "name": "NPE überspringen (Neuspielererlebnis)",
+            "desc": "Markiert das Tutorial/NPE als abgeschlossen. Nützlich für erfahrene Spieler, die die Einführung nicht benötigen."
+          },
+          "a_new_beginning": {
+            "name": "Abschließen: A New Beginning",
+            "desc": "Story-Einführung — Stillsuit herstellen, Ressourcen sammeln, Fabrikator-Forschung. Schaltet den frühen Spielfortschritt frei."
+          },
+          "find_the_fremen": {
+            "name": "Abschließen: Find the Fremen (Trials of Aql)",
+            "desc": "Alle 7 Prüfungen, das Sietch und den Epilog. Schaltet das Fremkit (Stillsuit, Thumper, Cryss Knife usw.) frei und schließt Akt 1 ab."
+          },
+          "act1_complete": {
+            "name": "Abschließen: Gesamter Akt 1",
+            "desc": "A New Beginning + Find the Fremen kombiniert. Der Spieler startet bereit für Akt 2."
+          },
+          "vermillius_intro": {
+            "name": "Überspringen: Vermillius Gap Tutorials",
+            "desc": "Schließt alle Vermillius Gap Tutorial-Quests ab (Forschung, Herstellung, Erkundung). Keine Tag-Nebeneffekte — reines Tutorial-Überspringen."
+          },
+          "deep_desert_intro": {
+            "name": "Überspringen: Tiefwüsten-Einführung",
+            "desc": "Schließt die Nebenquestkette der Tiefen Wüste ab."
+          },
+          "taxation_intro": {
+            "name": "Überspringen: Besteuerungs-/Handels-Tutorial",
+            "desc": "Schließt die Handels-/Reise-Tutorial-Kette ab."
+          },
+          "overland_intro": {
+            "name": "Überspringen: Überlandkarten-Einführung",
+            "desc": "Schließt die Nebenquestkette der Überlandkarte ab (Hark Landsraad-Missionen, Schlüsselsteine)."
+          },
+          "unlock_all_lore": {
+            "name": "Gesamtes Lore freischalten (Dunipedia)",
+            "desc": "Enthüllt alle Dunipedia-Einträge: Bekanntes Universum, Wahrzeichen, Handbuch der freundlichen Wüste, Krieg um Arrakis."
+          }
         },
         "nodes": "{{count}} Knoten",
         "apply": "Anwenden",

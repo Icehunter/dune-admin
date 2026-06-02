@@ -60,7 +60,45 @@
     "server": "服务器设置",
     "market": "市场机器人",
     "welcome": "欢迎礼包",
-    "adminSections": "管理员区域"
+    "adminSections": "管理员区域",
+    "liveMap": "实时地图"
+  },
+  "liveMap": {
+    "title": "实时地图",
+    "subtitle": "实时地图上的玩家、载具和基地",
+    "betaTitle": "测试版 — 开发中",
+    "betaBody": "此功能正在积极开发中，部分功能可能仍会更改。",
+    "players": "玩家",
+    "vehicles": "载具",
+    "total": "总计",
+    "updated": "更新于 {{time}}",
+    "unsupported": "此服务器不支持实时地图。",
+    "placeholderNote": "占位网格 — 等待校准的真实地图图像",
+    "calibrating": "哈格盆地地图 — 正在校准标记位置",
+    "calibrate": "校准",
+    "clear": "清除",
+    "calibActive": "校准模式 — 点击地图上您角色所在的精确位置。",
+    "calibPoints": "已捕获 {{n}} 个点 — 需要 2 个以上相距较远的点才能解算。",
+    "calibNoPlayer": "没有在线玩家可用于校准锚定。",
+    "failedToLoad": "加载地图失败：{{message}}",
+    "filter": "筛选",
+    "filterLive": "实时",
+    "filterStatic": "静态刷新点",
+    "filterBases": "基地",
+    "filterResources": "资源",
+    "filterLocations": "地点",
+    "filterNPCs": "NPC",
+    "filterVendors": "商人",
+    "filterLandsraad": "Landsraad",
+    "filterStaticObjects": "静态对象",
+    "teleportMode": "传送模式",
+    "teleportModeActive": "点击地图设置目的地",
+    "teleportPlayer": "要传送的玩家",
+    "teleportHere": "传送到此处",
+    "teleportSelectPlayer": "选择玩家…",
+    "teleportSent": "传送已发送",
+    "spawnsLoaded": "已加载 {{count}} 个静态标记",
+    "spawnTooltipCoords": "{{x}}, {{y}}"
   },
   "battlegroup": {
     "statusTitle": "战斗群状态",
@@ -211,15 +249,42 @@
         "loadingPresets": "加载中…",
         "noPresets": "无可用预设",
         "presets": {
-          "skip_npe": { "name": "跳过 NPE（新玩家体验）", "desc": "将教程/NPE 标记为已完成。适合不需要入门介绍的有经验玩家。" },
-          "a_new_beginning": { "name": "完成：A New Beginning", "desc": "主线故事开篇 — 制作 Stillsuit、采集资源、工厂台研究。解锁游戏早期进度。" },
-          "find_the_fremen": { "name": "完成：Find the Fremen（Trials of Aql）", "desc": "全部 7 项试炼、Sietch 和尾声。解锁 Fremkit（Stillsuit、Thumper、Cryss Knife 等）并完成第一幕。" },
-          "act1_complete": { "name": "完成：第一幕全部内容", "desc": "A New Beginning + Find the Fremen 合并。玩家以准备好进入第二幕的状态开始。" },
-          "vermillius_intro": { "name": "跳过：Vermillius Gap 教程", "desc": "完成 Vermillius Gap 的所有教程任务（研究、制作、探索）。无标签副作用 — 纯粹的教程跳过。" },
-          "deep_desert_intro": { "name": "跳过：深沙漠入门", "desc": "完成深沙漠的支线任务链。" },
-          "taxation_intro": { "name": "跳过：征税 / 交易所教程", "desc": "完成交易/旅行教程链。" },
-          "overland_intro": { "name": "跳过：地面地图入门", "desc": "完成地面地图的支线任务链（Hark Landsraad 任务、基石）。" },
-          "unlock_all_lore": { "name": "解锁所有传说（Dunipedia）", "desc": "揭示所有 Dunipedia 条目：已知宇宙、地标、友善沙漠手册、阿拉基斯之战。" }
+          "skip_npe": {
+            "name": "跳过 NPE（新玩家体验）",
+            "desc": "将教程/NPE 标记为已完成。适合不需要入门介绍的有经验玩家。"
+          },
+          "a_new_beginning": {
+            "name": "完成：A New Beginning",
+            "desc": "主线故事开篇 — 制作 Stillsuit、采集资源、工厂台研究。解锁游戏早期进度。"
+          },
+          "find_the_fremen": {
+            "name": "完成：Find the Fremen（Trials of Aql）",
+            "desc": "全部 7 项试炼、Sietch 和尾声。解锁 Fremkit（Stillsuit、Thumper、Cryss Knife 等）并完成第一幕。"
+          },
+          "act1_complete": {
+            "name": "完成：第一幕全部内容",
+            "desc": "A New Beginning + Find the Fremen 合并。玩家以准备好进入第二幕的状态开始。"
+          },
+          "vermillius_intro": {
+            "name": "跳过：Vermillius Gap 教程",
+            "desc": "完成 Vermillius Gap 的所有教程任务（研究、制作、探索）。无标签副作用 — 纯粹的教程跳过。"
+          },
+          "deep_desert_intro": {
+            "name": "跳过：深沙漠入门",
+            "desc": "完成深沙漠的支线任务链。"
+          },
+          "taxation_intro": {
+            "name": "跳过：征税 / 交易所教程",
+            "desc": "完成交易/旅行教程链。"
+          },
+          "overland_intro": {
+            "name": "跳过：地面地图入门",
+            "desc": "完成地面地图的支线任务链（Hark Landsraad 任务、基石）。"
+          },
+          "unlock_all_lore": {
+            "name": "解锁所有传说（Dunipedia）",
+            "desc": "揭示所有 Dunipedia 条目：已知宇宙、地标、友善沙漠手册、阿拉基斯之战。"
+          }
         },
         "nodes": "{{count}} 个节点",
         "apply": "应用",

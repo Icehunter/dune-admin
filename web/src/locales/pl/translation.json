@@ -60,7 +60,45 @@
     "server": "Ustawienia serwera",
     "market": "Bot rynku",
     "welcome": "Zestawy powitalne",
-    "adminSections": "Sekcje administratora"
+    "adminSections": "Sekcje administratora",
+    "liveMap": "Mapa na żywo"
+  },
+  "liveMap": {
+    "title": "Mapa na żywo",
+    "subtitle": "Gracze, pojazdy i bazy na mapie na żywo",
+    "betaTitle": "Beta — W trakcie tworzenia",
+    "betaBody": "Ta funkcja jest w aktywnym rozwoju. Niektóre funkcjonalności mogą się jeszcze zmienić.",
+    "players": "Gracze",
+    "vehicles": "Pojazdy",
+    "total": "Łącznie",
+    "updated": "zaktualizowano o {{time}}",
+    "unsupported": "Mapa na żywo nie jest dostępna na tym serwerze.",
+    "placeholderNote": "Siatka zastępcza — obraz mapy oczekuje na kalibrację",
+    "calibrating": "Mapa Kotliny Hagga — kalibrowanie pozycji znaczników",
+    "calibrate": "Kalibruj",
+    "clear": "Wyczyść",
+    "calibActive": "Tryb kalibracji — kliknij dokładnie w miejscu, gdzie stoi twoja postać.",
+    "calibPoints": "{{n}} punkt(y/ów) przechwycony(ch) — potrzeba 2+, rozstawionych, aby rozwiązać.",
+    "calibNoPlayer": "Brak gracza online do zakotwiczenia kalibracji.",
+    "failedToLoad": "Nie udało się załadować mapy: {{message}}",
+    "filter": "Filtr",
+    "filterLive": "Na żywo",
+    "filterStatic": "Statyczne spawny",
+    "filterBases": "Bazy",
+    "filterResources": "Zasoby",
+    "filterLocations": "Lokacje",
+    "filterNPCs": "NPCs",
+    "filterVendors": "Handlarze",
+    "filterLandsraad": "Landsraad",
+    "filterStaticObjects": "Obiekty statyczne",
+    "teleportMode": "Tryb teleportacji",
+    "teleportModeActive": "Kliknij na mapę, aby ustawić cel",
+    "teleportPlayer": "Gracz do teleportacji",
+    "teleportHere": "Teleportuj tutaj",
+    "teleportSelectPlayer": "Wybierz gracza…",
+    "teleportSent": "Teleportacja wysłana",
+    "spawnsLoaded": "{{count}} statycznych znaczników załadowanych",
+    "spawnTooltipCoords": "{{x}}, {{y}}"
   },
   "battlegroup": {
     "statusTitle": "Status grupy bojowej",
@@ -211,15 +249,42 @@
         "loadingPresets": "Ładowanie…",
         "noPresets": "Brak dostępnych ustawień wstępnych",
         "presets": {
-          "skip_npe": { "name": "Pomiń NPE (Doświadczenie Nowego Gracza)", "desc": "Oznacza samouczek/NPE jako ukończony. Przydatne dla doświadczonych graczy, którzy nie potrzebują wprowadzenia." },
-          "a_new_beginning": { "name": "Ukończ: A New Beginning", "desc": "Wprowadzenie do fabuły — wytwarzanie Stillsuit, zbieranie zasobów, badania fabrykatora. Odblokowuje wczesną grę." },
-          "find_the_fremen": { "name": "Ukończ: Find the Fremen (Trials of Aql)", "desc": "Wszystkie 7 prób, Sietch i Epilog. Odblokowuje Fremkit (Stillsuit, Thumper, Cryss Knife itp.) i kończy Akt 1." },
-          "act1_complete": { "name": "Ukończ: Cały Akt 1", "desc": "A New Beginning + Find the Fremen łącznie. Gracz zaczyna gotowy na Akt 2." },
-          "vermillius_intro": { "name": "Pomiń: Samouczki Vermillius Gap", "desc": "Kończy wszystkie misje samouczkowe w Vermillius Gap (badania, wytwarzanie, eksploracja). Brak efektów ubocznych tagów — czyste pominięcie samouczka." },
-          "deep_desert_intro": { "name": "Pomiń: Wprowadzenie do Głębokiej Pustyni", "desc": "Kończy łańcuch misji pobocznych Głębokiej Pustyni." },
-          "taxation_intro": { "name": "Pomiń: Samouczek Podatkowy / Wymiany", "desc": "Kończy łańcuch samouczkowy wymiany/podróży." },
-          "overland_intro": { "name": "Pomiń: Wprowadzenie do Mapy Powierzchni", "desc": "Kończy łańcuch misji pobocznych mapy powierzchni (misje Hark Landsraad, kamienie kluczowe)." },
-          "unlock_all_lore": { "name": "Odblokuj Całe Lore (Dunipedia)", "desc": "Ujawnia wszystkie wpisy Dunipedii: Znane Wszechświat, Punkty Orientacyjne, Podręcznik Przyjaznej Pustyni, Wojna o Arrakis." }
+          "skip_npe": {
+            "name": "Pomiń NPE (Doświadczenie Nowego Gracza)",
+            "desc": "Oznacza samouczek/NPE jako ukończony. Przydatne dla doświadczonych graczy, którzy nie potrzebują wprowadzenia."
+          },
+          "a_new_beginning": {
+            "name": "Ukończ: A New Beginning",
+            "desc": "Wprowadzenie do fabuły — wytwarzanie Stillsuit, zbieranie zasobów, badania fabrykatora. Odblokowuje wczesną grę."
+          },
+          "find_the_fremen": {
+            "name": "Ukończ: Find the Fremen (Trials of Aql)",
+            "desc": "Wszystkie 7 prób, Sietch i Epilog. Odblokowuje Fremkit (Stillsuit, Thumper, Cryss Knife itp.) i kończy Akt 1."
+          },
+          "act1_complete": {
+            "name": "Ukończ: Cały Akt 1",
+            "desc": "A New Beginning + Find the Fremen łącznie. Gracz zaczyna gotowy na Akt 2."
+          },
+          "vermillius_intro": {
+            "name": "Pomiń: Samouczki Vermillius Gap",
+            "desc": "Kończy wszystkie misje samouczkowe w Vermillius Gap (badania, wytwarzanie, eksploracja). Brak efektów ubocznych tagów — czyste pominięcie samouczka."
+          },
+          "deep_desert_intro": {
+            "name": "Pomiń: Wprowadzenie do Głębokiej Pustyni",
+            "desc": "Kończy łańcuch misji pobocznych Głębokiej Pustyni."
+          },
+          "taxation_intro": {
+            "name": "Pomiń: Samouczek Podatkowy / Wymiany",
+            "desc": "Kończy łańcuch samouczkowy wymiany/podróży."
+          },
+          "overland_intro": {
+            "name": "Pomiń: Wprowadzenie do Mapy Powierzchni",
+            "desc": "Kończy łańcuch misji pobocznych mapy powierzchni (misje Hark Landsraad, kamienie kluczowe)."
+          },
+          "unlock_all_lore": {
+            "name": "Odblokuj Całe Lore (Dunipedia)",
+            "desc": "Ujawnia wszystkie wpisy Dunipedii: Znane Wszechświat, Punkty Orientacyjne, Podręcznik Przyjaznej Pustyni, Wojna o Arrakis."
+          }
         },
         "nodes": "{{count}} węzłów",
         "apply": "Zastosuj",

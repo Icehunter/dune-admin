@@ -60,7 +60,45 @@
     "server": "Configuración del servidor",
     "market": "Bot del mercado",
     "welcome": "Kits de bienvenida",
-    "adminSections": "Secciones de administración"
+    "adminSections": "Secciones de administración",
+    "liveMap": "Mapa en vivo"
+  },
+  "liveMap": {
+    "title": "Mapa en vivo",
+    "subtitle": "Jugadores, vehículos y bases en el mapa en vivo",
+    "betaTitle": "Beta — Trabajo en progreso",
+    "betaBody": "Esta función está en desarrollo activo. Algunas funcionalidades aún pueden cambiar.",
+    "players": "Jugadores",
+    "vehicles": "Vehículos",
+    "total": "Total",
+    "updated": "actualizado a las {{time}}",
+    "unsupported": "El mapa en vivo no está disponible en este servidor.",
+    "placeholderNote": "Cuadrícula provisional — imagen del mapa pendiente de calibración",
+    "calibrating": "Mapa de la cuenca Hagga — calibrando posiciones de marcadores",
+    "calibrate": "Calibrar",
+    "clear": "Limpiar",
+    "calibActive": "Modo calibración — haz clic en el mapa exactamente donde está tu personaje.",
+    "calibPoints": "{{n}} punto(s) capturado(s) — necesita 2+, separados, para resolver.",
+    "calibNoPlayer": "No hay jugador en línea para anclar la calibración.",
+    "failedToLoad": "Error al cargar el mapa: {{message}}",
+    "filter": "Filtro",
+    "filterLive": "En vivo",
+    "filterStatic": "Spawns estáticos",
+    "filterBases": "Bases",
+    "filterResources": "Recursos",
+    "filterLocations": "Ubicaciones",
+    "filterNPCs": "NPCs",
+    "filterVendors": "Vendedores",
+    "filterLandsraad": "Landsraad",
+    "filterStaticObjects": "Objetos estáticos",
+    "teleportMode": "Modo teletransporte",
+    "teleportModeActive": "Haz clic en el mapa para establecer el destino",
+    "teleportPlayer": "Jugador a teletransportar",
+    "teleportHere": "Teletransportar aquí",
+    "teleportSelectPlayer": "Seleccionar un jugador…",
+    "teleportSent": "Teletransporte enviado",
+    "spawnsLoaded": "{{count}} marcadores estáticos cargados",
+    "spawnTooltipCoords": "{{x}}, {{y}}"
   },
   "battlegroup": {
     "statusTitle": "Estado del grupo de batalla",
@@ -211,15 +249,42 @@
         "loadingPresets": "Cargando…",
         "noPresets": "No hay preajustes disponibles",
         "presets": {
-          "skip_npe": { "name": "Omitir NPE (Experiencia de Jugador Nuevo)", "desc": "Marca el tutorial/NPE como completado. Útil para jugadores experimentados que no necesitan la introducción." },
-          "a_new_beginning": { "name": "Completar: A New Beginning", "desc": "Introducción de la historia — fabricar Stillsuit, recolectar recursos, investigación del fabricador. Desbloquea el inicio del juego." },
-          "find_the_fremen": { "name": "Completar: Find the Fremen (Trials of Aql)", "desc": "Las 7 pruebas, el Sietch y el Epílogo. Desbloquea el Fremkit (Stillsuit, Thumper, Cryss Knife, etc.) y completa el Acto 1." },
-          "act1_complete": { "name": "Completar: Todo el Acto 1", "desc": "A New Beginning + Find the Fremen combinados. El jugador comienza listo para el Acto 2." },
-          "vermillius_intro": { "name": "Omitir: Tutoriales de Vermillius Gap", "desc": "Completa todas las misiones tutoriales de Vermillius Gap (investigación, fabricación, exploración). Sin efectos secundarios en etiquetas — omisión pura de tutorial." },
-          "deep_desert_intro": { "name": "Omitir: Introducción al Desierto Profundo", "desc": "Completa la cadena de misiones secundarias del Desierto Profundo." },
-          "taxation_intro": { "name": "Omitir: Tutorial de Impuestos / Intercambio", "desc": "Completa la cadena tutorial de intercambio/viaje." },
-          "overland_intro": { "name": "Omitir: Introducción al Mapa de Superficie", "desc": "Completa la cadena de misiones secundarias del mapa de superficie (misiones Hark Landsraad, piedras clave)." },
-          "unlock_all_lore": { "name": "Desbloquear Todo el Lore (Dunipedia)", "desc": "Revela todas las entradas de la Dunipedia: Universo Conocido, Lugares de Interés, Manual del Desierto Amistoso, Guerra por Arrakis." }
+          "skip_npe": {
+            "name": "Omitir NPE (Experiencia de Jugador Nuevo)",
+            "desc": "Marca el tutorial/NPE como completado. Útil para jugadores experimentados que no necesitan la introducción."
+          },
+          "a_new_beginning": {
+            "name": "Completar: A New Beginning",
+            "desc": "Introducción de la historia — fabricar Stillsuit, recolectar recursos, investigación del fabricador. Desbloquea el inicio del juego."
+          },
+          "find_the_fremen": {
+            "name": "Completar: Find the Fremen (Trials of Aql)",
+            "desc": "Las 7 pruebas, el Sietch y el Epílogo. Desbloquea el Fremkit (Stillsuit, Thumper, Cryss Knife, etc.) y completa el Acto 1."
+          },
+          "act1_complete": {
+            "name": "Completar: Todo el Acto 1",
+            "desc": "A New Beginning + Find the Fremen combinados. El jugador comienza listo para el Acto 2."
+          },
+          "vermillius_intro": {
+            "name": "Omitir: Tutoriales de Vermillius Gap",
+            "desc": "Completa todas las misiones tutoriales de Vermillius Gap (investigación, fabricación, exploración). Sin efectos secundarios en etiquetas — omisión pura de tutorial."
+          },
+          "deep_desert_intro": {
+            "name": "Omitir: Introducción al Desierto Profundo",
+            "desc": "Completa la cadena de misiones secundarias del Desierto Profundo."
+          },
+          "taxation_intro": {
+            "name": "Omitir: Tutorial de Impuestos / Intercambio",
+            "desc": "Completa la cadena tutorial de intercambio/viaje."
+          },
+          "overland_intro": {
+            "name": "Omitir: Introducción al Mapa de Superficie",
+            "desc": "Completa la cadena de misiones secundarias del mapa de superficie (misiones Hark Landsraad, piedras clave)."
+          },
+          "unlock_all_lore": {
+            "name": "Desbloquear Todo el Lore (Dunipedia)",
+            "desc": "Revela todas las entradas de la Dunipedia: Universo Conocido, Lugares de Interés, Manual del Desierto Amistoso, Guerra por Arrakis."
+          }
         },
         "nodes": "{{count}} nodos",
         "apply": "Aplicar",

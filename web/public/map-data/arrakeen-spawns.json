@@ -1,1 +1,79 @@
-{"map":"arrakeen","label":"Arrakeen","game_key":"Arrakeen","map_type":"social_hub","internal_key":"sh_arrakeen","total":39,"spawns":[{"type":"water_seller","label":"Water Seller","category":"vendors","x":79,"y":-4855},{"type":"spice_merchant","label":"Spice Merchant","category":"vendors","x":2012,"y":-4855},{"type":"base_vendor","label":"Base Vendor","category":"vendors","x":87,"y":-7823},{"type":"weapons_merchant","label":"Weapons Merchant","category":"vendors","x":2179,"y":3399},{"type":"landsraad_vendor","label":"Landsraad Vendor","category":"vendors","x":2651,"y":5526},{"type":"landsraad_vendor","label":"Landsraad Vendor","category":"vendors","x":2651,"y":5640},{"type":"landsraad_vendor","label":"Landsraad Vendor","category":"vendors","x":2258,"y":6119},{"type":"landsraad_vendor","label":"Landsraad Vendor","category":"vendors","x":2277,"y":5026},{"type":"qrbarkeep","label":"Qrbarkeep","category":"vendors","x":7152,"y":-5634},{"type":"barkeep","label":"Barkeep","category":"vendors","x":7540,"y":-6330},{"type":"scrap_trader","label":"Scrap Trader","category":"vendors","x":10454,"y":-2237},{"type":"vehicle_vendor","label":"Vehicle Vendor","category":"vendors","x":10478,"y":288},{"type":"house_varota_representative","label":"House Varota Representative","category":"landsraad","x":-8708,"y":-7988},{"type":"house_mutelli_representative","label":"House Mutelli Representative","category":"landsraad","x":3622,"y":-3222},{"type":"house_wallach_representative","label":"House Wallach Representative","category":"landsraad","x":-27134,"y":2864},{"type":"ambrose_lucifera","label":"Ambrose Lucifera","category":"locations","x":8955,"y":-6113},{"type":"landsraad_representative","label":"Landsraad Representative","category":"landsraad","x":-8763,"y":-7958},{"type":"campos_demari","label":"Campos Demari","category":"npcs","x":2024,"y":-4859},{"type":"daimo_sharawi","label":"Daimo Sharawi","category":"locations","x":94,"y":-4855},{"type":"phin_ogaree","label":"Phin Ogaree","category":"locations","x":10338,"y":-2223},{"type":"soha_sirrendrin","label":"Soha Sirrendrin","category":"locations","x":76,"y":-7822},{"type":"qvbeatriz_luna","label":"Qvbeatriz Luna","category":"locations","x":10478,"y":317},{"type":"urbano_montag","label":"Urbano Montag","category":"locations","x":6483,"y":1761},{"type":"landsraad_representative","label":"Landsraad Representative","category":"landsraad","x":3383,"y":-3054},{"type":"tidjii_ogaree","label":"Tidjii Ogaree","category":"locations","x":10554,"y":-2220},{"type":"barden","label":"Barden","category":"locations","x":-7162,"y":-7735},{"type":"guild_bank","label":"Guild Bank","category":"locations","x":6500,"y":1793},{"type":"choam_exchange","label":"Choam Exchange","category":"vendors","x":5703,"y":1566},{"type":"the_salusan_bull","label":"The Salusan Bull","category":"locations","x":5921,"y":-3500},{"type":"exit","label":"Exit","category":"locations","x":14181,"y":-989},{"type":"imperial_consulate","label":"Imperial Consulate","category":"locations","x":-7057,"y":-7146},{"type":"residency_approach","label":"Residency Approach","category":"locations","x":-17471,"y":-1232},{"type":"central_plaza","label":"Central Plaza","category":"locations","x":1204,"y":-1024},{"type":"the_warrens","label":"The Warrens","category":"locations","x":-6974,"y":6821},{"type":"duncan_s_dojo","label":"Duncan S Dojo","category":"locations","x":-13073,"y":7131},{"type":"shaffat_s_clinic","label":"Shaffat S Clinic","category":"locations","x":-3810,"y":2523},{"type":"taxi_service","label":"Taxi Service","category":"locations","x":11695,"y":-258},{"type":"atreides_vendor","label":"Atreides Vendor","category":"vendors","x":-23948,"y":2833},{"type":"discoverable","label":"Discoverable","category":"locations","x":5978,"y":1760}]}
+{
+  "map": "arrakeen",
+  "label": "Arrakeen",
+  "game_key": "Arrakeen",
+  "map_type": "social_hub",
+  "internal_key": "sh_arrakeen",
+  "total": 39,
+  "spawns": [
+    { "type": "water_seller", "label": "Water Seller", "category": "vendors", "x": 79, "y": -4855 },
+    { "type": "spice_merchant", "label": "Spice Merchant", "category": "vendors", "x": 2012, "y": -4855 },
+    { "type": "base_vendor", "label": "Base Vendor", "category": "vendors", "x": 87, "y": -7823 },
+    { "type": "weapons_merchant", "label": "Weapons Merchant", "category": "vendors", "x": 2179, "y": 3399 },
+    { "type": "landsraad_vendor", "label": "Landsraad Vendor", "category": "vendors", "x": 2651, "y": 5526 },
+    { "type": "landsraad_vendor", "label": "Landsraad Vendor", "category": "vendors", "x": 2651, "y": 5640 },
+    { "type": "landsraad_vendor", "label": "Landsraad Vendor", "category": "vendors", "x": 2258, "y": 6119 },
+    { "type": "landsraad_vendor", "label": "Landsraad Vendor", "category": "vendors", "x": 2277, "y": 5026 },
+    { "type": "qrbarkeep", "label": "Qrbarkeep", "category": "vendors", "x": 7152, "y": -5634 },
+    { "type": "barkeep", "label": "Barkeep", "category": "vendors", "x": 7540, "y": -6330 },
+    { "type": "scrap_trader", "label": "Scrap Trader", "category": "vendors", "x": 10454, "y": -2237 },
+    { "type": "vehicle_vendor", "label": "Vehicle Vendor", "category": "vendors", "x": 10478, "y": 288 },
+    {
+      "type": "house_varota_representative",
+      "label": "House Varota Representative",
+      "category": "landsraad",
+      "x": -8708,
+      "y": -7988
+    },
+    {
+      "type": "house_mutelli_representative",
+      "label": "House Mutelli Representative",
+      "category": "landsraad",
+      "x": 3622,
+      "y": -3222
+    },
+    {
+      "type": "house_wallach_representative",
+      "label": "House Wallach Representative",
+      "category": "landsraad",
+      "x": -27134,
+      "y": 2864
+    },
+    { "type": "ambrose_lucifera", "label": "Ambrose Lucifera", "category": "locations", "x": 8955, "y": -6113 },
+    {
+      "type": "landsraad_representative",
+      "label": "Landsraad Representative",
+      "category": "landsraad",
+      "x": -8763,
+      "y": -7958
+    },
+    { "type": "campos_demari", "label": "Campos Demari", "category": "npcs", "x": 2024, "y": -4859 },
+    { "type": "daimo_sharawi", "label": "Daimo Sharawi", "category": "locations", "x": 94, "y": -4855 },
+    { "type": "phin_ogaree", "label": "Phin Ogaree", "category": "locations", "x": 10338, "y": -2223 },
+    { "type": "soha_sirrendrin", "label": "Soha Sirrendrin", "category": "locations", "x": 76, "y": -7822 },
+    { "type": "qvbeatriz_luna", "label": "Qvbeatriz Luna", "category": "locations", "x": 10478, "y": 317 },
+    { "type": "urbano_montag", "label": "Urbano Montag", "category": "locations", "x": 6483, "y": 1761 },
+    {
+      "type": "landsraad_representative",
+      "label": "Landsraad Representative",
+      "category": "landsraad",
+      "x": 3383,
+      "y": -3054
+    },
+    { "type": "tidjii_ogaree", "label": "Tidjii Ogaree", "category": "locations", "x": 10554, "y": -2220 },
+    { "type": "barden", "label": "Barden", "category": "locations", "x": -7162, "y": -7735 },
+    { "type": "guild_bank", "label": "Guild Bank", "category": "locations", "x": 6500, "y": 1793 },
+    { "type": "choam_exchange", "label": "Choam Exchange", "category": "vendors", "x": 5703, "y": 1566 },
+    { "type": "the_salusan_bull", "label": "The Salusan Bull", "category": "locations", "x": 5921, "y": -3500 },
+    { "type": "exit", "label": "Exit", "category": "locations", "x": 14181, "y": -989 },
+    { "type": "imperial_consulate", "label": "Imperial Consulate", "category": "locations", "x": -7057, "y": -7146 },
+    { "type": "residency_approach", "label": "Residency Approach", "category": "locations", "x": -17471, "y": -1232 },
+    { "type": "central_plaza", "label": "Central Plaza", "category": "locations", "x": 1204, "y": -1024 },
+    { "type": "the_warrens", "label": "The Warrens", "category": "locations", "x": -6974, "y": 6821 },
+    { "type": "duncan_s_dojo", "label": "Duncan S Dojo", "category": "locations", "x": -13073, "y": 7131 },
+    { "type": "shaffat_s_clinic", "label": "Shaffat S Clinic", "category": "locations", "x": -3810, "y": 2523 },
+    { "type": "taxi_service", "label": "Taxi Service", "category": "locations", "x": 11695, "y": -258 },
+    { "type": "atreides_vendor", "label": "Atreides Vendor", "category": "vendors", "x": -23948, "y": 2833 },
+    { "type": "discoverable", "label": "Discoverable", "category": "locations", "x": 5978, "y": 1760 }
+  ]
+}

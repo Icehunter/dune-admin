@@ -614,7 +614,7 @@ function FilterPanel({
         >
           <SearchField.Group>
             <SearchField.SearchIcon />
-            <SearchField.Input placeholder="Find filter…" />
+            <SearchField.Input placeholder={t('liveMap.filterSearch')} />
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>
@@ -655,6 +655,24 @@ function FilterPanel({
 const LIVE_FILTER_DEFAULTS: Record<string, boolean> = {
   players: true, vehicles: true, bases: true,
 }
+const FILTER_LS_KEY = 'dune_admin_livemap_filter'
+
+function loadFilter(): Record<string, boolean> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FILTER_LS_KEY) ?? '{}') as Record<string, boolean>
+    return { ...LIVE_FILTER_DEFAULTS, ...saved }
+  }
+  catch {
+    return LIVE_FILTER_DEFAULTS
+  }
+}
+
+function saveFilter(f: Record<string, boolean>) {
+  try {
+    localStorage.setItem(FILTER_LS_KEY, JSON.stringify(f))
+  }
+  catch { /* quota */ }
+}
 
 export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) {
   const { t } = useTranslation()
@@ -670,8 +688,8 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
   const [spawns, setSpawns] = useState<SpawnEntry[]>([])
   const loadedSpawnKey = useRef<string>('')
 
-  // filter keyed by merged type key OR live category — filter panel is always visible
-  const [filter, setFilter] = useState<Record<string, boolean>>(LIVE_FILTER_DEFAULTS)
+  // filter persisted to localStorage — panel is always visible
+  const [filter, setFilter] = useState<Record<string, boolean>>(loadFilter)
   const [selectedFlsId, setSelectedFlsId] = useState<string>('')
 
   const [teleportMode, setTeleportMode] = useState(false)
@@ -811,18 +829,22 @@ export default function LiveMapTab({ isActive = true }: { isActive?: boolean }) 
   }, [teleportDest, teleportFlsId, t])
 
   const toggleFilter = useCallback((key: string) => {
-    setFilter((f) => ({ ...f, [key]: !f[key] }))
+    setFilter((f) => {
+      const next = { ...f, [key]: !f[key] }
+      saveFilter(next)
+      return next
+    })
   }, [])
 
   const toggleCategory = useCallback((category: string, on: boolean) => {
     setFilter((f) => {
       const next = { ...f }
-      // Set all types in this category
       Object.keys(TYPE_CATEGORY).forEach((type) => {
         if (TYPE_CATEGORY[type] === category) {
           next[filterKey(type)] = on
         }
       })
+      saveFilter(next)
       return next
     })
   }, [])

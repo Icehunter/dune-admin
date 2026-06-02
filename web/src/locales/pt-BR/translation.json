@@ -100,7 +100,8 @@
     "spawnsLoaded": "{{count}} marcadores estáticos carregados",
     "spawnTooltipCoords": "{{x}}, {{y}}",
     "filterTrainers": "Treinadores",
-    "filterKeys": "Chaves Pentaescudo"
+    "filterKeys": "Chaves Pentaescudo",
+    "filterSearch": "Encontrar filtro…"
   },
   "battlegroup": {
     "statusTitle": "Status do grupo de batalha",

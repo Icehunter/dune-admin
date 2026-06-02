@@ -100,7 +100,8 @@
     "spawnsLoaded": "{{count}} statycznych znaczników załadowanych",
     "spawnTooltipCoords": "{{x}}, {{y}}",
     "filterTrainers": "Trenerzy",
-    "filterKeys": "Klucze Pentatarczy"
+    "filterKeys": "Klucze Pentatarczy",
+    "filterSearch": "Znajdź filtr…"
   },
   "battlegroup": {
     "statusTitle": "Status grupy bojowej",

@@ -100,7 +100,8 @@
     "spawnsLoaded": "{{count}} statische Marker geladen",
     "spawnTooltipCoords": "{{x}}, {{y}}",
     "filterTrainers": "Trainer",
-    "filterKeys": "Pentashild-Schlüssel"
+    "filterKeys": "Pentashild-Schlüssel",
+    "filterSearch": "Filter suchen…"
   },
   "battlegroup": {
     "statusTitle": "Kampfgruppenstatus",

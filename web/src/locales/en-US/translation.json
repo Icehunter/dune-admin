@@ -93,6 +93,7 @@
     "filterStaticObjects": "Static Objects",
     "filterTrainers": "Trainers",
     "filterKeys": "Pentashield Keys",
+    "filterSearch": "Find filter…",
     "teleportMode": "Teleport mode",
     "teleportModeActive": "Click the map to set destination",
     "teleportPlayer": "Player to teleport",

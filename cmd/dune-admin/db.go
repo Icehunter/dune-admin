@@ -4709,15 +4709,29 @@ func cmdTeleportPlayerToCoords(flsID string, partitionID int64, x, y, z float64)
 		if globalDB == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
+		ctx := context.Background()
 		if partitionID == 0 {
-			_ = globalDB.QueryRow(context.Background(),
-				`SELECT id FROM dune.world_partition WHERE blocked = false LIMIT 1`).Scan(&partitionID)
+			// Try the player's current partition first (most likely to be valid).
+			_ = globalDB.QueryRow(ctx, `
+				SELECT COALESCE(a.partition_id, 0)
+				FROM dune.accounts ac
+				JOIN dune.player_state ps ON ps.account_id = ac.id
+				JOIN dune.actors a ON a.id = ps.player_pawn_id
+				WHERE ac."user" = $1`, flsID).Scan(&partitionID)
 		}
-		_, err := globalDB.Exec(context.Background(), `
+		if partitionID == 0 {
+			// Fall back to any non-blocked partition (handles offline/no-actor state).
+			_ = globalDB.QueryRow(ctx,
+				`SELECT id FROM dune.world_partition WHERE blocked = false ORDER BY id LIMIT 1`,
+			).Scan(&partitionID)
+		}
+		if partitionID == 0 {
+			return msgMutate{err: fmt.Errorf("could not resolve a valid partition for teleport")}
+		}
+		if _, execErr := globalDB.Exec(ctx, `
 			SELECT dune.admin_move_offline_player_to_partition($1::text, $2::bigint, ROW($3::float8,$4::float8,$5::float8)::dune.Vector)`,
-			flsID, partitionID, x, y, z)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("teleport: %w", err)}
+			flsID, partitionID, x, y, z); execErr != nil {
+			return msgMutate{err: fmt.Errorf("teleport: %w", execErr)}
 		}
 		return msgMutate{ok: fmt.Sprintf("Moved %s to (%.0f, %.0f, %.0f)", flsID, x, y, z)}
 	}
@@ -4757,18 +4771,21 @@ func cmdFetchMapMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string) 
 	markers := []mapMarker{}
 
 	// Players: position is the player's pawn actor transform.
+	// fls_id must be accounts."user" (hex UUID) — that is what RMQ PlayerId and
+	// isHexIDOnline both expect. encrypted_funcom_id is the display name and is
+	// NOT valid for those uses.
 	playerRows, err := pool.Query(ctx, `
 		SELECT a.id,
 		       COALESCE(NULLIF(ps.character_name, ''), 'Unknown') AS name,
 		       COALESCE(ps.online_status::text, '') AS online_status,
 		       COALESCE(a.partition_id, 0) AS partition_id,
-		       COALESCE(convert_from(e.encrypted_funcom_id, 'UTF8'), '') AS fls_id,
+		       COALESCE(ac."user", '') AS fls_id,
 		       ((a.transform).location).x,
 		       ((a.transform).location).y,
 		       ((a.transform).location).z
 		FROM dune.actors a
 		JOIN dune.player_state ps ON ps.player_pawn_id = a.id
-		LEFT JOIN dune.encrypted_accounts e ON e.id = ps.account_id
+		LEFT JOIN dune.accounts ac ON ac.id = ps.account_id
 		WHERE a.map = $1 AND a.transform IS NOT NULL`, mapKey)
 	if err != nil {
 		return nil, fmt.Errorf("query player markers: %w", err)

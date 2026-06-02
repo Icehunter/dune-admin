@@ -100,7 +100,8 @@
     "spawnsLoaded": "{{count}} marqueurs statiques chargés",
     "spawnTooltipCoords": "{{x}}, {{y}}",
     "filterTrainers": "Entraîneurs",
-    "filterKeys": "Clés Pentabouclier"
+    "filterKeys": "Clés Pentabouclier",
+    "filterSearch": "Trouver un filtre…"
   },
   "battlegroup": {
     "statusTitle": "État du groupe de combat",

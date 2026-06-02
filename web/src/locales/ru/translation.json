@@ -100,7 +100,8 @@
     "spawnsLoaded": "Загружено {{count}} статических маркеров",
     "spawnTooltipCoords": "{{x}}, {{y}}",
     "filterTrainers": "Тренеры",
-    "filterKeys": "Ключи пентащита"
+    "filterKeys": "Ключи пентащита",
+    "filterSearch": "Найти фильтр…"
   },
   "battlegroup": {
     "statusTitle": "Статус боевой группы",

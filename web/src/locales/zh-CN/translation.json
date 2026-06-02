@@ -100,7 +100,8 @@
     "spawnsLoaded": "已加载 {{count}} 个静态标记",
     "spawnTooltipCoords": "{{x}}, {{y}}",
     "filterTrainers": "训练师",
-    "filterKeys": "五护盾钥匙"
+    "filterKeys": "五护盾钥匙",
+    "filterSearch": "查找筛选器…"
   },
   "battlegroup": {
     "statusTitle": "战斗群状态",

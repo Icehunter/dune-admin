@@ -100,7 +100,8 @@
     "spawnsLoaded": "{{count}}個の固定マーカーを読み込みました",
     "spawnTooltipCoords": "{{x}}, {{y}}",
     "filterTrainers": "トレーナー",
-    "filterKeys": "ペンタシールドキー"
+    "filterKeys": "ペンタシールドキー",
+    "filterSearch": "フィルターを検索…"
   },
   "battlegroup": {
     "statusTitle": "バトルグループ状態",

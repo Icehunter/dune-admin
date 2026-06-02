@@ -1,1 +1,42 @@
-{"map":"harko","label":"Harko Village","game_key":"HarkoVillage","map_type":"social_hub","internal_key":"sh_harkovillage","total":26,"spawns":[{"type":"vehicle_vendor","label":"Vehicle Vendor","category":"vendors","x":-2349,"y":930},{"type":"base_vendor","label":"Base Vendor","category":"vendors","x":-374,"y":11496},{"type":"spice_merchant","label":"Spice Merchant","category":"vendors","x":753,"y":11477},{"type":"water_seller","label":"Water Seller","category":"vendors","x":724,"y":13532},{"type":"scrap_trader","label":"Scrap Trader","category":"vendors","x":-380,"y":13519},{"type":"barkeep","label":"Barkeep","category":"vendors","x":-2922,"y":8537},{"type":"weapons_merchant","label":"Weapons Merchant","category":"vendors","x":8758,"y":5572},{"type":"landsraad_vendor","label":"Landsraad Vendor","category":"vendors","x":-3287,"y":12551},{"type":"landsraad_vendor","label":"Landsraad Vendor","category":"vendors","x":-2961,"y":13212},{"type":"landsraad_vendor","label":"Landsraad Vendor","category":"vendors","x":-2961,"y":11917},{"type":"landsraad_vendor","label":"Landsraad Vendor","category":"vendors","x":-3337,"y":11917},{"type":"ubanker","label":"Ubanker","category":"vendors","x":2152,"y":2022},{"type":"count_hasimir_fenring","label":"Count Hasimir Fenring","category":"npcs","x":1751,"y":7877},{"type":"lady_margot_fenring","label":"Lady Margot Fenring","category":"npcs","x":9067,"y":12425},{"type":"choam_exchange","label":"Choam Exchange","category":"vendors","x":2354,"y":2541},{"type":"imperial_consulate","label":"Imperial Consulate","category":"locations","x":8236,"y":10698},{"type":"hannivar_s","label":"Hannivar S","category":"npcs","x":-2042,"y":6971},{"type":"exit","label":"Exit","category":"locations","x":153,"y":29449},{"type":"exit","label":"Exit","category":"locations","x":9624,"y":-1067},{"type":"pire_keep","label":"Pire Keep","category":"locations","x":165,"y":24597},{"type":"neo_carthag_outskirts","label":"Neo Carthag Outskirts","category":"locations","x":12028,"y":-3478},{"type":"beast_s_bend","label":"Beast S Bend","category":"locations","x":2382,"y":-437},{"type":"new_court_way","label":"New Court Way","category":"locations","x":225,"y":10904},{"type":"the_baron_s_eye","label":"The Baron S Eye","category":"locations","x":2219,"y":5490},{"type":"guild_bank","label":"Guild Bank","category":"locations","x":1751,"y":1740},{"type":"harkonnen_vendor","label":"Harkonnen Vendor","category":"vendors","x":-1522,"y":22394}]}
+{
+  "map": "harko",
+  "label": "Harko Village",
+  "game_key": "HarkoVillage",
+  "map_type": "social_hub",
+  "internal_key": "sh_harkovillage",
+  "total": 26,
+  "spawns": [
+    { "type": "vehicle_vendor", "label": "Vehicle Vendor", "category": "vendors", "x": -2349, "y": 930 },
+    { "type": "base_vendor", "label": "Base Vendor", "category": "vendors", "x": -374, "y": 11496 },
+    { "type": "spice_merchant", "label": "Spice Merchant", "category": "vendors", "x": 753, "y": 11477 },
+    { "type": "water_seller", "label": "Water Seller", "category": "vendors", "x": 724, "y": 13532 },
+    { "type": "scrap_trader", "label": "Scrap Trader", "category": "vendors", "x": -380, "y": 13519 },
+    { "type": "barkeep", "label": "Barkeep", "category": "vendors", "x": -2922, "y": 8537 },
+    { "type": "weapons_merchant", "label": "Weapons Merchant", "category": "vendors", "x": 8758, "y": 5572 },
+    { "type": "landsraad_vendor", "label": "Landsraad Vendor", "category": "vendors", "x": -3287, "y": 12551 },
+    { "type": "landsraad_vendor", "label": "Landsraad Vendor", "category": "vendors", "x": -2961, "y": 13212 },
+    { "type": "landsraad_vendor", "label": "Landsraad Vendor", "category": "vendors", "x": -2961, "y": 11917 },
+    { "type": "landsraad_vendor", "label": "Landsraad Vendor", "category": "vendors", "x": -3337, "y": 11917 },
+    { "type": "ubanker", "label": "Ubanker", "category": "vendors", "x": 2152, "y": 2022 },
+    { "type": "count_hasimir_fenring", "label": "Count Hasimir Fenring", "category": "npcs", "x": 1751, "y": 7877 },
+    { "type": "lady_margot_fenring", "label": "Lady Margot Fenring", "category": "npcs", "x": 9067, "y": 12425 },
+    { "type": "choam_exchange", "label": "Choam Exchange", "category": "vendors", "x": 2354, "y": 2541 },
+    { "type": "imperial_consulate", "label": "Imperial Consulate", "category": "locations", "x": 8236, "y": 10698 },
+    { "type": "hannivar_s", "label": "Hannivar S", "category": "npcs", "x": -2042, "y": 6971 },
+    { "type": "exit", "label": "Exit", "category": "locations", "x": 153, "y": 29449 },
+    { "type": "exit", "label": "Exit", "category": "locations", "x": 9624, "y": -1067 },
+    { "type": "pire_keep", "label": "Pire Keep", "category": "locations", "x": 165, "y": 24597 },
+    {
+      "type": "neo_carthag_outskirts",
+      "label": "Neo Carthag Outskirts",
+      "category": "locations",
+      "x": 12028,
+      "y": -3478
+    },
+    { "type": "beast_s_bend", "label": "Beast S Bend", "category": "locations", "x": 2382, "y": -437 },
+    { "type": "new_court_way", "label": "New Court Way", "category": "locations", "x": 225, "y": 10904 },
+    { "type": "the_baron_s_eye", "label": "The Baron S Eye", "category": "locations", "x": 2219, "y": 5490 },
+    { "type": "guild_bank", "label": "Guild Bank", "category": "locations", "x": 1751, "y": 1740 },
+    { "type": "harkonnen_vendor", "label": "Harkonnen Vendor", "category": "vendors", "x": -1522, "y": 22394 }
+  ]
+}

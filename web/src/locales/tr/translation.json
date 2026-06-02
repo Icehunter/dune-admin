@@ -100,7 +100,8 @@
     "spawnsLoaded": "{{count}} statik işaretçi yüklendi",
     "spawnTooltipCoords": "{{x}}, {{y}}",
     "filterTrainers": "Eğitmenler",
-    "filterKeys": "Pentakalkan Anahtarları"
+    "filterKeys": "Pentakalkan Anahtarları",
+    "filterSearch": "Filtre bul…"
   },
   "battlegroup": {
     "statusTitle": "Savaş Grubu Durumu",

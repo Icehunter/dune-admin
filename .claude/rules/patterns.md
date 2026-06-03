@@ -67,6 +67,22 @@ Don't over-apply — simple constructors with 2-3 params don't need this.
 All globals (`globalDB`, `globalSSH`, `globalExecutor`, `globalControl`) are set exactly
 once in `connectAll()`. Never reassign them from handlers or helpers.
 
+## Market Bot: Player Orders Are Inviolable
+
+The bot must **never** delete, expire, or modify player (non-NPC) exchange orders. Every
+`DELETE` or `UPDATE` on `dune_exchange_orders` or related tables must be scoped:
+
+```sql
+WHERE owner_id = <botOwnerID> AND is_npc_order = TRUE
+```
+
+The buy query must filter expired player orders with `AND expiration_time > gameNow` — not
+by deleting them. Add this comment on every relevant block:
+
+```go
+// MUST NOT touch player orders — only bot NPC rows
+```
+
 ## SQL Placement
 
 All Postgres queries live in `db.go`. Handlers call `cmd*` functions from there. This keeps

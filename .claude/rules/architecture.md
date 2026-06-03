@@ -19,6 +19,7 @@ explicit project constraint — don't refactor it away.
 | `connection.go` | Global state: `globalDB`, `globalSSH`, `globalExecutor`, `globalControl` |
 | `db.go` | **All** Postgres queries (pgx/v5) — nothing else |
 | `model.go` | Shared domain types |
+| `compat.go` | `type Msg = any` and `type Cmd = func() Msg` aliases — legacy Bubble Tea signatures used in db.go; do not remove or change |
 | `handlers_*.go` | HTTP handlers, one file per feature area |
 | `security_test.go` | `isReadOnlySQL`, `isValidK8sName`, `originAllowed` tests |
 

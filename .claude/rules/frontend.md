@@ -80,13 +80,25 @@ Import shared components from `../dune-ui` when a wrapper exists:
 ```ts
 import {
   DataTable, Icon, PageHeader, Panel, SectionDivider, SectionLabel,
-  InfoCard, StatusChip, Dropzone, SideNav,
+  InfoCard, Dropzone, SideNav,
 } from '../dune-ui'
 import type { Column } from '../dune-ui'
 ```
 
 Use `@heroui/react` directly only for primitives not wrapped in `dune-ui`
-(Button, Card, Spinner, toast, etc.).
+(Button, Card, Chip, Spinner, toast, etc.).
+
+`StatusChip` was removed — use inline `<Chip size="sm" variant="soft" color={...}>` instead.
+
+## HeroUI v3 limitations
+
+- `Select.Value` has no `placeholder` prop — use a sentinel item or keep native `<select>`
+- HeroUI `Select` has no `<optgroup>` — keep native `<select>` for grouped option lists
+- No equivalent for `<input list="...">` + `<datalist>` — keep native `<input>` with `bg-surface text-foreground border-border`
+
+## Migration backlog
+
+BattlegroupTab, StorageTab, DatabaseTab, LogsTab, BlueprintsTab still use raw HTML + inline styles. When refactoring any of these, follow the BasesTab pattern. Do not remove state/code — use `display: none` to hide features temporarily.
 
 ## Theming
 

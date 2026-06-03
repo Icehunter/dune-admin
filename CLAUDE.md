@@ -82,6 +82,8 @@ make version-major  # bump X.0.0, tag, push
   the only credential.
 - **pnpm required**: `web/` uses pnpm (pinned to `10.28.1`). Never use npm or yarn in `web/`.
 - **No commits without permission**: make changes + run build/test, then stop for user review.
+- **`make verify` does NOT run gosec**: run `make gosec` separately before any push that touches `exec.Command`, SQL, or file paths. The pre-push git hook gates on it. Suppress false positives with `// #nosec G204,G702 -- <reason>` (both IDs required). Never `git push --no-verify`.
+- **Market bot — player orders are inviolable**: never delete, expire, or modify non-NPC exchange orders. Every `DELETE`/`UPDATE` on exchange tables must include `WHERE … AND is_npc_order = TRUE AND owner_id = <botID>`. Buy query uses SELECT filter for expired player orders — not DELETE.
 
 ## Modular Rules
 
@@ -91,12 +93,20 @@ Detailed standards in `.claude/rules/`:
 | --- | --- | --- |
 | `testing.md` | `*_test.go` | TDD, mocking, coverage |
 | `architecture.md` | `*.go` | Flat package, handler/db/model patterns |
-| `patterns.md` | `*.go` | DI, global state, cache invalidation |
+| `patterns.md` | `*.go` | DI, global state, cache invalidation, player-order safety |
 | `error-handling.md` | `*.go` | Error wrapping, logging, HTTP status codes |
 | `concurrency.md` | `*.go` | Goroutines, context, mutex |
 | `api-design.md` | `handlers_*.go`, `server.go` | REST handlers, response helpers |
 | `frontend.md` | `web/**` | Tab patterns, dune-ui, API client |
 | `documentation.md` | `*.md` | Markdown standards |
+
+Reusable skills in `.claude/skills/`:
+
+| Skill | Trigger | What it does |
+| --- | --- | --- |
+| `tdd-go` | add handler / fix bug / implement feature | TDD checklist for Go handlers + db.go functions |
+| `new-tab` | add tab / new tab / create tab | Full-stack scaffold: route → handler → db.go → api client → React tab |
+| `pre-push-checklist` | ready to push / PR | make gosec + vulncheck + user approval gate |
 
 ---
 

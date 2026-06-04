@@ -1,1 +1,25 @@
-["1_GameStart","2_BaseBuilding","3_BaseRaiding","4_Windsack","5_Windsack_SpiceMining","6_Windsack_SpiceTrading","7_Ecolabs","Sandbox_Building","Sandbox_Combat","Checkpoint_MP_AfterNPE","Checkpoint_MP_ReachTradepost","Checkpoint_MP_ReachVillage","Checkpoint_MP_SpiceSolo","Checkpoint_MP_SpiceGroup","Checkpoint_MP_Ecolab","Checkpoint_RedDesert_East","Checkpoint_RedDesert_West","Checkpoint01_HaggaBasinSouth_Start","Checkpoint02_RedDesert_Start","Checkpoint03_JabalEifrit_Start","Checkpoint03.5_HaggaRift_Start","Checkpoint04_ShieldWall_Start","Checkpoint4.5_Oodham&Sheol_Start"]
+[
+  "1_GameStart",
+  "2_BaseBuilding",
+  "3_BaseRaiding",
+  "4_Windsack",
+  "5_Windsack_SpiceMining",
+  "6_Windsack_SpiceTrading",
+  "7_Ecolabs",
+  "Sandbox_Building",
+  "Sandbox_Combat",
+  "Checkpoint_MP_AfterNPE",
+  "Checkpoint_MP_ReachTradepost",
+  "Checkpoint_MP_ReachVillage",
+  "Checkpoint_MP_SpiceSolo",
+  "Checkpoint_MP_SpiceGroup",
+  "Checkpoint_MP_Ecolab",
+  "Checkpoint_RedDesert_East",
+  "Checkpoint_RedDesert_West",
+  "Checkpoint01_HaggaBasinSouth_Start",
+  "Checkpoint02_RedDesert_Start",
+  "Checkpoint03_JabalEifrit_Start",
+  "Checkpoint03.5_HaggaRift_Start",
+  "Checkpoint04_ShieldWall_Start",
+  "Checkpoint4.5_Oodham&Sheol_Start"
+]

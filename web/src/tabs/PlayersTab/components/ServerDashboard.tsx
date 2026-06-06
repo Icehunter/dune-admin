@@ -60,6 +60,7 @@ export const ServerDashboard: React.FC = () => {
               <InfoCard className="flex-wrap">
                 <InfoCard.Item label={t('players.dashboard.totalPlayers')} value={summary.total_players} />
                 <InfoCard.Item label={t('players.dashboard.online')} value={summary.online_players} />
+                <InfoCard.Item label={t('players.dashboard.avgLevel')} value={summary.avg_char_level.toFixed(1)} />
                 <InfoCard.Item label={t('players.dashboard.totalPlaytime')} value={fmtPlaytime(summary.total_playtime_secs)} />
                 <InfoCard.Item label={t('players.dashboard.totalSolaris')} value={summary.total_solaris.toLocaleString()} />
                 <InfoCard.Item label={t('players.dashboard.totalScrip')} value={summary.total_scrip.toLocaleString()} />
@@ -112,6 +113,36 @@ export const ServerDashboard: React.FC = () => {
                         </div>
                       ))}
                 </div>
+              </Panel>
+
+              <Panel>
+                <SectionLabel>{t('players.dashboard.byFaction')}</SectionLabel>
+                {summary.by_faction.length === 0
+                  ? <p className="text-muted text-sm mt-3">{t('players.dashboard.noPlayers')}</p>
+                  : (
+                      <div className="mt-3 overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-muted">
+                              <th className="pb-1 font-normal">{t('players.dashboard.factionCol')}</th>
+                              <th className="pb-1 text-right font-normal">{t('players.dashboard.playersCol')}</th>
+                              <th className="pb-1 text-right font-normal">{t('players.dashboard.solarisCol')}</th>
+                              <th className="pb-1 text-right font-normal">{t('players.dashboard.scripCol')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {summary.by_faction.map((f) => (
+                              <tr key={f.faction} className="border-t border-border/40">
+                                <td className="py-1 text-foreground">{f.faction}</td>
+                                <td className="py-1 text-right tabular-nums">{f.players.toLocaleString()}</td>
+                                <td className="py-1 text-right tabular-nums">{f.solaris.toLocaleString()}</td>
+                                <td className="py-1 text-right tabular-nums">{f.scrip.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
               </Panel>
             </>
           )}

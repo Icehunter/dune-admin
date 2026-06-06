@@ -188,6 +188,12 @@
   },
   "players": {
     "dashboard": {
+      "avgLevel": "Средний уровень",
+      "byFaction": "По фракциям",
+      "factionCol": "Фракция",
+      "playersCol": "Игроки",
+      "solarisCol": "Solaris",
+      "scripCol": "Scrip",
       "navLabel": "Обзор сервера",
       "title": "Обзор сервера",
       "subtitle": "Статистика и тренды игроков по всему серверу",

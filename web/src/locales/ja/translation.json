@@ -188,6 +188,12 @@
   },
   "players": {
     "dashboard": {
+      "avgLevel": "平均キャラクターレベル",
+      "byFaction": "派閥別",
+      "factionCol": "派閥",
+      "playersCol": "プレイヤー",
+      "solarisCol": "Solaris",
+      "scripCol": "Scrip",
       "navLabel": "サーバー概要",
       "title": "サーバー概要",
       "subtitle": "サーバー全体のプレイヤー統計と傾向",

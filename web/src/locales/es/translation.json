@@ -188,6 +188,12 @@
   },
   "players": {
     "dashboard": {
+      "avgLevel": "Nivel medio",
+      "byFaction": "Por facción",
+      "factionCol": "Facción",
+      "playersCol": "Jugadores",
+      "solarisCol": "Solaris",
+      "scripCol": "Scrip",
       "navLabel": "Resumen del servidor",
       "title": "Resumen del servidor",
       "subtitle": "Estadísticas y tendencias de jugadores en todo el servidor",

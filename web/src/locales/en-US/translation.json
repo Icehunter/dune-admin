@@ -188,6 +188,12 @@
   },
   "players": {
     "dashboard": {
+      "avgLevel": "Avg character level",
+      "byFaction": "By faction",
+      "factionCol": "Faction",
+      "playersCol": "Players",
+      "solarisCol": "Solaris",
+      "scripCol": "Scrip",
       "navLabel": "Server Overview",
       "title": "Server Overview",
       "subtitle": "Server-wide player stats and trends",

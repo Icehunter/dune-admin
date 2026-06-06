@@ -188,6 +188,12 @@
   },
   "players": {
     "dashboard": {
+      "avgLevel": "Ort. seviye",
+      "byFaction": "Fraksiyona göre",
+      "factionCol": "Fraksiyon",
+      "playersCol": "Oyuncular",
+      "solarisCol": "Solaris",
+      "scripCol": "Scrip",
       "navLabel": "Sunucu Genel Bakışı",
       "title": "Sunucu Genel Bakışı",
       "subtitle": "Sunucu genelinde oyuncu istatistikleri ve eğilimleri",

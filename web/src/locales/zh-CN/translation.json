@@ -188,6 +188,12 @@
   },
   "players": {
     "dashboard": {
+      "avgLevel": "平均角色等级",
+      "byFaction": "按阵营",
+      "factionCol": "阵营",
+      "playersCol": "玩家",
+      "solarisCol": "Solaris",
+      "scripCol": "Scrip",
       "navLabel": "服务器概览",
       "title": "服务器概览",
       "subtitle": "全服玩家统计与趋势",

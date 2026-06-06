@@ -212,12 +212,20 @@ export type ActivityPoint = {
   day: string
   count: number
 }
+export type FactionStat = {
+  faction: string
+  players: number
+  solaris: number
+  scrip: number
+}
 export type ServerSummary = {
   total_players: number
   online_players: number
   by_map: LabeledCount[]
+  by_faction: FactionStat[]
   total_solaris: number
   total_scrip: number
+  avg_char_level: number
   total_playtime_secs: number
   activity_trend: ActivityPoint[]
   trend_days: number

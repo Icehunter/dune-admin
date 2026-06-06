@@ -86,20 +86,6 @@ export const App: React.FC = () => {
   return hasClerk ? <AppWithAuth /> : <AppCore isSignedIn={true} />
 }
 
-function parseVer(v: string): [number, number, number] {
-  // Strip leading "v" and any pre-release suffix (-dev, -rc1, etc.) before parsing.
-  const [a, b, c] = v.replace(/^v/, '').replace(/-.*$/, '').split('.').map(Number)
-  return [a || 0, b || 0, c || 0]
-}
-
-function isNewer(latest: string, current: string): boolean {
-  const [la, lb, lc] = parseVer(latest)
-  const [ca, cb, cc] = parseVer(current)
-  if (la !== ca) return la > ca
-  if (lb !== cb) return lb > cb
-  return lc > cc
-}
-
 const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   const status = useStatus()
   const location = useLocation()
@@ -180,8 +166,8 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   const [dbSection, setDbSection] = useState<DbSection>('tables')
   const [welcomeSection, setWelcomeSection] = useState<WelcomeSection>('config')
   const [showBackendConfig, setShowBackendConfig] = useState(false)
-  const [latestVersion, setLatestVersion] = useState<string | null>(null)
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null)
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [updateChecking, setUpdateChecking] = useState(false)
   const [updateApplying, setUpdateApplying] = useState(false)
   const [formSaving, setFormSaving] = useState(false)
@@ -209,11 +195,10 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     })
   }, [currentTab])
 
+  // Check for a newer release via the backend (it knows this build's version and
+  // returns the release-notes URL) — drives the clickable header update widget (#129).
   useEffect(() => {
-    fetch('https://api.github.com/repos/Icehunter/dune-admin/releases/latest')
-      .then((r) => r.json())
-      .then((d) => setLatestVersion(d.tag_name || null))
-      .catch(() => {})
+    api.update.check().then(setUpdateInfo).catch(() => {})
   }, [])
 
   const checkUpdate = async () => {
@@ -289,19 +274,19 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
               {status.version}
             </Button>
           )}
-          {latestVersion && status?.version && isNewer(latestVersion, status.version) && (
-            <a
-              href="https://github.com/Icehunter/dune-admin/releases/latest"
-              target="_blank"
-              rel="noreferrer"
-              className="no-underline"
+          {updateInfo?.needs_update && (
+            <button
+              type="button"
+              onClick={() => setShowUpdateModal(true)}
+              aria-label={t('app.updateAvailable')}
+              className="cursor-pointer border-0 bg-transparent p-0"
             >
               <Chip size="sm" color="warning" variant="soft">
                 ↑
                 {' '}
-                {latestVersion}
+                {updateInfo.latest.replace(/^v/, '')}
               </Chip>
-            </a>
+            </button>
           )}
         </div>
 
@@ -479,6 +464,60 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                   onPress={() => setShowBackendConfig(false)}
                 >
                   {t('common.close')}
+                </Button>
+              </Modal.Footer>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
+
+      {/* Update-available prompt — opened from the header release widget (#129).
+          Reuses the backend update check for the release-notes link + Continue/Cancel. */}
+      <Modal>
+        <Modal.Backdrop isOpen={showUpdateModal} onOpenChange={(v) => !v && setShowUpdateModal(false)}>
+          <Modal.Container size="sm">
+            <Modal.Dialog>
+              <Modal.CloseTrigger />
+              <Modal.Header>
+                <Modal.Heading className="text-accent">{t('app.updateAvailable')}</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body className="flex flex-col gap-3">
+                <p className="text-sm text-muted">
+                  {t('app.updateAvailableBody', {
+                    current: updateInfo?.current ?? '',
+                    latest: updateInfo?.latest?.replace(/^v/, '') ?? '',
+                  })}
+                </p>
+                {updateInfo?.release_url && (
+                  <a
+                    href={updateInfo.release_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-accent hover:opacity-80"
+                  >
+                    <Icon name="external-link" />
+                    {' '}
+                    {t('app.viewReleaseNotes')}
+                  </a>
+                )}
+              </Modal.Body>
+              <Modal.Footer className="flex items-center justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="tertiary"
+                  onPress={() => setShowUpdateModal(false)}
+                >
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  size="sm"
+                  onPress={() => {
+                    setShowUpdateModal(false)
+                    void applyUpdate()
+                  }}
+                  isDisabled={updateApplying}
+                >
+                  {updateApplying ? <Spinner size="sm" color="current" /> : t('app.updateNow')}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>

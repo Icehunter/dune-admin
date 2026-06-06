@@ -1,11 +1,15 @@
 import type React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Spinner, toast } from '@heroui/react'
+import { BarChart, Bar, LineChart, Line, Legend, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { Button, Spinner, toast } from '@heroui/react'
 import { api } from '../../../api/client'
-import type { ServerSummary } from '../../../api/client'
+import type { FactionTrends, ServerSummary } from '../../../api/client'
 import { InfoCard, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
+
+// Explicit line colors — recharts can't read CSS tokens at render time. accent
+// first, then distinct hues; cycled per faction line.
+const FACTION_COLORS = ['var(--accent)', '#52c080', '#e05252', '#5b8def', '#c9820a', '#9b59b6']
 
 function fmtDate(d: string): string {
   return new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -24,6 +28,8 @@ export const ServerDashboard: React.FC = () => {
   const { t } = useTranslation()
   const [summary, setSummary] = useState<ServerSummary | null>(null)
   const [loading, setLoading] = useState(false)
+  const [trends, setTrends] = useState<FactionTrends | null>(null)
+  const [metric, setMetric] = useState<'solaris' | 'level'>('solaris')
 
   // Mirror PlayersTab.loadPlayers: defer setLoading into a microtask so it is
   // not a synchronous setState inside the effect (react-hooks/set-state-in-effect).
@@ -39,6 +45,19 @@ export const ServerDashboard: React.FC = () => {
   useEffect(() => {
     load()
   }, [load])
+
+  // Faction-growth trends; re-fetched when the metric toggles. Deferred setState
+  // (same pattern as load) to satisfy react-hooks/set-state-in-effect.
+  const loadTrends = useCallback(() => {
+    Promise.resolve()
+      .then(() => api.players.factionTrends(metric))
+      .then(setTrends)
+      .catch(() => {})
+  }, [metric])
+
+  useEffect(() => {
+    loadTrends()
+  }, [loadTrends])
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto pr-3">
@@ -148,6 +167,68 @@ export const ServerDashboard: React.FC = () => {
                             ))}
                           </tbody>
                         </table>
+                      </div>
+                    )}
+              </Panel>
+
+              <Panel>
+                <div className="flex items-center justify-between gap-2">
+                  <SectionLabel>{t('players.dashboard.growthTitle')}</SectionLabel>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant={metric === 'solaris' ? 'secondary' : 'ghost'} onPress={() => setMetric('solaris')}>
+                      {t('players.dashboard.metricSolaris')}
+                    </Button>
+                    <Button size="sm" variant={metric === 'level' ? 'secondary' : 'ghost'} onPress={() => setMetric('level')}>
+                      {t('players.dashboard.metricLevel')}
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-muted mt-1 text-xs">{t('players.dashboard.growthApprox')}</p>
+                {!trends || trends.points.length === 0
+                  ? <p className="text-muted text-sm mt-3">{t('players.dashboard.noPlayers')}</p>
+                  : (
+                      <div className="mt-3 h-56">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={trends.points.map((p) => ({ day: p.day, ...p.values }))}
+                            margin={{ top: 4, right: 8, left: 8, bottom: 0 }}
+                          >
+                            <XAxis
+                              dataKey="day"
+                              tickFormatter={fmtDate}
+                              tick={{ fontSize: 11, fill: 'var(--muted)' }}
+                              tickLine={false}
+                              axisLine={false}
+                            />
+                            <YAxis
+                              tick={{ fontSize: 11, fill: 'var(--muted)' }}
+                              tickLine={false}
+                              axisLine={false}
+                              width={52}
+                              tickFormatter={(v) => (v as number).toLocaleString()}
+                            />
+                            <Tooltip
+                              labelFormatter={(d) => fmtDate(String(d))}
+                              contentStyle={{
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 'var(--radius)',
+                                fontSize: 12,
+                              }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            {trends.factions.map((fac, i) => (
+                              <Line
+                                key={fac}
+                                type="monotone"
+                                dataKey={fac}
+                                stroke={FACTION_COLORS[i % FACTION_COLORS.length]}
+                                strokeWidth={2}
+                                dot={false}
+                              />
+                            ))}
+                          </LineChart>
+                        </ResponsiveContainer>
                       </div>
                     )}
               </Panel>

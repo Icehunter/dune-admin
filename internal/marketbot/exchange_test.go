@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -265,6 +266,125 @@ func TestLearnGameEpoch_BothTiersMissDoesNotUpdate(t *testing.T) {
 
 	if ex.gameEpochUnix != 42 {
 		t.Errorf("gameEpochUnix changed unexpectedly: got %d, want 42", ex.gameEpochUnix)
+	}
+}
+
+// TestApplyLearnedEpoch_SkipsRefAtSentinel verifies that applyLearnedEpoch does
+// not update the epoch when the reference expiration_time equals epochSentinelCutoff.
+// This is the sentinel value used for "expiration unknown" orders (e.g. leftover
+// standalone bot orders with is_npc_order=FALSE and expiration_time=999_999_999).
+// Without this guard, Tier 2 picking up such an order makes gameNow near-sentinel,
+// causing buyPlayerListings to filter out ALL valid player listings.
+func TestApplyLearnedEpoch_SkipsRefAtSentinel(t *testing.T) {
+	t.Parallel()
+
+	ex := &Exchange{gameEpochUnix: 42}
+	applyLearnedEpoch(ex, func() (int64, error) {
+		return epochSentinelCutoff, nil // sentinel ref from leftover bot order
+	})
+	if ex.gameEpochUnix != 42 {
+		t.Errorf("epoch updated from sentinel ref: got %d, want 42", ex.gameEpochUnix)
+	}
+}
+
+// TestApplyLearnedEpoch_SkipsRefAboveSentinel verifies that applyLearnedEpoch
+// rejects any ref > epochSentinelCutoff (defensive against non-standard sentinel values).
+func TestApplyLearnedEpoch_SkipsRefAboveSentinel(t *testing.T) {
+	t.Parallel()
+
+	ex := &Exchange{gameEpochUnix: 99}
+	applyLearnedEpoch(ex, func() (int64, error) {
+		return epochSentinelCutoff + 1, nil
+	})
+	if ex.gameEpochUnix != 99 {
+		t.Errorf("epoch updated from above-sentinel ref: got %d, want 99", ex.gameEpochUnix)
+	}
+}
+
+// TestApplyLearnedEpoch_AcceptsValidRef verifies that a normal (well below sentinel)
+// ref still updates the epoch correctly after the sentinel guard is added.
+func TestApplyLearnedEpoch_AcceptsValidRef(t *testing.T) {
+	t.Parallel()
+
+	const validRef = int64(2_000_000) // well below sentinel
+	ex := newTestExchange(t)
+	ex.gameEpochUnix = 0
+	applyLearnedEpoch(ex, func() (int64, error) {
+		return validRef, nil
+	})
+	if ex.gameEpochUnix == 0 {
+		t.Error("epoch should have been updated from valid ref")
+	}
+}
+
+// TestLearnGameEpoch_Tier2SentinelRefDoesNotCorruptEpoch is the end-to-end
+// regression test for the "bot not buying listings" bug. When Tier 2 returns a
+// sentinel-value expiration_time (from a leftover standalone bot order), the
+// epoch must NOT be set — otherwise gameNow becomes near-sentinel and
+// buyPlayerListings filters out every valid player listing.
+func TestLearnGameEpoch_Tier2SentinelRefDoesNotCorruptEpoch(t *testing.T) {
+	t.Parallel()
+
+	ex := newTestExchange(t)
+	ex.gameEpochUnix = 0 // fresh install, no cached epoch
+
+	applyLearnedEpochTwoTier(ex,
+		func() (int64, error) { return 0, pgx.ErrNoRows },         // Tier 1: no bot listings
+		func() (int64, error) { return epochSentinelCutoff, nil }, // Tier 2: sentinel leftover
+	)
+
+	if ex.gameEpochUnix != 0 {
+		t.Errorf("epoch was set from sentinel Tier 2 ref: got %d, want 0 (must stay unknown)", ex.gameEpochUnix)
+	}
+}
+
+// TestClearSentinelEpoch_ClearsWhenNearSentinel verifies that clearSentinelEpoch
+// resets gameEpochUnix to 0 when the cached epoch would produce a near-sentinel
+// gameNow. This auto-heals a corrupted cache from a previous run where Tier 2
+// picked up a sentinel-value player order and wrote the bad epoch to SQLite.
+func TestClearSentinelEpoch_ClearsWhenNearSentinel(t *testing.T) {
+	t.Parallel()
+
+	// An epoch that makes gameNow() == epochSentinelCutoff - orderExpirySecs.
+	// gameNow() = time.Now().Unix() - gameEpochUnix
+	// → gameEpochUnix = time.Now().Unix() - (epochSentinelCutoff - orderExpirySecs)
+	badEpoch := time.Now().Unix() - (epochSentinelCutoff - orderExpirySecs)
+	ex := &Exchange{gameEpochUnix: badEpoch}
+	cleared := clearSentinelEpoch(ex)
+	if !cleared {
+		t.Error("clearSentinelEpoch should return true for near-sentinel epoch")
+	}
+	if ex.gameEpochUnix != 0 {
+		t.Errorf("gameEpochUnix should be 0 after clearing, got %d", ex.gameEpochUnix)
+	}
+}
+
+// TestClearSentinelEpoch_KeepsValidEpoch verifies that clearSentinelEpoch does
+// not disturb a healthy epoch that produces a reasonable gameNow.
+func TestClearSentinelEpoch_KeepsValidEpoch(t *testing.T) {
+	t.Parallel()
+
+	// A valid epoch: gameNow() ≈ 1_000_000 (well below sentinel).
+	validEpoch := time.Now().Unix() - 1_000_000
+	ex := &Exchange{gameEpochUnix: validEpoch}
+	cleared := clearSentinelEpoch(ex)
+	if cleared {
+		t.Error("clearSentinelEpoch should return false for a valid epoch")
+	}
+	if ex.gameEpochUnix != validEpoch {
+		t.Errorf("valid epoch should be preserved: got %d, want %d", ex.gameEpochUnix, validEpoch)
+	}
+}
+
+// TestClearSentinelEpoch_NoopOnZeroEpoch verifies clearSentinelEpoch is a no-op
+// when epoch is 0 (unknown — nothing to clear).
+func TestClearSentinelEpoch_NoopOnZeroEpoch(t *testing.T) {
+	t.Parallel()
+
+	ex := &Exchange{gameEpochUnix: 0}
+	cleared := clearSentinelEpoch(ex)
+	if cleared {
+		t.Error("clearSentinelEpoch should return false when epoch is already 0")
 	}
 }
 

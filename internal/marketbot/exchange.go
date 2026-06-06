@@ -168,7 +168,9 @@ func NewExchange(db *pgxpool.Pool, cachePath string, catalog []CatalogItem, cfg 
 		categories: make(map[string]categoryEntry),
 	}
 	if err := cache.QueryRow(`SELECT value FROM metadata WHERE key = 'game_epoch_unix'`).Scan(&ex.gameEpochUnix); err == nil {
-		log.Printf("loaded game epoch from cache: unix %d (game time now: %d)", ex.gameEpochUnix, ex.gameNow())
+		if !clearSentinelEpoch(ex) {
+			log.Printf("loaded game epoch from cache: unix %d (game time now: %d)", ex.gameEpochUnix, ex.gameNow())
+		}
 	}
 	return ex, nil
 }
@@ -211,7 +213,8 @@ func (e *Exchange) learnGameEpoch(ctx context.Context) {
 				SELECT expiration_time FROM dune.dune_exchange_orders
 				WHERE is_npc_order = FALSE
 				  AND expiration_time IS NOT NULL
-				ORDER BY expiration_time DESC LIMIT 1`).Scan(&ref)
+				  AND expiration_time < $1
+				ORDER BY expiration_time DESC LIMIT 1`, epochSentinelCutoff).Scan(&ref)
 			return ref, err
 		},
 	)
@@ -231,11 +234,33 @@ func applyLearnedEpochTwoTier(e *Exchange, fetchBotRef, fetchPlayerRef func() (i
 	})
 }
 
+// clearSentinelEpoch resets gameEpochUnix to 0 if the cached epoch would
+// produce a near-sentinel gameNow (≥ epochSentinelCutoff − orderExpirySecs).
+// Returns true when the epoch was cleared. This self-heals a cache that was
+// corrupted by Tier 2 picking up a sentinel-value order (e.g. a leftover
+// standalone market bot order with is_npc_order=FALSE and
+// expiration_time=999_999_999).
+func clearSentinelEpoch(e *Exchange) bool {
+	if e.gameEpochUnix == 0 {
+		return false
+	}
+	if e.gameNow() >= epochSentinelCutoff-orderExpirySecs {
+		log.Printf("cached epoch %d produces near-sentinel gameNow — clearing corrupted cache entry", e.gameEpochUnix)
+		e.gameEpochUnix = 0
+		return true
+	}
+	return false
+}
+
 // applyLearnedEpoch updates the Exchange epoch from the value returned by
 // fetchRef. Extracted so epoch-learning logic can be tested without a live DB.
 func applyLearnedEpoch(e *Exchange, fetchRef func() (int64, error)) {
 	ref, err := fetchRef()
 	if err != nil || ref == 0 {
+		return
+	}
+	if ref >= epochSentinelCutoff {
+		log.Printf("epoch detection: ref %d is at or above sentinel cutoff — skipping to prevent corruption", ref)
 		return
 	}
 	gameNow := ref - orderExpirySecs

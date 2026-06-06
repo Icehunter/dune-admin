@@ -105,10 +105,11 @@ type labeledCount struct {
 // dashboard (#130). "Unaligned" buckets characters with no dune.player_faction
 // row (i.e. players who never picked a faction).
 type factionStat struct {
-	Faction string `json:"faction"`
-	Players int64  `json:"players"`
-	Solaris int64  `json:"solaris"`
-	Scrip   int64  `json:"scrip"`
+	Faction  string  `json:"faction"`
+	Players  int64   `json:"players"`
+	Solaris  int64   `json:"solaris"`
+	Scrip    int64   `json:"scrip"`
+	AvgLevel float64 `json:"avg_level"`
 }
 
 // serverStats is the Postgres-derived half of the Players dashboard summary
@@ -191,6 +192,20 @@ const (
 		JOIN dune.actor_fgl_entities afe ON afe.actor_id = a.id AND afe.slot_name = 'DuneCharacter'
 		JOIN dune.fgl_entities fe ON fe.entity_id = afe.entity_id
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
+
+	// Per-player (faction, char XP) for the per-faction average level (#130 ext).
+	// Same DuneCharacter XP source as serverCharXPSQL, joined to faction (LEFT
+	// JOINs → "Unaligned" bucket). Averaged in Go via xpToLevel.
+	serverFactionXPSQL = `
+		SELECT
+			COALESCE(f.name, 'Unaligned') AS faction,
+			COALESCE((fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint, 0) AS xp
+		FROM dune.actors a
+		JOIN dune.actor_fgl_entities afe ON afe.actor_id = a.id AND afe.slot_name = 'DuneCharacter'
+		JOIN dune.fgl_entities fe ON fe.entity_id = afe.entity_id
+		LEFT JOIN dune.player_faction pf ON pf.actor_id = a.id
+		LEFT JOIN dune.factions f ON f.id = pf.faction_id
+		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
 )
 
 // cmdFetchServerStats computes the Postgres-derived dashboard aggregates (#130):
@@ -215,8 +230,61 @@ func cmdFetchServerStats(ctx context.Context, pool *pgxpool.Pool) (serverStats, 
 	if err != nil {
 		return serverStats{}, fmt.Errorf("server by-faction: %w", err)
 	}
+	levels, err := factionAvgLevels(ctx, pool)
+	if err != nil {
+		return serverStats{}, fmt.Errorf("server faction levels: %w", err)
+	}
+	for i := range byFaction {
+		byFaction[i].AvgLevel = levels[byFaction[i].Faction]
+	}
 	s.ByFaction = byFaction
 	return s, nil
+}
+
+// factionXP pairs a character's faction with its cumulative character XP, for
+// the per-faction average level (#130 ext).
+type factionXP struct {
+	Faction string
+	XP      int64
+}
+
+// avgLevelsByFaction averages per-character levels (via xpToLevel) within each
+// faction. Pure + testable; empty input → empty map.
+func avgLevelsByFaction(pairs []factionXP) map[string]float64 {
+	sum := map[string]int{}
+	cnt := map[string]int{}
+	for _, p := range pairs {
+		sum[p.Faction] += xpToLevel(p.XP)
+		cnt[p.Faction]++
+	}
+	out := make(map[string]float64, len(cnt))
+	for fac, n := range cnt {
+		out[fac] = float64(sum[fac]) / float64(n)
+	}
+	return out
+}
+
+// factionAvgLevels queries per-player (faction, char XP) and returns the mean
+// character level per faction.
+func factionAvgLevels(ctx context.Context, pool *pgxpool.Pool) (map[string]float64, error) {
+	rows, err := pool.Query(ctx, serverFactionXPSQL, gmIdentityAccountID)
+	if err != nil {
+		return nil, fmt.Errorf("faction xp: %w", err)
+	}
+	defer rows.Close()
+
+	var pairs []factionXP
+	for rows.Next() {
+		var p factionXP
+		if err := rows.Scan(&p.Faction, &p.XP); err != nil {
+			return nil, fmt.Errorf("scan faction xp: %w", err)
+		}
+		pairs = append(pairs, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return avgLevelsByFaction(pairs), nil
 }
 
 // scanLabeledCounts runs a (label text, count bigint) query and returns the

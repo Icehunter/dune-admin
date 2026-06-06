@@ -95,3 +95,23 @@ func TestAverageLevel(t *testing.T) {
 		})
 	}
 }
+
+// avgLevelsByFaction (#130 ext v2) — mean character level per faction via
+// xpToLevel; averages levels within each faction bucket, empty input → {}.
+func TestAvgLevelsByFaction(t *testing.T) {
+	t.Parallel()
+	got := avgLevelsByFaction([]factionXP{
+		{Faction: "Atreides", XP: 344440},  // level 200
+		{Faction: "Atreides", XP: 0},       // level 0
+		{Faction: "Unaligned", XP: 344440}, // level 200
+	})
+	if got["Atreides"] != 100 {
+		t.Errorf("Atreides avg = %v, want 100", got["Atreides"])
+	}
+	if got["Unaligned"] != 200 {
+		t.Errorf("Unaligned avg = %v, want 200", got["Unaligned"])
+	}
+	if len(avgLevelsByFaction(nil)) != 0 {
+		t.Errorf("nil input: want empty map, got %v", avgLevelsByFaction(nil))
+	}
+}

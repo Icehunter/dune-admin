@@ -3,6 +3,7 @@ package marketbot
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -61,6 +62,13 @@ func normalizeRarity(r string) string {
 func loadCatalog(itemDataPath string) ([]CatalogItem, error) {
 	if itemDataPath == "" {
 		itemDataPath = "item-data.json"
+	}
+	// A configured path may point at the directory that holds item-data.json
+	// (e.g. the install/working dir) rather than the file itself. Reading a
+	// directory as a file fails cryptically — "is a directory" on Linux,
+	// "Incorrect function" on Windows (#116) — so resolve to the file inside.
+	if info, statErr := os.Stat(itemDataPath); statErr == nil && info.IsDir() {
+		itemDataPath = filepath.Join(itemDataPath, "item-data.json")
 	}
 	dataRaw, err := os.ReadFile(itemDataPath)
 	if err != nil {

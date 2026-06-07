@@ -104,7 +104,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   const status = useStatus()
   const location = useLocation()
   const navigate = useNavigate()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [reconnecting, setReconnecting] = useState(false)
 
   const DB_SECTIONS: { key: string, label: string, depth: number }[] = [
@@ -256,7 +256,11 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   )
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
+    // Keyed on the active language so switching language remounts the content
+    // subtree once. The module-level memo() tabs stay mounted and otherwise keep
+    // stale-language text on a language change (their props don't change), until
+    // an unrelated local state update forces them to re-render (#123).
+    <div key={i18n.language} className="h-screen flex flex-col overflow-hidden bg-background">
       <Toast.Provider />
 
       {/* Header */}

@@ -52,6 +52,10 @@ type ServerSetting struct {
 	IsOverride  bool           `json:"is_overridden"`
 	Source      string         `json:"source"` // "userGame"|"userEngine"|"defaultGame"|"defaultEngine"|""
 	Layers      []SettingLayer `json:"layers"` // ordered low→high priority; empty when setting is unconfigured
+	// FieldName is the AMP config node suffix for curated settings; empty for
+	// discovered ones. Its presence marks a setting as AMP-managed (written via
+	// the AMP API under the AMP control plane) so the UI can label it.
+	FieldName string `json:"field_name,omitempty"`
 }
 
 // SettingLayer records one file's contribution to a setting's value,
@@ -451,28 +455,37 @@ type serverSettingsWriter interface {
 	writeServerSettings(ctx context.Context, exec Executor, updates map[string]string) error
 }
 
-// resolveFieldUpdates maps normalized (section→key→value) updates to AMP
-// FieldName→value. Because AMP has no "unset" — every node holds a value — a
-// clear (empty value) resolves to the curated schema default. (section,key)
-// pairs outside the curated schema have no AMP node and are returned as
-// unknown: they cannot be written through the AMP API.
-func resolveFieldUpdates(updates map[string]map[string]string) (fieldUpdates map[string]string, unknown []string) {
+// splitCuratedFromINI partitions normalized (section→key→value) updates into
+// curated settings and everything else. Curated settings (those in the schema,
+// which carry an AMP FieldName) are returned as FieldName→value for the AMP API;
+// because AMP has no "unset" — every node holds a value — a clear (empty value)
+// resolves to the curated schema default. All other (section,key) pairs are
+// returned as section→key→value for the INI write path.
+//
+// Under AMP the caller writes the curated settings through the API and the rest
+// to the INI files, so operators can still set custom settings AMP doesn't
+// manage rather than being rejected.
+func splitCuratedFromINI(updates map[string]map[string]string) (fieldUpdates map[string]string, iniUpdates map[string]map[string]string) {
 	schemaMap := buildServerSettingsSchemaMap()
 	fieldUpdates = map[string]string{}
+	iniUpdates = map[string]map[string]string{}
 	for sec, kvs := range updates {
 		for key, val := range kvs {
-			def, ok := schemaMap[sec+"|"+key]
-			if !ok {
-				unknown = append(unknown, sec+"|"+key)
+			if def, ok := schemaMap[sec+"|"+key]; ok {
+				v := val
+				if v == "" {
+					v = def.Default
+				}
+				fieldUpdates[def.FieldName] = v
 				continue
 			}
-			if val == "" {
-				val = def.Default
+			if iniUpdates[sec] == nil {
+				iniUpdates[sec] = map[string]string{}
 			}
-			fieldUpdates[def.FieldName] = val
+			iniUpdates[sec][key] = val
 		}
 	}
-	return fieldUpdates, unknown
+	return fieldUpdates, iniUpdates
 }
 
 // gameWritePath returns the file dune-admin writes game-scoped settings to.
@@ -797,6 +810,7 @@ func buildSchemaSettings(layerSources []layerSource) []ServerSetting {
 			Description: def.Description,
 			Category:    def.Category,
 			Current:     def.Default,
+			FieldName:   def.FieldName,
 		}
 		applySettingLayers(&s, layerSources)
 		settings = append(settings, s)
@@ -1442,31 +1456,41 @@ func buildUpdatedINIContent(path string, updates map[string]map[string]string) (
 	return applyDuneAdminUpdates(readINIContent(path), updates)
 }
 
-// writeServerSettingsViaControlPlane applies updates through a control plane's
-// own configuration API (AMP). Keys with no AMP node (not in the curated
-// schema) are rejected rather than silently written to an INI the control plane
-// would clobber. A control-plane API failure returns 502 (the upstream config
-// service rejected or was unreachable).
-func writeServerSettingsViaControlPlane(
-	w http.ResponseWriter, r *http.Request,
-	writer serverSettingsWriter, normalized normalizedServerSettingUpdates,
-) {
-	fieldUpdates, unknown := resolveFieldUpdates(normalized.updates)
-	if len(unknown) > 0 {
-		sort.Strings(unknown)
-		jsonErr(w, fmt.Errorf("these settings are not configurable on the %s control plane: %s",
-			globalControl.Name(), strings.Join(unknown, ", ")), 400)
-		return
+// applyServerSettingsToINI writes updates to the user INI files
+// (UserGame/UserOverrides + UserEngine), routing each section to the right file.
+// It returns an HTTP status code alongside any error: 409 when a managed-marker
+// conflict would risk data loss, 500 on write failure, 0 on success.
+func applyServerSettingsToINI(dir string, updates map[string]map[string]string) (int, error) {
+	// Route each section to UserGame.ini or UserEngine.ini based on which default
+	// file declares it (ConsoleVariables is always engine-scoped).
+	defaultEngineIni := parseINI(readDefaultINIContent(dir, "DefaultEngine.ini"))
+	gameUpdates, engineUpdates := splitServerSettingsUpdatesByFile(defaultEngineIni, updates)
+
+	// Game settings route to UserOverrides.ini under AMP (leaving AMP's
+	// dashboard-managed UserGame.ini untouched) and to UserGame.ini otherwise.
+	gamePath := gameWritePath(dir)
+	gameName := pathpkg.Base(gamePath)
+	gameBody, err := buildUpdatedINIContent(gamePath, gameUpdates)
+	if err != nil {
+		return 409, fmt.Errorf("%s: %w", gameName, err)
 	}
-	if err := writer.writeServerSettings(r.Context(), globalExecutor, fieldUpdates); err != nil {
-		jsonErr(w, err, 502)
-		return
+	if len(gameUpdates) > 0 {
+		if err := writeINIContent(gamePath, gameBody); err != nil {
+			return 500, fmt.Errorf("write %s: %w", gameName, err)
+		}
 	}
-	jsonOK(w, map[string]any{
-		"ok":      fmt.Sprintf("Saved (%d set, %d reset). Restart the game server to apply.", normalized.applied, normalized.cleared),
-		"applied": normalized.applied,
-		"cleared": normalized.cleared,
-	})
+
+	enginePath := dir + "/UserEngine.ini"
+	engineBody, err := buildUpdatedINIContent(enginePath, engineUpdates)
+	if err != nil {
+		return 409, fmt.Errorf("UserEngine.ini: %w", err)
+	}
+	if len(engineUpdates) > 0 {
+		if err := writeINIContent(enginePath, engineBody); err != nil {
+			return 500, fmt.Errorf("write UserEngine.ini: %w", err)
+		}
+	}
+	return 0, nil
 }
 
 // @Summary Apply one or more server setting changes
@@ -1498,51 +1522,31 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// AMP-style control planes own their config files and regenerate the game
-	// INIs on start, so writes must go through their API (Core/SetConfig) to
-	// survive. Other planes fall through to the direct INI write below.
+	// AMP-style control planes own the game INIs and regenerate them on start, so
+	// AMP-managed (curated) settings must go through their API (Core/SetConfig) to
+	// survive. Everything else — and all settings on non-AMP planes — takes the
+	// direct INI path. Splitting (rather than rejecting non-curated keys) lets
+	// operators still set custom settings AMP doesn't manage.
+	iniUpdates := normalized.updates
 	if writer, ok := globalControl.(serverSettingsWriter); ok {
-		writeServerSettingsViaControlPlane(w, r, writer, normalized)
-		return
+		fieldUpdates, rest := splitCuratedFromINI(normalized.updates)
+		if len(fieldUpdates) > 0 {
+			if err := writer.writeServerSettings(r.Context(), globalExecutor, fieldUpdates); err != nil {
+				jsonErr(w, err, 502)
+				return
+			}
+		}
+		iniUpdates = rest
 	}
 
-	dir, err := iniDir()
-	if err != nil {
-		jsonErr(w, err, 503)
-		return
-	}
-
-	// Route each section to UserGame.ini or UserEngine.ini based on which default
-	// file declares it. Sections found in DefaultEngine.ini go to UserEngine.ini;
-	// everything else goes to UserGame.ini.
-	defaultEngineIni := parseINI(readDefaultINIContent(dir, "DefaultEngine.ini"))
-	gameUpdates, engineUpdates := splitServerSettingsUpdatesByFile(defaultEngineIni, normalized.updates)
-
-	// Game settings route to UserOverrides.ini under AMP (leaving AMP's
-	// dashboard-managed UserGame.ini untouched) and to UserGame.ini otherwise.
-	gamePath := gameWritePath(dir)
-	gameName := pathpkg.Base(gamePath)
-	gameBody, err := buildUpdatedINIContent(gamePath, gameUpdates)
-	if err != nil {
-		jsonErr(w, fmt.Errorf("%s: %w", gameName, err), 409)
-		return
-	}
-	if len(gameUpdates) > 0 {
-		if err := writeINIContent(gamePath, gameBody); err != nil {
-			jsonErr(w, fmt.Errorf("write %s: %w", gameName, err), 500)
+	if len(iniUpdates) > 0 {
+		dir, err := iniDir()
+		if err != nil {
+			jsonErr(w, err, 503)
 			return
 		}
-	}
-
-	enginePath := dir + "/UserEngine.ini"
-	engineBody, err := buildUpdatedINIContent(enginePath, engineUpdates)
-	if err != nil {
-		jsonErr(w, fmt.Errorf("UserEngine.ini: %w", err), 409)
-		return
-	}
-	if len(engineUpdates) > 0 {
-		if err := writeINIContent(enginePath, engineBody); err != nil {
-			jsonErr(w, fmt.Errorf("write UserEngine.ini: %w", err), 500)
+		if code, err := applyServerSettingsToINI(dir, iniUpdates); err != nil {
+			jsonErr(w, err, code)
 			return
 		}
 	}

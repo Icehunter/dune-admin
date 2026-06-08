@@ -1,43 +1,63 @@
 package main
 
 import (
+	"io"
+	"net"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
-// TestResolveFieldUpdates maps normalized (section→key→value) updates to AMP
-// FieldName→value: known keys resolve to their FieldName, an empty value
-// resolves to the schema default (AMP has no "unset"), and (section,key) pairs
-// outside the curated schema are reported as unknown.
-func TestResolveFieldUpdates(t *testing.T) {
+// TestSplitCuratedFromINI partitions updates into curated AMP settings
+// (FieldName→value, clears resolved to schema default) and everything else
+// (section→key→value for the INI path). Non-curated keys must NOT be dropped —
+// they route to the INI files so operators can still set custom settings under
+// AMP.
+func TestSplitCuratedFromINI(t *testing.T) {
 	t.Parallel()
 	updates := map[string]map[string]string{
-		secConsoleVars:         {"Dune.GlobalMiningOutputMultiplier": "3.000000"},
-		secBuilding:            {"m_MaxNumLandclaimSegments": ""}, // clear → revert to default
-		"/Script/Fake.Section": {"m_unknown": "1"},                // not curated → unknown
+		secConsoleVars:                         {"Dune.GlobalMiningOutputMultiplier": "3.000000"},
+		secBuilding:                            {"m_MaxNumLandclaimSegments": ""},                  // curated clear → default
+		"/Script/DuneSandbox.SandwormSettings": {"ThreatScale": "2.0", "InitialThreatRate": "0.5"}, // non-curated → INI
 	}
-	fields, unknown := resolveFieldUpdates(updates)
+	fields, ini := splitCuratedFromINI(updates)
 
 	if got := fields["ConsoleVariables.Dune.GlobalMiningOutputMultiplier"]; got != "3.000000" {
 		t.Errorf("mining FieldName value = %q, want 3.000000", got)
 	}
-	// Cleared landclaim resolves to the curated default (6).
 	if got := fields["/Script/DuneSandbox.BuildingSettings.m_MaxNumLandclaimSegments"]; got != "6" {
-		t.Errorf("cleared landclaim value = %q, want default 6", got)
+		t.Errorf("cleared landclaim = %q, want default 6", got)
 	}
-	if len(unknown) != 1 || unknown[0] != "/Script/Fake.Section|m_unknown" {
-		t.Errorf("unknown = %v, want [/Script/Fake.Section|m_unknown]", unknown)
+	if len(fields) != 2 {
+		t.Errorf("expected 2 curated fields, got %d: %v", len(fields), fields)
 	}
-	if _, ok := fields["m_unknown"]; ok {
-		t.Error("unknown key must not appear in field updates")
+	sw := ini["/Script/DuneSandbox.SandwormSettings"]
+	if sw == nil || sw["ThreatScale"] != "2.0" || sw["InitialThreatRate"] != "0.5" {
+		t.Errorf("non-curated sandworm settings must route to INI updates, got %v", ini)
+	}
+	if _, leaked := ini[secConsoleVars]; leaked {
+		t.Error("curated CVar must not appear in INI updates")
 	}
 }
 
-// TestHandleUpdateServerSettings_AMPRoutesToAPI verifies that when the control
-// plane is AMP (a serverSettingsWriter), settings are written through the AMP
-// API rather than the INI files.
-func TestHandleUpdateServerSettings_AMPRoutesToAPI(t *testing.T) {
+// fullRecExec is an Executor that routes Exec through a func and records whether
+// WriteFile was called — enough to drive the handler's INI write path in tests.
+type fullRecExec struct {
+	execFn func(string) (string, error)
+	writes int
+}
+
+func (e *fullRecExec) Exec(cmd string) (string, error)              { return e.execFn(cmd) }
+func (e *fullRecExec) Stream(string) (<-chan string, func(), error) { return nil, func() {}, nil }
+func (e *fullRecExec) PipeToWriter(string, io.Writer) error         { return nil }
+func (e *fullRecExec) WriteFile(string, io.Reader) error            { e.writes++; return nil }
+func (e *fullRecExec) Dial(network, addr string) (net.Conn, error)  { return nil, nil }
+func (e *fullRecExec) Close()                                       {}
+func (e *fullRecExec) Type() string                                 { return "local" }
+
+// TestHandleUpdateServerSettings_AMPRoutesCuratedToAPI verifies a curated
+// setting is written through the AMP API (and no INI write happens for it).
+func TestHandleUpdateServerSettings_AMPRoutesCuratedToAPI(t *testing.T) {
 	origControl, origExec := globalControl, globalExecutor
 	t.Cleanup(func() { globalControl, globalExecutor = origControl, origExec })
 
@@ -49,7 +69,6 @@ func TestHandleUpdateServerSettings_AMPRoutesToAPI(t *testing.T) {
 	body := `{"updates":[{"section":"ConsoleVariables","key":"Dune.GlobalMiningOutputMultiplier","value":"3.0"}]}`
 	req := httptest.NewRequest("PUT", "/api/v1/server-settings", strings.NewReader(body))
 	rec := httptest.NewRecorder()
-
 	handleUpdateServerSettings(rec, req)
 
 	if rec.Code != 200 {
@@ -58,34 +77,45 @@ func TestHandleUpdateServerSettings_AMPRoutesToAPI(t *testing.T) {
 	if cap.setCmds != 1 {
 		t.Errorf("expected 1 SetConfig via AMP API, got %d", cap.setCmds)
 	}
-	// Float values are normalized before the AMP write.
 	if got := cap.nodes["Meta.GenericModule.ConsoleVariables.Dune.GlobalMiningOutputMultiplier"]; got != "3.000000" {
 		t.Errorf("AMP node value = %q, want normalized 3.000000", got)
 	}
 }
 
-// TestHandleUpdateServerSettings_AMPRejectsUncuratedKey verifies that a key with
-// no AMP node (not in the curated schema) is rejected with 400 under AMP rather
-// than silently written to an INI that AMP would clobber.
-func TestHandleUpdateServerSettings_AMPRejectsUncuratedKey(t *testing.T) {
+// TestHandleUpdateServerSettings_AMPNonCuratedGoesToINI verifies a setting with
+// no AMP node (not in the curated schema) is written to the INI files under AMP
+// rather than rejected — the fix for the "not configurable on the amp control
+// plane" regression. The AMP API must NOT be contacted for it.
+func TestHandleUpdateServerSettings_AMPNonCuratedGoesToINI(t *testing.T) {
 	origControl, origExec := globalControl, globalExecutor
 	t.Cleanup(func() { globalControl, globalExecutor = origControl, origExec })
 
-	cap := &ampSettingsCapture{loginOK: true}
-	exec := newAmpSettingsExec(t, cap)
+	sawAPI := false
+	exec := &fullRecExec{execFn: func(cmd string) (string, error) {
+		if strings.Contains(cmd, "Core/Login") || strings.Contains(cmd, "Core/SetConfig") {
+			sawAPI = true
+		}
+		return "", nil // empty INI reads + "no" probes
+	}}
 	globalExecutor = exec
-	globalControl = ampSettingsControl()
+	// iniDir set so DiscoverIniDir resolves without an instance.
+	globalControl = &ampControl{
+		useContainer: true, container: "AMP_X", ampUser: "amp", containerRuntime: "docker",
+		apiUser: "admin", apiPass: "pw", iniDir: "/srv/state",
+	}
 
-	body := `{"updates":[{"section":"/Script/Fake.Section","key":"m_unknown","value":"1"}]}`
+	body := `{"updates":[{"section":"/Script/DuneSandbox.SandwormSettings","key":"ThreatScale","value":"2.0"}]}`
 	req := httptest.NewRequest("PUT", "/api/v1/server-settings", strings.NewReader(body))
 	rec := httptest.NewRecorder()
-
 	handleUpdateServerSettings(rec, req)
 
-	if rec.Code != 400 {
-		t.Fatalf("status = %d, want 400 for uncurated key under AMP; body=%s", rec.Code, rec.Body.String())
+	if rec.Code != 200 {
+		t.Fatalf("status = %d, want 200 (non-curated routes to INI, not 400); body=%s", rec.Code, rec.Body.String())
 	}
-	if cap.setCmds != 0 {
-		t.Error("must not write anything when an uncurated key is present")
+	if sawAPI {
+		t.Error("non-curated setting must NOT hit the AMP API")
+	}
+	if exec.writes == 0 {
+		t.Error("non-curated setting should be written to an INI file")
 	}
 }

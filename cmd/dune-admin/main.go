@@ -755,6 +755,11 @@ func main() {
 	globalWelcomeCancel = startWelcomePackageScanner(loadedConfig)
 	defer stopWelcomeScanner()
 
+	// Scheduled restarts (#145): load persisted config + run the scheduler for
+	// the process lifetime (independent of the welcome scanner's lifecycle).
+	loadScheduledRestartConfig()
+	go runRestartScheduler(context.Background())
+
 	initLocationStore()
 	initGivePacksStore()
 

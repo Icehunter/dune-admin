@@ -115,6 +115,11 @@ func startServer(addr string) {
 	mux.HandleFunc("GET /api/v1/director-config", handleGetDirectorConfig)
 	mux.HandleFunc("PUT /api/v1/director-config", handleUpdateDirectorConfig)
 
+	// ── scheduled restarts ────────────────────────────────────────────────────
+	mux.HandleFunc("GET /api/v1/scheduled-restarts", handleGetScheduledRestarts)
+	mux.HandleFunc("PUT /api/v1/scheduled-restarts", handleUpdateScheduledRestarts)
+	mux.HandleFunc("POST /api/v1/scheduled-restarts/skip-next", handleSkipNextRestart)
+
 	// ── battlegroup ───────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/v1/battlegroup/status", handleBGStatus)
 	mux.HandleFunc("POST /api/v1/battlegroup/exec", handleBGExec)

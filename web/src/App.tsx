@@ -614,7 +614,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                 {renderTab('logs', <MLogsTab control={status?.control} />)}
                 {renderTab('blueprints', <MBlueprintsTab isSignedIn={isSignedIn} />)}
                 {renderTab('bases', <MBasesTab isSignedIn={isSignedIn} />)}
-                {renderTab('guilds', <MGuildsTab />)}
+                {renderTab('guilds', <MGuildsTab isSignedIn={isSignedIn} />)}
                 {renderTab('landsraad', <MLandsraadTab />)}
                 {renderTab('storage', <MStorageTab />)}
                 {renderTab('livemap', <MLiveMapTab isActive={currentTab === 'livemap'} />)}
@@ -653,7 +653,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                 {renderTab('logs', <MLogsTab control={status?.control} />)}
                 {renderTab('blueprints', <MBlueprintsTab isSignedIn={isSignedIn} />)}
                 {renderTab('bases', <MBasesTab isSignedIn={isSignedIn} />)}
-                {renderTab('guilds', <MGuildsTab />)}
+                {renderTab('guilds', <MGuildsTab isSignedIn={isSignedIn} />)}
                 {renderTab('landsraad', <MLandsraadTab />)}
                 {renderTab('storage', <MStorageTab />)}
                 {renderTab('livemap', <MLiveMapTab isActive={currentTab === 'livemap'} />)}

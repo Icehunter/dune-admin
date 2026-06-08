@@ -472,6 +472,89 @@ func cmdFetchGuildDetail(ctx context.Context, pool *pgxpool.Pool, guildID int64)
 	return d, nil
 }
 
+// ── Guild mutations (#117 Phase B) ───────────────────────────────────────────
+// Writes go through the game's own stored procs (dune.edit_guild_description,
+// promote/demote_guild_member): each self-acquires pg_advisory_xact_lock(601145)
+// and pg_notify('guild_notify_channel', ...) so the live game applies the change —
+// the same safe pattern as faction mutations. Guild NAME has no game proc, so it
+// is a raw UPDATE (lock-guarded, uniqueness-checked) that the game only reflects
+// after it reloads guild data (e.g. a server restart).
+
+const (
+	guildRoleMember = 50
+	guildRoleAdmin  = 100
+)
+
+var errGuildNameTaken = errors.New("guild name already taken")
+
+// guildRoleSetProc picks the game proc for a role change: promoting to admin (100)
+// transfers the single admin slot via promote_guild_member; any lower role goes
+// through demote_guild_member, which refuses to demote the sitting admin.
+func guildRoleSetProc(newRole int16) string {
+	if newRole == guildRoleAdmin {
+		return "promote_guild_member"
+	}
+	return "demote_guild_member"
+}
+
+func cmdEditGuildDescription(ctx context.Context, pool *pgxpool.Pool, guildID int64, desc string) error {
+	if _, err := pool.Exec(ctx, `SELECT dune.edit_guild_description($1, $2)`, guildID, desc); err != nil {
+		return fmt.Errorf("edit guild %d description: %w", guildID, err)
+	}
+	return nil
+}
+
+func cmdSetGuildMemberRole(ctx context.Context, pool *pgxpool.Pool, guildID, playerID int64, newRole int16) error {
+	// Static query strings (no concatenation) selected by the allowlisted helper.
+	var q string
+	switch guildRoleSetProc(newRole) {
+	case "promote_guild_member":
+		q = `SELECT dune.promote_guild_member($1, $2, $3)`
+	default:
+		q = `SELECT dune.demote_guild_member($1, $2, $3)`
+	}
+	if _, err := pool.Exec(ctx, q, guildID, playerID, newRole); err != nil {
+		return fmt.Errorf("set guild %d member %d role %d: %w", guildID, playerID, newRole, err)
+	}
+	return nil
+}
+
+// cmdEditGuildName renames a guild. No game proc exists for this, so it is a raw
+// UPDATE wrapped in a transaction that takes the same advisory lock the game's
+// guild procs use, and rejects a name already in use (case-insensitive, mirroring
+// create_guild). No pg_notify verb exists for a rename, so the game only reflects
+// the new name after it reloads guild data (e.g. a server restart).
+func cmdEditGuildName(ctx context.Context, pool *pgxpool.Pool, guildID int64, name string) error {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin rename guild %d: %w", guildID, err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx, `SELECT dune.guilds_get_exclusive_operation_lock()`); err != nil {
+		return fmt.Errorf("lock for rename guild %d: %w", guildID, err)
+	}
+
+	var taken bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM dune.guilds WHERE guild_name ILIKE $1 AND guild_id <> $2)`,
+		name, guildID).Scan(&taken); err != nil {
+		return fmt.Errorf("check guild name: %w", err)
+	}
+	if taken {
+		return errGuildNameTaken
+	}
+
+	ct, err := tx.Exec(ctx, `UPDATE dune.guilds SET guild_name = $1 WHERE guild_id = $2`, name, guildID)
+	if err != nil {
+		return fmt.Errorf("rename guild %d: %w", guildID, err)
+	}
+	if ct.RowsAffected() == 0 {
+		return errGuildNotFound
+	}
+	return tx.Commit(ctx)
+}
+
 // ── Landsraad (#117 Phase A — read-only) ─────────────────────────────────────
 //
 // The Landsraad is the weekly political endgame: a term cycle

@@ -75,3 +75,51 @@ func TestHandleGetGuild_InvalidID_DBNilFirst(t *testing.T) {
 		t.Fatalf("want 503 (db nil checked before id parse), got %d", rr.Code)
 	}
 }
+
+func TestGuildRoleSetProc(t *testing.T) {
+	t.Parallel()
+	// Setting a member to admin (100) must route through promote_guild_member
+	// (which transfers the single admin slot); any lower role uses
+	// demote_guild_member (which guards against demoting the current admin).
+	cases := map[int16]string{
+		guildRoleAdmin:  "promote_guild_member",
+		guildRoleMember: "demote_guild_member",
+		75:              "demote_guild_member",
+	}
+	for role, want := range cases {
+		if got := guildRoleSetProc(role); got != want {
+			t.Errorf("guildRoleSetProc(%d) = %q, want %q", role, got, want)
+		}
+	}
+}
+
+func TestHandleUpdateGuild_DBNil(t *testing.T) {
+	orig := globalDB
+	globalDB = nil
+	defer func() { globalDB = orig }()
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/guilds/1", nil)
+	req.SetPathValue("id", "1")
+	rr := httptest.NewRecorder()
+	handleUpdateGuild(rr, req)
+
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want 503, got %d", rr.Code)
+	}
+}
+
+func TestHandleSetGuildMemberRole_DBNil(t *testing.T) {
+	orig := globalDB
+	globalDB = nil
+	defer func() { globalDB = orig }()
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/guilds/1/members/2/role", nil)
+	req.SetPathValue("id", "1")
+	req.SetPathValue("pid", "2")
+	rr := httptest.NewRecorder()
+	handleSetGuildMemberRole(rr, req)
+
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want 503, got %d", rr.Code)
+	}
+}

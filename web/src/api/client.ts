@@ -924,6 +924,10 @@ export const api = {
   guilds: {
     list: () => req<GuildSummary[]>('GET', '/guilds'),
     get: (id: number) => req<GuildDetail>('GET', `/guilds/${id}`),
+    update: (id: number, body: { name?: string, description?: string }) =>
+      req<GuildDetail>('PATCH', `/guilds/${id}`, body),
+    setRole: (id: number, playerId: number, role: number) =>
+      req<MutateResult>('PUT', `/guilds/${id}/members/${playerId}/role`, { role }),
   },
 
   landsraad: {

@@ -16,13 +16,25 @@ const FACTION_COLOR: Record<string, 'accent' | 'danger' | 'warning' | 'default'>
   Smuggler: 'warning',
 }
 
-export const GuildsTab: React.FC = () => {
+// Confirmed guild role ids (dune guild procs): 100 = admin, 50 = member.
+const ROLE_ADMIN = 100
+const ROLE_MEMBER = 50
+
+interface GuildsTabProps {
+  isSignedIn?: boolean
+}
+
+export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
   const { t } = useTranslation()
   const [guilds, setGuilds] = useState<GuildSummary[]>([])
   const [loading, setLoading] = useState(false)
   const [detail, setDetail] = useState<GuildDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [roleBusy, setRoleBusy] = useState(false)
 
   const load = useCallback(() => {
     Promise.resolve()
@@ -38,16 +50,53 @@ export const GuildsTab: React.FC = () => {
     load()
   }, [load])
 
+  const applyDetail = (d: GuildDetail) => {
+    setDetail(d)
+    setEditName(d.name)
+    setEditDesc(d.description)
+  }
+
   const openDetail = (id: number) => {
     setOpen(true)
     setDetail(null)
     setDetailLoading(true)
     api.guilds.get(id)
-      .then(setDetail)
+      .then(applyDetail)
       .catch((e: unknown) =>
         toast.danger(t('guilds.failedToLoad', { message: e instanceof Error ? e.message : String(e) })))
       .finally(() => setDetailLoading(false))
   }
+
+  const save = () => {
+    if (!detail) return
+    setSaving(true)
+    api.guilds.update(detail.guild_id, { name: editName.trim(), description: editDesc })
+      .then((d) => {
+        applyDetail(d)
+        toast.success(t('guilds.saved'))
+        load()
+      })
+      .catch((e: unknown) =>
+        toast.danger(t('guilds.saveFailed', { message: e instanceof Error ? e.message : String(e) })))
+      .finally(() => setSaving(false))
+  }
+
+  const makeAdmin = (playerId: number) => {
+    if (!detail) return
+    setRoleBusy(true)
+    api.guilds.setRole(detail.guild_id, playerId, ROLE_ADMIN)
+      .then(() => api.guilds.get(detail.guild_id))
+      .then((d) => {
+        applyDetail(d)
+        toast.success(t('guilds.roleChanged'))
+      })
+      .catch((e: unknown) =>
+        toast.danger(t('guilds.roleChangeFailed', { message: e instanceof Error ? e.message : String(e) })))
+      .finally(() => setRoleBusy(false))
+  }
+
+  const roleLabel = (id: number) =>
+    id === ROLE_ADMIN ? t('guilds.roleAdmin') : id === ROLE_MEMBER ? t('guilds.roleMember') : t('guilds.roleN', { id })
 
   const COLUMNS: Column<Key>[] = [
     { key: 'name', label: t('guilds.columns.name'), minWidth: 200 },
@@ -56,6 +105,8 @@ export const GuildsTab: React.FC = () => {
     { key: 'description', label: t('guilds.columns.description'), minWidth: 240 },
     { key: 'actions', label: '', width: 120, sortable: false },
   ]
+
+  const inputCls = 'w-full bg-surface text-foreground border border-border rounded px-2 py-1 text-sm'
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
@@ -112,7 +163,7 @@ export const GuildsTab: React.FC = () => {
                 <Button size="sm" variant="outline" className="w-full" onPress={() => openDetail(g.guild_id)}>
                   <Icon name="users" />
                   {' '}
-                  {t('guilds.view')}
+                  {isSignedIn ? t('guilds.manage') : t('guilds.view')}
                 </Button>
               )
           }
@@ -142,7 +193,36 @@ export const GuildsTab: React.FC = () => {
                 )}
                 {!detailLoading && detail && (
                   <>
-                    {detail.description && <p className="text-sm text-muted">{detail.description}</p>}
+                    {isSignedIn
+                      ? (
+                          <div className="flex flex-col gap-3">
+                            <SectionLabel>{t('guilds.editGuild')}</SectionLabel>
+                            <div>
+                              <label className="text-xs text-muted">{t('guilds.nameLabel')}</label>
+                              <input
+                                className={inputCls}
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                              />
+                              <div className="text-xs text-warning mt-0.5">{t('guilds.nameRestartHint')}</div>
+                            </div>
+                            <div>
+                              <label className="text-xs text-muted">{t('guilds.descLabel')}</label>
+                              <textarea
+                                className={inputCls}
+                                rows={2}
+                                value={editDesc}
+                                onChange={(e) => setEditDesc(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Button size="sm" onPress={save} isDisabled={saving || editName.trim() === ''}>
+                                {saving ? <Spinner size="sm" color="current" /> : t('guilds.save')}
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      : detail.description && <p className="text-sm text-muted">{detail.description}</p>}
 
                     <div>
                       <SectionLabel>{t('guilds.members')}</SectionLabel>
@@ -153,10 +233,22 @@ export const GuildsTab: React.FC = () => {
                               {detail.members.map((m) => (
                                 <div
                                   key={m.player_id}
-                                  className="flex items-center justify-between py-1.5 border-b border-border/40 text-sm"
+                                  className="flex items-center justify-between py-1.5 border-b border-border/40 text-sm gap-2"
                                 >
-                                  <span className="text-foreground">{m.character_name}</span>
-                                  <span className="text-xs text-muted">{t('guilds.roleN', { id: m.role_id })}</span>
+                                  <span className="text-foreground flex-1 truncate">{m.character_name}</span>
+                                  <Chip size="sm" variant="soft" color={m.role_id === ROLE_ADMIN ? 'accent' : 'default'}>
+                                    {roleLabel(m.role_id)}
+                                  </Chip>
+                                  {isSignedIn && m.role_id !== ROLE_ADMIN && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      isDisabled={roleBusy}
+                                      onPress={() => makeAdmin(m.player_id)}
+                                    >
+                                      {t('guilds.makeAdmin')}
+                                    </Button>
+                                  )}
                                 </div>
                               ))}
                             </div>

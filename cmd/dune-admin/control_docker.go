@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"path"
 	"strings"
 )
 
@@ -13,26 +15,98 @@ type dockerControl struct {
 	gameserver  string // container name for the game server
 	brokerGame  string // container name for mq-game broker
 	brokerAdmin string // container name for mq-admin broker
+	directorURL string // optional Battlegroup Director URL for per-server enrichment
+	iniDir      string // optional server_ini_dir; used as a base for DiscoverIniDir
 }
 
 func (c *dockerControl) Name() string { return "docker" }
 
-func (c *dockerControl) GetStatus(_ context.Context, exec Executor) (*BattlegroupStatus, error) {
+func (c *dockerControl) GetStatus(ctx context.Context, exec Executor) (*BattlegroupStatus, error) {
 	if c.gameserver == "" {
 		return nil, errNotSupported("docker", "GetStatus (docker_gameserver not configured)")
 	}
-	out, err := exec.Exec(fmt.Sprintf(
-		"docker inspect --format '{{.State.Status}}' %s 2>&1", c.gameserver))
-	if err != nil {
-		return nil, fmt.Errorf("docker inspect: %w", err)
+
+	// Container lifecycle phase (running/exited/...). Best-effort: a failed
+	// inspect should not blank out the server list discovered below.
+	phase := "unknown"
+	if out, err := exec.Exec(fmt.Sprintf(
+		"docker inspect --format '{{.State.Status}}' %s 2>&1", c.gameserver)); err == nil {
+		phase = strings.TrimSpace(out)
 	}
-	status := strings.TrimSpace(out)
+
+	procs, err := c.listGameProcesses(exec)
+	if err != nil {
+		return nil, err
+	}
+
+	// The process args only carry -PartitionIndex, never a dimension. The
+	// Battlegroup Director knows each partition's dimension, label, and player
+	// counts, so enrich rows from there when configured. Best-effort: a missing
+	// or unreachable director just leaves those fields at zero.
+	dirMeta, derr := fetchDirectorPartitionsVia(ctx, exec, c.directorURL)
+	if derr != nil {
+		log.Printf("dockerControl.GetStatus: director enrichment unavailable: %v", derr)
+	}
+
+	servers := make([]ServerRow, 0, len(procs))
+	for _, p := range procs {
+		row := ServerRow{
+			Map:       p.mapName,
+			Partition: p.partition,
+			Phase:     "Running",
+			Ready:     true,
+		}
+		if meta, ok := dirMeta[p.partition]; ok {
+			row.Dimension = meta.dimension
+			row.Players = meta.players
+			row.PlayerHardCap = meta.playerHardCap
+			row.Queue = meta.queue
+			if meta.label != "" {
+				row.Sietch = meta.label
+			}
+		}
+		servers = append(servers, row)
+	}
+
+	dbPhase := "Disconnected"
+	if globalDB != nil {
+		dbPhase = "Connected"
+	}
 	return &BattlegroupStatus{
-		Name:    c.gameserver,
-		Title:   c.gameserver,
-		Phase:   status,
-		Servers: []ServerRow{},
+		Name:     c.gameserver,
+		Title:    c.gameserver,
+		Phase:    phase,
+		Database: dbPhase,
+		Servers:  servers,
 	}, nil
+}
+
+// listGameProcesses discovers the DuneSandboxServer game processes running
+// inside the gameserver container and parses each one's map and partition from
+// its launch args. It reuses the AMP parser since the launch args are identical.
+// Mirrors ampControl.listGameProcesses' error handling: an exec failure with no
+// output (e.g. the container is stopped) yields an empty list, not an error.
+func (c *dockerControl) listGameProcesses(exec Executor) ([]ampGameProcess, error) {
+	if c.gameserver == "" {
+		return nil, errNotSupported("docker", "listGameProcesses (docker_gameserver not configured)")
+	}
+	cmd := fmt.Sprintf(
+		"docker exec %s ps -eo pid,args --no-headers 2>/dev/null | grep 'DuneSandboxServer-Linux-Shipping' | grep -v grep",
+		c.gameserver)
+	out, err := exec.Exec(cmd)
+	if err != nil && strings.TrimSpace(out) == "" {
+		return []ampGameProcess{}, nil
+	}
+	var procs []ampGameProcess
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if proc, ok := parseAMPGameProcess(line); ok {
+			procs = append(procs, proc)
+		}
+	}
+	return procs, nil
 }
 
 func (c *dockerControl) ExecCommand(_ context.Context, exec Executor, cmd string) (string, error) {
@@ -143,6 +217,74 @@ func (c *dockerControl) ReadDefaultINI(_ context.Context, exec Executor, filenam
 	return content
 }
 
-func (c *dockerControl) DiscoverIniDir(_ context.Context, _ Executor) (string, error) {
-	return "", fmt.Errorf("docker control plane requires server_ini_dir to be set in config")
+// DiscoverIniDir locates the directory containing UserGame.ini for a docker
+// deployment. It is layout-agnostic: it probes the configured server_ini_dir (if
+// set) and every host-side mount source of the gameserver container (from
+// `docker inspect`, which covers bind mounts and named volumes alike — a named
+// volume's source resolves to /var/lib/docker/volumes/<name>/_data on the host),
+// returning the HOST path of the directory holding UserGame.ini so the executor's
+// host-side reads and writes land inside the container. A UserSettings-scoped
+// match is preferred. When nothing is found it returns the configured dir (if
+// set) or an error so iniDir() falls back to config.
+func (c *dockerControl) DiscoverIniDir(_ context.Context, exec Executor) (string, error) {
+	var bases []string
+	if c.iniDir != "" {
+		bases = append(bases, c.iniDir)
+	}
+	bases = append(bases, c.containerMountSources(exec)...)
+
+	for _, base := range bases {
+		base = strings.TrimRight(strings.TrimSpace(base), "/")
+		if base == "" {
+			continue
+		}
+		if dir := findUserGameDir(exec, base); dir != "" {
+			return dir, nil
+		}
+	}
+	if c.iniDir != "" {
+		return c.iniDir, nil // configured but probe inconclusive — trust config
+	}
+	return "", fmt.Errorf(
+		"docker control could not locate UserGame.ini under container %q mounts; set server_ini_dir in config",
+		c.gameserver)
+}
+
+// containerMountSources returns the host-side source paths of the gameserver
+// container's mounts (bind mounts and named volumes). Returns nil when the
+// gameserver is unconfigured or inspect yields nothing.
+func (c *dockerControl) containerMountSources(exec Executor) []string {
+	if c.gameserver == "" {
+		return nil
+	}
+	out, err := exec.Exec(fmt.Sprintf(
+		`docker inspect --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' %s 2>/dev/null`,
+		c.gameserver))
+	if err != nil && strings.TrimSpace(out) == "" {
+		return nil
+	}
+	var srcs []string
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if s := strings.TrimSpace(line); s != "" {
+			srcs = append(srcs, s)
+		}
+	}
+	return srcs
+}
+
+// findUserGameDir returns the directory of the first UserGame.ini found under
+// base (a remote Unix host path), preferring a UserSettings-scoped match over
+// any stray copy. Returns "" when none is found. Uses path.Dir (forward-slash)
+// since base is a remote Unix path regardless of where dune-admin is built.
+func findUserGameDir(exec Executor, base string) string {
+	for _, probe := range []string{
+		fmt.Sprintf("find %s -maxdepth 8 -path '*/UserSettings/UserGame.ini' 2>/dev/null | head -1", shellQuote(base)),
+		fmt.Sprintf("find %s -maxdepth 8 -name UserGame.ini 2>/dev/null | head -1", shellQuote(base)),
+	} {
+		out, _ := exec.Exec(probe)
+		if f := strings.TrimSpace(out); f != "" {
+			return path.Dir(f)
+		}
+	}
+	return ""
 }

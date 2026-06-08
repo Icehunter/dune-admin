@@ -111,22 +111,32 @@ type partitionMeta struct {
 	queue         int
 }
 
-// fetchDirectorPartitions queries the Battlegroup Director's /v0/battlegroup
-// endpoint and returns a map of partitionId → metadata. It returns nil (no
-// error) when no director URL is configured; transport, status, and decode
-// failures are returned as errors so the caller can log them and continue.
+// fetchDirectorPartitions returns partition metadata from the Battlegroup
+// Director configured for this AMP control plane. Thin wrapper over the shared
+// fetchDirectorPartitionsVia.
 func (c *ampControl) fetchDirectorPartitions(ctx context.Context, exec Executor) (map[int]partitionMeta, error) {
-	if c.directorURL == "" {
+	return fetchDirectorPartitionsVia(ctx, exec, c.directorURL)
+}
+
+// fetchDirectorPartitionsVia queries the Battlegroup Director's /v0/battlegroup
+// endpoint at directorURL and returns a map of partitionId → metadata. It
+// returns nil (no error) when directorURL is empty; transport, status, and
+// decode failures are returned as errors so the caller can log them and
+// continue. Shared by the amp and docker control planes.
+//
+// The HTTP client routes through the executor so the director is reachable from
+// wherever the executor runs (e.g. the AMP/docker box over SSH), not the
+// dune-admin host. Status polling must stay snappy, so a short timeout falls
+// back fast.
+func fetchDirectorPartitionsVia(ctx context.Context, exec Executor, directorURL string) (map[int]partitionMeta, error) {
+	if directorURL == "" {
 		return nil, nil
 	}
-	endpoint := strings.TrimRight(c.directorURL, "/") + "/v0/battlegroup"
+	endpoint := strings.TrimRight(directorURL, "/") + "/v0/battlegroup"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("build director request: %w", err)
 	}
-	// Route through the executor so the director is reachable from wherever the
-	// executor runs (e.g. the AMP box over SSH), not the dune-admin host. Status
-	// polling must stay snappy, so a short timeout falls back fast.
 	client := &http.Client{Timeout: 3 * time.Second, Transport: httpTransportVia(exec.Dial)}
 	resp, err := client.Do(req)
 	if err != nil {

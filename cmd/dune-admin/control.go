@@ -95,6 +95,8 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 			gameserver:  cfg.DockerGameserver,
 			brokerGame:  cfg.DockerBrokerGame,
 			brokerAdmin: cfg.DockerBrokerAdmin,
+			directorURL: cfg.DirectorURL,
+			iniDir:      cfg.ServerIniDir,
 		}
 	case "amp":
 		user := cfg.AmpUser

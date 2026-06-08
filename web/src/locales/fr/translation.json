@@ -803,6 +803,8 @@
       "charXP": "XP perso",
       "earned": "Gagné",
       "economy": "Économie",
+      "factionAlignment": "Allégeance de faction",
+      "unaligned": "Sans faction",
       "factionTier": "Rang de faction",
       "failedToLoad": "Échec du chargement des statistiques.",
       "lastSeen": "Dernière connexion",

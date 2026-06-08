@@ -818,6 +818,8 @@
       "charXP": "XP postaci",
       "earned": "Zarobione",
       "economy": "Gospodarka",
+      "factionAlignment": "Przynależność do frakcji",
+      "unaligned": "Bez frakcji",
       "factionTier": "Poziom frakcji",
       "failedToLoad": "Nie udało się załadować statystyk.",
       "lastSeen": "Ostatnio widziany",

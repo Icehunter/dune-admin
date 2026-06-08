@@ -65,13 +65,12 @@ func cmdFetchPlayers() Msg {
 		       COALESCE(ac."user", ''),
 		       a.class,
 		       COALESCE(a.map, ''),
-		       COALESCE(pf.faction_id, 0),
+		       COALESCE(af.faction_id, 0),
 		       COALESCE(ps.online_status::text, 'Offline')
 		FROM dune.actors a
 		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
 		LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
-		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id
-		LEFT JOIN dune.player_faction pf ON pf.actor_id = a.id
+		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id`+factionByAccountJoin+`
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
 		ORDER BY a.id`, gmIdentityAccountID)
 	if err != nil {
@@ -139,6 +138,19 @@ type serverSummary struct {
 }
 
 const (
+	// factionByAccountJoin resolves a player's faction by ACCOUNT. Faction is
+	// stored on the PlayerController actor, NOT the PlayerCharacter, so joining
+	// dune.player_faction directly onto the character actor (pf.actor_id = a.id)
+	// misses and mis-buckets aligned players as "Unaligned". Both actors share
+	// owner_account_id, so we resolve through a per-account derived table. The
+	// outer query must alias the character actor as "a"; this exposes af.faction_id.
+	factionByAccountJoin = `
+		LEFT JOIN (
+			SELECT DISTINCT fa.owner_account_id AS account_id, pf.faction_id
+			FROM dune.player_faction pf
+			JOIN dune.actors fa ON fa.id = pf.actor_id
+		) af ON af.account_id = a.owner_account_id`
+
 	// Population counts. The seeded GM identity ($1) is excluded — it is not a
 	// real player. online_status compares against the enum literal (see
 	// cmdFetchOnlineAccountIDs), summed via CASE to match existing query style.
@@ -175,9 +187,8 @@ const (
 			COUNT(DISTINCT a.id) AS players,
 			COALESCE(SUM(CASE WHEN vcb.currency_id =  dune.get_solaris_id() THEN vcb.balance ELSE 0 END), 0) AS solaris,
 			COALESCE(SUM(CASE WHEN vcb.currency_id <> dune.get_solaris_id() THEN vcb.balance ELSE 0 END), 0) AS scrip
-		FROM dune.actors a
-		LEFT JOIN dune.player_faction pf ON pf.actor_id = a.id
-		LEFT JOIN dune.factions f ON f.id = pf.faction_id
+		FROM dune.actors a` + factionByAccountJoin + `
+		LEFT JOIN dune.factions f ON f.id = af.faction_id
 		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
 		LEFT JOIN dune.player_virtual_currency_balances vcb ON vcb.player_controller_id = ps.player_controller_id
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
@@ -202,9 +213,8 @@ const (
 			COALESCE((fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint, 0) AS xp
 		FROM dune.actors a
 		JOIN dune.actor_fgl_entities afe ON afe.actor_id = a.id AND afe.slot_name = 'DuneCharacter'
-		JOIN dune.fgl_entities fe ON fe.entity_id = afe.entity_id
-		LEFT JOIN dune.player_faction pf ON pf.actor_id = a.id
-		LEFT JOIN dune.factions f ON f.id = pf.faction_id
+		JOIN dune.fgl_entities fe ON fe.entity_id = afe.entity_id` + factionByAccountJoin + `
+		LEFT JOIN dune.factions f ON f.id = af.faction_id
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
 )
 
@@ -291,9 +301,8 @@ func factionAvgLevels(ctx context.Context, pool *pgxpool.Pool) (map[string]float
 // for the faction-growth trend (#130 ext). "Unaligned" when no faction row.
 const serverAccountFactionSQL = `
 	SELECT a.owner_account_id, COALESCE(f.name, 'Unaligned')
-	FROM dune.actors a
-	LEFT JOIN dune.player_faction pf ON pf.actor_id = a.id
-	LEFT JOIN dune.factions f ON f.id = pf.faction_id
+	FROM dune.actors a` + factionByAccountJoin + `
+	LEFT JOIN dune.factions f ON f.id = af.faction_id
 	WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
 
 // cmdFetchAccountFactions returns account_id -> current faction name.
@@ -5458,6 +5467,7 @@ type playerPgStats struct {
 	POIsDiscovered  int        `json:"pois_discovered"`
 	StoryMilestones int        `json:"story_milestones"`
 	MaxFactionTier  int        `json:"max_faction_tier"`
+	Faction         string     `json:"faction"`
 	CharXP          int64      `json:"char_xp"`
 	SkillPoints     int        `json:"skill_points"`
 	LastSeen        *time.Time `json:"last_seen"`
@@ -5560,7 +5570,34 @@ func cmdFetchPlayerPgStats(ctx context.Context, pool *pgxpool.Pool, accountID in
 		stats.LastSeen = &t
 	}
 
+	// Faction alignment (#117 review item 3) — see fetchAccountFaction.
+	stats.Faction, err = fetchAccountFaction(ctx, pool, accountID)
+	if err != nil {
+		return stats, err
+	}
+
 	return stats, nil
+}
+
+// fetchAccountFaction resolves a player's faction name by account. Faction is
+// stored on the PlayerController actor, NOT the PlayerCharacter, so it's resolved
+// per-account (same rationale as factionByAccountJoin). Returns "" when the
+// player has no faction row (Unaligned).
+func fetchAccountFaction(ctx context.Context, pool *pgxpool.Pool, accountID int64) (string, error) {
+	var faction string
+	err := pool.QueryRow(ctx, `
+		SELECT COALESCE(f.name, '')
+		FROM dune.factions f
+		WHERE f.id = (
+			SELECT pf.faction_id FROM dune.player_faction pf
+			JOIN dune.actors fa ON fa.id = pf.actor_id
+			WHERE fa.owner_account_id = $1
+			LIMIT 1
+		)`, accountID).Scan(&faction)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", fmt.Errorf("fetch faction for account %d: %w", accountID, err)
+	}
+	return faction, nil
 }
 
 // solarisRaw is an intermediate scan target before cumulative sums are applied.

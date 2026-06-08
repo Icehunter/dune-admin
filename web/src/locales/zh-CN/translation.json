@@ -788,6 +788,8 @@
       "charXP": "角色经验",
       "earned": "获得",
       "economy": "经济",
+      "factionAlignment": "阵营归属",
+      "unaligned": "无阵营",
       "factionTier": "阵营等级",
       "failedToLoad": "加载属性失败。",
       "lastSeen": "最后在线",

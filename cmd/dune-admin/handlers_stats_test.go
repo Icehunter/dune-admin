@@ -179,6 +179,7 @@ func TestBuildPlayerStats(t *testing.T) {
 		POIsDiscovered:  12,
 		StoryMilestones: 4,
 		MaxFactionTier:  19,
+		Faction:         "Atreides",
 		CharXP:          88_364,
 		SkillPoints:     142,
 	}
@@ -204,6 +205,9 @@ func TestBuildPlayerStats(t *testing.T) {
 	}
 	if got.MaxFactionTier != 19 {
 		t.Errorf("MaxFactionTier: want 19, got %d", got.MaxFactionTier)
+	}
+	if got.Faction != "Atreides" {
+		t.Errorf("Faction: want Atreides, got %q", got.Faction)
 	}
 	if got.TotalPlaytimeSecs != 7200 {
 		t.Errorf("TotalPlaytimeSecs: want 7200, got %d", got.TotalPlaytimeSecs)

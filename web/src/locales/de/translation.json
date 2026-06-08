@@ -788,6 +788,8 @@
       "charXP": "Char-XP",
       "earned": "Verdient",
       "economy": "Wirtschaft",
+      "factionAlignment": "Fraktionszugehörigkeit",
+      "unaligned": "Ungebunden",
       "factionTier": "Fraktionsstufe",
       "failedToLoad": "Statistiken konnten nicht geladen werden.",
       "lastSeen": "Zuletzt gesehen",

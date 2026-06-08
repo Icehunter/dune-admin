@@ -8,19 +8,20 @@ import (
 )
 
 type playerStats struct {
-	SolarisBal        int64 `json:"solaris_balance"`
-	ScripBal          int64 `json:"scrip_balance"`
-	SolarisEarned     int64 `json:"solaris_earned"`
-	SolarisSpent      int64 `json:"solaris_spent"`
-	POIsDiscovered    int   `json:"pois_discovered"`
-	StoryMilestones   int   `json:"story_milestones"`
-	MaxFactionTier    int   `json:"max_faction_tier"`
-	CharXP            int64 `json:"char_xp"`
-	SkillPoints       int   `json:"skill_points"`
-	TotalPlaytimeSecs int64 `json:"total_playtime_secs"`
-	SessionCount      int64 `json:"session_count"`
-	AvgSessionSecs    int64 `json:"avg_session_secs"`
-	LastSeen          any   `json:"last_seen"`
+	SolarisBal        int64  `json:"solaris_balance"`
+	ScripBal          int64  `json:"scrip_balance"`
+	SolarisEarned     int64  `json:"solaris_earned"`
+	SolarisSpent      int64  `json:"solaris_spent"`
+	POIsDiscovered    int    `json:"pois_discovered"`
+	StoryMilestones   int    `json:"story_milestones"`
+	MaxFactionTier    int    `json:"max_faction_tier"`
+	Faction           string `json:"faction"`
+	CharXP            int64  `json:"char_xp"`
+	SkillPoints       int    `json:"skill_points"`
+	TotalPlaytimeSecs int64  `json:"total_playtime_secs"`
+	SessionCount      int64  `json:"session_count"`
+	AvgSessionSecs    int64  `json:"avg_session_secs"`
+	LastSeen          any    `json:"last_seen"`
 }
 
 func buildPlayerStats(pg playerPgStats, sess sessionStats) playerStats {
@@ -32,6 +33,7 @@ func buildPlayerStats(pg playerPgStats, sess sessionStats) playerStats {
 		POIsDiscovered:    pg.POIsDiscovered,
 		StoryMilestones:   pg.StoryMilestones,
 		MaxFactionTier:    pg.MaxFactionTier,
+		Faction:           pg.Faction,
 		CharXP:            pg.CharXP,
 		SkillPoints:       pg.SkillPoints,
 		TotalPlaytimeSecs: sess.TotalPlaytimeSecs,

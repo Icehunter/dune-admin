@@ -95,6 +95,10 @@ export const PlayerDetailPanel: React.FC<PlayerDetailPanelProps> = ({ player }) 
             <StatRow label={t('players.detail.pois')} value={stats.pois_discovered > 0 ? stats.pois_discovered : '—'} />
             <StatRow label={t('players.detail.milestones')} value={stats.story_milestones > 0 ? stats.story_milestones : '—'} />
             <StatRow
+              label={t('players.detail.factionAlignment')}
+              value={stats.faction || t('players.detail.unaligned')}
+            />
+            <StatRow
               label={t('players.detail.factionTier')}
               value={stats.max_faction_tier > 0 ? t('players.detail.tier', { tier: stats.max_faction_tier }) : '—'}
             />

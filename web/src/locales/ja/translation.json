@@ -788,6 +788,8 @@
       "charXP": "キャラクター経験値",
       "earned": "獲得",
       "economy": "エコノミー",
+      "factionAlignment": "派閥所属",
+      "unaligned": "無所属",
       "factionTier": "派閥ティア",
       "failedToLoad": "ステータスの読み込みに失敗しました。",
       "lastSeen": "最終ログイン",

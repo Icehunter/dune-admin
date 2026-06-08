@@ -361,6 +361,7 @@ export type PlayerStats = {
   pois_discovered: number
   story_milestones: number
   max_faction_tier: number
+  faction: string
   char_xp: number
   skill_points: number
   total_playtime_secs: number

@@ -803,6 +803,8 @@
       "charXP": "XP de personaje",
       "earned": "Ganado",
       "economy": "Economía",
+      "factionAlignment": "Alineación de facción",
+      "unaligned": "Sin facción",
       "factionTier": "Rango de facción",
       "failedToLoad": "Error al cargar estadísticas.",
       "lastSeen": "Última vez visto",

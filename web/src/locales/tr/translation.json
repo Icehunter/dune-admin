@@ -788,6 +788,8 @@
       "charXP": "Karakter XP",
       "earned": "Kazanılan",
       "economy": "Ekonomi",
+      "factionAlignment": "Fraksiyon Bağlılığı",
+      "unaligned": "Bağımsız",
       "factionTier": "Hizip kademesi",
       "failedToLoad": "İstatistikler yüklenemedi.",
       "lastSeen": "Son görülme",

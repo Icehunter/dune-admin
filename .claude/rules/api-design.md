@@ -87,13 +87,13 @@ func cmdFetchFoo(ctx context.Context, db *pgxpool.Pool, id int64) (*fooRow, erro
 - **SQL endpoint**: guarded by `isReadOnlySQL` — only SELECT/EXPLAIN/SHOW/WITH allowed
 - **K8s names**: validated by `isValidK8sName` before any shell/kubectl invocation
 - **CORS**: enforced by `originAllowed`; origins configured via `ALLOWED_ORIGINS` env var
-- **⚠️ NO backend auth today**: the SPA sends a Clerk `Bearer` token, but the Go backend does **not**
-  verify it — there is no auth middleware and no per-endpoint authorization. Every endpoint
-  (including destructive ones) is reachable by anyone who can hit the listen address. `jwt_helpers.go`
-  only re-signs the *game* server's broker `ServiceAuthToken`; it is **not** admin auth. Closing this
-  gap (verify the Clerk session JWT in middleware, add an admin/player role model) is the top
-  security priority — see `.claude/rules/security.md`. When adding any new endpoint, do **not** assume
-  the caller is authenticated.
+- **⚠️ NO backend auth — LAN-only tool**: the SPA sends a Clerk `Bearer` token, but the Go backend
+  does **not** verify it — there is no auth middleware and no per-endpoint authorization. Every
+  endpoint (including destructive ones) is reachable by anyone who can hit the listen address.
+  `jwt_helpers.go` only re-signs the *game* server's broker `ServiceAuthToken`; it is **not** admin
+  auth. This is an accepted constraint: dune-admin is an operator tool for a trusted local network and
+  must not be exposed to the internet (see `.claude/rules/security.md` and `CLAUDE.md` → Project
+  Direction). Don't add internet-facing or player-facing endpoints.
 
 ## Middleware
 

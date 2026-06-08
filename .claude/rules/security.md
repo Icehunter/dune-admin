@@ -18,11 +18,14 @@ convenience, security wins. If you are unsure whether something is safe, stop an
 - `jwt_helpers.go` only re-signs the **game** server's broker `ServiceAuthToken` for capture — it is
   **not** admin authentication. Any doc claiming otherwise is wrong.
 - **Frontend gates (`isSignedIn`) are cosmetic** — they hide UI but do not stop the API call.
-- **Top priority**: add real backend auth (verify the Clerk session JWT in middleware against JWKS,
-  put the verified identity + role in request context) and a server-enforced role model
-  (admin vs player) before exposing anything to non-operators. This is the hard prerequisite for the
-  player view (project goals 3 & 4). Until then, treat every endpoint as unauthenticated and do not
-  add new endpoints that assume the caller is trusted.
+- **This is an accepted constraint, not a TODO.** The maintainer has decided dune-admin is an
+  operator tool for a **trusted local network (LAN / VPN / localhost) only** and is deliberately
+  **not** exposed to the internet (the player-facing view and per-control permissions were dropped
+  for this reason — see `CLAUDE.md` → Project Direction). The mitigation is operational: **do not
+  expose the listen address to the public internet.** Do not add internet-facing or player-facing
+  endpoints. If that decision is ever reopened, real backend auth (verify the Clerk session JWT in
+  middleware against JWKS + a server-enforced role model) becomes a hard prerequisite before any
+  exposure.
 
 ## Backend (Go)
 
@@ -45,11 +48,8 @@ convenience, security wins. If you are unsure whether something is safe, stop an
 - **Market bot — player orders are inviolable.** Never delete/expire/modify non-NPC exchange orders.
   Every `DELETE`/`UPDATE` on exchange tables must include `WHERE … AND is_npc_order = TRUE AND
   owner_id = <botID>`.
-- **Player-scoped data.** Player-facing reads must derive the account from the authenticated identity,
-  never trust an id from the path/body. No "give me player {id}" endpoint may be exposed to players.
-- **Verify-code / link flows** (character linking, goal 3): codes must be single-use, short-lived
-  (≈5–10 min), rate-limited per user and per account, and compared in constant time. Deliver them
-  over the existing single-player whisper rail (`POST /api/v1/chat/whisper`).
+- **No internet-facing / player-facing endpoints.** This is an operator-only LAN tool; don't add
+  endpoints intended for untrusted callers (would require backend auth first — see Current posture).
 
 ## Frontend (web)
 
@@ -71,4 +71,4 @@ convenience, security wins. If you are unsure whether something is safe, stop an
 - [ ] Every value interpolated into exec/shell/path/container/k8s name is validated
 - [ ] `make gosec` clean (and `make verify`) before push; no `--no-verify`
 - [ ] No secrets in logs, errors, responses, or committed files
-- [ ] New player-facing reads are account-scoped to the authenticated identity
+- [ ] No internet-facing / player-facing endpoints added (LAN-only operator tool)

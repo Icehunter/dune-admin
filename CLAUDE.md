@@ -49,12 +49,15 @@ This fork is evolving dune-admin along four goals. Keep these in mind so changes
    CSS-var theming) makes alignment feasible; the big divergences are HeroUI v3 → shadcn/Radix, the
    tab-state `App.tsx` → a Shell + route manifest, and dune-admin's a11y/responsive maturity. **Keep
    the Dune thematic branding/fonts.** That repo is read-only reference — make no changes there.
-3. **A separate player-facing view** (distinct from admin): players log in, link their character via
-   an in-game verify code (delivered over the existing single-player whisper rail,
-   `POST /api/v1/chat/whisper`), and view their own character stats (account-scoped, never by
-   arbitrary id). Requires real backend auth + an admin/player role model first (see principle 1).
-4. **Admin-toggleable player controls** for the player view (e.g. give items / give currency on/off),
-   enforced **server-side** as a persisted permissions config — not a cosmetic UI toggle.
+**Deliberately out of scope — player-facing view & backend auth.** A separate player login / view
+(character linking, self-service stats) and admin-toggleable player permissions were considered and
+**dropped on purpose** to avoid the risk of exposing the panel to the internet. dune-admin is an
+**operator tool intended for a trusted local network (LAN / VPN / localhost) only** — do **not**
+expose it to the public internet. Because of this decision, the absence of backend auth is an
+accepted constraint rather than a bug to fix; the mitigation is operational (don't expose it), not
+building authn/authz. Do not add player-facing endpoints or internet-facing features without the
+maintainer explicitly reopening this decision (which would make real backend auth a hard prerequisite
+— see `.claude/rules/security.md`).
 
 **Attribution requirement:** the UI must always retain attribution to the original creator,
 **Icehunter**, and the upstream repo <https://github.com/Icehunter/dune-admin>. Do not remove it.
@@ -118,11 +121,13 @@ make version-major  # bump X.0.0, tag, push
 
 ## Critical Gotchas
 
-- **⚠️ No backend auth (yet)**: the SPA sends a Clerk `Bearer` token but the Go backend never verifies
-  it — no auth middleware, no authorization, every endpoint open on the listen address. Frontend
-  `isSignedIn` gates are cosmetic. `jwt_helpers.go` is game-broker token signing, not admin auth.
-  Enforce anything security-sensitive server-side; don't add endpoints that assume a trusted caller.
-  See `.claude/rules/security.md`.
+- **⚠️ No backend auth — LAN-only tool by design**: the SPA sends a Clerk `Bearer` token but the Go
+  backend never verifies it — no auth middleware, no authorization, every endpoint open on the listen
+  address. Frontend `isSignedIn` gates are cosmetic. `jwt_helpers.go` is game-broker token signing,
+  not admin auth. This is an **accepted constraint**: dune-admin is meant for a trusted local network
+  (LAN / VPN / localhost) and **must not be exposed to the internet** (see Project Direction). Don't
+  add internet-facing or player-facing endpoints without reopening that decision. See
+  `.claude/rules/security.md`.
 - **Backend is one flat `package main`**: the entire HTTP backend lives in `cmd/dune-admin/` as
   `package main` — keep it flat, don't split the server into sub-packages. The ONE exception is
   genuinely reusable, standalone libraries, which go under `internal/` (today: `internal/marketbot`,

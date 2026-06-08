@@ -125,10 +125,9 @@ destructive features in certain tabs. Do not remove this gate.
 
 **⚠️ This gate is cosmetic only.** `isSignedIn` hides/disables UI; it does **not** stop the
 corresponding API call, and the backend currently performs **no** authentication (see
-`.claude/rules/security.md` and `api-design.md`). Never treat a frontend gate as a security
-control — any control that must be enforced has to be enforced server-side. The planned
-admin-vs-player split and per-control permission toggles (project goals 3 & 4) must derive from a
-**server-verified** identity and role, not from a client-side boolean.
+`.claude/rules/security.md` and `api-design.md`). Never treat a frontend gate as a security control.
+dune-admin is a trusted-LAN operator tool that is deliberately not exposed to the internet, so this
+is an accepted constraint — but it also means the UI gate gives no real protection.
 
 ## Accessibility (WCAG 2.2 AA — all surfaces)
 

@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { useStatus } from './hooks/useStatus'
 import { SettingsConfigForm } from './components/SettingsConfigForm'
 import { LanguageSelector } from './components/LanguageSelector'
+import { ThemeSelector } from './components/ThemeSelector'
+import { HelpMenu } from './components/HelpMenu'
 import { BattlegroupTab } from './tabs/BattlegroupTab'
 import { LiveMapTab } from './tabs/LiveMapTab'
 import { PlayersTab } from './tabs/PlayersTab'
@@ -18,6 +20,7 @@ import { GuildsTab } from './tabs/GuildsTab'
 import { LandsraadTab } from './tabs/LandsraadTab'
 import { StorageTab } from './tabs/StorageTab'
 import { ServerSettingsTab } from './tabs/ServerSettingsTab'
+import { DirectorTab } from './tabs/DirectorTab'
 import { MarketTab } from './tabs/MarketTab'
 import { WelcomePackageTab } from './tabs/WelcomePackageTab'
 import { Icon, SideNav } from './dune-ui'
@@ -36,6 +39,7 @@ const TAB_IDS = [
   'storage',
   'livemap',
   'server',
+  'director',
   'market',
   'welcome',
 ] as const
@@ -47,7 +51,7 @@ function currentTabFromPath(pathname: string): TabId {
   return (TAB_IDS as readonly string[]).includes(seg) ? (seg as TabId) : DEFAULT_TAB
 }
 
-type DbSection = 'tables' | 'describe' | 'sample' | 'search' | 'sql'
+type DbSection = 'backups' | 'tables' | 'describe' | 'sample' | 'search' | 'sql'
 type WelcomeSection = 'config' | 'packages' | 'grants'
 type LayoutMode = 'sidenav' | 'topnav'
 
@@ -64,6 +68,7 @@ const MGuildsTab = memo(GuildsTab)
 const MLandsraadTab = memo(LandsraadTab)
 const MStorageTab = memo(StorageTab)
 const MServerSettingsTab = memo(ServerSettingsTab)
+const MDirectorTab = memo(DirectorTab)
 const MMarketTab = memo(MarketTab)
 const MWelcomePackageTab = memo(WelcomePackageTab)
 
@@ -100,6 +105,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   const [reconnecting, setReconnecting] = useState(false)
 
   const DB_SECTIONS: { key: string, label: string, depth: number }[] = [
+    { key: 'db:backups', label: `╰─ ${t('database.sections.backups')}`, depth: 1 },
     { key: 'db:tables', label: `╰─ ${t('database.sections.tables')}`, depth: 1 },
     { key: 'db:describe', label: `╰─ ${t('database.sections.describe')}`, depth: 1 },
     { key: 'db:sample', label: `╰─ ${t('database.sections.sample')}`, depth: 1 },
@@ -141,6 +147,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
         { key: 'logs' as TabId, label: t('nav.logs') },
         { key: 'database' as TabId, label: t('nav.database') },
         { key: 'server' as TabId, label: t('nav.server') },
+        { key: 'director' as TabId, label: t('nav.director') },
       ],
     },
     {
@@ -171,7 +178,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     localStorage.setItem('dune_admin_layout', m)
     setLayoutMode(m)
   }, [])
-  const [dbSection, setDbSection] = useState<DbSection>('tables')
+  const [dbSection, setDbSection] = useState<DbSection>('backups')
   const [welcomeSection, setWelcomeSection] = useState<WelcomeSection>('config')
   const [showBackendConfig, setShowBackendConfig] = useState(false)
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null)
@@ -325,16 +332,8 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
             </span>
           )}
 
-          <a
-            href="https://github.com/Icehunter/dune-admin/issues"
-            target="_blank"
-            rel="noreferrer"
-            aria-label={t('app.reportIssue')}
-            title={t('app.reportIssue')}
-            className="inline-flex items-center justify-center size-8 rounded text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
-          >
-            <Icon name="github" />
-          </a>
+          <HelpMenu status={status} />
+          <ThemeSelector />
           <LanguageSelector />
           <ToggleButtonGroup
             selectionMode="single"
@@ -354,13 +353,14 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
           </ToggleButtonGroup>
           <Button
             size="sm"
-            variant="ghost"
-            isIconOnly
+            variant="outline"
             aria-label={t('app.configureBackend')}
             onPress={() => setShowBackendConfig((v) => !v)}
-            className={showBackendConfig ? 'text-accent' : ''}
+            className={showBackendConfig ? 'text-accent border-accent' : ''}
           >
             <Icon name="settings" />
+            {' '}
+            {t('app.settings')}
           </Button>
 
           {hasClerk && (
@@ -629,6 +629,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                 {renderTab('storage', <MStorageTab />)}
                 {renderTab('livemap', <MLiveMapTab isActive={currentTab === 'livemap'} />)}
                 {renderTab('server', <MServerSettingsTab />)}
+                {renderTab('director', <MDirectorTab />)}
                 {renderTab('market', <MMarketTab />)}
                 {renderTab('welcome', welcomeNode)}
               </main>
@@ -668,6 +669,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                 {renderTab('storage', <MStorageTab />)}
                 {renderTab('livemap', <MLiveMapTab isActive={currentTab === 'livemap'} />)}
                 {renderTab('server', <MServerSettingsTab />)}
+                {renderTab('director', <MDirectorTab />)}
                 {renderTab('market', <MMarketTab />)}
                 {renderTab('welcome', welcomeNode)}
               </main>

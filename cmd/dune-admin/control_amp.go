@@ -45,6 +45,33 @@ type ampControl struct {
 	apiUser string
 	apiPass string
 	apiPort int // 0 → defaultAmpAPIPort (8081)
+
+	// Postgres client tooling inside the container, for #150 DB backups. The
+	// game's PG17 ships a musl pg_dump under pgBin, but its libpq dir lacks the
+	// compression/SSL libs — those live in the sibling db-utils tree, so pgLib is
+	// a colon-joined path spanning both. Empty → validated AMP defaults.
+	pgBin string // dir containing pg_dump/pg_restore
+	pgLib string // LD_LIBRARY_PATH for the above
+}
+
+const (
+	defaultAmpPgBin = "/AMP/duneawakening/extracted/postgres/usr/local/bin"
+	defaultAmpPgLib = "/AMP/duneawakening/extracted/postgres/usr/local/lib:" +
+		"/AMP/duneawakening/extracted/db-utils/usr/lib"
+)
+
+func (c *ampControl) pgBinDir() string {
+	if c.pgBin != "" {
+		return c.pgBin
+	}
+	return defaultAmpPgBin
+}
+
+func (c *ampControl) pgLibPath() string {
+	if c.pgLib != "" {
+		return c.pgLib
+	}
+	return defaultAmpPgLib
 }
 
 func (c *ampControl) Name() string { return "amp" }
@@ -69,14 +96,21 @@ func (c *ampControl) GetStatus(ctx context.Context, exec Executor) (*Battlegroup
 	if err != nil {
 		log.Printf("ampControl.GetStatus: director enrichment unavailable: %v", err)
 	}
+	pids := make([]int, 0, len(procs))
+	for _, p := range procs {
+		pids = append(pids, p.pid)
+	}
+	ages := c.fetchProcessAges(exec, pids)
 	servers := make([]ServerRow, 0, len(procs))
 	for _, p := range procs {
 		row := ServerRow{
-			Map:       p.mapName,
-			Partition: p.partition,
-			Phase:     "Running",
-			Ready:     true,
-			Players:   0,
+			Map:        p.mapName,
+			Partition:  p.partition,
+			Phase:      "Running",
+			Ready:      true,
+			Players:    0,
+			Port:       p.port,
+			AgeSeconds: ages[p.pid],
 		}
 		if meta, ok := dirMeta[p.partition]; ok {
 			row.Dimension = meta.dimension
@@ -253,6 +287,67 @@ func (c *ampControl) restartGame(exec Executor) (string, error) {
 		c.ampUser, c.instance, c.ampUser, c.instance))
 }
 
+// ── database backup/restore (#150) ──────────────────────────────────────────
+
+// pgDumpCommand builds the host shell command that runs pg_dump (-Fc) inside the
+// container, redirecting its stdout to a host file. The '>' redirect is handled
+// by the outer host shell (run by the dune-admin service user), so the dump
+// lands host-side and service-user-owned.
+func (c *ampControl) pgDumpCommand(conn dbConn, destPath string) string {
+	inner := fmt.Sprintf(
+		"%s exec -e PGPASSWORD=%s -e LD_LIBRARY_PATH=%s %s %s -Fc -h %s -p %d -U %s -d %s",
+		c.runtimeCLI(),
+		shellQuote(conn.Pass),
+		shellQuote(c.pgLibPath()),
+		shellQuote(c.container),
+		shellQuote(c.pgBinDir()+"/pg_dump"),
+		shellQuote(conn.Host), conn.Port, shellQuote(conn.User), shellQuote(conn.Name),
+	)
+	return fmt.Sprintf("sudo -i -u %s %s > %s", c.ampUser, inner, shellQuote(destPath))
+}
+
+// pgRestoreCommand builds the host shell command that pipes a host dump file into
+// pg_restore (--clean --if-exists) running inside the container. DESTRUCTIVE:
+// the caller must ensure the game is stopped.
+func (c *ampControl) pgRestoreCommand(conn dbConn, srcPath string) string {
+	inner := fmt.Sprintf(
+		"%s exec -i -e PGPASSWORD=%s -e LD_LIBRARY_PATH=%s %s %s --clean --if-exists --no-owner -h %s -p %d -U %s -d %s",
+		c.runtimeCLI(),
+		shellQuote(conn.Pass),
+		shellQuote(c.pgLibPath()),
+		shellQuote(c.container),
+		shellQuote(c.pgBinDir()+"/pg_restore"),
+		shellQuote(conn.Host), conn.Port, shellQuote(conn.User), shellQuote(conn.Name),
+	)
+	return fmt.Sprintf("sudo -i -u %s %s < %s", c.ampUser, inner, shellQuote(srcPath))
+}
+
+// BackupDatabase runs pg_dump in-container and writes the archive to destPath on
+// the host. Implements dbBackupProvider.
+func (c *ampControl) BackupDatabase(exec Executor, conn dbConn, destPath string) (string, error) {
+	if !c.useContainer || c.container == "" {
+		return "", fmt.Errorf("AMP database backup requires container mode (amp_container)")
+	}
+	out, err := exec.Exec(c.pgDumpCommand(conn, destPath))
+	if err != nil {
+		return out, fmt.Errorf("pg_dump: %w", err)
+	}
+	return out, nil
+}
+
+// RestoreDatabase pipes a host dump into pg_restore in-container. DESTRUCTIVE.
+// Implements dbBackupProvider.
+func (c *ampControl) RestoreDatabase(exec Executor, conn dbConn, srcPath string) (string, error) {
+	if !c.useContainer || c.container == "" {
+		return "", fmt.Errorf("AMP database restore requires container mode (amp_container)")
+	}
+	out, err := exec.Exec(c.pgRestoreCommand(conn, srcPath))
+	if err != nil {
+		return out, fmt.Errorf("pg_restore: %w", err)
+	}
+	return out, nil
+}
+
 // ── process & log discovery ───────────────────────────────────────────────────
 
 type ampGameProcess struct {
@@ -294,6 +389,55 @@ func parseAMPGameProcess(line string) (ampGameProcess, bool) {
 		port:      parseAMPArgInt(ampPortRe, args),
 		partition: parseAMPArgInt(ampPartRe, args),
 	}, true
+}
+
+// parseProcessAges parses the output of `ps -o pid=,etimes=` into a pid→elapsed
+// seconds map. Each non-empty line has two whitespace-separated columns; lines
+// that don't parse cleanly are skipped rather than failing the whole map.
+func parseProcessAges(out string) map[int]int {
+	ages := map[int]int{}
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		pid, err := strconv.Atoi(fields[0])
+		if err != nil {
+			continue
+		}
+		age, err := strconv.Atoi(fields[1])
+		if err != nil {
+			continue
+		}
+		ages[pid] = age
+	}
+	return ages
+}
+
+// fetchProcessAges returns a best-effort pid→uptime-seconds map for the given
+// pids. It is deliberately separate from listGameProcesses so a `ps` that lacks
+// the etimes field (or any error) degrades to "no ages" rather than breaking the
+// core process listing that the status table and lifecycle commands depend on.
+func (c *ampControl) fetchProcessAges(exec Executor, pids []int) map[int]int {
+	if len(pids) == 0 {
+		return map[int]int{}
+	}
+	ids := make([]string, len(pids))
+	for i, p := range pids {
+		ids[i] = strconv.Itoa(p)
+	}
+	cmd := "ps -o pid=,etimes= -p " + strings.Join(ids, ",") + " 2>/dev/null"
+	if c.useContainer {
+		if c.container == "" {
+			return map[int]int{}
+		}
+		cmd = c.wrapInContainer(cmd)
+	}
+	out, err := exec.Exec(cmd)
+	if err != nil && strings.TrimSpace(out) == "" {
+		return map[int]int{}
+	}
+	return parseProcessAges(out)
 }
 
 func (c *ampControl) listGameProcesses(exec Executor) ([]ampGameProcess, error) {
@@ -621,4 +765,46 @@ func (c *ampControl) ReadDefaultINI(_ context.Context, exec Executor, filename s
 		return ""
 	}
 	return out
+}
+
+// ── Battlegroup Director config (#147) ──────────────────────────────────────
+// director_config.ini is a HOST file ($STATE/director_config.ini, amp-owned
+// 0700) — NOT in the game container — so it's read/written on the host as the
+// AMP user. prestart.sh copies it into runtime/director-conf.d on every start,
+// so edits persist and apply on the next instance restart.
+
+// directorConfigPath derives $STATE/director_config.ini from the resolved server
+// INI dir, which is $STATE/ue5-saved/UserSettings (so $STATE is two levels up).
+func (c *ampControl) directorConfigPath() (string, error) {
+	dir, err := iniDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(filepath.Dir(filepath.Dir(dir)), "director_config.ini"), nil
+}
+
+func (c *ampControl) readDirectorConfig(exec Executor) (string, string, error) {
+	path, err := c.directorConfigPath()
+	if err != nil {
+		return "", "", err
+	}
+	out, err := exec.Exec(fmt.Sprintf("sudo -i -u %s cat %s 2>/dev/null", shellQuote(c.ampUser), shellQuote(path)))
+	if err != nil {
+		return path, "", fmt.Errorf("read %s: %w", path, err)
+	}
+	if strings.TrimSpace(out) == "" {
+		return path, "", fmt.Errorf("director config empty or unreadable at %s", path)
+	}
+	return path, out, nil
+}
+
+func (c *ampControl) writeDirectorConfig(exec Executor, content string) (string, error) {
+	path, err := c.directorConfigPath()
+	if err != nil {
+		return "", err
+	}
+	if err := exec.WriteFile(path, strings.NewReader(content)); err != nil {
+		return path, fmt.Errorf("write %s: %w", path, err)
+	}
+	return path, nil
 }

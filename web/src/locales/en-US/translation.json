@@ -1,4 +1,115 @@
 {
+  "backups": {
+    "warning": "Stop the battlegroup before taking or restoring a backup. Backups taken while the game is running may be inconsistent, and a restore requires the battlegroup stopped.",
+    "loadFailed": "Failed to load backups: {{message}}",
+    "take": {
+      "title": "Take Backup",
+      "desc": "Snapshot the battlegroup's PostgreSQL database to a timestamped file on the host. Recommended before risky changes.",
+      "btn": "Take Backup"
+    },
+    "taken": "Backup created: {{name}}",
+    "takeFailed": "Backup failed: {{message}}",
+    "recent": {
+      "title": "Recent Backups",
+      "empty": "No backups yet."
+    },
+    "col": {
+      "name": "File",
+      "size": "Size",
+      "modified": "Created"
+    },
+    "download": "Download",
+    "restoreLabel": "Restore",
+    "restoreFailed": "Restore failed: {{message}}",
+    "restoreConfirmTitle": "Restore database?",
+    "restoreConfirmDesc": "This replaces the live database with {{name}}. The battlegroup must be stopped — this cannot be undone.",
+    "deleteLabel": "Delete",
+    "deleteConfirmTitle": "Delete backup?",
+    "deleteConfirmDesc": "Permanently delete {{name}}?",
+    "deleteFailed": "Delete failed: {{message}}",
+    "schedule": {
+      "title": "Backup Schedule",
+      "enable": "Enabled",
+      "desc": "Run automatic backups on a weekly schedule. Times are in the configured timezone.",
+      "nextBackup": "Next backup: {{when}}",
+      "noneScheduled": "No backups scheduled",
+      "noRules": "No rules yet — add one below.",
+      "addRule": "Add rule",
+      "removeRule": "Remove rule",
+      "keepN": "Keep last",
+      "keepHint": "0 = keep all",
+      "timezone": "Timezone",
+      "tzPlaceholder": "host local (e.g. UTC)",
+      "save": "Save",
+      "saveFailed": "Save failed: {{message}}"
+    }
+  },
+  "serverHealth": {
+    "title": "Server Health",
+    "subtitle": "Live VM, battlegroup, and port status.",
+    "gamePorts": "Game (UDP)",
+    "webPort": "Web",
+    "vm": "VM",
+    "bg": "Battlegroup",
+    "up": "Up",
+    "down": "Down",
+    "bgVm": "Battlegroup + VM",
+    "upFor": "Up {{uptime}}",
+    "noUptime": "Uptime unavailable",
+    "components": "Battlegroup Info",
+    "bgState": "BG state",
+    "database": "Database",
+    "director": "Director",
+    "configured": "Configured",
+    "notConfigured": "Not configured",
+    "uptime": "Uptime",
+    "readyState": "Game Ready State",
+    "ready": "Ready",
+    "notReady": "Not ready",
+    "webInterfaces": "Web Interfaces",
+    "noInterfaces": "No web interfaces configured.",
+    "copied": "Copied to clipboard",
+    "copyFailed": "Copy failed",
+    "copy": "Copy",
+    "open": "Open",
+    "gameServers": "Game Servers",
+    "pods": "{{n}} pods"
+  },
+  "restarts": {
+    "title": "Scheduled Restarts",
+    "enable": "Enabled",
+    "nextRestart": "Next restart: {{when}}",
+    "noneScheduled": "No restarts scheduled",
+    "noRules": "No rules yet — add one below.",
+    "addRule": "Add rule",
+    "removeRule": "Remove rule",
+    "warnMinutes": "Warn (min)",
+    "timezone": "Timezone",
+    "tzPlaceholder": "host local (e.g. UTC)",
+    "save": "Save",
+    "skipNext": "Skip next",
+    "failedToLoad": "Failed to load: {{message}}",
+    "saveFailed": "Save failed: {{message}}"
+  },
+  "director": {
+    "title": "Director Config",
+    "subtitle": "Battlegroup Director settings — map instancing & advanced tunables (AMP).",
+    "loading": "Loading director config…",
+    "unsupported": "Director config editing is only available on the AMP control plane.",
+    "save": "Save",
+    "saveWithCount": "Save ({{count}})",
+    "saveFailed": "Save failed: {{message}}",
+    "readOnly": "read-only",
+    "restartNote": "Changes are written to director_config.ini and take effect after a server restart."
+  },
+  "help": {
+    "menu": "Help",
+    "reportIssue": "Report an issue",
+    "copyDiagnostics": "Copy diagnostics",
+    "viewOnGitHub": "View on GitHub",
+    "copied": "Diagnostics copied to clipboard",
+    "copyFailed": "Could not copy to clipboard"
+  },
   "landsraad": {
     "title": "Landsraad",
     "subtitle": "The weekly political term — decrees and the house task board (read-only).",
@@ -80,6 +191,7 @@
     "reinstalled": "Reinstalled {{version}}. Server is restarting…",
     "saveApply": "Save & Apply",
     "selectLanguage": "Select language",
+    "selectTheme": "Select theme",
     "settings": "Settings",
     "signIn": "Sign In",
     "switchToSidenav": "Switch to side navigation",
@@ -134,6 +246,7 @@
     "cmdCompleted": "{{label}} completed",
     "cmdFailed": "{{label}} failed: {{message}}",
     "columns": {
+      "age": "Age",
       "dim": "Dim",
       "map": "Map",
       "part": "Part",
@@ -248,6 +361,7 @@
     "searchLabel": "Column or table name",
     "searchPlaceholder": "player_id, faction...",
     "sections": {
+      "backups": "Backups",
       "describe": "Describe",
       "sample": "Sample",
       "search": "Search Columns",
@@ -508,10 +622,11 @@
     "title": "Market Board"
   },
   "nav": {
+    "director": "Director",
     "landsraad": "Landsraad",
     "guilds": "Guilds",
     "bases": "Bases",
-    "battlegroup": "Battlegroup",
+    "battlegroup": "Server Health",
     "blueprints": "Blueprints",
     "database": "Database",
     "groups": {

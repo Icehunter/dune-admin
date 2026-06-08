@@ -1,4 +1,115 @@
 {
+  "backups": {
+    "warning": "Zatrzymaj grupę bojową przed utworzeniem lub przywróceniem kopii zapasowej. Kopie wykonane podczas działania gry mogą być niespójne, a przywracanie wymaga zatrzymanej grupy bojowej.",
+    "loadFailed": "Nie udało się załadować kopii: {{message}}",
+    "take": {
+      "title": "Utwórz kopię",
+      "desc": "Tworzy migawkę bazy PostgreSQL grupy bojowej do pliku ze znacznikiem czasu na hoście. Zalecane przed ryzykownymi zmianami.",
+      "btn": "Utwórz kopię"
+    },
+    "taken": "Utworzono kopię: {{name}}",
+    "takeFailed": "Kopia nie powiodła się: {{message}}",
+    "recent": {
+      "title": "Ostatnie kopie",
+      "empty": "Brak kopii."
+    },
+    "col": {
+      "name": "Plik",
+      "size": "Rozmiar",
+      "modified": "Utworzono"
+    },
+    "download": "Pobierz",
+    "restoreLabel": "Przywróć",
+    "restoreFailed": "Przywracanie nie powiodło się: {{message}}",
+    "restoreConfirmTitle": "Przywrócić bazę danych?",
+    "restoreConfirmDesc": "To zastąpi aktywną bazę danych przez {{name}}. Grupa bojowa musi być zatrzymana — tego nie można cofnąć.",
+    "deleteLabel": "Usuń",
+    "deleteConfirmTitle": "Usunąć kopię?",
+    "deleteConfirmDesc": "Trwale usunąć {{name}}?",
+    "deleteFailed": "Usuwanie nie powiodło się: {{message}}",
+    "schedule": {
+      "title": "Harmonogram kopii",
+      "enable": "Włączone",
+      "desc": "Uruchamiaj automatyczne kopie według harmonogramu tygodniowego. Godziny w skonfigurowanej strefie czasowej.",
+      "nextBackup": "Następna kopia: {{when}}",
+      "noneScheduled": "Brak zaplanowanych kopii",
+      "noRules": "Brak reguł — dodaj jedną poniżej.",
+      "addRule": "Dodaj regułę",
+      "removeRule": "Usuń regułę",
+      "keepN": "Zachowaj ostatnie",
+      "keepHint": "0 = zachowaj wszystkie",
+      "timezone": "Strefa czasowa",
+      "tzPlaceholder": "lokalna hosta (np. UTC)",
+      "save": "Zapisz",
+      "saveFailed": "Zapis nie powiódł się: {{message}}"
+    }
+  },
+  "serverHealth": {
+    "title": "Stan serwera",
+    "subtitle": "Stan na żywo VM, grupy bojowej i portów.",
+    "gamePorts": "Gra (UDP)",
+    "webPort": "Web",
+    "vm": "VM",
+    "bg": "Grupa bojowa",
+    "up": "Działa",
+    "down": "Nie działa",
+    "bgVm": "Grupa bojowa + VM",
+    "upFor": "Działa od {{uptime}}",
+    "noUptime": "Czas działania niedostępny",
+    "components": "Informacje o grupie bojowej",
+    "bgState": "Stan GB",
+    "database": "Baza danych",
+    "director": "Director",
+    "configured": "Skonfigurowano",
+    "notConfigured": "Nieskonfigurowano",
+    "uptime": "Czas działania",
+    "readyState": "Gotowość gry",
+    "ready": "Gotowe",
+    "notReady": "Niegotowe",
+    "webInterfaces": "Interfejsy webowe",
+    "noInterfaces": "Brak skonfigurowanych interfejsów webowych.",
+    "copied": "Skopiowano do schowka",
+    "copyFailed": "Kopiowanie nie powiodło się",
+    "copy": "Kopiuj",
+    "open": "Otwórz",
+    "gameServers": "Serwery gry",
+    "pods": "{{n}} podów"
+  },
+  "restarts": {
+    "title": "Zaplanowane restarty",
+    "enable": "Włączone",
+    "nextRestart": "Następny restart: {{when}}",
+    "noneScheduled": "Brak zaplanowanych restartów",
+    "noRules": "Brak reguł — dodaj jedną poniżej.",
+    "addRule": "Dodaj regułę",
+    "removeRule": "Usuń regułę",
+    "warnMinutes": "Ostrzeż (min)",
+    "timezone": "Strefa czasowa",
+    "tzPlaceholder": "lokalna hosta (np. UTC)",
+    "save": "Zapisz",
+    "skipNext": "Pomiń następny",
+    "failedToLoad": "Nie udało się załadować: {{message}}",
+    "saveFailed": "Zapis nie powiódł się: {{message}}"
+  },
+  "director": {
+    "title": "Konfiguracja Director",
+    "subtitle": "Ustawienia Battlegroup Director — instancjonowanie map i opcje zaawansowane (AMP).",
+    "loading": "Ładowanie konfiguracji Director…",
+    "unsupported": "Edycja konfiguracji Director jest dostępna tylko w warstwie sterowania AMP.",
+    "save": "Zapisz",
+    "saveWithCount": "Zapisz ({{count}})",
+    "saveFailed": "Zapis nie powiódł się: {{message}}",
+    "readOnly": "tylko do odczytu",
+    "restartNote": "Zmiany są zapisywane w director_config.ini i obowiązują po ponownym uruchomieniu serwera."
+  },
+  "help": {
+    "menu": "Pomoc",
+    "reportIssue": "Zgłoś problem",
+    "copyDiagnostics": "Kopiuj diagnostykę",
+    "viewOnGitHub": "Zobacz na GitHubie",
+    "copied": "Diagnostyka skopiowana do schowka",
+    "copyFailed": "Nie udało się skopiować do schowka"
+  },
   "landsraad": {
     "title": "Landsraad",
     "subtitle": "Cotygodniowa kadencja polityczna — dekrety i tablica zadań rodów (tylko do odczytu).",
@@ -80,6 +191,7 @@
     "reinstalled": "{{version}} zainstalowano ponownie. Serwer restartuje się…",
     "saveApply": "Zapisz i zastosuj",
     "selectLanguage": "Wybierz język",
+    "selectTheme": "Wybierz motyw",
     "settings": "Ustawienia",
     "signIn": "Zaloguj się",
     "switchToSidenav": "Przełącz na boczną nawigację",
@@ -136,6 +248,7 @@
     "cmdCompleted": "{{label}} zakończono",
     "cmdFailed": "{{label}} nie powiodło się: {{message}}",
     "columns": {
+      "age": "Wiek",
       "dim": "Dim",
       "map": "Mapa",
       "part": "Part",
@@ -252,6 +365,7 @@
     "searchLabel": "Nazwa kolumny lub tabeli",
     "searchPlaceholder": "player_id, faction...",
     "sections": {
+      "backups": "Kopie zapasowe",
       "describe": "Opisz",
       "sample": "Próbka",
       "search": "Szukaj kolumn",
@@ -522,10 +636,11 @@
     "title": "Tablica rynku"
   },
   "nav": {
+    "director": "Director",
     "landsraad": "Landsraad",
     "guilds": "Gildie",
     "bases": "Bazy",
-    "battlegroup": "Grupa bojowa",
+    "battlegroup": "Stan serwera",
     "blueprints": "Plany",
     "database": "Baza danych",
     "groups": {

@@ -73,6 +73,64 @@ func TestParseAMPGameProcess(t *testing.T) {
 	}
 }
 
+func TestAmpPgDumpRestoreCommands(t *testing.T) {
+	t.Parallel()
+	c := &ampControl{
+		container:        "AMP_DuneTest01",
+		ampUser:          "amp",
+		containerRuntime: "docker",
+		pgBin:            "/AMP/duneawakening/extracted/postgres/usr/local/bin",
+		pgLib:            "/pg/lib:/db/lib",
+	}
+	conn := dbConn{Host: "127.0.0.1", Port: 15432, User: "dune", Pass: "secret", Name: "dune"}
+
+	dump := c.pgDumpCommand(conn, "/home/test/db-backups/x.dump")
+	for _, want := range []string{
+		"sudo -i -u amp", "docker exec", "AMP_DuneTest01",
+		"PGPASSWORD=", "LD_LIBRARY_PATH=", "/pg/lib:/db/lib",
+		"pg_dump", "-Fc", "-h ", "127.0.0.1", "-p 15432", "-U ", "-d ",
+		"> ", "/home/test/db-backups/x.dump",
+	} {
+		if !strings.Contains(dump, want) {
+			t.Errorf("pgDumpCommand missing %q in:\n%s", want, dump)
+		}
+	}
+
+	restore := c.pgRestoreCommand(conn, "/home/test/db-backups/x.dump")
+	for _, want := range []string{
+		"docker exec -i", "pg_restore", "--clean", "--if-exists", "-d ",
+		"< ", "/home/test/db-backups/x.dump",
+	} {
+		if !strings.Contains(restore, want) {
+			t.Errorf("pgRestoreCommand missing %q in:\n%s", want, restore)
+		}
+	}
+}
+
+func TestParseProcessAges(t *testing.T) {
+	t.Parallel()
+
+	// `ps -o pid=,etimes=` emits two whitespace-separated columns (pid, elapsed
+	// seconds), typically with leading padding. We only care about a pid→seconds
+	// map; malformed lines are skipped, not fatal.
+	out := "  123     3600\n456 90\nbad line here\n   789  0\n"
+	got := parseProcessAges(out)
+
+	want := map[int]int{123: 3600, 456: 90, 789: 0}
+	if len(got) != len(want) {
+		t.Fatalf("parseProcessAges len = %d, want %d (%+v)", len(got), len(want), got)
+	}
+	for pid, age := range want {
+		if got[pid] != age {
+			t.Fatalf("parseProcessAges[%d] = %d, want %d", pid, got[pid], age)
+		}
+	}
+
+	if len(parseProcessAges("")) != 0 {
+		t.Fatalf("expected empty input to yield empty map")
+	}
+}
+
 func TestListGameProcesses(t *testing.T) {
 	t.Parallel()
 

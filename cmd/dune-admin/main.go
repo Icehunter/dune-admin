@@ -173,6 +173,13 @@ type appConfig struct {
 	AmpAPIPort  int    `yaml:"amp_api_port" json:"amp_api_port"`
 	DirectorURL string `yaml:"director_url"      json:"director_url"`
 
+	// DB backup tooling (#150). AmpPgBin/AmpPgLib locate the in-container PG17
+	// pg_dump/pg_restore + their shared libs; empty → validated AMP defaults.
+	// AmpBackupDir is the host dir for dumps; empty → <configDir>/db-backups.
+	AmpPgBin     string `yaml:"amp_pg_bin"     json:"amp_pg_bin"`
+	AmpPgLib     string `yaml:"amp_pg_lib"     json:"amp_pg_lib"`
+	AmpBackupDir string `yaml:"amp_backup_dir" json:"amp_backup_dir"`
+
 	// ── Embedded market bot ────────────────────────────────────────────────
 	// MarketBotEnabled starts the market bot as an in-process goroutine.
 	// Pointer so we can distinguish "unset" (default-on) from "explicitly false".
@@ -754,6 +761,15 @@ func main() {
 
 	globalWelcomeCancel = startWelcomePackageScanner(loadedConfig)
 	defer stopWelcomeScanner()
+
+	// Scheduled restarts (#145): load persisted config + run the scheduler for
+	// the process lifetime (independent of the welcome scanner's lifecycle).
+	loadScheduledRestartConfig()
+	go runRestartScheduler(context.Background())
+
+	// Scheduled DB backups (#150): same lifecycle as scheduled restarts.
+	loadScheduledBackupConfig()
+	go runBackupScheduler(context.Background())
 
 	initLocationStore()
 	initGivePacksStore()

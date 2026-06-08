@@ -1,4 +1,115 @@
 {
+  "backups": {
+    "warning": "Yedek almadan veya geri yüklemeden önce savaş grubunu durdurun. Oyun çalışırken alınan yedekler tutarsız olabilir ve geri yükleme için savaş grubunun durdurulmuş olması gerekir.",
+    "loadFailed": "Yedekler yüklenemedi: {{message}}",
+    "take": {
+      "title": "Yedek Al",
+      "desc": "Savaş grubunun PostgreSQL veritabanını ana makinede zaman damgalı bir dosyaya alır. Riskli değişikliklerden önce önerilir.",
+      "btn": "Yedek Al"
+    },
+    "taken": "Yedek oluşturuldu: {{name}}",
+    "takeFailed": "Yedek başarısız: {{message}}",
+    "recent": {
+      "title": "Son Yedekler",
+      "empty": "Henüz yedek yok."
+    },
+    "col": {
+      "name": "Dosya",
+      "size": "Boyut",
+      "modified": "Oluşturuldu"
+    },
+    "download": "İndir",
+    "restoreLabel": "Geri yükle",
+    "restoreFailed": "Geri yükleme başarısız: {{message}}",
+    "restoreConfirmTitle": "Veritabanı geri yüklensin mi?",
+    "restoreConfirmDesc": "Bu, aktif veritabanını {{name}} ile değiştirir. Savaş grubu durdurulmuş olmalı — geri alınamaz.",
+    "deleteLabel": "Sil",
+    "deleteConfirmTitle": "Yedek silinsin mi?",
+    "deleteConfirmDesc": "{{name}} kalıcı olarak silinsin mi?",
+    "deleteFailed": "Silme başarısız: {{message}}",
+    "schedule": {
+      "title": "Yedek Zamanlaması",
+      "enable": "Etkin",
+      "desc": "Otomatik yedekleri haftalık zamanlamayla çalıştırın. Saatler yapılandırılan saat dilimindedir.",
+      "nextBackup": "Sonraki yedek: {{when}}",
+      "noneScheduled": "Zamanlanmış yedek yok",
+      "noRules": "Henüz kural yok — aşağıdan ekleyin.",
+      "addRule": "Kural ekle",
+      "removeRule": "Kuralı kaldır",
+      "keepN": "Son N'yi tut",
+      "keepHint": "0 = hepsini tut",
+      "timezone": "Saat dilimi",
+      "tzPlaceholder": "ana makine yereli (örn. UTC)",
+      "save": "Kaydet",
+      "saveFailed": "Kaydetme başarısız: {{message}}"
+    }
+  },
+  "serverHealth": {
+    "title": "Sunucu Durumu",
+    "subtitle": "Canlı VM, savaş grubu ve port durumu.",
+    "gamePorts": "Oyun (UDP)",
+    "webPort": "Web",
+    "vm": "VM",
+    "bg": "Savaş Grubu",
+    "up": "Çalışıyor",
+    "down": "Durdu",
+    "bgVm": "Savaş Grubu + VM",
+    "upFor": "{{uptime}} süredir çalışıyor",
+    "noUptime": "Çalışma süresi kullanılamıyor",
+    "components": "Savaş Grubu Bilgisi",
+    "bgState": "SG durumu",
+    "database": "Veritabanı",
+    "director": "Director",
+    "configured": "Yapılandırıldı",
+    "notConfigured": "Yapılandırılmadı",
+    "uptime": "Çalışma süresi",
+    "readyState": "Oyun Hazırlık Durumu",
+    "ready": "Hazır",
+    "notReady": "Hazır değil",
+    "webInterfaces": "Web Arayüzleri",
+    "noInterfaces": "Yapılandırılmış web arayüzü yok.",
+    "copied": "Panoya kopyalandı",
+    "copyFailed": "Kopyalama başarısız",
+    "copy": "Kopyala",
+    "open": "Aç",
+    "gameServers": "Oyun Sunucuları",
+    "pods": "{{n}} pod"
+  },
+  "restarts": {
+    "title": "Zamanlanmış yeniden başlatmalar",
+    "enable": "Etkin",
+    "nextRestart": "Sonraki yeniden başlatma: {{when}}",
+    "noneScheduled": "Zamanlanmış yeniden başlatma yok",
+    "noRules": "Henüz kural yok — aşağıdan ekleyin.",
+    "addRule": "Kural ekle",
+    "removeRule": "Kuralı kaldır",
+    "warnMinutes": "Uyarı (dk)",
+    "timezone": "Saat dilimi",
+    "tzPlaceholder": "ana makine yereli (örn. UTC)",
+    "save": "Kaydet",
+    "skipNext": "Sonrakini atla",
+    "failedToLoad": "Yükleme başarısız: {{message}}",
+    "saveFailed": "Kaydetme başarısız: {{message}}"
+  },
+  "director": {
+    "title": "Director Yapılandırması",
+    "subtitle": "Battlegroup Director ayarları — harita örnekleme ve gelişmiş ayarlar (AMP).",
+    "loading": "Director yapılandırması yükleniyor…",
+    "unsupported": "Director yapılandırması düzenleme yalnızca AMP kontrol düzleminde kullanılabilir.",
+    "save": "Kaydet",
+    "saveWithCount": "Kaydet ({{count}})",
+    "saveFailed": "Kaydetme başarısız: {{message}}",
+    "readOnly": "salt okunur",
+    "restartNote": "Değişiklikler director_config.ini dosyasına yazılır ve sunucu yeniden başlatıldıktan sonra geçerli olur."
+  },
+  "help": {
+    "menu": "Yardım",
+    "reportIssue": "Sorun bildir",
+    "copyDiagnostics": "Tanılamayı kopyala",
+    "viewOnGitHub": "GitHub'da görüntüle",
+    "copied": "Tanılama panoya kopyalandı",
+    "copyFailed": "Panoya kopyalanamadı"
+  },
   "landsraad": {
     "title": "Landsraad",
     "subtitle": "Haftalık politik dönem — kararnameler ve hane görev panosu (salt okunur).",
@@ -80,6 +191,7 @@
     "reinstalled": "{{version}} yeniden yüklendi. Sunucu yeniden başlatılıyor…",
     "saveApply": "Kaydet ve Uygula",
     "selectLanguage": "Dil seçin",
+    "selectTheme": "Tema seç",
     "settings": "Ayarlar",
     "signIn": "Giriş Yap",
     "switchToSidenav": "Yan gezintiye geç",
@@ -134,6 +246,7 @@
     "cmdCompleted": "{{label}} tamamlandı",
     "cmdFailed": "{{label}} başarısız: {{message}}",
     "columns": {
+      "age": "Yaş",
       "dim": "Boyut",
       "map": "Harita",
       "part": "Bölüm",
@@ -248,6 +361,7 @@
     "searchLabel": "Sütun veya tablo adı",
     "searchPlaceholder": "player_id, faction...",
     "sections": {
+      "backups": "Yedekler",
       "describe": "Açıkla",
       "sample": "Örnek",
       "search": "Sütunlarda Ara",
@@ -508,10 +622,11 @@
     "title": "Market Panosu"
   },
   "nav": {
+    "director": "Director",
     "landsraad": "Landsraad",
     "guilds": "Loncalar",
     "bases": "Üsler",
-    "battlegroup": "Savaş Grubu",
+    "battlegroup": "Sunucu Durumu",
     "blueprints": "Planlar",
     "database": "Veritabanı",
     "groups": {

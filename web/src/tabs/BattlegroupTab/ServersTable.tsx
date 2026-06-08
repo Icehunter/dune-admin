@@ -2,6 +2,7 @@ import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { DataTable, Icon } from '../../dune-ui'
 import { phaseColor } from './helpers'
+import { formatUptime } from './uptime'
 import { getServerColumns, type ServerRow, type ServerSortKey } from './types'
 
 type ServersTableProps = {
@@ -20,7 +21,11 @@ export const ServersTable: React.FC<ServersTableProps> = ({ servers, isInitializ
       rows={servers}
       rowId={(s) => `${s.map}-${s.dimension}-${s.partition}`}
       initialSort={{ column: 'map', direction: 'ascending' }}
-      sortValue={(r, k) => k === 'ready' ? (r.ready ? 1 : 0) : (r[k] as string | number)}
+      sortValue={(r, k) => {
+        if (k === 'ready') return r.ready ? 1 : 0
+        if (k === 'age') return r.ageSeconds ?? 0
+        return r[k] as string | number
+      }}
       emptyState={emptyMessage && <div className="py-8 text-center text-muted">{emptyMessage}</div>}
       renderCell={(s, key) => {
         switch (key) {
@@ -59,6 +64,7 @@ export const ServersTable: React.FC<ServersTableProps> = ({ servers, isInitializ
             )
           case 'dimension': return <span className="text-muted">{s.dimension}</span>
           case 'partition': return <span className="text-muted">{s.partition}</span>
+          case 'age': return <span className="font-mono text-muted">{formatUptime(s.ageSeconds)}</span>
         }
       }}
     />

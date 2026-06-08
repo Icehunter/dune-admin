@@ -69,6 +69,11 @@ type ServerRow struct {
 	Players       int    `json:"players"`
 	PlayerHardCap int    `json:"playerHardCap"`
 	Queue         int    `json:"queue"`
+	// Port is the game-server UDP port parsed from the process args (0 if
+	// unknown). AgeSeconds is how long the process has been running, sourced
+	// best-effort from `ps -o etimes=` (0 when unavailable, e.g. non-AMP planes).
+	Port       int `json:"port,omitempty"`
+	AgeSeconds int `json:"ageSeconds,omitempty"`
 }
 
 type ProcessInfo struct {
@@ -124,6 +129,8 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 			apiUser:          cfg.AmpAPIUser,
 			apiPass:          cfg.AmpAPIPass,
 			apiPort:          cfg.AmpAPIPort,
+			pgBin:            cfg.AmpPgBin,
+			pgLib:            cfg.AmpPgLib,
 		}
 	default:
 		return &localControl{

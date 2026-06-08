@@ -111,6 +111,24 @@ func startServer(addr string) {
 	mux.HandleFunc("PUT /api/v1/server-settings", handleUpdateServerSettings)
 	mux.HandleFunc("PUT /api/v1/server-settings/raw", handleUpdateRawSection)
 
+	// ── director config (Battlegroup Director / map persistence — AMP) ────────
+	mux.HandleFunc("GET /api/v1/director-config", handleGetDirectorConfig)
+	mux.HandleFunc("PUT /api/v1/director-config", handleUpdateDirectorConfig)
+
+	// ── scheduled restarts ────────────────────────────────────────────────────
+	mux.HandleFunc("GET /api/v1/scheduled-restarts", handleGetScheduledRestarts)
+	mux.HandleFunc("PUT /api/v1/scheduled-restarts", handleUpdateScheduledRestarts)
+	mux.HandleFunc("POST /api/v1/scheduled-restarts/skip-next", handleSkipNextRestart)
+
+	// Database backups (#150) — AMP-native pg_dump/restore + scheduling.
+	mux.HandleFunc("GET /api/v1/db-backups", handleDBBackupList)
+	mux.HandleFunc("POST /api/v1/db-backups", handleDBBackupCreate)
+	mux.HandleFunc("DELETE /api/v1/db-backups", handleDBBackupDelete)
+	mux.HandleFunc("GET /api/v1/db-backups/download", handleDBBackupDownload)
+	mux.HandleFunc("POST /api/v1/db-backups/restore", handleDBBackupRestore)
+	mux.HandleFunc("GET /api/v1/scheduled-backups", handleGetScheduledBackups)
+	mux.HandleFunc("PUT /api/v1/scheduled-backups", handleUpdateScheduledBackups)
+
 	// ── battlegroup ───────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/v1/battlegroup/status", handleBGStatus)
 	mux.HandleFunc("POST /api/v1/battlegroup/exec", handleBGExec)
@@ -425,6 +443,8 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 		"version":       AppVersion,
 		"commit":        GitCommit,
 		"build_time":    BuildTime,
+		"director_url":  loadedConfig.DirectorURL,
+		"listen_addr":   loadedConfig.ListenAddr,
 	})
 }
 

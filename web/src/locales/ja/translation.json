@@ -1,4 +1,115 @@
 {
+  "backups": {
+    "warning": "バックアップの取得や復元の前にバトルグループを停止してください。実行中に取得したバックアップは不整合になる可能性があり、復元にはバトルグループの停止が必要です。",
+    "loadFailed": "バックアップの読み込みに失敗しました: {{message}}",
+    "take": {
+      "title": "バックアップを取得",
+      "desc": "バトルグループの PostgreSQL データベースをタイムスタンプ付きファイルとしてホストに保存します。リスクのある変更の前に推奨されます。",
+      "btn": "バックアップを取得"
+    },
+    "taken": "バックアップを作成しました: {{name}}",
+    "takeFailed": "バックアップに失敗しました: {{message}}",
+    "recent": {
+      "title": "最近のバックアップ",
+      "empty": "バックアップはまだありません。"
+    },
+    "col": {
+      "name": "ファイル",
+      "size": "サイズ",
+      "modified": "作成日時"
+    },
+    "download": "ダウンロード",
+    "restoreLabel": "復元",
+    "restoreFailed": "復元に失敗しました: {{message}}",
+    "restoreConfirmTitle": "データベースを復元しますか？",
+    "restoreConfirmDesc": "現在のデータベースを {{name}} で置き換えます。バトルグループを停止する必要があり、元に戻せません。",
+    "deleteLabel": "削除",
+    "deleteConfirmTitle": "バックアップを削除しますか？",
+    "deleteConfirmDesc": "{{name}} を完全に削除しますか？",
+    "deleteFailed": "削除に失敗しました: {{message}}",
+    "schedule": {
+      "title": "バックアップのスケジュール",
+      "enable": "有効",
+      "desc": "毎週のスケジュールで自動バックアップを実行します。時刻は設定したタイムゾーンです。",
+      "nextBackup": "次のバックアップ: {{when}}",
+      "noneScheduled": "スケジュールされたバックアップはありません",
+      "noRules": "ルールがありません — 下で追加してください。",
+      "addRule": "ルールを追加",
+      "removeRule": "ルールを削除",
+      "keepN": "保持する数",
+      "keepHint": "0 = すべて保持",
+      "timezone": "タイムゾーン",
+      "tzPlaceholder": "ホストのローカル（例: UTC）",
+      "save": "保存",
+      "saveFailed": "保存に失敗しました: {{message}}"
+    }
+  },
+  "serverHealth": {
+    "title": "サーバーの状態",
+    "subtitle": "VM・バトルグループ・ポートのライブ状態。",
+    "gamePorts": "ゲーム (UDP)",
+    "webPort": "Web",
+    "vm": "VM",
+    "bg": "バトルグループ",
+    "up": "稼働中",
+    "down": "停止中",
+    "bgVm": "バトルグループ + VM",
+    "upFor": "稼働 {{uptime}}",
+    "noUptime": "稼働時間は利用できません",
+    "components": "バトルグループ情報",
+    "bgState": "BG 状態",
+    "database": "データベース",
+    "director": "ディレクター",
+    "configured": "設定済み",
+    "notConfigured": "未設定",
+    "uptime": "稼働時間",
+    "readyState": "ゲーム準備状態",
+    "ready": "準備完了",
+    "notReady": "準備未完了",
+    "webInterfaces": "Web インターフェース",
+    "noInterfaces": "Web インターフェースは設定されていません。",
+    "copied": "クリップボードにコピーしました",
+    "copyFailed": "コピーに失敗しました",
+    "copy": "コピー",
+    "open": "開く",
+    "gameServers": "ゲームサーバー",
+    "pods": "{{n}} ポッド"
+  },
+  "restarts": {
+    "title": "スケジュール再起動",
+    "enable": "有効",
+    "nextRestart": "次回の再起動: {{when}}",
+    "noneScheduled": "予定された再起動はありません",
+    "noRules": "ルールがありません — 下で追加してください。",
+    "addRule": "ルールを追加",
+    "removeRule": "ルールを削除",
+    "warnMinutes": "警告 (分)",
+    "timezone": "タイムゾーン",
+    "tzPlaceholder": "ホストのローカル（例: UTC）",
+    "save": "保存",
+    "skipNext": "次回をスキップ",
+    "failedToLoad": "読み込みに失敗しました: {{message}}",
+    "saveFailed": "保存に失敗しました: {{message}}"
+  },
+  "director": {
+    "title": "Director 設定",
+    "subtitle": "Battlegroup Director 設定 — マップのインスタンス化と詳細設定（AMP）。",
+    "loading": "Director 設定を読み込み中…",
+    "unsupported": "Director 設定の編集は AMP コントロールプレーンでのみ利用できます。",
+    "save": "保存",
+    "saveWithCount": "保存 ({{count}})",
+    "saveFailed": "保存に失敗しました: {{message}}",
+    "readOnly": "読み取り専用",
+    "restartNote": "変更は director_config.ini に書き込まれ、サーバー再起動後に反映されます。"
+  },
+  "help": {
+    "menu": "ヘルプ",
+    "reportIssue": "問題を報告",
+    "copyDiagnostics": "診断情報をコピー",
+    "viewOnGitHub": "GitHub で表示",
+    "copied": "診断情報をクリップボードにコピーしました",
+    "copyFailed": "クリップボードにコピーできませんでした"
+  },
   "landsraad": {
     "title": "Landsraad",
     "subtitle": "週次の政治会期 — 法令とハウス課題ボード（読み取り専用）。",
@@ -80,6 +191,7 @@
     "reinstalled": "{{version}} を再インストールしました。サーバーを再起動しています…",
     "saveApply": "保存して適用",
     "selectLanguage": "言語を選択",
+    "selectTheme": "テーマを選択",
     "settings": "設定",
     "signIn": "サインイン",
     "switchToSidenav": "サイドナビゲーションに切替",
@@ -134,6 +246,7 @@
     "cmdCompleted": "{{label}} が完了しました",
     "cmdFailed": "{{label}} に失敗しました：{{message}}",
     "columns": {
+      "age": "経過時間",
       "dim": "次元",
       "map": "マップ",
       "part": "パーティション",
@@ -248,6 +361,7 @@
     "searchLabel": "カラムまたはテーブル名",
     "searchPlaceholder": "player_id, faction...",
     "sections": {
+      "backups": "バックアップ",
       "describe": "詳細",
       "sample": "サンプル",
       "search": "カラムを検索",
@@ -508,10 +622,11 @@
     "title": "マーケットボード"
   },
   "nav": {
+    "director": "Director",
     "landsraad": "Landsraad",
     "guilds": "ギルド",
     "bases": "拠点",
-    "battlegroup": "バトルグループ",
+    "battlegroup": "サーバーの状態",
     "blueprints": "ブループリント",
     "database": "データベース",
     "groups": {

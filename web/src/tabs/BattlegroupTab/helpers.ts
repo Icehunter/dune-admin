@@ -17,3 +17,36 @@ export function phaseColor(phase: string): string {
     default: return 'var(--muted)'
   }
 }
+
+export type ChipColor = 'default' | 'success' | 'warning' | 'danger'
+
+/**
+ * Map a phase string to a HeroUI Chip colour (the chip variant of [[phaseColor]]).
+ * Used for the Server Health status chips and component-health rows.
+ */
+export function phaseChipColor(phase: string): ChipColor {
+  switch (phase?.toLowerCase()) {
+    case 'running':
+    case 'ready':
+    case 'connected':
+    case 'healthy': return 'success'
+    case 'reconciling':
+    case 'starting':
+    case 'initializing': return 'warning'
+    case 'stopping':
+    case 'preshutdown':
+    case 'terminating':
+    case 'disconnected': return 'danger'
+    default: return 'default'
+  }
+}
+
+/** BG uptime = the oldest running game process's age (0 when unknown). */
+export function bgUptimeSeconds(servers: { ageSeconds?: number }[]): number {
+  return servers.reduce((max, s) => Math.max(max, s.ageSeconds ?? 0), 0)
+}
+
+/** Game is "ready" only when every running server reports ready. */
+export function allServersReady(phase: string | undefined, servers: { ready: boolean }[]): boolean {
+  return servers.length > 0 && phase === 'Running' && servers.every((s) => s.ready)
+}

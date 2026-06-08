@@ -36,4 +36,4 @@ export const duneTheme = createTheme({
   ],
 })
 
-export type Section = 'tables' | 'describe' | 'sample' | 'search' | 'sql'
+export type Section = 'backups' | 'tables' | 'describe' | 'sample' | 'search' | 'sql'

@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { Column } from '../../dune-ui'
 
-export type ServerSortKey = 'map' | 'phase' | 'players' | 'queue' | 'ready' | 'dimension' | 'partition'
+export type ServerSortKey = 'map' | 'phase' | 'players' | 'queue' | 'ready' | 'dimension' | 'partition' | 'age'
 
 export type ServerRow = {
   map: string
@@ -13,6 +13,8 @@ export type ServerRow = {
   players: number
   playerHardCap: number
   queue: number
+  port?: number
+  ageSeconds?: number
 }
 
 export type BGInfo = {
@@ -43,6 +45,7 @@ export function getServerColumns(t: TFunction): Column<ServerSortKey>[] {
     { key: 'ready', label: t('battlegroup.columns.ready'), width: 70 },
     { key: 'dimension', label: t('battlegroup.columns.dim'), width: 60 },
     { key: 'partition', label: t('battlegroup.columns.part'), width: 60 },
+    { key: 'age', label: t('battlegroup.columns.age'), width: 80 },
   ]
 }
 

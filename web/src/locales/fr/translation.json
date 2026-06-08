@@ -1,4 +1,115 @@
 {
+  "backups": {
+    "warning": "Arrêtez le groupe de combat avant de créer ou de restaurer une sauvegarde. Les sauvegardes prises pendant que le jeu tourne peuvent être incohérentes, et une restauration nécessite l'arrêt du groupe de combat.",
+    "loadFailed": "Échec du chargement des sauvegardes : {{message}}",
+    "take": {
+      "title": "Créer une sauvegarde",
+      "desc": "Capture la base de données PostgreSQL du groupe de combat dans un fichier horodaté sur l'hôte. Recommandé avant des changements risqués.",
+      "btn": "Créer une sauvegarde"
+    },
+    "taken": "Sauvegarde créée : {{name}}",
+    "takeFailed": "Échec de la sauvegarde : {{message}}",
+    "recent": {
+      "title": "Sauvegardes récentes",
+      "empty": "Aucune sauvegarde pour l'instant."
+    },
+    "col": {
+      "name": "Fichier",
+      "size": "Taille",
+      "modified": "Créée"
+    },
+    "download": "Télécharger",
+    "restoreLabel": "Restaurer",
+    "restoreFailed": "Échec de la restauration : {{message}}",
+    "restoreConfirmTitle": "Restaurer la base de données ?",
+    "restoreConfirmDesc": "Cela remplace la base de données active par {{name}}. Le groupe de combat doit être arrêté — action irréversible.",
+    "deleteLabel": "Supprimer",
+    "deleteConfirmTitle": "Supprimer la sauvegarde ?",
+    "deleteConfirmDesc": "Supprimer définitivement {{name}} ?",
+    "deleteFailed": "Échec de la suppression : {{message}}",
+    "schedule": {
+      "title": "Planification des sauvegardes",
+      "enable": "Activé",
+      "desc": "Exécute des sauvegardes automatiques selon un planning hebdomadaire. Les heures sont dans le fuseau configuré.",
+      "nextBackup": "Prochaine sauvegarde : {{when}}",
+      "noneScheduled": "Aucune sauvegarde planifiée",
+      "noRules": "Aucune règle — ajoutez-en une ci-dessous.",
+      "addRule": "Ajouter une règle",
+      "removeRule": "Supprimer la règle",
+      "keepN": "Conserver les dernières",
+      "keepHint": "0 = tout conserver",
+      "timezone": "Fuseau horaire",
+      "tzPlaceholder": "local hôte (p. ex. UTC)",
+      "save": "Enregistrer",
+      "saveFailed": "Échec de l'enregistrement : {{message}}"
+    }
+  },
+  "serverHealth": {
+    "title": "État du serveur",
+    "subtitle": "État en direct de la VM, du groupe de combat et des ports.",
+    "gamePorts": "Jeu (UDP)",
+    "webPort": "Web",
+    "vm": "VM",
+    "bg": "Groupe de combat",
+    "up": "Actif",
+    "down": "Inactif",
+    "bgVm": "Groupe de combat + VM",
+    "upFor": "Actif depuis {{uptime}}",
+    "noUptime": "Durée de fonctionnement indisponible",
+    "components": "Infos du groupe de combat",
+    "bgState": "État GC",
+    "database": "Base de données",
+    "director": "Director",
+    "configured": "Configuré",
+    "notConfigured": "Non configuré",
+    "uptime": "Disponibilité",
+    "readyState": "État de préparation",
+    "ready": "Prêt",
+    "notReady": "Pas prêt",
+    "webInterfaces": "Interfaces web",
+    "noInterfaces": "Aucune interface web configurée.",
+    "copied": "Copié dans le presse-papiers",
+    "copyFailed": "Échec de la copie",
+    "copy": "Copier",
+    "open": "Ouvrir",
+    "gameServers": "Serveurs de jeu",
+    "pods": "{{n}} pods"
+  },
+  "restarts": {
+    "title": "Redémarrages planifiés",
+    "enable": "Activé",
+    "nextRestart": "Prochain redémarrage : {{when}}",
+    "noneScheduled": "Aucun redémarrage planifié",
+    "noRules": "Aucune règle — ajoutez-en une ci-dessous.",
+    "addRule": "Ajouter une règle",
+    "removeRule": "Supprimer la règle",
+    "warnMinutes": "Alerte (min)",
+    "timezone": "Fuseau horaire",
+    "tzPlaceholder": "local hôte (p. ex. UTC)",
+    "save": "Enregistrer",
+    "skipNext": "Ignorer le prochain",
+    "failedToLoad": "Échec du chargement : {{message}}",
+    "saveFailed": "Échec de l'enregistrement : {{message}}"
+  },
+  "director": {
+    "title": "Configuration du Director",
+    "subtitle": "Paramètres du Battlegroup Director — instanciation des cartes et réglages avancés (AMP).",
+    "loading": "Chargement de la configuration du Director…",
+    "unsupported": "L'édition de la configuration du Director n'est disponible que sur le plan de contrôle AMP.",
+    "save": "Enregistrer",
+    "saveWithCount": "Enregistrer ({{count}})",
+    "saveFailed": "Échec de l'enregistrement : {{message}}",
+    "readOnly": "lecture seule",
+    "restartNote": "Les modifications sont écrites dans director_config.ini et prennent effet après un redémarrage du serveur."
+  },
+  "help": {
+    "menu": "Aide",
+    "reportIssue": "Signaler un problème",
+    "copyDiagnostics": "Copier le diagnostic",
+    "viewOnGitHub": "Voir sur GitHub",
+    "copied": "Diagnostic copié dans le presse-papiers",
+    "copyFailed": "Impossible de copier dans le presse-papiers"
+  },
   "landsraad": {
     "title": "Landsraad",
     "subtitle": "Le mandat politique hebdomadaire — décrets et tableau des tâches des maisons (lecture seule).",
@@ -80,6 +191,7 @@
     "reinstalled": "{{version}} réinstallé. Le serveur redémarre…",
     "saveApply": "Enregistrer et appliquer",
     "selectLanguage": "Sélectionner la langue",
+    "selectTheme": "Choisir le thème",
     "settings": "Paramètres",
     "signIn": "Se connecter",
     "switchToSidenav": "Passer à la navigation latérale",
@@ -135,6 +247,7 @@
     "cmdCompleted": "{{label}} terminé",
     "cmdFailed": "{{label}} échoué : {{message}}",
     "columns": {
+      "age": "Âge",
       "dim": "Dim",
       "map": "Carte",
       "part": "Part",
@@ -250,6 +363,7 @@
     "searchLabel": "Nom de colonne ou de table",
     "searchPlaceholder": "player_id, faction...",
     "sections": {
+      "backups": "Sauvegardes",
       "describe": "Décrire",
       "sample": "Exemple",
       "search": "Rechercher des colonnes",
@@ -515,10 +629,11 @@
     "title": "Tableau du marché"
   },
   "nav": {
+    "director": "Director",
     "landsraad": "Landsraad",
     "guilds": "Guildes",
     "bases": "Bases",
-    "battlegroup": "Groupe de combat",
+    "battlegroup": "État du serveur",
     "blueprints": "Schémas",
     "database": "Base de données",
     "groups": {

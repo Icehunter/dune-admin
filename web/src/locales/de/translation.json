@@ -1,4 +1,115 @@
 {
+  "backups": {
+    "warning": "Stoppe die Kampfgruppe, bevor du ein Backup erstellst oder wiederherstellst. Backups während des laufenden Spiels können inkonsistent sein, und eine Wiederherstellung erfordert eine gestoppte Kampfgruppe.",
+    "loadFailed": "Backups konnten nicht geladen werden: {{message}}",
+    "take": {
+      "title": "Backup erstellen",
+      "desc": "Sichert die PostgreSQL-Datenbank der Kampfgruppe in eine zeitgestempelte Datei auf dem Host. Empfohlen vor riskanten Änderungen.",
+      "btn": "Backup erstellen"
+    },
+    "taken": "Backup erstellt: {{name}}",
+    "takeFailed": "Backup fehlgeschlagen: {{message}}",
+    "recent": {
+      "title": "Letzte Backups",
+      "empty": "Noch keine Backups."
+    },
+    "col": {
+      "name": "Datei",
+      "size": "Größe",
+      "modified": "Erstellt"
+    },
+    "download": "Herunterladen",
+    "restoreLabel": "Wiederherstellen",
+    "restoreFailed": "Wiederherstellung fehlgeschlagen: {{message}}",
+    "restoreConfirmTitle": "Datenbank wiederherstellen?",
+    "restoreConfirmDesc": "Dies ersetzt die aktive Datenbank durch {{name}}. Die Kampfgruppe muss gestoppt sein — dies kann nicht rückgängig gemacht werden.",
+    "deleteLabel": "Löschen",
+    "deleteConfirmTitle": "Backup löschen?",
+    "deleteConfirmDesc": "{{name}} endgültig löschen?",
+    "deleteFailed": "Löschen fehlgeschlagen: {{message}}",
+    "schedule": {
+      "title": "Backup-Zeitplan",
+      "enable": "Aktiviert",
+      "desc": "Automatische Backups nach einem wöchentlichen Zeitplan ausführen. Zeiten gelten in der konfigurierten Zeitzone.",
+      "nextBackup": "Nächstes Backup: {{when}}",
+      "noneScheduled": "Keine Backups geplant",
+      "noRules": "Noch keine Regeln — unten eine hinzufügen.",
+      "addRule": "Regel hinzufügen",
+      "removeRule": "Regel entfernen",
+      "keepN": "Behalte letzte",
+      "keepHint": "0 = alle behalten",
+      "timezone": "Zeitzone",
+      "tzPlaceholder": "Host-lokal (z. B. UTC)",
+      "save": "Speichern",
+      "saveFailed": "Speichern fehlgeschlagen: {{message}}"
+    }
+  },
+  "serverHealth": {
+    "title": "Serverzustand",
+    "subtitle": "Live-Status von VM, Kampfgruppe und Ports.",
+    "gamePorts": "Spiel (UDP)",
+    "webPort": "Web",
+    "vm": "VM",
+    "bg": "Kampfgruppe",
+    "up": "Aktiv",
+    "down": "Inaktiv",
+    "bgVm": "Kampfgruppe + VM",
+    "upFor": "Aktiv seit {{uptime}}",
+    "noUptime": "Laufzeit nicht verfügbar",
+    "components": "Kampfgruppen-Info",
+    "bgState": "KG-Status",
+    "database": "Datenbank",
+    "director": "Director",
+    "configured": "Konfiguriert",
+    "notConfigured": "Nicht konfiguriert",
+    "uptime": "Laufzeit",
+    "readyState": "Spielbereitschaft",
+    "ready": "Bereit",
+    "notReady": "Nicht bereit",
+    "webInterfaces": "Web-Oberflächen",
+    "noInterfaces": "Keine Web-Oberflächen konfiguriert.",
+    "copied": "In die Zwischenablage kopiert",
+    "copyFailed": "Kopieren fehlgeschlagen",
+    "copy": "Kopieren",
+    "open": "Öffnen",
+    "gameServers": "Spielserver",
+    "pods": "{{n}} Pods"
+  },
+  "restarts": {
+    "title": "Geplante Neustarts",
+    "enable": "Aktiviert",
+    "nextRestart": "Nächster Neustart: {{when}}",
+    "noneScheduled": "Keine Neustarts geplant",
+    "noRules": "Noch keine Regeln — unten eine hinzufügen.",
+    "addRule": "Regel hinzufügen",
+    "removeRule": "Regel entfernen",
+    "warnMinutes": "Warnung (Min)",
+    "timezone": "Zeitzone",
+    "tzPlaceholder": "Host-lokal (z. B. UTC)",
+    "save": "Speichern",
+    "skipNext": "Nächsten überspringen",
+    "failedToLoad": "Laden fehlgeschlagen: {{message}}",
+    "saveFailed": "Speichern fehlgeschlagen: {{message}}"
+  },
+  "director": {
+    "title": "Director-Konfiguration",
+    "subtitle": "Battlegroup-Director-Einstellungen — Karten-Instanzierung & erweiterte Optionen (AMP).",
+    "loading": "Director-Konfiguration wird geladen…",
+    "unsupported": "Die Director-Konfiguration kann nur auf der AMP-Steuerungsebene bearbeitet werden.",
+    "save": "Speichern",
+    "saveWithCount": "Speichern ({{count}})",
+    "saveFailed": "Speichern fehlgeschlagen: {{message}}",
+    "readOnly": "schreibgeschützt",
+    "restartNote": "Änderungen werden in director_config.ini geschrieben und nach einem Server-Neustart wirksam."
+  },
+  "help": {
+    "menu": "Hilfe",
+    "reportIssue": "Problem melden",
+    "copyDiagnostics": "Diagnose kopieren",
+    "viewOnGitHub": "Auf GitHub ansehen",
+    "copied": "Diagnose in die Zwischenablage kopiert",
+    "copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen"
+  },
   "landsraad": {
     "title": "Landsraad",
     "subtitle": "Die wöchentliche politische Amtszeit — Dekrete und das Haus-Aufgabenbrett (schreibgeschützt).",
@@ -80,6 +191,7 @@
     "reinstalled": "{{version}} neu installiert. Server wird neu gestartet…",
     "saveApply": "Speichern & Anwenden",
     "selectLanguage": "Sprache auswählen",
+    "selectTheme": "Design auswählen",
     "settings": "Einstellungen",
     "signIn": "Anmelden",
     "switchToSidenav": "Zur Seitennavigation wechseln",
@@ -134,6 +246,7 @@
     "cmdCompleted": "{{label}} abgeschlossen",
     "cmdFailed": "{{label}} fehlgeschlagen: {{message}}",
     "columns": {
+      "age": "Alter",
       "dim": "Dim",
       "map": "Karte",
       "part": "Teil",
@@ -248,6 +361,7 @@
     "searchLabel": "Spalten- oder Tabellenname",
     "searchPlaceholder": "player_id, faction...",
     "sections": {
+      "backups": "Backups",
       "describe": "Beschreiben",
       "sample": "Beispiel",
       "search": "Spalten suchen",
@@ -508,10 +622,11 @@
     "title": "Marktplatz"
   },
   "nav": {
+    "director": "Director",
     "landsraad": "Landsraad",
     "guilds": "Gilden",
     "bases": "Basen",
-    "battlegroup": "Kampfgruppe",
+    "battlegroup": "Serverzustand",
     "blueprints": "Baupläne",
     "database": "Datenbank",
     "groups": {

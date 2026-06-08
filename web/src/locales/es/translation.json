@@ -1,4 +1,115 @@
 {
+  "backups": {
+    "warning": "Detén el grupo de batalla antes de crear o restaurar una copia de seguridad. Las copias tomadas con el juego en marcha pueden ser inconsistentes, y una restauración requiere el grupo de batalla detenido.",
+    "loadFailed": "Error al cargar las copias: {{message}}",
+    "take": {
+      "title": "Crear copia",
+      "desc": "Crea una instantánea de la base de datos PostgreSQL del grupo de batalla en un archivo con marca de tiempo en el host. Recomendado antes de cambios arriesgados.",
+      "btn": "Crear copia"
+    },
+    "taken": "Copia creada: {{name}}",
+    "takeFailed": "Copia fallida: {{message}}",
+    "recent": {
+      "title": "Copias recientes",
+      "empty": "Aún no hay copias."
+    },
+    "col": {
+      "name": "Archivo",
+      "size": "Tamaño",
+      "modified": "Creada"
+    },
+    "download": "Descargar",
+    "restoreLabel": "Restaurar",
+    "restoreFailed": "Restauración fallida: {{message}}",
+    "restoreConfirmTitle": "¿Restaurar la base de datos?",
+    "restoreConfirmDesc": "Esto reemplaza la base de datos activa con {{name}}. El grupo de batalla debe estar detenido — no se puede deshacer.",
+    "deleteLabel": "Eliminar",
+    "deleteConfirmTitle": "¿Eliminar copia?",
+    "deleteConfirmDesc": "¿Eliminar {{name}} permanentemente?",
+    "deleteFailed": "Error al eliminar: {{message}}",
+    "schedule": {
+      "title": "Programación de copias",
+      "enable": "Activado",
+      "desc": "Ejecuta copias automáticas según una programación semanal. Las horas son en la zona horaria configurada.",
+      "nextBackup": "Próxima copia: {{when}}",
+      "noneScheduled": "No hay copias programadas",
+      "noRules": "Aún no hay reglas: añade una abajo.",
+      "addRule": "Añadir regla",
+      "removeRule": "Eliminar regla",
+      "keepN": "Conservar últimas",
+      "keepHint": "0 = conservar todas",
+      "timezone": "Zona horaria",
+      "tzPlaceholder": "local del host (p. ej. UTC)",
+      "save": "Guardar",
+      "saveFailed": "Error al guardar: {{message}}"
+    }
+  },
+  "serverHealth": {
+    "title": "Estado del servidor",
+    "subtitle": "Estado en vivo de la VM, el grupo de batalla y los puertos.",
+    "gamePorts": "Juego (UDP)",
+    "webPort": "Web",
+    "vm": "VM",
+    "bg": "Grupo de batalla",
+    "up": "Activo",
+    "down": "Inactivo",
+    "bgVm": "Grupo de batalla + VM",
+    "upFor": "Activo {{uptime}}",
+    "noUptime": "Tiempo de actividad no disponible",
+    "components": "Información del grupo de batalla",
+    "bgState": "Estado GB",
+    "database": "Base de datos",
+    "director": "Director",
+    "configured": "Configurado",
+    "notConfigured": "Sin configurar",
+    "uptime": "Tiempo activo",
+    "readyState": "Estado de juego listo",
+    "ready": "Listo",
+    "notReady": "No listo",
+    "webInterfaces": "Interfaces web",
+    "noInterfaces": "No hay interfaces web configuradas.",
+    "copied": "Copiado al portapapeles",
+    "copyFailed": "Error al copiar",
+    "copy": "Copiar",
+    "open": "Abrir",
+    "gameServers": "Servidores de juego",
+    "pods": "{{n}} pods"
+  },
+  "restarts": {
+    "title": "Reinicios programados",
+    "enable": "Activado",
+    "nextRestart": "Próximo reinicio: {{when}}",
+    "noneScheduled": "Sin reinicios programados",
+    "noRules": "Aún no hay reglas: añade una abajo.",
+    "addRule": "Añadir regla",
+    "removeRule": "Eliminar regla",
+    "warnMinutes": "Aviso (min)",
+    "timezone": "Zona horaria",
+    "tzPlaceholder": "local del host (p. ej. UTC)",
+    "save": "Guardar",
+    "skipNext": "Saltar el próximo",
+    "failedToLoad": "Error al cargar: {{message}}",
+    "saveFailed": "Error al guardar: {{message}}"
+  },
+  "director": {
+    "title": "Configuración del Director",
+    "subtitle": "Ajustes del Battlegroup Director — instanciación de mapas y opciones avanzadas (AMP).",
+    "loading": "Cargando la configuración del Director…",
+    "unsupported": "La edición de la configuración del Director solo está disponible en el plano de control AMP.",
+    "save": "Guardar",
+    "saveWithCount": "Guardar ({{count}})",
+    "saveFailed": "Error al guardar: {{message}}",
+    "readOnly": "solo lectura",
+    "restartNote": "Los cambios se escriben en director_config.ini y se aplican tras reiniciar el servidor."
+  },
+  "help": {
+    "menu": "Ayuda",
+    "reportIssue": "Informar de un problema",
+    "copyDiagnostics": "Copiar diagnóstico",
+    "viewOnGitHub": "Ver en GitHub",
+    "copied": "Diagnóstico copiado al portapapeles",
+    "copyFailed": "No se pudo copiar al portapapeles"
+  },
   "landsraad": {
     "title": "Landsraad",
     "subtitle": "El período político semanal: decretos y el tablero de tareas de las casas (solo lectura).",
@@ -80,6 +191,7 @@
     "reinstalled": "{{version}} reinstalado. El servidor se está reiniciando…",
     "saveApply": "Guardar y aplicar",
     "selectLanguage": "Seleccionar idioma",
+    "selectTheme": "Seleccionar tema",
     "settings": "Configuración",
     "signIn": "Iniciar sesión",
     "switchToSidenav": "Cambiar a navegación lateral",
@@ -135,6 +247,7 @@
     "cmdCompleted": "{{label}} completado",
     "cmdFailed": "{{label}} falló: {{message}}",
     "columns": {
+      "age": "Edad",
       "dim": "Dim",
       "map": "Mapa",
       "part": "Part",
@@ -250,6 +363,7 @@
     "searchLabel": "Nombre de columna o tabla",
     "searchPlaceholder": "player_id, faction...",
     "sections": {
+      "backups": "Copias de seguridad",
       "describe": "Describir",
       "sample": "Muestra",
       "search": "Buscar columnas",
@@ -515,10 +629,11 @@
     "title": "Tablero del mercado"
   },
   "nav": {
+    "director": "Director",
     "landsraad": "Landsraad",
     "guilds": "Gremios",
     "bases": "Bases",
-    "battlegroup": "Grupo de batalla",
+    "battlegroup": "Estado del servidor",
     "blueprints": "Planos",
     "database": "Base de datos",
     "groups": {

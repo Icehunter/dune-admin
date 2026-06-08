@@ -12,6 +12,7 @@ import { Icon, LoadingState, NumberInput, PageHeader, SideNav } from '../../dune
 import { duneTheme, type Section } from './constants'
 import { ResultTable } from './components/ResultTable'
 import { TableSearchInput } from './components/TableSearchInput'
+import { BackupsView } from './components/BackupsView'
 
 type TableData = { headers: string[], rows: string[][] }
 
@@ -22,13 +23,14 @@ interface DatabaseTabProps {
 }
 
 export const DatabaseTab: React.FC<DatabaseTabProps> = ({
-  section = 'tables',
+  section = 'backups',
   onSectionChange,
   showSubnav,
 }) => {
   const { t } = useTranslation()
 
   const SECTIONS = useMemo<{ key: Section, label: string }[]>(() => [
+    { key: 'backups', label: t('database.sections.backups') },
     { key: 'tables', label: t('database.sections.tables') },
     { key: 'describe', label: t('database.sections.describe') },
     { key: 'sample', label: t('database.sections.sample') },
@@ -285,17 +287,21 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
     </>
   )
 
+  // The Backups section is self-contained (loads its own data); every other
+  // section shares the query/inspect shell above.
+  const body = section === 'backups' ? <BackupsView /> : innerContent
+
   if (showSubnav) {
     return (
       <div className="h-full min-h-0 flex gap-3">
         <SideNav
           title={t('database.sideNavTitle')}
           items={SECTIONS}
-          active={section ?? 'tables'}
+          active={section ?? 'backups'}
           onSelect={(key) => onSectionChange?.(key)}
         />
         <div className="flex-1 min-h-0 flex flex-col gap-3">
-          {innerContent}
+          {body}
         </div>
       </div>
     )
@@ -303,7 +309,7 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
-      {innerContent}
+      {body}
     </div>
   )
 }

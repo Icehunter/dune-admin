@@ -1,4 +1,115 @@
 {
+  "backups": {
+    "warning": "在创建或恢复备份前请先停止战斗群。游戏运行时创建的备份可能不一致，恢复需要战斗群处于停止状态。",
+    "loadFailed": "加载备份失败：{{message}}",
+    "take": {
+      "title": "创建备份",
+      "desc": "将战斗群的 PostgreSQL 数据库快照保存为主机上带时间戳的文件。建议在进行有风险的更改前执行。",
+      "btn": "创建备份"
+    },
+    "taken": "已创建备份：{{name}}",
+    "takeFailed": "备份失败：{{message}}",
+    "recent": {
+      "title": "最近备份",
+      "empty": "暂无备份。"
+    },
+    "col": {
+      "name": "文件",
+      "size": "大小",
+      "modified": "创建时间"
+    },
+    "download": "下载",
+    "restoreLabel": "恢复",
+    "restoreFailed": "恢复失败：{{message}}",
+    "restoreConfirmTitle": "恢复数据库？",
+    "restoreConfirmDesc": "这将用 {{name}} 替换当前数据库。战斗群必须已停止——此操作无法撤销。",
+    "deleteLabel": "删除",
+    "deleteConfirmTitle": "删除备份？",
+    "deleteConfirmDesc": "永久删除 {{name}}？",
+    "deleteFailed": "删除失败：{{message}}",
+    "schedule": {
+      "title": "备份计划",
+      "enable": "启用",
+      "desc": "按每周计划运行自动备份。时间使用所配置的时区。",
+      "nextBackup": "下次备份：{{when}}",
+      "noneScheduled": "未计划备份",
+      "noRules": "暂无规则 — 在下方添加。",
+      "addRule": "添加规则",
+      "removeRule": "删除规则",
+      "keepN": "保留最近",
+      "keepHint": "0 = 全部保留",
+      "timezone": "时区",
+      "tzPlaceholder": "主机本地（如 UTC）",
+      "save": "保存",
+      "saveFailed": "保存失败：{{message}}"
+    }
+  },
+  "serverHealth": {
+    "title": "服务器健康",
+    "subtitle": "VM、战斗群和端口的实时状态。",
+    "gamePorts": "游戏 (UDP)",
+    "webPort": "Web",
+    "vm": "VM",
+    "bg": "战斗群",
+    "up": "运行中",
+    "down": "已停止",
+    "bgVm": "战斗群 + VM",
+    "upFor": "已运行 {{uptime}}",
+    "noUptime": "运行时间不可用",
+    "components": "战斗群信息",
+    "bgState": "战斗群状态",
+    "database": "数据库",
+    "director": "Director",
+    "configured": "已配置",
+    "notConfigured": "未配置",
+    "uptime": "运行时间",
+    "readyState": "游戏就绪状态",
+    "ready": "就绪",
+    "notReady": "未就绪",
+    "webInterfaces": "Web 界面",
+    "noInterfaces": "未配置 Web 界面。",
+    "copied": "已复制到剪贴板",
+    "copyFailed": "复制失败",
+    "copy": "复制",
+    "open": "打开",
+    "gameServers": "游戏服务器",
+    "pods": "{{n}} 个 Pod"
+  },
+  "restarts": {
+    "title": "计划重启",
+    "enable": "启用",
+    "nextRestart": "下次重启：{{when}}",
+    "noneScheduled": "未计划重启",
+    "noRules": "暂无规则 — 在下方添加。",
+    "addRule": "添加规则",
+    "removeRule": "删除规则",
+    "warnMinutes": "提前警告（分）",
+    "timezone": "时区",
+    "tzPlaceholder": "主机本地（如 UTC）",
+    "save": "保存",
+    "skipNext": "跳过下一次",
+    "failedToLoad": "加载失败：{{message}}",
+    "saveFailed": "保存失败：{{message}}"
+  },
+  "director": {
+    "title": "Director 配置",
+    "subtitle": "Battlegroup Director 设置 — 地图实例化与高级调节（AMP）。",
+    "loading": "正在加载 Director 配置…",
+    "unsupported": "仅在 AMP 控制平面上可编辑 Director 配置。",
+    "save": "保存",
+    "saveWithCount": "保存 ({{count}})",
+    "saveFailed": "保存失败：{{message}}",
+    "readOnly": "只读",
+    "restartNote": "更改将写入 director_config.ini，并在服务器重启后生效。"
+  },
+  "help": {
+    "menu": "帮助",
+    "reportIssue": "报告问题",
+    "copyDiagnostics": "复制诊断信息",
+    "viewOnGitHub": "在 GitHub 上查看",
+    "copied": "诊断信息已复制到剪贴板",
+    "copyFailed": "无法复制到剪贴板"
+  },
   "landsraad": {
     "title": "Landsraad",
     "subtitle": "每周政治任期——法令与家族任务板（只读）。",
@@ -80,6 +191,7 @@
     "reinstalled": "已重新安装 {{version}}。服务器正在重启…",
     "saveApply": "保存并应用",
     "selectLanguage": "选择语言",
+    "selectTheme": "选择主题",
     "settings": "设置",
     "signIn": "登录",
     "switchToSidenav": "切换到侧边导航",
@@ -134,6 +246,7 @@
     "cmdCompleted": "{{label}} 已完成",
     "cmdFailed": "{{label}} 失败：{{message}}",
     "columns": {
+      "age": "运行时长",
       "dim": "维度",
       "map": "地图",
       "part": "分区",
@@ -248,6 +361,7 @@
     "searchLabel": "列或表名",
     "searchPlaceholder": "player_id, faction...",
     "sections": {
+      "backups": "备份",
       "describe": "描述",
       "sample": "示例",
       "search": "搜索列",
@@ -508,10 +622,11 @@
     "title": "市场板"
   },
   "nav": {
+    "director": "Director",
     "landsraad": "Landsraad",
     "guilds": "公会",
     "bases": "基地",
-    "battlegroup": "战斗群",
+    "battlegroup": "服务器健康",
     "blueprints": "蓝图",
     "database": "数据库",
     "groups": {

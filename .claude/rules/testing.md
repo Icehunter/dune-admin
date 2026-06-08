@@ -18,10 +18,22 @@ paths: "**/*_test.go"
 ## Test Organization
 
 - Test files must have `_test.go` suffix
-- Place test files alongside source files
+- Place test files alongside source files — this applies to **both** `cmd/dune-admin/` and the
+  `internal/` libraries (`internal/marketbot` has its own `*_test.go` coverage; keep it that way)
 - Use table-driven tests for multiple scenarios
 - Test both success and error cases
 - Test concurrent operations with `-race` flag
+
+## Build tests up as we go (prevent regression)
+
+Testing is incremental and ratcheting — the suite must get stronger with every change, never weaker:
+
+- **Every bug fix lands a regression test** that fails before the fix and passes after.
+- **New handler / db func / library function ships with its tests in the same change** (TDD is
+  already mandatory above).
+- **Coverage ratchets up, not down** — don't remove or weaken tests to make a change pass.
+- `make verify` (vet, race tests, lint, fmt-check, gocognit) plus `make gosec` is the regression
+  gate and must stay green before any push (`make verify` does **not** run gosec — run it separately).
 
 ### Table-Driven Test Pattern
 

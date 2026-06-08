@@ -4,11 +4,15 @@ paths: "**/*.go"
 
 # Go Architecture Standards
 
-## CRITICAL: Flat Package main
+## CRITICAL: Flat HTTP backend, libraries under internal/
 
-**dune-admin's Go backend is a single `package main`.** All `.go` files live directly in
-`cmd/dune-admin/`. Do NOT create sub-packages or `internal/` sub-directories. This is an
-explicit project constraint — don't refactor it away.
+**dune-admin's HTTP backend is one flat `package main` in `cmd/dune-admin/`** — keep the server
+flat; do NOT split it into sub-packages or nest server files in sub-directories. The ONE exception
+is genuinely reusable, standalone libraries with their own lifecycle, which go under `internal/`
+(today: `internal/marketbot`, the embedded market bot, run in-process via `marketbot.Run`). Default
+to `cmd/dune-admin/`; only reach for a new `internal/` package for a cohesive library, and record
+the decision in an ADR. See `docs/adr/0001-standard-go-layout.md` and
+`docs/adr/0002-embed-market-bot-as-library.md`.
 
 ## File Responsibilities
 
@@ -22,6 +26,14 @@ explicit project constraint — don't refactor it away.
 | `compat.go` | `type Msg = any` and `type Cmd = func() Msg` aliases — legacy Bubble Tea signatures used in db.go; do not remove or change |
 | `handlers_*.go` | HTTP handlers, one file per feature area |
 | `security_test.go` | `isReadOnlySQL`, `isValidK8sName`, `originAllowed` tests |
+
+### internal/ libraries
+
+`internal/marketbot` is the embedded market bot — its own Go package (not `package main`), run
+in-process via `marketbot.Run` from `main.go`, exposing its own HTTP API. It has its own
+`*_test.go` coverage. New cohesive libraries with their own lifecycle may live under `internal/`
+with an ADR in `docs/adr/`; everything that is part of the HTTP server stays flat in
+`cmd/dune-admin/`.
 
 ## Go Conventions
 
@@ -48,7 +60,7 @@ func handleGetPlayers(w http.ResponseWriter, r *http.Request) {
 
 ## Interfaces for Testability
 
-Even though the package is flat, use interfaces for anything that needs to be mocked in tests:
+Within the flat `cmd/dune-admin` package, use interfaces for anything that needs to be mocked in tests:
 
 ```go
 // Executor and ControlPlane are already interfaces — extend the same pattern.

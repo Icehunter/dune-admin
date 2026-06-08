@@ -17,7 +17,8 @@ This uses `markdownlint-cli2` with auto-fix. All markdown must pass before commi
 ## File Locations
 
 - **Project docs**: `docs/` — architecture, guides, design decisions
-- **Root level**: Only `README.md`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `CHANGELOG.md`
+- **Root level**: `README.md`, `CLAUDE.md`, and the `SETUP_*.md` control-plane guides
+  (`SETUP_AMP.md`, `SETUP_DOCKER.md`, `SETUP_KUBECTL.md`, `SETUP_LOCAL.md`)
 - **Rule files**: `.claude/rules/`
 
 ## Naming Conventions
@@ -50,11 +51,11 @@ This uses `markdownlint-cli2` with auto-fix. All markdown must pass before commi
 
 Update docs in the same PR as code changes when:
 
-- Adding new API endpoints → update `AGENTS.md` and/or `docs/`
+- Adding new API endpoints → update `CLAUDE.md` (and `docs/swagger.json`/`.yaml` if regenerated)
 - Changing handler patterns → update `.claude/rules/api-design.md`
 - Changing frontend patterns → update `.claude/rules/frontend.md`
 - Introducing new global state → update `.claude/rules/architecture.md`
-- Adding config options → update `AGENTS.md` configuration section
+- Adding config options → update the Configuration section of `CLAUDE.md` (and the relevant `SETUP_*.md` guide)
 
 ## Documentation Checklist
 

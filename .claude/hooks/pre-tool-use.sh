@@ -28,9 +28,10 @@ CONTEXT_PARTS=()
 # ==============================================================================
 if [[ "$TOOL_NAME" == "Write" ]] || [[ "$TOOL_NAME" == "Edit" ]]; then
     if is_go_impl_file "$FILE_PATH"; then
-        # Guard against creating sub-packages
-        if [[ "$FILE_PATH" == */internal/* ]] || [[ "$FILE_PATH" =~ cmd/dune-admin/[^/]+/[^/]+\.go ]]; then
-            CONTEXT_PARTS+=("ARCHITECTURE VIOLATION: dune-admin is a flat package main — do NOT create sub-packages. All Go files belong directly in cmd/dune-admin/. See .claude/rules/architecture.md.")
+        # Guard against nesting server files in sub-dirs (the HTTP server stays flat).
+        # Reusable libraries under internal/ (e.g. internal/marketbot) are allowed by design.
+        if [[ "$FILE_PATH" =~ cmd/dune-admin/[^/]+/[^/]+\.go ]]; then
+            CONTEXT_PARTS+=("ARCHITECTURE NOTE: the server in cmd/dune-admin/ is flat — don't nest server files in sub-dirs. New reusable libraries go under internal/ (like internal/marketbot). See .claude/rules/architecture.md.")
         fi
 
         if [[ ! -f "$FILE_PATH" ]]; then

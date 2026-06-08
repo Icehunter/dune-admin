@@ -87,7 +87,13 @@ func cmdFetchFoo(ctx context.Context, db *pgxpool.Pool, id int64) (*fooRow, erro
 - **SQL endpoint**: guarded by `isReadOnlySQL` — only SELECT/EXPLAIN/SHOW/WITH allowed
 - **K8s names**: validated by `isValidK8sName` before any shell/kubectl invocation
 - **CORS**: enforced by `originAllowed`; origins configured via `ALLOWED_ORIGINS` env var
-- **JWT auth**: validated in `jwt_helpers.go` for mutating/destructive endpoints
+- **⚠️ NO backend auth today**: the SPA sends a Clerk `Bearer` token, but the Go backend does **not**
+  verify it — there is no auth middleware and no per-endpoint authorization. Every endpoint
+  (including destructive ones) is reachable by anyone who can hit the listen address. `jwt_helpers.go`
+  only re-signs the *game* server's broker `ServiceAuthToken`; it is **not** admin auth. Closing this
+  gap (verify the Clerk session JWT in middleware, add an admin/player role model) is the top
+  security priority — see `.claude/rules/security.md`. When adding any new endpoint, do **not** assume
+  the caller is authenticated.
 
 ## Middleware
 

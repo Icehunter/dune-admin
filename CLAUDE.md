@@ -3,6 +3,62 @@
 Web-based admin panel for a Dune Awakening private server. Go HTTP backend (`package main`)
 paired with a React/TypeScript SPA in `web/`.
 
+> **This repo is a fork.** `origin` → `Jenko-J1/dune-admin` (this fork), `upstream` →
+> `Icehunter/dune-admin` (original). Open PRs against `origin/main`. Note that README install
+> commands, the `scripts/install.sh` raw URL, and `docs/` (ADRs, plans) were authored upstream and
+> still reference `Icehunter` — verify URLs/ownership before relying on them. To pull in upstream
+> changes: `git fetch upstream && git merge upstream/main`.
+
+## Core Principles
+
+These four principles are non-negotiable and apply to **every** change and **every** surface
+(existing admin UI and the planned player view). They are the lens for all work here.
+
+1. **Security first, in all things.** Authorization is enforced server-side, never by the UI. Validate
+   all input; parameterise all SQL; validate everything interpolated into shell/exec/paths; keep
+   secrets out of logs/errors/responses; `make gosec` clean before push. ⚠️ The backend currently has
+   **no authentication** — see `.claude/rules/security.md`. Treat every endpoint as unauthenticated
+   until real auth lands. Security wins over convenience.
+2. **Accessibility (WCAG 2.2 AA) applies to all surfaces.** Semantic HTML, full keyboard operability,
+   visible focus, accessible names, sufficient contrast (via tokens), never color-only,
+   `prefers-reduced-motion`. Build it in, don't defer it. See `.claude/rules/frontend.md`.
+3. **Responsive design (mobile / tablet / desktop) on all surfaces.** Mobile-first; no fixed widths
+   that overflow; tables and nav degrade gracefully; touch targets ≥ 44px. See
+   `.claude/rules/frontend.md`.
+4. **Comprehensive testing + lints, built as we progress.** Every change ships with tests; every bug
+   fix lands a regression test; coverage ratchets up, not down. The frontend test/a11y harness is
+   currently unwired — wire it up as we touch the UI. See `.claude/rules/testing.md` and
+   `.claude/rules/testing-web.md`.
+
+## Project Direction (this fork)
+
+This fork is evolving dune-admin along four goals. Keep these in mind so changes move toward them:
+
+1. **First-class Docker fleet management.** Progress: `dockerControl.GetStatus` now discovers game
+   processes inside the container (`docker exec … ps`, reusing AMP's arg parser) so docker servers +
+   maps/partitions appear and are administrable in Battlegroup; `DiscoverIniDir` now locates
+   UserGame.ini layout-agnostically (configured `server_ini_dir` or `docker inspect` mount sources)
+   so the Server Settings view works; both have tests in `control_docker_test.go`. Still outstanding
+   for docker: server-settings **writes** reaching inside the container for non-bind setups (no
+   `serverSettingsWriter`/overrides like AMP), scoped log/process listing, `StreamLog` input
+   validation (gosec), `CaptureJWT` from live process args, and `update`/`backup` verbs.
+2. **UI/UX rework to align with the `webui` sibling project** (`C:\Users\james\Documents\open-source\webui`
+   — a TrueNAS React app: React 19 + Vite + Tailwind v4 + react-router route manifest + shadcn/Radix +
+   ⌘K palette + mobile drawer + enforced a11y; design north star "consumer-grade polish — Tailscale,
+   Vercel, Linear"). Shared ground (React 19 / Vite / Tailwind v4 / react-router v7 / lucide /
+   CSS-var theming) makes alignment feasible; the big divergences are HeroUI v3 → shadcn/Radix, the
+   tab-state `App.tsx` → a Shell + route manifest, and dune-admin's a11y/responsive maturity. **Keep
+   the Dune thematic branding/fonts.** That repo is read-only reference — make no changes there.
+3. **A separate player-facing view** (distinct from admin): players log in, link their character via
+   an in-game verify code (delivered over the existing single-player whisper rail,
+   `POST /api/v1/chat/whisper`), and view their own character stats (account-scoped, never by
+   arbitrary id). Requires real backend auth + an admin/player role model first (see principle 1).
+4. **Admin-toggleable player controls** for the player view (e.g. give items / give currency on/off),
+   enforced **server-side** as a persisted permissions config — not a cosmetic UI toggle.
+
+**Attribution requirement:** the UI must always retain attribution to the original creator,
+**Icehunter**, and the upstream repo <https://github.com/Icehunter/dune-admin>. Do not remove it.
+
 ## Mandatory Workflow
 
 **Follow these steps for EVERY code change. No exceptions.**
@@ -62,7 +118,17 @@ make version-major  # bump X.0.0, tag, push
 
 ## Critical Gotchas
 
-- **Single Go package**: everything is `package main` in `cmd/dune-admin/`. Never create sub-packages.
+- **⚠️ No backend auth (yet)**: the SPA sends a Clerk `Bearer` token but the Go backend never verifies
+  it — no auth middleware, no authorization, every endpoint open on the listen address. Frontend
+  `isSignedIn` gates are cosmetic. `jwt_helpers.go` is game-broker token signing, not admin auth.
+  Enforce anything security-sensitive server-side; don't add endpoints that assume a trusted caller.
+  See `.claude/rules/security.md`.
+- **Backend is one flat `package main`**: the entire HTTP backend lives in `cmd/dune-admin/` as
+  `package main` — keep it flat, don't split the server into sub-packages. The ONE exception is
+  genuinely reusable, standalone libraries, which go under `internal/` (today: `internal/marketbot`,
+  the embedded market bot). This is a deliberate decision — see `docs/adr/0001-standard-go-layout.md`
+  and `docs/adr/0002-embed-market-bot-as-library.md`. Default to `cmd/dune-admin/`; only reach for a
+  new `internal/` package for a cohesive library with its own lifecycle.
 - **No framework router**: uses Go 1.22+ stdlib pattern routing (`GET /api/v1/players/{id}`).
 - **Guard globals**: always check `if globalDB == nil` before querying.
 - **SQL in `db.go`**: all Postgres queries live there with the `dune.` schema prefix.
@@ -91,13 +157,15 @@ Detailed standards in `.claude/rules/`:
 
 | File | Applies To | Content |
 | --- | --- | --- |
-| `testing.md` | `*_test.go` | TDD, mocking, coverage |
-| `architecture.md` | `*.go` | Flat package, handler/db/model patterns |
+| `security.md` | `**/*` | Security-first: backend authz, parameterised SQL, exec/path validation, gosec, secrets, current no-auth gap |
+| `testing.md` | `*_test.go` | TDD, mocking, coverage, regression-test-on-every-fix |
+| `testing-web.md` | `web/**` | Frontend testing: Vitest + Testing Library + a11y assertions |
+| `architecture.md` | `*.go` | Flat HTTP backend in `cmd/dune-admin`; libraries under `internal/`; handler/db/model patterns |
 | `patterns.md` | `*.go` | DI, global state, cache invalidation, player-order safety |
 | `error-handling.md` | `*.go` | Error wrapping, logging, HTTP status codes |
 | `concurrency.md` | `*.go` | Goroutines, context, mutex |
 | `api-design.md` | `handlers_*.go`, `server.go` | REST handlers, response helpers |
-| `frontend.md` | `web/**` | Tab patterns, dune-ui, API client |
+| `frontend.md` | `web/**` | Tab patterns, dune-ui, API client, WCAG accessibility, responsive design |
 | `documentation.md` | `*.md` | Markdown standards |
 
 Reusable skills in `.claude/skills/`:
@@ -126,6 +194,12 @@ cmd/dune-admin/             — entire Go backend (package main, flat)
   handlers_*.go             — one file per feature area (players, bases, logs, etc.)
   helpers.go                — shared utility functions
   security_test.go          — isReadOnlySQL, isValidK8sName, originAllowed
+internal/marketbot/         — embedded market bot (the only non-main Go package; run in-process
+                              via marketbot.Run from main.go, exposes its own HTTP API)
+docs/
+  adr/                      — architecture decision records (the "why" behind layout/embedding)
+  plans/, superpowers/      — design plans and specs
+  swagger.json / .yaml      — generated API spec (served at /swagger)
 web/
   src/
     App.tsx                 — root component, tab routing, Clerk auth shell
@@ -391,8 +465,11 @@ so capture survives broker restarts without manual intervention.
 - [ ] All error paths tested
 - [ ] External dependencies mocked (DB, executor, control plane)
 - [ ] Tests pass with race detector (`make test-race`)
-- [ ] No new sub-packages created
-- [ ] SQL lives in `db.go`, uses `dune.` schema prefix
+- [ ] Regression test added for any bug fix (fails before, passes after)
+- [ ] Server (`cmd/dune-admin/`) kept flat — no sub-packages; any new `internal/` library is justified with an ADR
+- [ ] SQL lives in `db.go`, uses `dune.` schema prefix, parameterised (no string-built queries)
 - [ ] Global state guarded (`if globalDB == nil`)
 - [ ] Journey cache invalidated after mutations
+- [ ] Security: authz enforced server-side; exec/path/SQL input validated; no secrets leaked; `make gosec` clean
+- [ ] Frontend (if touched): WCAG 2.2 AA, responsive at mobile/tablet/desktop
 - [ ] `make verify` passes

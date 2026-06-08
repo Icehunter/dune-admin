@@ -123,6 +123,54 @@ approach wasn't used — fix them.
 When absent, the app renders without auth (local dev). The `isSignedIn` prop gates
 destructive features in certain tabs. Do not remove this gate.
 
+**⚠️ This gate is cosmetic only.** `isSignedIn` hides/disables UI; it does **not** stop the
+corresponding API call, and the backend currently performs **no** authentication (see
+`.claude/rules/security.md` and `api-design.md`). Never treat a frontend gate as a security
+control — any control that must be enforced has to be enforced server-side. The planned
+admin-vs-player split and per-control permission toggles (project goals 3 & 4) must derive from a
+**server-verified** identity and role, not from a client-side boolean.
+
+## Accessibility (WCAG 2.2 AA — all surfaces)
+
+Accessibility is a **required, non-negotiable** standard on every surface (admin and the planned
+player view). Build it in as you go — do not defer it.
+
+- **Semantic HTML + landmarks**: real `<nav>`/`<main>`/`<header>`/`<button>`; one `<main>` per page.
+  Don't put click handlers on `<div>`s — use a `<button>`.
+- **Keyboard operable**: every interactive element reachable and operable by keyboard; logical tab
+  order; visible focus (`:focus-visible` ring); modals trap focus, close on `Esc`, and return focus
+  to the trigger.
+- **Accessible names**: every control has a label; icon-only buttons need `aria-label`. `DataTable`
+  columns use proper headers/scope.
+- **Never color-only**: status/meaning conveyed by text or icon in addition to colour.
+- **Contrast**: meet AA (4.5:1 text, 3:1 UI/large text) — drive it through the semantic tokens in
+  `index.css`, not ad-hoc colours (ties into Theming above).
+- **Motion**: honour `prefers-reduced-motion`.
+- Use the `frontend-accessibility` skill when building or reviewing a surface. Aim to enforce a11y
+  at lint time (`eslint-plugin-jsx-a11y`) once it is wired up — see `.claude/rules/testing-web.md`.
+
+## Responsive Design (mobile / tablet / desktop — all surfaces)
+
+Every surface must work at mobile, tablet, and desktop widths. Design mobile-first.
+
+- Use Tailwind breakpoints (`sm`/`md`/`lg`/`xl`); no fixed pixel widths that overflow small viewports.
+- `DataTable`s must degrade gracefully on narrow screens (horizontal scroll or stacked rows), never
+  truncate data off-screen.
+- `SideNav` must collapse / become a drawer on small screens; modals must fit small viewports.
+- Touch targets ≥ 44px.
+- This applies to the whole migration backlog (BattlegroupTab, StorageTab, DatabaseTab, LogsTab,
+  BlueprintsTab) as those tabs are refactored, and to all new tabs.
+- The `ui-ux-pro-max` and `web-design-guidelines` skills can review responsive/UX quality.
+
+## Testing & Lint (build it up as we go)
+
+- `pnpm lint` (`--max-warnings 0`) and `pnpm build` (`tsc -b`) must be clean — the type-check is the
+  gate.
+- New/changed pure logic ships with a Vitest unit test; new/changed UI ships with a component test
+  once Testing Library is wired up. Every bug fix lands a regression test that fails before the fix.
+- Frontend testing conventions (Vitest + Testing Library + a11y assertions) live in
+  `.claude/rules/testing-web.md`.
+
 ## Frontend Checklist
 
 - [ ] Using `pnpm` (not npm/yarn)
@@ -131,4 +179,7 @@ destructive features in certain tabs. Do not remove this gate.
 - [ ] `dune-ui/` wrappers used instead of direct `@heroui/react` where available
 - [ ] Semantic colour tokens used (no raw Tailwind colours, no inline colour styles)
 - [ ] TypeScript strict — no `any` unless absolutely necessary
-- [ ] `pnpm lint` passes (`cd web && pnpm lint`)
+- [ ] Keyboard-navigable + screen-reader-labelled (WCAG 2.2 AA)
+- [ ] Layout verified at mobile, tablet, and desktop widths
+- [ ] New/changed logic or UI has a test; bug fixes add a regression test
+- [ ] `pnpm lint` passes (`cd web && pnpm lint`) and `pnpm build` type-checks clean

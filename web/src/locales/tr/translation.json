@@ -966,7 +966,11 @@
       "logPath": "Kayıt yolu",
       "useContainer": "Konteyner kullan (podman exec)",
       "useContainerHint": "AMP kullanıcısı olarak doğrudan ana bilgisayarda çalıştırmak için devre dışı bırakın.",
-      "user": "AMP kullanıcısı"
+      "user": "AMP kullanıcısı",
+      "apiUser": "AMP API kullanıcısı",
+      "apiPassword": "AMP API parolası",
+      "apiPort": "AMP API bağlantı noktası",
+      "apiHint": "AMP Web API girişi. dune-admin'in sunucu ayarlarını AMP altında yönetmesini sağlar, böylece yeniden başlatmalardan sonra da kalıcı olur. Varsayılan bağlantı noktası 8081."
     },
     "broker": {
       "adminAddr": "Yönetici adresi",

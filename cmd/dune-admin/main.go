@@ -164,7 +164,14 @@ type appConfig struct {
 	// or "docker". Empty → podman, so existing installs are unaffected.
 	AmpContainerRuntime string `yaml:"amp_container_runtime" json:"amp_container_runtime"`
 	AmpDataRoot         string `yaml:"amp_data_root"     json:"amp_data_root"`
-	DirectorURL         string `yaml:"director_url"      json:"director_url"`
+	// AMP Web API credentials — let dune-admin manage server settings under AMP
+	// by writing them through AMP's own config API (Core/SetConfig), so they
+	// survive AMP regenerating the game INIs. The API is the instance ADS,
+	// reached in-container at 127.0.0.1:<amp_api_port> (default 8081).
+	AmpAPIUser  string `yaml:"amp_api_user" json:"amp_api_user"`
+	AmpAPIPass  string `yaml:"amp_api_pass" json:"amp_api_pass"`
+	AmpAPIPort  int    `yaml:"amp_api_port" json:"amp_api_port"`
+	DirectorURL string `yaml:"director_url"      json:"director_url"`
 
 	// ── Embedded market bot ────────────────────────────────────────────────
 	// MarketBotEnabled starts the market bot as an in-process goroutine.

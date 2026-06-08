@@ -164,6 +164,23 @@ welcome_packages:
 
 dune-admin keeps a library of named packages plus an active-version pointer. An in-process scanner grants the active package once per `(player, version)`, tracked in a persistent SQLite ledger at `~/.dune-admin/welcome-package.db` (so a restart never re-grants). Bumping the active version re-issues to everyone. It defaults **off** — it mutates every player's inventory — and delivers items through the same live-RMQ + DB-fallback path as manual give-items.
 
+### Server settings
+
+The **Server Settings** tab manages gameplay config (mining/vehicle output, PvP & security zones, sandstorm/sandworm toggles, building limits, item deterioration, server name/password, …). How it writes depends on the provider:
+
+- **amp** — settings are written through AMP's Web API, because AMP regenerates the game INIs from its own config on every start (a direct file edit would be clobbered). This requires AMP API credentials in `config.yaml`:
+
+  ```yaml
+  amp_api_user: admin        # an AMP panel login for the instance
+  amp_api_pass: yourpassword
+  amp_api_port: 8081         # instance ADS API port (default 8081)
+  ```
+
+  A game restart applies them — dune-admin's **Restart** recycles the AMP container (`<runtime> restart`, matching `amp_container_runtime`), which is what actually cycles the game processes. The container-runtime sudoers grant must allow this. See [SETUP_AMP.md](SETUP_AMP.md#server-settings-gameplay-config).
+- **docker / kubectl / local** — settings are written straight to `UserGame.ini` / `UserEngine.ini`; no API credentials needed.
+
+Either way, a server restart is required for changes to take effect.
+
 ### SSH key lookup order
 
 When `SSH_KEY` / `-key` is not set, dune-admin checks these paths in order:

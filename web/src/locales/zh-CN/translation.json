@@ -966,7 +966,11 @@
       "logPath": "日志路径",
       "useContainer": "使用容器（podman exec）",
       "useContainerHint": "禁用以直接以 AMP 用户身份在主机上运行。",
-      "user": "AMP 用户"
+      "user": "AMP 用户",
+      "apiUser": "AMP API 用户",
+      "apiPassword": "AMP API 密码",
+      "apiPort": "AMP API 端口",
+      "apiHint": "AMP Web API 登录。让 dune-admin 在 AMP 下管理服务器设置，使其在重启后保留。默认端口 8081。"
     },
     "broker": {
       "adminAddr": "管理员地址",

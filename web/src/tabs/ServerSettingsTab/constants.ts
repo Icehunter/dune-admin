@@ -1,37 +1,26 @@
 const CATEGORY_ORDER = [
-  'Survival', 'Progression', 'Harvesting', 'Building', 'Inventory',
-  'Guilds & Economy', 'Storm Cycle', 'PvP & Security', 'Spice', 'Taxation', 'Sandworm',
+  'Multipliers', 'World & Combat', 'Persistence & Building', 'Server Identity',
 ]
 
 const CATEGORY_ICONS: Record<string, string> = {
-  'Survival': 'heart-pulse',
-  'Progression': 'trending-up',
-  'Harvesting': 'pickaxe',
-  'Building': 'home',
-  'Inventory': 'package',
-  'Guilds & Economy': 'coins',
-  'Storm Cycle': 'wind',
-  'PvP & Security': 'shield',
-  'Spice': 'sparkles',
-  'Taxation': 'receipt',
-  'Sandworm': 'worm',
+  'Multipliers': 'sliders',
+  'World & Combat': 'swords',
+  'Persistence & Building': 'hammer',
+  'Server Identity': 'tag',
 }
 
+// Frequently-tuned settings surfaced in the "Common" panel above the categories.
+// Keys are the validated CVar / UPROPERTY names from the reworked schema.
 const COMMON_KEYS = new Set([
-  '/Script/DuneSandbox.DuneGameMode|m_GlobalXPMultiplier',
-  '/Script/DuneSandbox.DuneGameMode|m_GlobalHealthMultiplier',
-  '/Script/DuneSandbox.DuneGameMode|m_GlobalDamageToNpcsMultiplier',
-  '/Script/DuneSandbox.DuneGameMode|m_GlobalDamageToPlayersMultiplier',
-  '/Script/DuneSandbox.DuneGameMode|m_GlobalHarvestAmountMultiplier',
-  '/Script/DuneSandbox.DuneGameMode|m_WaterConsumptionRate',
-  '/Script/DuneSandbox.PvpPveSettings|bPvPEnabled',
-  '/Script/DuneSandbox.PvpPveSettings|bServerPVE',
-  '/Script/DuneSandbox.SandStormConfig|m_StormCycleDuration',
-  '/Script/DuneSandbox.InventorySystemSettings|PlayerInventoryStartingSize',
+  'ConsoleVariables|Dune.GlobalMiningOutputMultiplier',
+  'ConsoleVariables|Dune.GlobalVehicleMiningOutputMultiplier',
+  'ConsoleVariables|SecurityZones.PvpResourceMultiplier',
+  '/Script/DuneSandbox.SecurityZonesSubsystem|m_bAreSecurityZonesEnabled',
+  '/Script/DuneSandbox.PvpPveSettings|m_bShouldForceEnablePvpOnAllPartitions',
+  'ConsoleVariables|Sandstorm.Enabled',
+  'ConsoleVariables|sandworm.dune.Enabled',
+  '/DeteriorationSystem.ItemDeteriorationConstants|UpdateRateInSeconds',
   '/Script/DuneSandbox.BuildingSettings|m_MaxNumLandclaimSegments',
-  '/Script/DuneSandbox.GuildSettings|m_MaxGuildMembersAllowed',
-  '/DeteriorationSystem.ItemDeteriorationConstants|m_ItemDurabilityLossMultiplier',
-  '/Script/DuneSandbox.SpiceHarvestingSystem|m_bSpawningActive',
 ])
 
 const SOURCE_FILE: Record<string, string> = {

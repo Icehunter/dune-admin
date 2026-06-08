@@ -337,6 +337,9 @@ amp_container:  AMP_DuneAwakening01       # default: AMP_<instance>
 amp_container_runtime: podman             # podman (default) | docker — game-server container CLI
 amp_user:       amp
 amp_log_path:   /AMP/duneawakening/logs   # in-container log dir
+amp_api_user:   admin                     # AMP panel login — enables gameplay-settings writes via the AMP Web API
+amp_api_pass:   yourpassword
+amp_api_port:   8081                       # instance ADS API port (default 8081)
 director_url:   http://127.0.0.1:11717    # optional — enables /director/ proxy
 broker_exec_prefix: "sudo -i -u amp podman exec AMP_DuneAwakening01"
 server_ini_dir: /home/amp/.ampdata/instances/DuneAwakening01/duneawakening/server/state
@@ -350,14 +353,17 @@ db_port: 15432
 dune-admin ALL=(amp) NOPASSWD: /usr/bin/ampinstmgr, /usr/bin/podman, /usr/bin/tee
 ```
 
-Narrow `tee` to specific INI paths under `server_ini_dir` in production.
+Use `/usr/bin/docker` instead of `/usr/bin/podman` when `amp_container_runtime: docker`. The
+runtime-binary grant covers both `exec` (logs/broker) and `restart` (cycling the container to apply
+server settings). Narrow `tee` to specific INI paths under `server_ini_dir` in production.
 
 ### Provider Behaviour
 
 | Method | Implementation |
 | --- | --- |
 | `GetStatus` | Lists `DuneSandboxServer-Linux-Shipping` host processes; reports container DB phase |
-| `ExecCommand` | `sudo -i -u <amp_user> ampinstmgr -s/-q <amp_instance>` |
+| `ExecCommand` | start/stop: `ampinstmgr -s/-q <amp_instance>`. restart (container mode): `<runtime> restart <container>` — `ampinstmgr` does NOT reap the game procs; container restart is the only thing that cycles them. restart (native): `ampinstmgr -q && -s` |
+| `writeServerSettings` | AMP Web API `Core/Login` + `Core/SetConfig` (node `Meta.GenericModule.<FieldName>`) via in-container curl; needs `amp_api_*`. Curated gameplay settings only |
 | `ListProcesses` | Host `ps` for game-server processes, decorated with map/port/partition |
 | `ListLogSources` | `<runtime> exec <container> ls <amp_log_path>` (runtime per `amp_container_runtime`) |
 | `StreamLog` | `<runtime> exec <container> tail -F <amp_log_path>/<name>` |
@@ -366,8 +372,13 @@ Narrow `tee` to specific INI paths under `server_ini_dir` in production.
 | `DiscoverIniDir` | Returns `server_ini_dir` (or derives conventional AMP path) |
 | `ReadDefaultINI` | `<runtime> exec <container> find / -name <file>` then `cat` |
 
-`ampExecutor.WriteFile` pipes content through `sudo -i -u <amp_user> tee <path> > /dev/null`.
-Changes require a Dune instance restart via `ExecCommand("restart")`.
+**Server settings under AMP go through the AMP Web API, not INI writes.** AMP regenerates
+`UserEngine.ini` / `UserGame.ini` from its own config on every start, so a direct file edit is
+clobbered. The curated gameplay schema (`serverSettingsSchema` — real CVars + `/Script` UPROPERTYs,
+keyed by `FieldName`) is written via `ampControl.writeServerSettings` → AMP `Core/SetConfig`. Non-AMP
+planes (docker/kubectl/local) and raw-INI-section edits still write files directly via
+`ampExecutor.WriteFile` (`sudo -i -u <amp_user> tee <path> > /dev/null`). Either way, settings only
+take effect after a game restart via `ExecCommand("restart")`.
 
 `ampControl.startEnsureCaptureUserLoop` re-applies the `dune_cap` user+permissions every 15s
 so capture survives broker restarts without manual intervention.

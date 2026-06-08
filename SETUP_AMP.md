@@ -15,13 +15,23 @@ dune-admin
 |-------------|-------|
 | **Go 1.21+** | `brew install go` or <https://go.dev/dl/> |
 | **AMP host access** | Run dune-admin on the AMP host, or set `ssh_host` to run remotely over SSH |
-| **Sudoers grant** | dune-admin user must run `ampinstmgr`, the container runtime (`podman`, or `docker` when `amp_container_runtime: docker`), and `tee` as AMP user without prompts |
+| **Sudoers grant** | dune-admin user must run `ampinstmgr`, the container runtime (`podman`, or `docker` when `amp_container_runtime: docker`), and `tee` as AMP user without prompts. The container-runtime grant covers both `exec` (logs/broker) and `restart` (applying server settings). |
 
-Example sudoers entry (adjust user/path names as needed):
+Example sudoers entry (adjust user/path names as needed) — **podman backend (default)**:
 
 ```bash
 dune-admin ALL=(amp) NOPASSWD: /usr/bin/ampinstmgr, /usr/bin/podman, /usr/bin/tee
 ```
+
+If your AMP container runs on **docker** (`amp_container_runtime: docker`), grant `docker` instead:
+
+```bash
+dune-admin ALL=(amp) NOPASSWD: /usr/bin/ampinstmgr, /usr/bin/docker, /usr/bin/tee
+```
+
+The same runtime grant is what lets dune-admin's **Restart** action cycle the container
+(`<runtime> restart <container>`) — see [Server settings](#server-settings-gameplay-config) for why a
+real container restart is required.
 
 ## Quick start (wizard)
 
@@ -63,6 +73,13 @@ amp_data_root: /AMP/duneawakening
 director_url: http://127.0.0.1:11717
 broker_exec_prefix: "sudo -i -u amp podman exec AMP_DuneAwakening01"
 listen_addr: :18080   # avoids collision with AMP web panel on :8080
+
+# AMP Web API — required to manage gameplay settings under AMP (see "Server settings" below).
+# These are an AMP panel login for the instance; the API is reached in-container at
+# 127.0.0.1:<amp_api_port>, so no host port needs to be exposed.
+amp_api_user: admin
+amp_api_pass: yourpassword
+amp_api_port: 8081   # instance ADS API port (default 8081)
 ```
 
 ## Embedded market bot (recommended in AMP)
@@ -79,17 +96,44 @@ market_bot_max_buys: 50
 
 External market-bot mode is removed; use embedded mode for AMP deployments.
 
+## Server settings (gameplay config)
+
+The **Server Settings** tab manages gameplay knobs — mining/vehicle output, PvP/security zones,
+sandstorm and sandworm toggles, building limits, item deterioration, server name/password, and so on.
+
+Under AMP this path is different from every other provider, and it matters:
+
+- **AMP owns the game INI files.** AMP regenerates `UserEngine.ini` / `UserGame.ini` from its own
+  config on every start, so editing those files directly is silently clobbered. dune-admin therefore
+  writes settings through **AMP's Web API** (`Core/SetConfig`), which persists them in AMP's config and
+  survives restarts. This is why the `amp_api_user` / `amp_api_pass` / `amp_api_port` credentials above
+  are required — without them, saving a setting under AMP returns an error rather than failing silently.
+- **A restart is required to apply.** Saving writes the value to AMP's config; the running game only
+  picks it up on the next start. dune-admin's **Restart** action recycles the AMP **container**
+  (`<runtime> restart <container>`), which is the action that actually reaps the
+  `DuneSandboxServer` processes — `ampinstmgr` alone leaves them running, so the change never takes
+  effect. The container restart also briefly cycles the in-container PostgreSQL and broker; dune-admin
+  reconnects to the database automatically afterwards.
+
+Typical flow: change a value in **Server Settings** → **Save** → **Restart** (Operations) → the new
+value is live in-game.
+
+Other providers (docker / kubectl / local) have no AMP layer to clobber the files, so they write the
+INIs directly and do **not** need the `amp_api_*` credentials.
+
 ## What works
 
 | Feature | Supported |
 |---------|-----------|
 | Battlegroup status | Yes |
-| Start / stop / restart | Yes (`ampinstmgr`) |
+| Start / stop | Yes (`ampinstmgr`) |
+| Restart | Yes — cycles the container (`<runtime> restart`) so game processes actually recycle |
 | Process list | Yes |
 | Log streaming | Yes |
 | DB access | Yes (direct or SSH tunnel) |
 | Broker command path | Yes (`broker_exec_prefix`) |
-| INI read/write | Yes (`ampExecutor` writes as AMP user) |
+| Server settings (gameplay) | Yes — written via AMP Web API (`amp_api_*`); restart to apply |
+| INI read/write | Yes (`ampExecutor` writes as AMP user; non-gameplay/raw sections) |
 
 ## Troubleshooting
 
@@ -98,3 +142,7 @@ External market-bot mode is removed; use embedded mode for AMP deployments.
 **INI changes fail** — verify `server_ini_dir` and that AMP user owns `UserGame.ini` / `UserEngine.ini`.
 
 **Broker commands fail** — set `broker_exec_prefix` to the exact `podman exec` (or `docker exec`) wrapper used on your AMP host.
+
+**Saving a server setting returns an error (502)** — dune-admin could not reach or authenticate to the AMP Web API. Check `amp_api_user` / `amp_api_pass` (an AMP panel login) and `amp_api_port` (default `8081`), and that the instance ADS is running inside the container.
+
+**A server setting saved but did nothing in-game** — settings apply on the next game start. Use dune-admin's **Restart** (which does `<runtime> restart <container>`), not just `ampinstmgr`; confirm the container-runtime sudoers grant above is in place so the restart can run.

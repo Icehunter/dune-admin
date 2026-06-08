@@ -39,6 +39,12 @@ type ampControl struct {
 	useContainer     bool   // true: wrap in-container ops in `<runtime> exec`; false: run on host directly
 	containerRuntime string // "podman" (default) or "docker"; CLI for `<rt> exec` in container mode
 	dataRoot         string // per-game data root (default /AMP/duneawakening)
+
+	// AMP Web API credentials — used to write server settings through AMP's own
+	// config (Core/SetConfig) so they survive AMP regenerating the game INIs.
+	apiUser string
+	apiPass string
+	apiPort int // 0 → defaultAmpAPIPort (8081)
 }
 
 func (c *ampControl) Name() string { return "amp" }
@@ -215,11 +221,36 @@ func (c *ampControl) ExecCommand(_ context.Context, exec Executor, cmd string) (
 	case "stop":
 		return exec.Exec(fmt.Sprintf("sudo -i -u %s ampinstmgr -q %s 2>&1", c.ampUser, c.instance))
 	case "restart":
-		return exec.Exec(fmt.Sprintf("sudo -i -u %s ampinstmgr -q %s 2>&1 && sudo -i -u %s ampinstmgr -s %s 2>&1",
-			c.ampUser, c.instance, c.ampUser, c.instance))
+		return c.restartGame(exec)
 	default:
 		return "", fmt.Errorf("amp control does not support %q", cmd)
 	}
+}
+
+// restartGame cycles the game server so config changes (CVars / UPROPERTYs)
+// actually take effect.
+//
+// In container mode it restarts the whole AMP container. This is deliberate:
+// `ampinstmgr -q` does NOT reap the DuneSandboxServer processes — confirmed
+// in-game, where the game kept 4d+ uptime through both dune-admin's old restart
+// AND AMP's own Stop, so any setting needing a game restart never applied. A
+// `<runtime> restart` is the proven action that actually recycles the game, and
+// it preserves the container filesystem so AMP regenerates the game INIs from
+// its config on the way back up. Blast radius: this briefly cycles the
+// in-container Postgres and broker too — dune-admin reconnects to the DB after.
+//
+// In native mode (no container) the game runs as host processes ampinstmgr
+// manages directly, so the stop/start cycle is retained.
+func (c *ampControl) restartGame(exec Executor) (string, error) {
+	if c.useContainer {
+		if c.container == "" {
+			return "", fmt.Errorf("amp control in container mode requires amp_container to be set")
+		}
+		return exec.Exec(fmt.Sprintf("sudo -i -u %s %s restart %s 2>&1",
+			c.ampUser, c.runtimeCLI(), c.container))
+	}
+	return exec.Exec(fmt.Sprintf("sudo -i -u %s ampinstmgr -q %s 2>&1 && sudo -i -u %s ampinstmgr -s %s 2>&1",
+		c.ampUser, c.instance, c.ampUser, c.instance))
 }
 
 // ── process & log discovery ───────────────────────────────────────────────────
@@ -463,6 +494,33 @@ func (c *ampControl) EvalOnGameBroker(_ context.Context, exec Executor, expr str
 		return "", fmt.Errorf("rabbitmqctl eval: %w (output: %s)", err, strings.TrimSpace(out))
 	}
 	return strings.TrimSpace(out), nil
+}
+
+// ── server settings (AMP Web API) ─────────────────────────────────────────────
+
+// writeServerSettings applies fieldName→value updates through AMP's Web API
+// (Core/SetConfig). AMP persists them to its own config (GenericModule.kvp →
+// App.AppSettings) and regenerates UserEngine.ini / UserGame.ini with these
+// values on the next start. This is the only durable write path under AMP: a
+// direct INI edit is clobbered when AMP regenerates the files.
+//
+// Callers pass raw AMP FieldNames; the "Meta.GenericModule." node prefix is
+// added here. The write is fail-fast — a SetConfig error aborts the batch and
+// is returned naming the field, so partial application is possible on error.
+func (c *ampControl) writeServerSettings(_ context.Context, exec Executor, updates map[string]string) error {
+	if len(updates) == 0 {
+		return nil
+	}
+	if c.apiUser == "" || c.apiPass == "" {
+		return fmt.Errorf("amp api credentials not configured — set amp_api_user and amp_api_pass to manage server settings under AMP")
+	}
+	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiPort)
+	for field, value := range updates {
+		if err := client.setConfig("Meta.GenericModule."+field, value); err != nil {
+			return fmt.Errorf("write server setting %s: %w", field, err)
+		}
+	}
+	return nil
 }
 
 // ── INI discovery ─────────────────────────────────────────────────────────────

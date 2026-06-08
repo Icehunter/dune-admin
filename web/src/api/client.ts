@@ -160,6 +160,9 @@ export type AppConfig = {
   amp_log_path: string
   amp_use_container: boolean
   amp_data_root: string
+  amp_api_user: string
+  amp_api_pass: string // masked when non-empty
+  amp_api_port: number
   director_url: string
   // Market bot (startup config — tuning is managed in the Bot Control panel)
   market_bot_enabled: boolean

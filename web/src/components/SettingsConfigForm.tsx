@@ -21,6 +21,7 @@ const EMPTY: AppConfig = {
   backup_dir: '', server_ini_dir: '', default_ini_dir: '',
   amp_instance: '', amp_container: '', amp_user: '', amp_log_path: '',
   amp_use_container: false, amp_data_root: '',
+  amp_api_user: '', amp_api_pass: '', amp_api_port: 0,
   director_url: '',
   market_bot_enabled: false,
   market_bot_cache_db: '', market_bot_item_data: '', market_bot_state: '',
@@ -152,7 +153,7 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
   const set = (key: keyof AppConfig) => (v: string) =>
     setCfg((prev) => ({
       ...prev,
-      [key]: key === 'db_port' || key === 'scrip_currency' || key === 'market_bot_max_buys'
+      [key]: key === 'db_port' || key === 'scrip_currency' || key === 'market_bot_max_buys' || key === 'amp_api_port'
         ? (Number(v) || 0)
         : key === 'market_bot_buy_threshold'
           ? (parseFloat(v) || 0)
@@ -369,6 +370,20 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
                   onChange={setBool('amp_use_container')}
                   hint={t('settings.amp.useContainerHint')}
                 />
+              </G2>
+              <p className="text-xs text-muted mt-3">{t('settings.amp.apiHint')}</p>
+              <G2>
+                <F label={t('settings.amp.apiUser')}><TI value={cfg.amp_api_user} onChange={set('amp_api_user')} placeholder="admin" /></F>
+                <F label={t('settings.amp.apiPassword')}><TI value={cfg.amp_api_pass} onChange={set('amp_api_pass')} type="password" placeholder={MASKED} /></F>
+                <F label={t('settings.amp.apiPort')} hint="default 8081">
+                  <NumberInput
+                    ariaLabel={t('settings.amp.apiPort')}
+                    value={Number(cfg.amp_api_port) || 0}
+                    onChange={(v) => set('amp_api_port')(String(v))}
+                    showButtons={false}
+                    className="w-full"
+                  />
+                </F>
               </G2>
             </Panel>
           )}

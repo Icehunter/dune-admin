@@ -987,7 +987,11 @@
       "logPath": "Chemin des journaux",
       "useContainer": "Utiliser le conteneur (podman exec)",
       "useContainerHint": "Désactivez pour exécuter directement sur l'hôte en tant qu'utilisateur AMP.",
-      "user": "Utilisateur AMP"
+      "user": "Utilisateur AMP",
+      "apiUser": "Utilisateur de l'API AMP",
+      "apiPassword": "Mot de passe de l'API AMP",
+      "apiPort": "Port de l'API AMP",
+      "apiHint": "Connexion à l'API Web d'AMP. Permet à dune-admin de gérer les paramètres du serveur sous AMP afin qu'ils survivent aux redémarrages. Port par défaut 8081."
     },
     "broker": {
       "adminAddr": "Adresse admin",

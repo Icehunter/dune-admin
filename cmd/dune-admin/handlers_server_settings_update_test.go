@@ -9,8 +9,8 @@ func TestBuildServerSettingsSchemaMap(t *testing.T) {
 	if len(schemaMap) != len(serverSettingsSchema) {
 		t.Fatalf("expected %d schema entries, got %d", len(serverSettingsSchema), len(schemaMap))
 	}
-	if _, ok := schemaMap[secBuilding+"|bEnableBuildingStability"]; !ok {
-		t.Fatalf("expected known schema key for building stability")
+	if _, ok := schemaMap[secBuilding+"|m_bBuildingRestrictionLimitsEnabled"]; !ok {
+		t.Fatalf("expected known schema key for building restriction limits")
 	}
 }
 
@@ -19,7 +19,7 @@ func TestNormalizeServerSettingsUpdates(t *testing.T) {
 
 	schemaMap := buildServerSettingsSchemaMap()
 	normalized, err := normalizeServerSettingsUpdates([]serverSettingUpdate{
-		{Section: secBuilding, Key: "bEnableBuildingStability", Value: "true"},
+		{Section: secBuilding, Key: "m_bBuildingRestrictionLimitsEnabled", Value: "true"},
 		{Section: secBuilding, Key: "CustomKey", Value: "raw-value"},
 		{Section: secBuilding, Key: "AnotherKey", Value: ""},
 	}, schemaMap)
@@ -29,7 +29,7 @@ func TestNormalizeServerSettingsUpdates(t *testing.T) {
 	if normalized.applied != 2 || normalized.cleared != 1 {
 		t.Fatalf("unexpected counters: applied=%d cleared=%d", normalized.applied, normalized.cleared)
 	}
-	if got := normalized.updates[secBuilding]["bEnableBuildingStability"]; got != "True" {
+	if got := normalized.updates[secBuilding]["m_bBuildingRestrictionLimitsEnabled"]; got != "True" {
 		t.Fatalf("expected normalized bool value True, got %q", got)
 	}
 	if got := normalized.updates[secBuilding]["CustomKey"]; got != "raw-value" {
@@ -45,7 +45,7 @@ func TestNormalizeServerSettingsUpdates_InvalidKnownValue(t *testing.T) {
 
 	schemaMap := buildServerSettingsSchemaMap()
 	_, err := normalizeServerSettingsUpdates([]serverSettingUpdate{
-		{Section: secBuilding, Key: "bEnableBuildingStability", Value: "not-bool"},
+		{Section: secBuilding, Key: "m_bBuildingRestrictionLimitsEnabled", Value: "not-bool"},
 	}, schemaMap)
 	if err == nil {
 		t.Fatalf("expected normalization error for invalid bool")

@@ -121,6 +121,9 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 			useContainer:     useContainer,
 			containerRuntime: cfg.AmpContainerRuntime,
 			dataRoot:         cfg.AmpDataRoot,
+			apiUser:          cfg.AmpAPIUser,
+			apiPass:          cfg.AmpAPIPass,
+			apiPort:          cfg.AmpAPIPort,
 		}
 	default:
 		return &localControl{

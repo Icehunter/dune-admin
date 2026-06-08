@@ -966,7 +966,11 @@
       "logPath": "Log path",
       "useContainer": "Use container (podman exec)",
       "useContainerHint": "Disable to run on host as the AMP user directly.",
-      "user": "AMP user"
+      "user": "AMP user",
+      "apiUser": "AMP API user",
+      "apiPassword": "AMP API password",
+      "apiPort": "AMP API port",
+      "apiHint": "AMP Web API login. Lets dune-admin manage server settings under AMP so they survive restarts. Default port 8081."
     },
     "broker": {
       "adminAddr": "Admin addr",

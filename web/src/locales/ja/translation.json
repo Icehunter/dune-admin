@@ -966,7 +966,11 @@
       "logPath": "ログパス",
       "useContainer": "コンテナを使用（podman exec）",
       "useContainerHint": "AMPユーザーとしてホストで直接実行するには無効にしてください。",
-      "user": "AMPユーザー"
+      "user": "AMPユーザー",
+      "apiUser": "AMP API ユーザー",
+      "apiPassword": "AMP API パスワード",
+      "apiPort": "AMP API ポート",
+      "apiHint": "AMP Web API ログイン。dune-admin が AMP 配下のサーバー設定を管理できるようにし、再起動後も保持されます。デフォルトポートは 8081。"
     },
     "broker": {
       "adminAddr": "管理者アドレス",

@@ -203,14 +203,13 @@ export const ServerSettingsTab: React.FC = () => {
       </PageHeader>
 
       <p className="text-xs text-muted shrink-0">
-        Changes are written to
+        Changes are saved to the server configuration — written to
         {' '}
         <span className="font-mono">UserGame.ini</span>
-        {' '}
-        or
-        {' '}
+        {' / '}
         <span className="font-mono">UserEngine.ini</span>
-        .
+        {' '}
+        directly, or via the AMP API under the AMP control plane.
         A server restart is required for them to take effect.
       </p>
 

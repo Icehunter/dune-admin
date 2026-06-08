@@ -311,6 +311,30 @@ export type BaseRow = {
   pieces: number
   placeables: number
 }
+export type GuildSummary = {
+  guild_id: number
+  name: string
+  description: string
+  faction_id: number
+  faction_name: string
+  member_count: number
+}
+export type GuildMember = {
+  player_id: number
+  role_id: number
+  character_name: string
+}
+export type GuildInvite = {
+  invite_id: number
+  player_id: number
+  character_name: string
+  sender_player_id: number
+  sender_name: string
+}
+export type GuildDetail = GuildSummary & {
+  members: GuildMember[]
+  invites: GuildInvite[]
+}
 export type LogPod = {
   namespace: string
   name: string
@@ -865,6 +889,11 @@ export const api = {
   bases: {
     list: () => req<BaseRow[]>('GET', '/bases'),
     exportUrl: (id: number) => `${apiBase}/bases/${id}/export`,
+  },
+
+  guilds: {
+    list: () => req<GuildSummary[]>('GET', '/guilds'),
+    get: (id: number) => req<GuildDetail>('GET', `/guilds/${id}`),
   },
 
   market: {

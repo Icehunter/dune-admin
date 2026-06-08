@@ -1,4 +1,23 @@
 {
+  "guilds": {
+    "title": "Gremios ({{count}})",
+    "subtitle": "Gremios de jugadores en este servidor — solo lectura.",
+    "view": "Ver",
+    "empty": "No se encontraron gremios.",
+    "failedToLoad": "Error al cargar los gremios: {{message}}",
+    "members": "Miembros",
+    "invites": "Invitaciones pendientes",
+    "noMembers": "Sin miembros.",
+    "noInvites": "Sin invitaciones pendientes.",
+    "roleN": "Rol {{id}}",
+    "invitedBy": "invitado por {{name}}",
+    "columns": {
+      "name": "Nombre",
+      "faction": "Facción",
+      "members": "Miembros",
+      "description": "Descripción"
+    }
+  },
   "app": {
     "changesNote": "Los cambios en todas las pestañas se guardan juntos.",
     "checkUpdates": "Buscar actualizaciones",
@@ -448,6 +467,7 @@
     "title": "Tablero del mercado"
   },
   "nav": {
+    "guilds": "Gremios",
     "bases": "Bases",
     "battlegroup": "Grupo de batalla",
     "blueprints": "Planos",

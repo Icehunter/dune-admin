@@ -1,4 +1,23 @@
 {
+  "guilds": {
+    "title": "公会 ({{count}})",
+    "subtitle": "此服务器上的玩家公会 — 只读。",
+    "view": "查看",
+    "empty": "未找到公会。",
+    "failedToLoad": "加载公会失败：{{message}}",
+    "members": "成员",
+    "invites": "待处理邀请",
+    "noMembers": "暂无成员。",
+    "noInvites": "暂无待处理邀请。",
+    "roleN": "职位 {{id}}",
+    "invitedBy": "由 {{name}} 邀请",
+    "columns": {
+      "name": "名称",
+      "faction": "阵营",
+      "members": "成员",
+      "description": "描述"
+    }
+  },
   "app": {
     "changesNote": "所有选项卡上的更改将一起保存。",
     "checkUpdates": "检查更新",
@@ -441,6 +460,7 @@
     "title": "市场板"
   },
   "nav": {
+    "guilds": "公会",
     "bases": "基地",
     "battlegroup": "战斗群",
     "blueprints": "蓝图",

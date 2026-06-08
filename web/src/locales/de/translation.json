@@ -1,4 +1,23 @@
 {
+  "guilds": {
+    "title": "Gilden ({{count}})",
+    "subtitle": "Spielergilden auf diesem Server — schreibgeschützt.",
+    "view": "Ansehen",
+    "empty": "Keine Gilden gefunden.",
+    "failedToLoad": "Gilden konnten nicht geladen werden: {{message}}",
+    "members": "Mitglieder",
+    "invites": "Ausstehende Einladungen",
+    "noMembers": "Keine Mitglieder.",
+    "noInvites": "Keine ausstehenden Einladungen.",
+    "roleN": "Rolle {{id}}",
+    "invitedBy": "eingeladen von {{name}}",
+    "columns": {
+      "name": "Name",
+      "faction": "Fraktion",
+      "members": "Mitglieder",
+      "description": "Beschreibung"
+    }
+  },
   "app": {
     "changesNote": "Änderungen auf allen Tabs werden gemeinsam gespeichert.",
     "checkUpdates": "Nach Updates suchen",
@@ -441,6 +460,7 @@
     "title": "Marktplatz"
   },
   "nav": {
+    "guilds": "Gilden",
     "bases": "Basen",
     "battlegroup": "Kampfgruppe",
     "blueprints": "Baupläne",

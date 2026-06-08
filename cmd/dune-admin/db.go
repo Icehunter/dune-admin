@@ -316,6 +316,162 @@ func cmdFetchAccountFactions(ctx context.Context, pool *pgxpool.Pool) (map[int64
 	return out, rows.Err()
 }
 
+// ── Guilds (#117 Phase A — read-only) ────────────────────────────────────────
+//
+// Schema (all dune.): guilds(guild_id, guild_name, guild_description,
+// guild_faction → factions.id); guild_members(player_id → actors.id, guild_id,
+// role_id); guild_invites(invite_id, guild_id, player_id → actors.id,
+// sender_player_id → actors.id, invite_sent_timespan). role_id is an in-game
+// rank enum not modelled in the DB, so it is surfaced numerically. Names resolve
+// actors.id → actors.owner_account_id → player_state.character_name.
+
+var errGuildNotFound = errors.New("guild not found")
+
+type guildSummary struct {
+	GuildID     int64  `json:"guild_id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	FactionID   int16  `json:"faction_id"`
+	FactionName string `json:"faction_name"`
+	MemberCount int64  `json:"member_count"`
+}
+
+type guildMember struct {
+	PlayerID      int64  `json:"player_id"`
+	RoleID        int16  `json:"role_id"`
+	CharacterName string `json:"character_name"`
+}
+
+type guildInvite struct {
+	InviteID      int64  `json:"invite_id"`
+	PlayerID      int64  `json:"player_id"`
+	CharacterName string `json:"character_name"`
+	SenderID      int64  `json:"sender_player_id"`
+	SenderName    string `json:"sender_name"`
+}
+
+type guildDetail struct {
+	guildSummary
+	Members []guildMember `json:"members"`
+	Invites []guildInvite `json:"invites"`
+}
+
+// guildMemberDisplayName returns the character name, or a stable "Actor <id>"
+// fallback when the name can't be resolved (the actor row exists — FK-guaranteed
+// — but has no player_state, e.g. a never-fully-initialised or system actor).
+func guildMemberDisplayName(charName string, actorID int64) string {
+	if strings.TrimSpace(charName) != "" {
+		return charName
+	}
+	return fmt.Sprintf("Actor %d", actorID)
+}
+
+// guildSummarySelect is the shared SELECT for list + detail; callers append the
+// ORDER BY (list) or WHERE g.guild_id = $1 (detail).
+const guildSummarySelect = `
+	SELECT g.guild_id,
+	       COALESCE(g.guild_name, ''),
+	       COALESCE(g.guild_description, ''),
+	       g.guild_faction,
+	       COALESCE(f.name, ''),
+	       (SELECT count(*) FROM dune.guild_members m WHERE m.guild_id = g.guild_id)
+	FROM dune.guilds g
+	LEFT JOIN dune.factions f ON f.id = g.guild_faction`
+
+func cmdFetchGuilds(ctx context.Context, pool *pgxpool.Pool) ([]guildSummary, error) {
+	rows, err := pool.Query(ctx, guildSummarySelect+`
+		ORDER BY g.guild_name NULLS LAST, g.guild_id`)
+	if err != nil {
+		return nil, fmt.Errorf("list guilds: %w", err)
+	}
+	defer rows.Close()
+	out := make([]guildSummary, 0, 16)
+	for rows.Next() {
+		var g guildSummary
+		if err := rows.Scan(&g.GuildID, &g.Name, &g.Description, &g.FactionID, &g.FactionName, &g.MemberCount); err != nil {
+			return nil, fmt.Errorf("scan guild: %w", err)
+		}
+		out = append(out, g)
+	}
+	return out, rows.Err()
+}
+
+const guildMembersSQL = `
+	SELECT m.player_id, COALESCE(m.role_id, 0), COALESCE(ps.character_name, '')
+	FROM dune.guild_members m
+	JOIN dune.actors a ON a.id = m.player_id
+	LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
+	WHERE m.guild_id = $1
+	ORDER BY m.role_id, m.player_id`
+
+const guildInvitesSQL = `
+	SELECT i.invite_id, i.player_id, COALESCE(ps.character_name, ''),
+	       i.sender_player_id, COALESCE(sps.character_name, '')
+	FROM dune.guild_invites i
+	JOIN dune.actors a ON a.id = i.player_id
+	LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
+	LEFT JOIN dune.actors sa ON sa.id = i.sender_player_id
+	LEFT JOIN dune.player_state sps ON sps.account_id = sa.owner_account_id
+	WHERE i.guild_id = $1
+	ORDER BY i.invite_id`
+
+func scanGuildMembers(ctx context.Context, pool *pgxpool.Pool, guildID int64) ([]guildMember, error) {
+	rows, err := pool.Query(ctx, guildMembersSQL, guildID)
+	if err != nil {
+		return nil, fmt.Errorf("guild members %d: %w", guildID, err)
+	}
+	defer rows.Close()
+	out := make([]guildMember, 0, 16)
+	for rows.Next() {
+		var m guildMember
+		if err := rows.Scan(&m.PlayerID, &m.RoleID, &m.CharacterName); err != nil {
+			return nil, fmt.Errorf("scan guild member: %w", err)
+		}
+		m.CharacterName = guildMemberDisplayName(m.CharacterName, m.PlayerID)
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+func scanGuildInvites(ctx context.Context, pool *pgxpool.Pool, guildID int64) ([]guildInvite, error) {
+	rows, err := pool.Query(ctx, guildInvitesSQL, guildID)
+	if err != nil {
+		return nil, fmt.Errorf("guild invites %d: %w", guildID, err)
+	}
+	defer rows.Close()
+	out := make([]guildInvite, 0, 8)
+	for rows.Next() {
+		var iv guildInvite
+		if err := rows.Scan(&iv.InviteID, &iv.PlayerID, &iv.CharacterName, &iv.SenderID, &iv.SenderName); err != nil {
+			return nil, fmt.Errorf("scan guild invite: %w", err)
+		}
+		iv.CharacterName = guildMemberDisplayName(iv.CharacterName, iv.PlayerID)
+		iv.SenderName = guildMemberDisplayName(iv.SenderName, iv.SenderID)
+		out = append(out, iv)
+	}
+	return out, rows.Err()
+}
+
+func cmdFetchGuildDetail(ctx context.Context, pool *pgxpool.Pool, guildID int64) (guildDetail, error) {
+	var d guildDetail
+	err := pool.QueryRow(ctx, guildSummarySelect+`
+		WHERE g.guild_id = $1`, guildID).Scan(
+		&d.GuildID, &d.Name, &d.Description, &d.FactionID, &d.FactionName, &d.MemberCount)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return guildDetail{}, errGuildNotFound
+		}
+		return guildDetail{}, fmt.Errorf("guild %d: %w", guildID, err)
+	}
+	if d.Members, err = scanGuildMembers(ctx, pool, guildID); err != nil {
+		return guildDetail{}, err
+	}
+	if d.Invites, err = scanGuildInvites(ctx, pool, guildID); err != nil {
+		return guildDetail{}, err
+	}
+	return d, nil
+}
+
 // factionTrendPoint is one day's per-faction value (faction name -> value).
 type factionTrendPoint struct {
 	Day    string             `json:"day"`

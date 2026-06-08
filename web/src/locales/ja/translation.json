@@ -1,4 +1,23 @@
 {
+  "guilds": {
+    "title": "ギルド ({{count}})",
+    "subtitle": "このサーバーのプレイヤーギルド — 読み取り専用。",
+    "view": "表示",
+    "empty": "ギルドが見つかりません。",
+    "failedToLoad": "ギルドの読み込みに失敗しました: {{message}}",
+    "members": "メンバー",
+    "invites": "保留中の招待",
+    "noMembers": "メンバーがいません。",
+    "noInvites": "保留中の招待はありません。",
+    "roleN": "役職 {{id}}",
+    "invitedBy": "{{name}} による招待",
+    "columns": {
+      "name": "名前",
+      "faction": "派閥",
+      "members": "メンバー",
+      "description": "説明"
+    }
+  },
   "app": {
     "changesNote": "すべてのタブの変更はまとめて保存されます。",
     "checkUpdates": "更新を確認",
@@ -441,6 +460,7 @@
     "title": "マーケットボード"
   },
   "nav": {
+    "guilds": "ギルド",
     "bases": "拠点",
     "battlegroup": "バトルグループ",
     "blueprints": "ブループリント",

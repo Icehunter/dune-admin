@@ -244,6 +244,10 @@ func startServer(addr string) {
 	mux.HandleFunc("GET /api/v1/bases", handleListBases)
 	mux.HandleFunc("GET /api/v1/bases/{id}/export", handleExportBase)
 
+	// ── guilds (read-only) ──────────────────────────────────────────────────────
+	mux.HandleFunc("GET /api/v1/guilds", handleListGuilds)
+	mux.HandleFunc("GET /api/v1/guilds/{id}", handleGetGuild)
+
 	// ── static data files (Go-first, CDN fallback on the frontend) ──────────
 	mux.HandleFunc("GET /api/v1/data/{file}", handleGetDataFile)
 

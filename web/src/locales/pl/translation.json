@@ -1,4 +1,23 @@
 {
+  "guilds": {
+    "title": "Gildie ({{count}})",
+    "subtitle": "Gildie graczy na tym serwerze — tylko do odczytu.",
+    "view": "Pokaż",
+    "empty": "Nie znaleziono gildii.",
+    "failedToLoad": "Nie udało się załadować gildii: {{message}}",
+    "members": "Członkowie",
+    "invites": "Oczekujące zaproszenia",
+    "noMembers": "Brak członków.",
+    "noInvites": "Brak oczekujących zaproszeń.",
+    "roleN": "Rola {{id}}",
+    "invitedBy": "zaproszony przez {{name}}",
+    "columns": {
+      "name": "Nazwa",
+      "faction": "Frakcja",
+      "members": "Członkowie",
+      "description": "Opis"
+    }
+  },
   "app": {
     "changesNote": "Zmiany na wszystkich kartach są zapisywane razem.",
     "checkUpdates": "Sprawdź aktualizacje",
@@ -455,6 +474,7 @@
     "title": "Tablica rynku"
   },
   "nav": {
+    "guilds": "Gildie",
     "bases": "Bazy",
     "battlegroup": "Grupa bojowa",
     "blueprints": "Plany",

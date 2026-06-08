@@ -1,4 +1,23 @@
 {
+  "guilds": {
+    "title": "Guildes ({{count}})",
+    "subtitle": "Guildes de joueurs sur ce serveur — lecture seule.",
+    "view": "Voir",
+    "empty": "Aucune guilde trouvée.",
+    "failedToLoad": "Échec du chargement des guildes : {{message}}",
+    "members": "Membres",
+    "invites": "Invitations en attente",
+    "noMembers": "Aucun membre.",
+    "noInvites": "Aucune invitation en attente.",
+    "roleN": "Rôle {{id}}",
+    "invitedBy": "invité par {{name}}",
+    "columns": {
+      "name": "Nom",
+      "faction": "Faction",
+      "members": "Membres",
+      "description": "Description"
+    }
+  },
   "app": {
     "changesNote": "Les modifications de tous les onglets sont enregistrées ensemble.",
     "checkUpdates": "Vérifier les mises à jour",
@@ -448,6 +467,7 @@
     "title": "Tableau du marché"
   },
   "nav": {
+    "guilds": "Guildes",
     "bases": "Bases",
     "battlegroup": "Groupe de combat",
     "blueprints": "Schémas",

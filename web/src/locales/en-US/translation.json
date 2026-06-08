@@ -1,4 +1,23 @@
 {
+  "guilds": {
+    "title": "Guilds ({{count}})",
+    "subtitle": "Player guilds on this server — read-only.",
+    "view": "View",
+    "empty": "No guilds found.",
+    "failedToLoad": "Failed to load guilds: {{message}}",
+    "members": "Members",
+    "invites": "Pending Invites",
+    "noMembers": "No members.",
+    "noInvites": "No pending invites.",
+    "roleN": "Role {{id}}",
+    "invitedBy": "invited by {{name}}",
+    "columns": {
+      "name": "Name",
+      "faction": "Faction",
+      "members": "Members",
+      "description": "Description"
+    }
+  },
   "app": {
     "changesNote": "Changes on all tabs are saved together.",
     "checkUpdates": "Check for Updates",
@@ -441,6 +460,7 @@
     "title": "Market Board"
   },
   "nav": {
+    "guilds": "Guilds",
     "bases": "Bases",
     "battlegroup": "Battlegroup",
     "blueprints": "Blueprints",

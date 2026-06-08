@@ -1,4 +1,23 @@
 {
+  "guilds": {
+    "title": "Loncalar ({{count}})",
+    "subtitle": "Bu sunucudaki oyuncu loncaları — salt okunur.",
+    "view": "Görüntüle",
+    "empty": "Lonca bulunamadı.",
+    "failedToLoad": "Loncalar yüklenemedi: {{message}}",
+    "members": "Üyeler",
+    "invites": "Bekleyen davetler",
+    "noMembers": "Üye yok.",
+    "noInvites": "Bekleyen davet yok.",
+    "roleN": "Rol {{id}}",
+    "invitedBy": "{{name}} tarafından davet edildi",
+    "columns": {
+      "name": "Ad",
+      "faction": "Fraksiyon",
+      "members": "Üyeler",
+      "description": "Açıklama"
+    }
+  },
   "app": {
     "changesNote": "Tüm sekmelerdeki değişiklikler birlikte kaydedilir.",
     "checkUpdates": "Güncellemeleri Kontrol Et",
@@ -441,6 +460,7 @@
     "title": "Market Panosu"
   },
   "nav": {
+    "guilds": "Loncalar",
     "bases": "Üsler",
     "battlegroup": "Savaş Grubu",
     "blueprints": "Planlar",

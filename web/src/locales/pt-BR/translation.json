@@ -1,4 +1,23 @@
 {
+  "guilds": {
+    "title": "Guildas ({{count}})",
+    "subtitle": "Guildas de jogadores neste servidor — somente leitura.",
+    "view": "Ver",
+    "empty": "Nenhuma guilda encontrada.",
+    "failedToLoad": "Falha ao carregar as guildas: {{message}}",
+    "members": "Membros",
+    "invites": "Convites pendentes",
+    "noMembers": "Sem membros.",
+    "noInvites": "Sem convites pendentes.",
+    "roleN": "Função {{id}}",
+    "invitedBy": "convidado por {{name}}",
+    "columns": {
+      "name": "Nome",
+      "faction": "Facção",
+      "members": "Membros",
+      "description": "Descrição"
+    }
+  },
   "app": {
     "changesNote": "As alterações em todas as abas são salvas juntas.",
     "checkUpdates": "Verificar atualizações",
@@ -448,6 +467,7 @@
     "title": "Quadro do mercado"
   },
   "nav": {
+    "guilds": "Guildas",
     "bases": "Bases",
     "battlegroup": "Grupo de batalha",
     "blueprints": "Plantas",

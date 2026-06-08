@@ -961,7 +961,9 @@
     "unsaved": "sin guardar",
     "userOverride": "· anulación de usuario",
     "expertCategories": "Experto",
-    "expertCategoriesDesc": "Componentes internos del motor y del sistema. Cámbialos solo si sabes exactamente lo que haces."
+    "expertCategoriesDesc": "Componentes internos del motor y del sistema. Cámbialos solo si sabes exactamente lo que haces.",
+    "ampManagedTooltip": "Gestionado a través de la API de AMP — se aplica en el próximo reinicio del servidor",
+    "removeFrom": "Eliminar de {{file}}"
   },
   "settings": {
     "adv": {

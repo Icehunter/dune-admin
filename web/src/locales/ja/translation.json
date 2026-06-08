@@ -940,7 +940,9 @@
     "unsaved": "未保存",
     "userOverride": "· ユーザーオーバーライド",
     "expertCategories": "エキスパート",
-    "expertCategoriesDesc": "エンジンとシステムの内部設定。内容を正確に理解している場合のみ変更してください。"
+    "expertCategoriesDesc": "エンジンとシステムの内部設定。内容を正確に理解している場合のみ変更してください。",
+    "ampManagedTooltip": "AMP APIで管理 — 次回のサーバー再起動時に適用されます",
+    "removeFrom": "{{file}} から削除"
   },
   "settings": {
     "adv": {

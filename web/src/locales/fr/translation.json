@@ -961,7 +961,9 @@
     "unsaved": "non enregistré",
     "userOverride": "· remplacement utilisateur",
     "expertCategories": "Expert",
-    "expertCategoriesDesc": "Paramètres internes du moteur et du système. Ne les modifiez que si vous savez exactement ce que vous faites."
+    "expertCategoriesDesc": "Paramètres internes du moteur et du système. Ne les modifiez que si vous savez exactement ce que vous faites.",
+    "ampManagedTooltip": "Géré via l'API AMP — appliqué au prochain redémarrage du serveur",
+    "removeFrom": "Supprimer de {{file}}"
   },
   "settings": {
     "adv": {

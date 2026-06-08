@@ -117,10 +117,26 @@ func (c *ampAPIClient) ensureSession() (string, error) {
 	return c.login()
 }
 
+// isSessionError reports whether an AMP API error looks like a session
+// rejection (expired, invalid, or unknown session ID). Used to trigger a
+// one-shot re-login rather than surfacing a confusing auth error to the
+// operator — AMP sessions can expire if the server is idle for a long time.
+func isSessionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "session")
+}
+
 // setConfig writes a single AMP config node (e.g.
 // "Meta.GenericModule.ConsoleVariables.Dune.GlobalMiningOutputMultiplier").
 // AMP persists it to GenericModule.kvp and regenerates the game INIs on the
 // next start.
+//
+// If AMP rejects the call with a session error (expired or invalid session),
+// setConfig clears the cached session ID, re-logs in once, and retries the
+// write. This handles the case where the in-process session goes stale between
+// a successful login and a subsequent SetConfig within the same batch.
 func (c *ampAPIClient) setConfig(node, value string) error {
 	sid, err := c.ensureSession()
 	if err != nil {
@@ -134,7 +150,27 @@ func (c *ampAPIClient) setConfig(node, value string) error {
 	if err != nil {
 		return err
 	}
-	return parseActionResult(node, resp)
+	if err := parseActionResult(node, resp); err != nil {
+		if !isSessionError(err) {
+			return err
+		}
+		// Session expired — force re-login and retry once.
+		c.sessionID = ""
+		sid, err = c.login()
+		if err != nil {
+			return err
+		}
+		resp, err = c.post("Core/SetConfig", map[string]any{
+			"node":      node,
+			"value":     value,
+			"SESSIONID": sid,
+		})
+		if err != nil {
+			return err
+		}
+		return parseActionResult(node, resp)
+	}
+	return nil
 }
 
 // getConfig reads a single AMP config node's current value.

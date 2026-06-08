@@ -982,7 +982,9 @@
     "unsaved": "niezapisane",
     "userOverride": "· nadpisanie użytkownika",
     "expertCategories": "Eksperckie",
-    "expertCategoriesDesc": "Wewnętrzne ustawienia silnika i systemu. Zmieniaj je tylko, jeśli dokładnie wiesz, co robisz."
+    "expertCategoriesDesc": "Wewnętrzne ustawienia silnika i systemu. Zmieniaj je tylko, jeśli dokładnie wiesz, co robisz.",
+    "ampManagedTooltip": "Zarządzane przez API AMP — zastosowane przy następnym restarcie serwera",
+    "removeFrom": "Usuń z {{file}}"
   },
   "settings": {
     "adv": {

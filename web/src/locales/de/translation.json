@@ -940,7 +940,9 @@
     "unsaved": "nicht gespeichert",
     "userOverride": "· Benutzerüberschreibung",
     "expertCategories": "Experte",
-    "expertCategoriesDesc": "Engine- und Systeminterna. Ändern Sie diese nur, wenn Sie genau wissen, was Sie tun."
+    "expertCategoriesDesc": "Engine- und Systeminterna. Ändern Sie diese nur, wenn Sie genau wissen, was Sie tun.",
+    "ampManagedTooltip": "Wird über die AMP-API verwaltet — wird beim nächsten Serverneustart angewendet",
+    "removeFrom": "Aus {{file}} entfernen"
   },
   "settings": {
     "adv": {

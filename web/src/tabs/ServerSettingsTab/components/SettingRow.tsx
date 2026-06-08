@@ -33,7 +33,7 @@ export const SettingRow: React.FC<SettingRowProps> = ({
           <span className="text-sm font-medium text-foreground">{item.label}</span>
           {ampManaged && (
             <span
-              title="Managed via the AMP API — applied on the next server restart"
+              title={t('server.ampManagedTooltip')}
               className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent/15 text-accent border border-accent/30"
             >
               AMP
@@ -117,12 +117,12 @@ export const SettingRow: React.FC<SettingRowProps> = ({
                 size="sm"
                 className="text-muted/50 hover:text-danger"
                 onPress={onDelete}
-                aria-label={`Remove from ${SOURCE_FILE[item.source]}`}
+                aria-label={t('server.removeFrom', { file: SOURCE_FILE[item.source] })}
               >
                 <Icon name="trash-2" className="w-3.5 h-3.5" />
               </Button>
             </Tooltip.Trigger>
-            <Tooltip.Content>{`Remove from ${SOURCE_FILE[item.source]}`}</Tooltip.Content>
+            <Tooltip.Content>{t('server.removeFrom', { file: SOURCE_FILE[item.source] })}</Tooltip.Content>
           </Tooltip>
         )}
       </div>

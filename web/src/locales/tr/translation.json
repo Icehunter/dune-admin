@@ -940,7 +940,9 @@
     "unsaved": "kaydedilmedi",
     "userOverride": "· kullanıcı geçersiz kılması",
     "expertCategories": "Uzman",
-    "expertCategoriesDesc": "Motor ve sistem dahili ayarları. Bunları yalnızca ne yaptığınızı tam olarak biliyorsanız değiştirin."
+    "expertCategoriesDesc": "Motor ve sistem dahili ayarları. Bunları yalnızca ne yaptığınızı tam olarak biliyorsanız değiştirin.",
+    "ampManagedTooltip": "AMP API aracılığıyla yönetilir — sonraki sunucu yeniden başlatmasında uygulanır",
+    "removeFrom": "{{file}} dosyasından kaldır"
   },
   "settings": {
     "adv": {

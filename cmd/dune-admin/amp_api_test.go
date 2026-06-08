@@ -292,3 +292,88 @@ func TestAMPAPIGetConfig_ReturnsCurrentValue(t *testing.T) {
 		})
 	}
 }
+
+// ── setConfig session-expiry retry ───────────────────────────────────────────
+
+// TestAMPAPISetConfig_RetriesOnSessionExpiry verifies that when SetConfig
+// returns a session-expired rejection, the client clears its session, re-logs
+// in, and retries the call — succeeding on the second attempt.
+func TestAMPAPISetConfig_RetriesOnSessionExpiry(t *testing.T) {
+	t.Parallel()
+	firstSet := true
+	var loginCalls int
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		switch {
+		case strings.Contains(cmd, "Core/Login"):
+			loginCalls++
+			return `{"success":true,"sessionID":"fresh-sess"}`, nil
+		case strings.Contains(cmd, "Core/SetConfig"):
+			if firstSet {
+				firstSet = false
+				return `{"Status":false,"Reason":"Session has expired."}`, nil
+			}
+			return `{"Status":true}`, nil
+		default:
+			return "", nil
+		}
+	}}
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	if err := c.setConfig("Meta.GenericModule.X", "1"); err != nil {
+		t.Errorf("expected retry to succeed on session expiry, got: %v", err)
+	}
+	if loginCalls != 2 {
+		t.Errorf("login called %d times, want 2 (initial + re-login on expiry)", loginCalls)
+	}
+}
+
+// TestAMPAPISetConfig_DoesNotRetryNonSessionError verifies that a SetConfig
+// rejection unrelated to session expiry is returned immediately without retry.
+func TestAMPAPISetConfig_DoesNotRetryNonSessionError(t *testing.T) {
+	t.Parallel()
+	setCalls := 0
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		if strings.Contains(cmd, "Core/Login") {
+			return `{"success":true,"sessionID":"s"}`, nil
+		}
+		setCalls++
+		return `{"Status":false,"Reason":"No such node."}`, nil
+	}}
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	err := c.setConfig("Meta.GenericModule.Bogus", "1")
+	if err == nil {
+		t.Fatal("expected error for no-such-node rejection")
+	}
+	if setCalls != 1 {
+		t.Errorf("non-session error must not trigger retry: SetConfig called %d times, want 1", setCalls)
+	}
+}
+
+// TestAMPAPISetConfig_ReloginFailurePropagates verifies that when re-login
+// fails after a session expiry, the login error is returned rather than a
+// silent success.
+func TestAMPAPISetConfig_ReloginFailurePropagates(t *testing.T) {
+	t.Parallel()
+	var loginCalls int
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		switch {
+		case strings.Contains(cmd, "Core/Login"):
+			loginCalls++
+			if loginCalls > 1 {
+				return `{"success":false,"resultReason":"account locked"}`, nil
+			}
+			return `{"success":true,"sessionID":"s"}`, nil
+		case strings.Contains(cmd, "Core/SetConfig"):
+			return `{"Status":false,"Reason":"Session has expired."}`, nil
+		default:
+			return "", nil
+		}
+	}}
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	err := c.setConfig("Meta.GenericModule.X", "1")
+	if err == nil {
+		t.Fatal("expected error when re-login fails after session expiry")
+	}
+	if !strings.Contains(err.Error(), "account locked") {
+		t.Errorf("error should surface re-login reason, got: %v", err)
+	}
+}

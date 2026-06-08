@@ -940,7 +940,9 @@
     "unsaved": "unsaved",
     "userOverride": "· user override",
     "expertCategories": "Expert",
-    "expertCategoriesDesc": "Engine and system internals. Change these only if you know exactly what you're doing."
+    "expertCategoriesDesc": "Engine and system internals. Change these only if you know exactly what you're doing.",
+    "ampManagedTooltip": "Managed via the AMP API — applied on the next server restart",
+    "removeFrom": "Remove from {{file}}"
   },
   "settings": {
     "adv": {

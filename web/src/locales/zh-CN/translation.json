@@ -940,7 +940,9 @@
     "unsaved": "未保存",
     "userOverride": "· 用户覆盖",
     "expertCategories": "专家",
-    "expertCategoriesDesc": "引擎和系统内部设置。仅在你确切了解其作用时才更改。"
+    "expertCategoriesDesc": "引擎和系统内部设置。仅在你确切了解其作用时才更改。",
+    "ampManagedTooltip": "通过 AMP API 管理 — 在下次服务器重启时生效",
+    "removeFrom": "从 {{file}} 中删除"
   },
   "settings": {
     "adv": {

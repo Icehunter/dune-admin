@@ -1,4 +1,5 @@
-# dune-admin
+<img width="2172" height="724" alt="image" src="https://github.com/user-attachments/assets/bc894468-1f91-4e23-b899-fb6432f90813" />
+
 
 Web-based admin panel for a Dune Awakening private server. Works against any deployment topology — CubeCoders AMP (podman or docker), k3s/k8s over SSH, Docker containers, or a bare-metal install.
 

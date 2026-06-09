@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Checkbox } from '@heroui/react'
+import { Button, Switch } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { getWsBase, api } from '../../../api/client'
 import { Icon } from '../../../dune-ui'
@@ -150,10 +150,10 @@ export const BotLogViewer: React.FC<BotLogViewerProps> = ({ active = false }: Bo
       <div className="flex items-center gap-2 shrink-0 flex-wrap">
         <span className={`text-xs font-mono ${stateColor}`}>{stateLabel}</span>
         <div className="flex-1" />
-        <Checkbox isSelected={autoScroll} onChange={setAutoScroll}>
-          <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
-          <Checkbox.Content>{t('market.bot.log.autoScroll')}</Checkbox.Content>
-        </Checkbox>
+        <Switch isSelected={autoScroll} onChange={setAutoScroll} size="sm">
+          <Switch.Control><Switch.Thumb /></Switch.Control>
+          <Switch.Content>{t('market.bot.log.autoScroll')}</Switch.Content>
+        </Switch>
         {connState !== 'connected'
           ? (
               <Button size="sm" variant="outline" onPress={connect} isDisabled={connState === 'connecting'}>

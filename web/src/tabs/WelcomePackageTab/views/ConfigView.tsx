@@ -1,5 +1,5 @@
 import type React from 'react'
-import { Button, ListBox, Spinner } from '@heroui/react'
+import { Button, ListBox, Spinner, Switch } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { Icon, NumberInput, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
 import type { WelcomeSharedProps } from '../types'
@@ -62,15 +62,10 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
 
       {/* Compact one-liner: enabled toggle + scan interval */}
       <div className="flex items-center gap-6 shrink-0">
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-            className="h-4 w-4 accent-accent"
-          />
-          <span className="text-sm text-foreground">{t('welcome.enabledLabel')}</span>
-        </label>
+        <Switch isSelected={enabled} onChange={setEnabled} size="sm">
+          <Switch.Control><Switch.Thumb /></Switch.Control>
+          <Switch.Content>{t('welcome.enabledLabel')}</Switch.Content>
+        </Switch>
         <span className="text-xs text-muted">{t('welcome.enabledHint')}</span>
         <NumberInput
           label={t('welcome.scanInterval')}
@@ -111,15 +106,10 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
       <Panel className="shrink-0">
         <SectionLabel>{t('welcome.message.title')}</SectionLabel>
 
-        <label className="flex items-center gap-2 mt-1 cursor-pointer select-none w-fit">
-          <input
-            type="checkbox"
-            checked={welcomeMessageEnabled}
-            onChange={(e) => setWelcomeMessageEnabled(e.target.checked)}
-            className="h-4 w-4 accent-accent"
-          />
-          <span className="text-sm text-foreground">{t('welcome.message.enabledLabel')}</span>
-        </label>
+        <Switch isSelected={welcomeMessageEnabled} onChange={setWelcomeMessageEnabled} size="sm">
+          <Switch.Control><Switch.Thumb /></Switch.Control>
+          <Switch.Content>{t('welcome.message.enabledLabel')}</Switch.Content>
+        </Switch>
         <p className="text-xs text-muted mt-1 mb-3">
           {t('welcome.message.enabledHint')}
         </p>

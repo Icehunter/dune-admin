@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useState, useEffect } from 'react'
-import { Button, Checkbox, Input, Spinner, toast } from '@heroui/react'
+import { Button, Input, Spinner, Switch, toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { api, MASKED } from '../../../api/client'
 import type { AppConfig } from '../../../api/client'
@@ -60,13 +60,14 @@ export const BotServerConfig: React.FC = () => {
       <Panel>
         <SectionLabel>{t('market.bot.serverConfig.embeddedBot')}</SectionLabel>
         <div className="mt-2 flex items-center gap-2">
-          <Checkbox
+          <Switch
             isSelected={cfg.market_bot_enabled}
             onChange={setBool('market_bot_enabled')}
+            size="sm"
           >
-            <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
-            <Checkbox.Content>{t('market.bot.serverConfig.enableEmbedded')}</Checkbox.Content>
-          </Checkbox>
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            <Switch.Content>{t('market.bot.serverConfig.enableEmbedded')}</Switch.Content>
+          </Switch>
           <span className="text-xs text-muted">{t('market.bot.serverConfig.restartRequired')}</span>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">

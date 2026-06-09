@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Checkbox, Chip, Spinner, toast } from '@heroui/react'
+import { Button, Chip, Spinner, Switch, toast } from '@heroui/react'
 import { api, getWsBase } from '../api/client'
 import type { LogPod, CheatEntry } from '../api/client'
 import { DataTable, Icon, LoadingState, SideNav, type Column } from '../dune-ui'
@@ -267,10 +267,10 @@ export const LogsTab: React.FC<LogsTabProps> = ({ control }) => {
                         : t('logs.selectSource', { label: itemLabel })}
                   </Chip>
                   <div className="flex-1" />
-                  <Checkbox isSelected={autoScroll} onChange={setAutoScroll}>
-                    <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
-                    <Checkbox.Content>{t('logs.autoScroll')}</Checkbox.Content>
-                  </Checkbox>
+                  <Switch isSelected={autoScroll} onChange={setAutoScroll} size="sm">
+                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                    <Switch.Content>{t('logs.autoScroll')}</Switch.Content>
+                  </Switch>
                   {selectedPod && connected && (
                     <Button size="sm" variant="danger-soft" onPress={disconnect}>
                       <Icon name="square" />

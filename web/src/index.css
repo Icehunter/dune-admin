@@ -214,7 +214,6 @@ body,
 .checkbox,
 .switch {
   position: relative;
-  align-self: start !important;
 }
 
 /* ── HeroUI Table — compact density. HeroUI doesn't ship a size prop, so

@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useState, useEffect, type MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Checkbox, Input, Select, ListBox, Spinner, Tabs, toast } from '@heroui/react'
+import { Button, Input, Select, ListBox, Spinner, Switch, Tabs, toast } from '@heroui/react'
 import { api, MASKED } from '../api/client'
 import type { AppConfig } from '../api/client'
 import { NumberInput, Panel, SectionLabel } from '../dune-ui'
@@ -113,10 +113,10 @@ interface CheckboxFieldProps {
 function CB({ label, checked, onChange, hint }: CheckboxFieldProps) {
   return (
     <div className="flex flex-col gap-0.5">
-      <Checkbox isSelected={!!checked} onChange={onChange}>
-        <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
-        <Checkbox.Content>{label}</Checkbox.Content>
-      </Checkbox>
+      <Switch isSelected={!!checked} onChange={onChange} size="sm">
+        <Switch.Control><Switch.Thumb /></Switch.Control>
+        <Switch.Content>{label}</Switch.Content>
+      </Switch>
       {hint && <p className="text-xs text-muted ml-6">{hint}</p>}
     </div>
   )

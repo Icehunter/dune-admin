@@ -20,12 +20,14 @@ import { StorageTab } from './tabs/StorageTab'
 import { ServerSettingsTab } from './tabs/ServerSettingsTab'
 import { MarketTab } from './tabs/MarketTab'
 import { WelcomePackageTab } from './tabs/WelcomePackageTab'
+import { DashboardTab } from './tabs/DashboardTab'
 import { Icon, SideNav } from './dune-ui'
 import { Toaster } from './components/ui/toaster'
 import { api } from './api/client'
 import type { UpdateCheckResult } from './api/client'
 
 const TAB_IDS = [
+  'dashboard',
   'battlegroup',
   'players',
   'database',
@@ -41,7 +43,7 @@ const TAB_IDS = [
   'welcome',
 ] as const
 type TabId = (typeof TAB_IDS)[number]
-const DEFAULT_TAB: TabId = 'battlegroup'
+const DEFAULT_TAB: TabId = 'dashboard'
 
 function currentTabFromPath(pathname: string): TabId {
   const seg = pathname.replace(/^\//, '').split('/')[0]
@@ -67,6 +69,7 @@ const MStorageTab = memo(StorageTab)
 const MServerSettingsTab = memo(ServerSettingsTab)
 const MMarketTab = memo(MarketTab)
 const MWelcomePackageTab = memo(WelcomePackageTab)
+const MDashboardTab = memo(DashboardTab)
 
 const hasClerk = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -572,6 +575,13 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
           return (
             <div className="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
               <nav className="w-60 shrink-0 flex flex-col gap-2 overflow-y-auto">
+                <SideNav
+                  width="w-full"
+                  title="Overview"
+                  items={[{ key: 'dashboard', label: 'Dashboard' }]}
+                  active={currentTab}
+                  onSelect={(k) => navigate(`/${k}`)}
+                />
                 {/* Operations: rendered separately so Database can expand DB sub-items inline */}
                 <SideNav
                   width="w-full"
@@ -622,6 +632,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                 />
               </nav>
               <main className="flex-1 overflow-hidden min-h-0">
+                {renderTab('dashboard', <MDashboardTab isActive={currentTab === 'dashboard'} />)}
                 {renderTab('battlegroup', <MBattlegroupTab isActive={currentTab === 'battlegroup'} />)}
                 {renderTab('players', <MPlayersTab isActive={currentTab === 'players'} />)}
                 {renderTab('database', databaseNode)}
@@ -650,6 +661,10 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
             >
               <Tabs.ListContainer className="px-3 py-2 overflow-x-auto">
                 <Tabs.List aria-label={t('app.title')}>
+                  <Tabs.Tab key="dashboard" id="dashboard">
+                    Dashboard
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
                   {NAV_GROUPS.flatMap((g) => g.items).map((item) => (
                     <Tabs.Tab key={item.key} id={item.key}>
                       {item.label}
@@ -661,6 +676,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
             </Tabs>
             <div className="flex-1 p-3 overflow-hidden min-h-0">
               <main className="h-full overflow-hidden min-h-0">
+                {renderTab('dashboard', <MDashboardTab isActive={currentTab === 'dashboard'} />)}
                 {renderTab('battlegroup', <MBattlegroupTab isActive={currentTab === 'battlegroup'} />)}
                 {renderTab('players', <MPlayersTab isActive={currentTab === 'players'} />)}
                 {renderTab('database', databaseNode)}

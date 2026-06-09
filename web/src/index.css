@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@heroui/styles";
+@import "tw-animate-css";
 
 /* unicode-range restricts Duneway to the Latin/Cyrillic blocks it actually covers.
    Symbols, arrows, dingbats (U+2000+) fall through to the system font immediately,
@@ -172,6 +173,42 @@
   --color-rarity-legendary: var(--rarity-legendary);
   --color-rarity-unique: var(--rarity-unique);
   --color-rarity-memento: var(--rarity-memento);
+}
+
+/* ── shadcn / Radix semantic bridge ──────────────────────────────────────────
+   New primitives in src/components/ui/* are authored against shadcn utility
+   names (bg-primary, text-muted-foreground, ring-ring, border-input, …). Map the
+   NON-colliding ones onto the existing Dune tokens so they resolve to the
+   amber/dark identity with no visual change.
+
+   Deliberately NOT redefined here: --color-accent and --color-muted. During the
+   HeroUI coexistence period @heroui/styles still owns those with their Dune
+   meanings (brand amber / muted text) and the existing app relies on them. Brand
+   amber is reached via --color-primary (and --color-accent-brand); the shadcn
+   "subtle surface accent" role is expressed with bg-surface-hover in primitives
+   instead. Drop @heroui/styles (and revisit these) only once HeroUI is gone.   */
+@theme inline {
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-foreground);
+  --color-secondary: var(--surface-secondary);
+  --color-secondary-foreground: var(--foreground);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--danger-foreground);
+  --color-ring: var(--focus);
+  --color-input: var(--field-border);
+  --color-accent-brand: var(--accent);
+
+  /* Keep Dune's near-square --radius (0.1em) across the rounded-* scale so
+     shadcn primitives don't introduce consumer-grade rounding. */
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius);
 }
 
 html,
@@ -388,4 +425,18 @@ pre,
 
 .dune-tab-active {
   animation: dune-tab-in 180ms ease-out both;
+}
+
+/* Honour the OS "reduce motion" preference everywhere: collapse animations and
+   transitions (incl. the tw-animate-css Dialog/Sheet/DropdownMenu utilities and
+   the tab fade above) to near-instant so nothing slides, fades, or spins. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

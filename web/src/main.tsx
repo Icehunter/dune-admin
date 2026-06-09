@@ -6,8 +6,21 @@ import './i18n'
 import { App } from './App.tsx'
 import { ClerkProvider } from '@clerk/react'
 import { dark } from '@clerk/themes'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+
+// Shared React Query client. The backend pushes no real-time updates, so
+// refetch-on-focus is off; tabs that need polling set their own refetchInterval.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 
 // Match Clerk modals to the dune-admin dark amber theme.
 // Element class overrides are needed for the backdrop because Clerk injects
@@ -30,15 +43,17 @@ const clerkAppearance = {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
-      {publishableKey
-        ? (
-            <ClerkProvider publishableKey={publishableKey} afterSignOutUrl="/" appearance={clerkAppearance}>
+      <QueryClientProvider client={queryClient}>
+        {publishableKey
+          ? (
+              <ClerkProvider publishableKey={publishableKey} afterSignOutUrl="/" appearance={clerkAppearance}>
+                <App />
+              </ClerkProvider>
+            )
+          : (
               <App />
-            </ClerkProvider>
-          )
-        : (
-            <App />
-          )}
+            )}
+      </QueryClientProvider>
     </HashRouter>
   </StrictMode>,
 )

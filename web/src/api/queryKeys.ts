@@ -10,4 +10,8 @@ export const qk = {
     all: ['bases'] as const,
     list: ['bases', 'list'] as const,
   },
+  landsraad: {
+    all: ['landsraad'] as const,
+    overview: ['landsraad', 'overview'] as const,
+  },
 } as const

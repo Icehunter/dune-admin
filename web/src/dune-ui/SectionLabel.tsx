@@ -6,13 +6,15 @@ interface SectionLabelProps {
 }
 
 /**
- * Small uppercase amber label — sub-section heading inside a Panel.
- * Pairs with [[PageHeader]] (top-level) and [[SectionDivider]] (mid-level).
+ * Small uppercase amber label — sub-section heading inside a Panel. An <h3>:
+ * it sits directly under the page title (PageHeader, <h2>) in most tabs, so a
+ * lower level would skip a heading rank (WCAG heading-order). Valid too when
+ * nested under a [[SectionDivider]] (also <h3>) — same rank, no skip.
  */
 export const SectionLabel: React.FC<SectionLabelProps> = ({ children }) => {
   return (
-    <h4 className="text-xs font-semibold uppercase tracking-widest text-accent border-l-2 border-[#754d13] pl-2">
+    <h3 className="text-xs font-semibold uppercase tracking-widest text-accent border-l-2 border-[#754d13] pl-2">
       {children}
-    </h4>
+    </h3>
   )
 }

@@ -249,7 +249,9 @@ body,
 }
 
 /* Column headers — sit on the body bg with a hairline divider below.
-   Subtle elevation; the amber text + uppercase is what makes them read.   */
+   Subtle elevation; the amber text + uppercase is what makes them read.
+   Stickiness is owned by the DataTable header rowgroup (sticky top-0), so the
+   header cell itself is not positioned here. */
 [role="columnheader"] {
   background: linear-gradient(180deg, #1f1710 0%, var(--surface) 100%);
   color: var(--accent);
@@ -258,9 +260,6 @@ body,
   letter-spacing: 0.05em;
   border-bottom: 1px solid var(--border);
   border-top: 1px solid #4e3411;
-  position: sticky;
-  top: 0;
-  z-index: 1;
 }
 
 /* Base cells = darkest (page bg); even rows get the lighter zebra stripe. */
@@ -268,8 +267,11 @@ body,
 [role="gridcell"] {
   background: var(--background) !important;
 }
-[role="row"]:nth-child(even) > [role="rowheader"],
-[role="row"]:nth-child(even) > [role="gridcell"] {
+/* Zebra stripe is keyed on the LOGICAL row index (data-parity) the DataTable
+   stamps on each row, not DOM position — so stripes stay stable under
+   virtualization (where only a shifting window of rows is mounted). */
+[role="row"][data-parity="1"] > [role="rowheader"],
+[role="row"][data-parity="1"] > [role="gridcell"] {
   background: var(--surface) !important;
 }
 

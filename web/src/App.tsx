@@ -21,6 +21,7 @@ import { ServerSettingsTab } from './tabs/ServerSettingsTab'
 import { MarketTab } from './tabs/MarketTab'
 import { WelcomePackageTab } from './tabs/WelcomePackageTab'
 import { Icon, SideNav } from './dune-ui'
+import { Toaster } from './components/ui/toaster'
 import { api } from './api/client'
 import type { UpdateCheckResult } from './api/client'
 
@@ -257,7 +258,10 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     // stale-language text on a language change (their props don't change), until
     // an unrelated local state update forces them to re-render (#123).
     <div key={i18n.language} className="h-screen flex flex-col overflow-hidden bg-background">
+      {/* HeroUI toasts (un-migrated tabs) + sonner toasts (migrated tabs) coexist
+          until the last @heroui/react toast import is gone. */}
       <Toast.Provider />
+      <Toaster />
 
       {/* Header */}
       <header

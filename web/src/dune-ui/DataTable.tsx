@@ -128,7 +128,12 @@ export const DataTable = <T, K extends string>({
                 >
                   {({ sortDirection }: ColumnRenderProps) => (
                     <span className="flex items-center gap-1">
-                      <span className="flex-1 truncate">{col.label}</span>
+                      <span className="flex-1 truncate">
+                        {/* Empty header (e.g. an actions column) still needs an
+                            accessible name for screen readers — fall back to the
+                            column key, visually hidden. */}
+                        {col.label || <span className="sr-only">{col.key}</span>}
+                      </span>
                       {sortable && (
                         <Icon
                           name={

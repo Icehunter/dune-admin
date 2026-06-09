@@ -1,9 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, Spinner, toast } from '@heroui/react'
+import { useQuery } from '@tanstack/react-query'
+import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Spinner } from '@/components/ui/spinner'
+import { toast } from '@/components/ui/toast'
 import { api, ApiError } from '../api/client'
 import type { BaseRow } from '../api/client'
+import { qk } from '../api/queryKeys'
 import { DataTable, Icon, PageHeader, type Column } from '../dune-ui'
 
 type Key = 'id' | 'name' | 'pieces' | 'placeables' | 'actions'
@@ -14,9 +19,23 @@ interface BasesTabProps {
 
 export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
   const { t } = useTranslation()
-  const [bases, setBases] = useState<BaseRow[]>([])
-  const [loading, setLoading] = useState(false)
-  const [unsupported, setUnsupported] = useState(false)
+
+  const { data: bases = [], isFetching, error, refetch } = useQuery({
+    queryKey: qk.bases.list,
+    queryFn: api.bases.list,
+    // A 404 is an expected "this control plane can't export bases" signal, not a
+    // transient failure — don't retry it (keeps the unsupported card instant).
+    retry: false,
+  })
+
+  // A 404 means the feature is unavailable on this control plane — show the
+  // notice card. Any other failure is surfaced as a toast, once per error.
+  const unsupported = error instanceof ApiError && error.status === 404
+  useEffect(() => {
+    if (error && !unsupported) {
+      toast.danger(t('bases.failedToLoad', { message: error instanceof Error ? error.message : String(error) }))
+    }
+  }, [error, unsupported, t])
 
   const COLUMNS: Column<Key>[] = [
     { key: 'id', label: t('bases.columns.id'), width: 80 },
@@ -25,25 +44,6 @@ export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
     { key: 'placeables', label: t('bases.columns.placeables'), width: 110 },
     { key: 'actions', label: '', width: 120, sortable: false },
   ]
-
-  const load = useCallback(() => {
-    Promise.resolve()
-      .then(() => {
-        setLoading(true)
-        setUnsupported(false)
-      })
-      .then(() => api.bases.list())
-      .then(setBases)
-      .catch((e: unknown) => {
-        if (e instanceof ApiError && e.status === 404) setUnsupported(true)
-        else toast.danger(t('bases.failedToLoad', { message: e instanceof Error ? e.message : String(e) }))
-      })
-      .finally(() => setLoading(false))
-  }, [t])
-
-  useEffect(() => {
-    load()
-  }, [load])
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
@@ -65,8 +65,8 @@ export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
         title={t('bases.title', { count: bases.length })}
         subtitle={t('bases.subtitle')}
       >
-        <Button size="sm" variant="ghost" onPress={load} isDisabled={loading}>
-          {loading
+        <Button size="sm" variant="ghost" onClick={() => refetch()} disabled={isFetching}>
+          {isFetching
             ? (
                 <Spinner size="sm" color="current" />
               )
@@ -83,14 +83,14 @@ export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
       {unsupported
         ? (
             <Card className="self-center max-w-sm">
-              <Card.Header>
-                <Card.Title className="text-accent text-sm">{t('bases.featureNotAvailable')}</Card.Title>
-              </Card.Header>
-              <Card.Content>
+              <CardHeader>
+                <CardTitle className="text-accent-brand text-sm">{t('bases.featureNotAvailable')}</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <p className="text-xs text-muted text-center">
                   {t('bases.featureNotAvailableDesc')}
                 </p>
-              </Card.Content>
+              </CardContent>
             </Card>
           )
         : (
@@ -99,7 +99,7 @@ export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
               className="min-h-0 max-h-full"
               columns={COLUMNS}
               rows={bases}
-              loading={loading}
+              loading={isFetching}
               rowId={(b) => String(b.id)}
               initialSort={{ column: 'id', direction: 'ascending' }}
               sortValue={(b, k) => (k === 'actions' ? '' : (b as unknown as Record<string, string | number>)[k])}
@@ -117,16 +117,18 @@ export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
                   case 'actions':
                     return isSignedIn
                       ? (
-                          <a href={api.bases.exportUrl(b.id)} download={b.name ? `${b.name}.json` : `base-${b.id}.json`}>
-                            <Button size="sm" variant="outline" className="w-full">
+                          // asChild renders a single anchor styled as a button — no
+                          // nested interactive (button-in-link) a11y violation.
+                          <Button asChild size="sm" variant="outline" className="w-full">
+                            <a href={api.bases.exportUrl(b.id)} download={b.name ? `${b.name}.json` : `base-${b.id}.json`}>
                               <Icon name="download" />
                               {' '}
                               {t('bases.export')}
-                            </Button>
-                          </a>
+                            </a>
+                          </Button>
                         )
                       : (
-                          <Button size="sm" variant="outline" className="w-full" isDisabled>
+                          <Button size="sm" variant="outline" className="w-full" disabled>
                             <Icon name="download" />
                             {' '}
                             {t('bases.export')}

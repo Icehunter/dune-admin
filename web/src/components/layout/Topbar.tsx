@@ -44,7 +44,7 @@ export function Topbar({
   const { t } = useTranslation()
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 sm:px-5">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface/70 px-4 backdrop-blur-xl sm:px-5">
       <button
         type="button"
         onClick={onOpenMobileNav}

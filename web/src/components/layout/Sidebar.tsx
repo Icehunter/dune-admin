@@ -87,7 +87,7 @@ export function Sidebar({
   }
 
   return (
-    <div className={cn('flex h-full flex-col bg-surface py-3', collapsed ? 'w-16 px-2' : 'w-60 px-3')}>
+    <div className={cn('flex h-full flex-col bg-surface/70 py-3 backdrop-blur-xl', collapsed ? 'w-16 px-2' : 'w-60 px-3')}>
       <div className={cn('mb-3 flex items-center', collapsed ? 'justify-center' : 'justify-between')}>
         <button
           type="button"
@@ -99,7 +99,7 @@ export function Sidebar({
             <Icon name="hexagon" className="size-5" />
           </span>
           {!collapsed && (
-            <span className="text-sm font-extrabold uppercase tracking-[0.18em] text-accent-brand">{t('app.title')}</span>
+            <span className="font-brand text-sm font-extrabold uppercase tracking-[0.16em] text-accent-brand">{t('app.title')}</span>
           )}
         </button>
         {!collapsed && !hideCollapse && onToggleCollapse && (

@@ -28,15 +28,15 @@ const queryClient = new QueryClient({
 const clerkAppearance = {
   baseTheme: dark,
   variables: {
-    colorPrimary: '#c9820a',
-    colorDanger: '#c9230a',
-    borderRadius: '2px',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
+    colorPrimary: '#1574e5',
+    colorDanger: '#ff5a5f',
+    borderRadius: '10px',
+    fontFamily: '"Manrope Variable", system-ui, -apple-system, sans-serif',
   },
   elements: {
     formButtonPrimary:
-      'bg-[#c9820a] hover:bg-[#d4900f] text-black font-bold shadow-none normal-case tracking-normal',
-    footerActionLink: 'text-[#c9820a] hover:text-[#d4900f]',
+      'bg-[#1574e5] hover:bg-[#2a82ea] text-white font-bold shadow-none normal-case tracking-normal',
+    footerActionLink: 'text-[#5aa2f0] hover:text-[#7db4f4]',
   },
 } as const
 

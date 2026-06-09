@@ -13,7 +13,7 @@ import { InfoCard, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
 const FACTION_COLOR_MAP: Record<string, string> = {
   Atreides: '#52c080',
   Harkonnen: '#e05252',
-  Smuggler: '#c9820a',
+  Smuggler: '#e6a338',
   None: '#8a8a8a',
   Unaligned: '#8a8a8a',
 }

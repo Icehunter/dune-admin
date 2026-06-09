@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 @import "tw-animate-css";
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/jetbrains-mono";
 
 /* unicode-range restricts Duneway to the Latin/Cyrillic blocks it actually covers.
    Symbols, arrows, dingbats (U+2000+) fall through to the system font immediately,
@@ -53,72 +55,57 @@
   font-display: swap;
 }
 
-/* ── Dune desert dark theme ──────────────────────────────────────────────────
-   Single source of truth for the dune palette. We override HeroUI v3 semantic
-   tokens directly so utility classes (`bg-surface`, `text-foreground`,
-   `border-border`, `bg-accent`, etc.) and HeroUI components both pick up the
-   amber/sand colors automatically — no need for inline style={{}} overrides.
-
-   `.dark` is applied on <html> in index.html.
+/* ── webui-style cool dark theme ─────────────────────────────────────────────
+   Cool neutral surfaces + a blue accent + soft rounded corners. We override
+   HeroUI v3 semantic tokens directly so utilities (`bg-surface`, `text-foreground`,
+   `border-border`, `bg-accent`, etc.) and HeroUI components pick it up. UI type
+   is Manrope (see @theme); Duneway is kept only for the brand wordmark
+   (`font-brand`). `.dark` is applied on <html> in index.html.
    ─────────────────────────────────────────────────────────────────────────── */
-
-:root {
-  --font-sans: "Duneway", ui-sans-serif, system-ui, sans-serif;
-}
 
 .dark {
   color-scheme: dark;
 
-  /* ── Dune monochromatic amber ladder (light → dark) ──────────────────────
-     #f0a830 — accent hover / link
-     #c9820a — primary accent
-     #9e6711 — secondary accent
-     #754d13 — soft accent borders / scrollbar
-     #4e3411 — borders / hover surface / elevated panels
-     #2a1d0c — primary surface (cards, tables, modal body)
-     #1a1610 — subtle stripe / field background
-     #0d0b07 — page background (near-black warm)                              */
+  /* Base */
+  --background: #0a0d13; /* page */
+  --foreground: #e9eef6;
+  --muted: #9aa6b8; /* secondary text */
 
-  /* Base — surfaces use the DARKER half of the palette */
-  --background: #0d0b07; /* page */
-  --foreground: #e8dcc8;
-  --muted: #8a7a60;
+  /* Surfaces — cool neutral, ascending elevation */
+  --surface: #121722; /* cards, tables, modal body */
+  --surface-foreground: #e9eef6;
+  --surface-secondary: #171d2a; /* slightly elevated panels */
+  --surface-tertiary: #1d2533; /* top elevation */
+  --overlay: #121722;
+  --overlay-foreground: #e9eef6;
 
-  /* Surfaces (darker) */
-  --surface: #1a1610; /* cards, tables, modal body */
-  --surface-foreground: #e8dcc8;
-  --surface-secondary: #2a1d0c; /* slightly elevated panels */
-  --surface-tertiary: #4e3411; /* top elevation (table headers) */
-  --overlay: #1a1610; /* modal body */
-  --overlay-foreground: #e8dcc8;
+  --default: #121722;
+  --default-foreground: #e9eef6;
 
-  --default: #1a1610;
-  --default-foreground: #e8dcc8;
+  /* Accent — blue */
+  --accent: #1574e5;
+  --accent-foreground: #ffffff;
+  --focus: #5aa2f0;
+  --link: #5aa2f0;
 
-  /* Accent — dune amber */
-  --accent: #c9820a;
-  --accent-foreground: #0d0b07;
-  --focus: #f0a830;
-  --link: #f0a830;
+  /* Form fields — recessed bg + cool border */
+  --field-background: #0d121b;
+  --field-foreground: #e9eef6;
+  --field-placeholder: #66717f;
+  --field-border: #313b4d;
 
-  /* Form fields — recessed bg + BRIGHTER border for emphasis */
-  --field-background: #0d0b07;
-  --field-foreground: #e8dcc8;
-  --field-placeholder: #8a7a60;
-  --field-border: #754d13; /* brighter — buttons & inputs pop */
+  /* Border + radii — hairline borders, soft rounded corners */
+  --border-width: 1px;
+  --field-border-width: 1px;
+  --radius: 0.75rem; /* 12px base */
+  --field-radius: 0.5rem; /* 8px */
 
-  /* Border widths + radii — global override: thin border, near-square corners */
-  --border-width: 0.1em;
-  --field-border-width: 0.1em;
-  --radius: 0.1em;
-  --field-radius: 0.1em;
-
-  /* Status — hue-shifted from accent to stay in family */
-  --success: #b0c90a; /* amber-green */
-  --success-foreground: #0d0b07;
-  --warning: #f0a830; /* lighter amber */
-  --warning-foreground: #0d0b07;
-  --danger: #c9230a; /* amber-red */
+  /* Status */
+  --success: #34c97a;
+  --success-foreground: #03130a;
+  --warning: #e6a338;
+  --warning-foreground: #1a1203;
+  --danger: #ff5a5f;
   --danger-foreground: #ffffff;
 
   /* Item rarity tiers — used by Market grid/table to color names & borders */
@@ -126,22 +113,23 @@
   --rarity-uncommon: var(--success);
   --rarity-rare: #4a90e2; /* blue */
   --rarity-epic: #a855f7; /* purple */
-  --rarity-legendary: #f0a830; /* amber */
+  --rarity-legendary: #e6a338; /* gold */
   --rarity-unique: #f97316; /* orange */
   --rarity-memento: #f43f5e; /* rose */
 
-  /* Borders / separators — mid-tone */
-  --border: #4e3411;
-  --separator: #2a1d0c; /* subtle in-table dividers */
+  /* Borders / separators */
+  --border: #232b3a;
+  --border-strong: #313b4d;
+  --separator: #1a2230; /* subtle in-table dividers */
 
   /* Scrollbar */
-  --scrollbar: #754d13;
+  --scrollbar: #313b4d;
 
-  /* Dune-specific extras (not part of HeroUI's standard set) */
-  --surface-alt: #14110b; /* striped table rows — between bg and surface */
-  --surface-hover: #2a1d0c; /* hover state for rows / nav */
-  --accent-soft-bg: #2a1d0c; /* faint amber pill background */
-  --accent-soft-border: #754d13;
+  /* Extras (not part of HeroUI's standard set) */
+  --surface-alt: #0f141d; /* striped table rows */
+  --surface-hover: #1d2533; /* hover state for rows / nav */
+  --accent-soft-bg: #13233c; /* faint blue pill background */
+  --accent-soft-border: #27456e;
 
   /* ── Legacy aliases ────────────────────────────────────────────────────────
      Existing markup uses `var(--color-*)` everywhere. Map those to the new
@@ -163,8 +151,12 @@
    `bg-surface-alt`, `border-border-strong`, etc. The standard HeroUI tokens
    (`bg-surface`, `bg-accent`, etc.) are wired by @heroui/styles already.    */
 @theme {
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-brand: 'Duneway', ui-sans-serif, system-ui, sans-serif;
   --color-surface-alt: var(--surface-alt);
   --color-surface-hover: var(--surface-hover);
+  --color-border-strong: var(--border-strong);
   --color-accent-soft: var(--accent-soft-bg);
   --color-rarity-common: var(--rarity-common);
   --color-rarity-uncommon: var(--rarity-uncommon);
@@ -203,12 +195,11 @@
   --color-input: var(--field-border);
   --color-accent-brand: var(--accent);
 
-  /* Keep Dune's near-square --radius (0.1em) across the rounded-* scale so
-     shadcn primitives don't introduce consumer-grade rounding. */
-  --radius-sm: var(--radius);
-  --radius-md: var(--radius);
-  --radius-lg: var(--radius);
-  --radius-xl: var(--radius);
+  /* Soft rounded corners (webui scale). */
+  --radius-sm: 0.5625rem; /* 9px */
+  --radius-md: 0.75rem; /* 12px */
+  --radius-lg: 1rem; /* 16px */
+  --radius-xl: 1.375rem; /* 22px */
 }
 
 html,
@@ -217,9 +208,23 @@ body,
   background-color: var(--background);
   color: var(--foreground);
   min-height: 100vh;
-  font-family: "Duneway", system-ui, sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
   padding: 0;
+}
+
+body {
+  /* Manrope's contextual alternates + slightly tighter tracking, and a faint
+     accent-tinted wash at the top for webui-style depth. */
+  font-feature-settings: 'cv11', 'ss01';
+  letter-spacing: -0.006em;
+  line-height: 1.5;
+  background-image: radial-gradient(
+    1100px 520px at 50% -8%,
+    color-mix(in oklab, var(--accent) 9%, transparent),
+    transparent 72%
+  );
+  background-attachment: fixed;
 }
 
 /* Scrollbar */
@@ -253,13 +258,12 @@ body,
    Stickiness is owned by the DataTable header rowgroup (sticky top-0), so the
    header cell itself is not positioned here. */
 [role="columnheader"] {
-  background: linear-gradient(180deg, #1f1710 0%, var(--surface) 100%);
-  color: var(--accent);
+  background: var(--surface-secondary);
+  color: var(--muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid var(--border);
-  border-top: 1px solid #4e3411;
 }
 
 /* Base cells = darkest (page bg); even rows get the lighter zebra stripe. */
@@ -275,10 +279,10 @@ body,
   background: var(--surface) !important;
 }
 
-/* Amber left accent on row hover — inset shadow avoids layout shift. */
+/* Accent left bar on row hover — inset shadow avoids layout shift. */
 [role="row"]:hover > [role="rowheader"],
 [role="row"]:hover > [role="gridcell"]:first-of-type {
-  box-shadow: inset 2px 0 0 rgba(201, 130, 10, 0.45);
+  box-shadow: inset 2px 0 0 color-mix(in oklab, var(--accent) 55%, transparent);
 }
 
 /* ── Tabs.Panel — HeroUI's default panel bg is too amber for our theme.
@@ -366,9 +370,9 @@ body,
   background: transparent;
 }
 
-/* ── HeroUI modal dialog — warm gradient body matches the panel language.  */
+/* ── HeroUI modal dialog — cool elevated surface.  */
 [role="dialog"] {
-  background: linear-gradient(170deg, #2a1d0c 0%, #0d0b07 100%) !important;
+  background: var(--surface) !important;
 }
 .dialog-surface-alt[role="dialog"] {
   background: var(--surface-alt) !important;
@@ -385,18 +389,18 @@ pre,
    a gradient that darkens toward the bottom, and a stacked drop-shadow.
    Use alongside existing bg-surface* + border-border classes.              */
 .dune-lift {
-  background: linear-gradient(170deg, #2a1d0c 0%, #0d0b07 100%) !important;
-  border-top-color: #9e6711 !important;
+  background: var(--surface) !important;
+  border-top-color: var(--border-strong) !important;
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.35),
-    0 4px 10px rgba(0, 0, 0, 0.25);
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    0 16px 40px -16px rgba(0, 0, 0, 0.5);
 }
 
 /* Clerk modal backdrop — Clerk injects this via inline style so the
    appearance.elements className alone doesn't override it. */
 .cl-modalBackdrop,
 [class*="cl-modalBackdrop"] {
-  background-color: rgba(13, 11, 7, 0.82) !important;
+  background-color: rgba(10, 13, 19, 0.82) !important;
   backdrop-filter: blur(6px) !important;
   -webkit-backdrop-filter: blur(6px) !important;
 }
@@ -407,7 +411,7 @@ pre,
 .cl-card,
 [class*="cl-cardBox"],
 [class*="cl-card "] {
-  border: 1px solid rgba(201, 130, 10, 0.2) !important;
+  border: 1px solid rgba(21, 116, 229, 0.25) !important;
   box-shadow:
     0 18px 48px rgba(0, 0, 0, 0.6),
     0 0 0 1px rgba(255, 255, 255, 0.02) inset !important;

@@ -25,7 +25,7 @@ export const XPChart: React.FC<XPChartProps> = ({ data }) => {
   const [hidden, setHidden] = useState<Set<string>>(new Set())
 
   const LINES: { key: keyof StatSnapshot, label: string, color: string }[] = [
-    { key: 'char_xp', label: t('players.detail.xpCharXP'), color: '#c9820a' },
+    { key: 'char_xp', label: t('players.detail.xpCharXP'), color: '#1574e5' },
     { key: 'combat_xp', label: t('players.detail.xpCombat'), color: '#e05252' },
     { key: 'crafting_xp', label: t('players.detail.xpCrafting'), color: '#5296e0' },
     { key: 'gathering_xp', label: t('players.detail.xpGathering'), color: '#52c080' },

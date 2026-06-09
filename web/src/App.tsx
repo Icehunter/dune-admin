@@ -1,7 +1,7 @@
 import type React from 'react'
 import { memo, useState, useEffect, useRef, type ReactNode } from 'react'
 import { useAuth } from '@clerk/react'
-import { Button, Modal, Spinner, Toast, toast } from '@heroui/react'
+import { Toast } from '@heroui/react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useStatus } from './hooks/useStatus'
@@ -21,6 +21,10 @@ import { MarketTab } from './tabs/MarketTab'
 import { WelcomePackageTab } from './tabs/WelcomePackageTab'
 import { DashboardTab } from './tabs/DashboardTab'
 import { Icon } from './dune-ui'
+import { Button } from './components/ui/button'
+import { Spinner } from './components/ui/spinner'
+import { toast } from './components/ui/toast'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog'
 import { Toaster } from './components/ui/toaster'
 import { Sidebar } from './components/layout/Sidebar'
 import { Topbar } from './components/layout/Topbar'
@@ -303,175 +307,128 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
       />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNavigate={onNavigate} />
 
-      {/* Settings modal — structure mirrors BotControlPanel */}
-      <Modal>
-        <Modal.Backdrop isOpen={showBackendConfig} onOpenChange={(v) => !v && setShowBackendConfig(false)}>
-          <Modal.Container size="cover" scroll="outside">
-            <Modal.Dialog className="h-[92vh] flex flex-col">
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <div className="flex items-baseline gap-6 flex-wrap">
-                  <Modal.Heading className="text-accent">{t('app.settings')}</Modal.Heading>
-                  {status && (
-                    <div className="flex items-center gap-4 text-xs text-muted">
-                      {status.version && (
-                        <span className="font-mono">
-                          v
-                          {status.version}
-                        </span>
-                      )}
-                      {status.control && status.control !== 'none' && <span>{status.control}</span>}
-                      {status.commit && status.commit !== 'unknown' && (
-                        <span className="font-mono opacity-60">{status.commit}</span>
-                      )}
-                    </div>
+      {/* Settings dialog */}
+      <Dialog open={showBackendConfig} onOpenChange={setShowBackendConfig}>
+        <DialogContent className="flex h-[88vh] flex-col gap-3 sm:max-w-2xl md:max-w-4xl">
+          <DialogHeader>
+            <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 pr-6">
+              <DialogTitle>{t('app.settings')}</DialogTitle>
+              {status && (
+                <div className="flex items-center gap-4 text-xs text-muted">
+                  {status.version && <span className="font-mono">{`v${status.version}`}</span>}
+                  {status.control && status.control !== 'none' && <span>{status.control}</span>}
+                  {status.commit && status.commit !== 'unknown' && (
+                    <span className="font-mono opacity-60">{status.commit}</span>
                   )}
                 </div>
-              </Modal.Header>
+              )}
+            </div>
+          </DialogHeader>
 
-              {/* Body scrolls; form fills it with its own internal tab scroll */}
-              <Modal.Body className="flex flex-col overflow-y-auto flex-1 min-h-0 pr-1">
-                {showBackendConfig && (
-                  <SettingsConfigForm saveRef={formSaveRef} onSavingChange={setFormSaving} />
-                )}
-              </Modal.Body>
+          {/* Body scrolls; form fills it with its own internal tab scroll */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
+            {showBackendConfig && (
+              <SettingsConfigForm saveRef={formSaveRef} onSavingChange={setFormSaving} />
+            )}
+          </div>
 
-              <Modal.Footer className="flex items-center gap-2">
-                {/* Left: update controls — fixed positions so buttons don't shift */}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onPress={checkUpdate}
-                  isDisabled={updateChecking || updateApplying}
-                >
-                  {updateChecking
-                    ? (
-                        <>
-                          <Spinner size="sm" color="current" />
-                          {' '}
-                          {t('common.checking')}
-                        </>
-                      )
-                    : t('app.checkUpdates')}
-                </Button>
-                {updateInfo && !updateInfo.needs_update && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onPress={() => applyUpdate(true)}
-                    isDisabled={updateApplying}
-                  >
-                    {updateApplying ? <Spinner size="sm" color="current" /> : t('app.reinstall')}
-                  </Button>
-                )}
-                {updateInfo?.needs_update && (
-                  <Button size="sm" onPress={() => applyUpdate()} isDisabled={updateApplying}>
-                    {updateApplying
-                      ? <Spinner size="sm" color="current" />
-                      : (
-                          <span className="font-mono text-xs">
-                            v
-                            {updateInfo.current}
-                            {' → '}
-                            v
-                            {updateInfo.latest.replace(/^v/, '')}
-                          </span>
-                        )}
-                  </Button>
-                )}
+          <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+            <Button size="sm" variant="ghost" onClick={checkUpdate} disabled={updateChecking || updateApplying}>
+              {updateChecking
+                ? (
+                    <>
+                      <Spinner size="sm" color="current" />
+                      {' '}
+                      {t('common.checking')}
+                    </>
+                  )
+                : t('app.checkUpdates')}
+            </Button>
+            {updateInfo && !updateInfo.needs_update && (
+              <Button size="sm" variant="ghost" onClick={() => applyUpdate(true)} disabled={updateApplying}>
+                {updateApplying ? <Spinner size="sm" color="current" /> : t('app.reinstall')}
+              </Button>
+            )}
+            {updateInfo?.needs_update && (
+              <Button size="sm" onClick={() => applyUpdate()} disabled={updateApplying}>
+                {updateApplying
+                  ? <Spinner size="sm" color="current" />
+                  : (
+                      <span className="font-mono text-xs">
+                        {`v${updateInfo.current} → v${updateInfo.latest.replace(/^v/, '')}`}
+                      </span>
+                    )}
+              </Button>
+            )}
 
-                {/* Spacer */}
-                <span className="flex-1" />
+            <span className="flex-1" />
 
-                {/* Right: save + close */}
-                <span className="text-xs text-muted">{t('app.changesNote')}</span>
-                <Button
-                  size="sm"
-                  onPress={() => formSaveRef.current?.()}
-                  isDisabled={formSaving}
-                >
-                  {formSaving
-                    ? (
-                        <>
-                          <Spinner size="sm" color="current" />
-                          {' '}
-                          {t('common.saving')}
-                        </>
-                      )
-                    : (
-                        <>
-                          <Icon name="save" />
-                          {' '}
-                          {t('app.saveApply')}
-                        </>
-                      )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="tertiary"
-                  onPress={() => setShowBackendConfig(false)}
-                >
-                  {t('common.close')}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+            <span className="text-xs text-muted">{t('app.changesNote')}</span>
+            <Button size="sm" onClick={() => formSaveRef.current?.()} disabled={formSaving}>
+              {formSaving
+                ? (
+                    <>
+                      <Spinner size="sm" color="current" />
+                      {' '}
+                      {t('common.saving')}
+                    </>
+                  )
+                : (
+                    <>
+                      <Icon name="save" />
+                      {' '}
+                      {t('app.saveApply')}
+                    </>
+                  )}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowBackendConfig(false)}>
+              {t('common.close')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* Update-available prompt — opened from the topbar release widget (#129).
-          Reuses the backend update check for the release-notes link + Continue/Cancel. */}
-      <Modal>
-        <Modal.Backdrop isOpen={showUpdateModal} onOpenChange={(v) => !v && setShowUpdateModal(false)}>
-          <Modal.Container size="sm">
-            <Modal.Dialog>
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <Modal.Heading className="text-accent">{t('app.updateAvailable')}</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body className="flex flex-col gap-3">
-                <p className="text-sm text-muted">
-                  {t('app.updateAvailableBody', {
-                    current: updateInfo?.current ?? '',
-                    latest: updateInfo?.latest?.replace(/^v/, '') ?? '',
-                  })}
-                </p>
-                {updateInfo?.release_url && (
-                  <a
-                    href={updateInfo.release_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-sm text-accent hover:opacity-80"
-                  >
-                    <Icon name="external-link" />
-                    {' '}
-                    {t('app.viewReleaseNotes')}
-                  </a>
-                )}
-              </Modal.Body>
-              <Modal.Footer className="flex items-center justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="tertiary"
-                  onPress={() => setShowUpdateModal(false)}
-                >
-                  {t('common.cancel')}
-                </Button>
-                <Button
-                  size="sm"
-                  onPress={() => {
-                    setShowUpdateModal(false)
-                    void applyUpdate()
-                  }}
-                  isDisabled={updateApplying}
-                >
-                  {updateApplying ? <Spinner size="sm" color="current" /> : t('app.updateNow')}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+      {/* Update-available prompt — opened from the topbar release widget (#129). */}
+      <Dialog open={showUpdateModal} onOpenChange={setShowUpdateModal}>
+        <DialogContent className="flex flex-col gap-3">
+          <DialogHeader>
+            <DialogTitle>{t('app.updateAvailable')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted">
+            {t('app.updateAvailableBody', {
+              current: updateInfo?.current ?? '',
+              latest: updateInfo?.latest?.replace(/^v/, '') ?? '',
+            })}
+          </p>
+          {updateInfo?.release_url && (
+            <a
+              href={updateInfo.release_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-accent hover:opacity-80"
+            >
+              <Icon name="external-link" />
+              {' '}
+              {t('app.viewReleaseNotes')}
+            </a>
+          )}
+          <div className="mt-1 flex items-center justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowUpdateModal(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                setShowUpdateModal(false)
+                void applyUpdate()
+              }}
+              disabled={updateApplying}
+            >
+              {updateApplying ? <Spinner size="sm" color="current" /> : t('app.updateNow')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

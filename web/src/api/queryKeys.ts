@@ -14,4 +14,9 @@ export const qk = {
     all: ['landsraad'] as const,
     overview: ['landsraad', 'overview'] as const,
   },
+  guilds: {
+    all: ['guilds'] as const,
+    list: ['guilds', 'list'] as const,
+    detail: (id: number) => ['guilds', 'detail', id] as const,
+  },
 } as const

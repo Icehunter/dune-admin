@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	pathpkg "path"
@@ -453,6 +454,64 @@ type serverSettingsWriter interface {
 	// writeServerSettings applies fieldName→value updates through the control
 	// plane's own configuration API.
 	writeServerSettings(ctx context.Context, exec Executor, updates map[string]string) error
+}
+
+// serverSettingsReader is implemented by control planes that own the curated
+// settings in their own config (AMP) rather than the INI files. It lets the GET
+// path read current values back from the control plane so the UI reflects values
+// saved through the control plane's API immediately, without waiting for a game
+// restart to regenerate the INIs (#173). Control planes that don't implement it
+// fall back to the INI-derived values.
+type serverSettingsReader interface {
+	// readServerSettings returns current fieldName→value for the given curated
+	// FieldNames, read from the control plane's own configuration API.
+	readServerSettings(ctx context.Context, exec Executor, fields []string) (map[string]string, error)
+}
+
+// ampSettingsSource marks a curated setting whose current value was read back
+// from the AMP control plane's live config (rather than an INI file).
+const ampSettingsSource = "amp"
+
+// curatedFieldNamesFrom collects the AMP FieldNames present in the built
+// settings (curated settings carry a FieldName; discovered ones don't).
+func curatedFieldNamesFrom(settings []ServerSetting) []string {
+	out := make([]string, 0, len(settings))
+	for _, s := range settings {
+		if s.FieldName != "" {
+			out = append(out, s.FieldName)
+		}
+	}
+	return out
+}
+
+// overlayAMPSettings makes the control plane's live config authoritative for
+// curated settings: each setting whose FieldName is in ampValues takes that
+// value as its Current. When the value differs from the schema default it is
+// also marked overridden and recorded as the top-priority "amp" layer, so the
+// detail view and the "modified" filter stay consistent. A value equal to the
+// default leaves the source/layers untouched (the setting is unconfigured).
+// A nil/empty map is a no-op, so non-AMP planes are unaffected.
+func overlayAMPSettings(settings []ServerSetting, ampValues map[string]string) []ServerSetting {
+	if len(ampValues) == 0 {
+		return settings
+	}
+	for i := range settings {
+		fn := settings[i].FieldName
+		if fn == "" {
+			continue
+		}
+		v, ok := ampValues[fn]
+		if !ok {
+			continue
+		}
+		settings[i].Current = v
+		settings[i].IsOverride = v != settings[i].Default
+		if v != settings[i].Default {
+			settings[i].Source = ampSettingsSource
+			settings[i].Layers = append(settings[i].Layers, SettingLayer{Source: ampSettingsSource, Value: v})
+		}
+	}
+	return settings
 }
 
 // splitCuratedFromINI partitions normalized (section→key→value) updates into
@@ -956,6 +1015,19 @@ func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
 	discovered := discoverUnknownSettings(layerSources, schemaKeys)
 	settings = append(settings, buildDiscoveredSettings(discovered, layerSources, schemaKeys)...)
 	raw := buildServerSettingsRawSections(defaultGameContent, defaultEngineContent, gameContent, engineContent, overridesContent, schemaKeys)
+
+	// AMP-style planes own curated settings in their own config and regenerate
+	// the INIs on restart, so read current values back from the control plane to
+	// reflect saved values immediately rather than showing stale/default INI
+	// values until the next restart (#173). Degrade gracefully: on error, keep
+	// the INI-derived values.
+	if reader, ok := globalControl.(serverSettingsReader); ok {
+		if amp, err := reader.readServerSettings(r.Context(), globalExecutor, curatedFieldNamesFrom(settings)); err != nil {
+			log.Printf("handleGetServerSettings: amp settings read-back: %v", err)
+		} else {
+			settings = overlayAMPSettings(settings, amp)
+		}
+	}
 
 	controlName := ""
 	if globalControl != nil {

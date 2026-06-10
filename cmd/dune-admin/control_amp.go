@@ -667,6 +667,32 @@ func (c *ampControl) writeServerSettings(_ context.Context, exec Executor, updat
 	return nil
 }
 
+// readServerSettings reads the current value of each curated FieldName back from
+// AMP's live config (Core/GetConfig on node "Meta.GenericModule.<FieldName>").
+// AMP — not the INI files — is the source of truth for these settings, so this
+// lets the read path reflect values saved through the AMP API immediately,
+// without waiting for AMP to regenerate UserEngine.ini / UserGame.ini on the
+// next game restart. Implements serverSettingsReader. The session is reused
+// across fields (login happens once on the first GetConfig).
+func (c *ampControl) readServerSettings(_ context.Context, exec Executor, fields []string) (map[string]string, error) {
+	if len(fields) == 0 {
+		return map[string]string{}, nil
+	}
+	if c.apiUser == "" || c.apiPass == "" {
+		return nil, fmt.Errorf("amp api credentials not configured — set amp_api_user and amp_api_pass to read server settings under AMP")
+	}
+	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiPort)
+	out := make(map[string]string, len(fields))
+	for _, field := range fields {
+		v, err := client.getConfig("Meta.GenericModule." + field)
+		if err != nil {
+			return nil, fmt.Errorf("read server setting %s: %w", field, err)
+		}
+		out[field] = v
+	}
+	return out, nil
+}
+
 // ── INI discovery ─────────────────────────────────────────────────────────────
 
 // gameOverridePath returns the file AMP appends to UserGame.ini at boot:

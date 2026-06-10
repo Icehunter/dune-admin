@@ -97,6 +97,8 @@ const SOURCE_FILE: Record<string, string> = {
   userGame: 'UserGame.ini',
   userEngine: 'UserEngine.ini',
   userGameOverrides: 'UserOverrides.ini',
+  // AMP-managed curated settings: read back from AMP's live config (#173).
+  amp: 'AMP config',
 }
 
 const LAYER_STYLE: Record<string, { cls: string }> = {
@@ -105,11 +107,12 @@ const LAYER_STYLE: Record<string, { cls: string }> = {
   userEngine: { cls: 'text-foreground/70' },
   userGame: { cls: 'text-foreground/70' },
   userGameOverrides: { cls: 'text-warning' },
+  amp: { cls: 'text-warning' },
 }
 
-const SOURCE_PRIORITY = ['defaultGame', 'defaultEngine', 'userEngine', 'userGame', 'userGameOverrides'] as const
+const SOURCE_PRIORITY = ['defaultGame', 'defaultEngine', 'userEngine', 'userGame', 'userGameOverrides', 'amp'] as const
 
-const USER_SOURCES = new Set(['userGame', 'userEngine', 'userGameOverrides'])
+const USER_SOURCES = new Set(['userGame', 'userEngine', 'userGameOverrides', 'amp'])
 
 export {
   CATEGORY_ORDER, CATEGORY_ICONS, CATEGORY_LABELS, ADVANCED_CATEGORIES, COMMON_KEYS,

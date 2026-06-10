@@ -1344,6 +1344,15 @@
       "grants": "Zuweisungen",
       "packages": "Pakete"
     },
-    "title": "Willkommenspakete"
+    "title": "Willkommenspakete",
+    "motd": {
+      "enabledHint": "Bei jedem Beitritt über die GM-Persona geflüstert (jede Sitzung, nicht nur die erste). Verwende {player} für den Spielernamen.",
+      "enabledLabel": "Spielern bei jedem Beitritt eine Nachricht senden",
+      "messageLabel": "Nachricht",
+      "messagePlaceholder": "Willkommen zurück, {player}! Schau im Discord nach Events.",
+      "senderLabel": "Absender-FLS-ID (optional)",
+      "senderPlaceholder": "Leer lassen, um die hinterlegte GM-Persona zu verwenden",
+      "title": "Nachricht des Tages"
+    }
   }
 }

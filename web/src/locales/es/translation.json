@@ -1367,6 +1367,15 @@
       "grants": "Concesiones",
       "packages": "Paquetes"
     },
-    "title": "Kits de bienvenida"
+    "title": "Kits de bienvenida",
+    "motd": {
+      "enabledHint": "Susurrado a través del personaje GM en cada conexión (cada sesión, no solo la primera). Usa {player} para el nombre del jugador.",
+      "enabledLabel": "Enviar un mensaje a los jugadores cada vez que se conectan",
+      "messageLabel": "Mensaje",
+      "messagePlaceholder": "¡Bienvenido de nuevo, {player}! Consulta el Discord para ver eventos.",
+      "senderLabel": "ID FLS del remitente (opcional)",
+      "senderPlaceholder": "Dejar en blanco para usar el personaje GM configurado",
+      "title": "Mensaje del día"
+    }
   }
 }

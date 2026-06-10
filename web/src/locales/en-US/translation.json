@@ -1344,6 +1344,15 @@
       "grants": "Grants",
       "packages": "Packages"
     },
-    "title": "Welcome Kits"
+    "title": "Welcome Kits",
+    "motd": {
+      "enabledHint": "Whispered via the GM persona on each join (every session, not just the first). Use {player} for the player's name.",
+      "enabledLabel": "Send a message to players every time they join",
+      "messageLabel": "Message",
+      "messagePlaceholder": "Welcome back, {player}! Check the Discord for events.",
+      "senderLabel": "Sender FLS ID (optional)",
+      "senderPlaceholder": "Leave blank to use the seeded GM persona",
+      "title": "Message of the Day"
+    }
   }
 }

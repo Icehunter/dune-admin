@@ -89,6 +89,40 @@ func TestWelcomeConfigStore_WelcomeMessageFieldsRoundTrip(t *testing.T) {
 	}
 }
 
+func TestWelcomeConfigStore_MotdFieldsRoundTrip(t *testing.T) {
+	t.Parallel()
+	s := openMemWelcomeStore(t)
+
+	cfg := welcomeConfigRow{
+		Enabled:          false, // MOTD is independent of the package being enabled
+		ScanSecs:         30,
+		PackagesJSON:     `[]`,
+		MotdEnabled:      true,
+		MotdMessage:      "Welcome back, {player}!",
+		MotdSourcePlayer: "gm-fls-id-789",
+	}
+	if err := s.saveConfig(cfg); err != nil {
+		t.Fatalf("saveConfig: %v", err)
+	}
+
+	got, ok, err := s.loadConfig()
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected config to be present after save")
+	}
+	if !got.MotdEnabled {
+		t.Error("MotdEnabled: want true, got false")
+	}
+	if got.MotdMessage != cfg.MotdMessage {
+		t.Errorf("MotdMessage: want %q, got %q", cfg.MotdMessage, got.MotdMessage)
+	}
+	if got.MotdSourcePlayer != cfg.MotdSourcePlayer {
+		t.Errorf("MotdSourcePlayer: want %q, got %q", cfg.MotdSourcePlayer, got.MotdSourcePlayer)
+	}
+}
+
 func TestWelcomeConfigStore_ActiveVersionsRoundTrip(t *testing.T) {
 	t.Parallel()
 	s := openMemWelcomeStore(t)

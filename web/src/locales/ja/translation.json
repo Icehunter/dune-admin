@@ -1344,6 +1344,15 @@
       "grants": "付与履歴",
       "packages": "パッケージ"
     },
-    "title": "ウェルカムキット"
+    "title": "ウェルカムキット",
+    "motd": {
+      "enabledHint": "参加するたびにGMペルソナ経由でウィスパー送信されます（初回だけでなく毎回）。プレイヤー名には {player} を使用します。",
+      "enabledLabel": "プレイヤーが参加するたびにメッセージを送信する",
+      "messageLabel": "メッセージ",
+      "messagePlaceholder": "おかえりなさい、{player}さん！イベント情報はDiscordをご確認ください。",
+      "senderLabel": "送信者のFLS ID（任意）",
+      "senderPlaceholder": "空白のままにすると設定済みGMペルソナが使用されます",
+      "title": "今日のメッセージ"
+    }
   }
 }

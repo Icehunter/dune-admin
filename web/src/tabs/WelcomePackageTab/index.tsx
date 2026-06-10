@@ -35,6 +35,9 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
   const [welcomeMessageEnabled, setWelcomeMessageEnabled] = useState(false)
   const [welcomeMessage, setWelcomeMessage] = useState('')
   const [welcomeWhisperSourcePlayer, setWelcomeWhisperSourcePlayer] = useState('')
+  const [motdEnabled, setMotdEnabled] = useState(false)
+  const [motdMessage, setMotdMessage] = useState('')
+  const [motdSourcePlayer, setMotdSourcePlayer] = useState('')
   const [templates, setTemplates] = useState<{ id: string, name: string }[]>([])
 
   // Snapshot of what's persisted on the server; null until first load completes.
@@ -51,6 +54,9 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
     setWelcomeMessageEnabled(c.welcome_message_enabled ?? false)
     setWelcomeMessage(c.welcome_message ?? '')
     setWelcomeWhisperSourcePlayer(c.welcome_whisper_source_player ?? '')
+    setMotdEnabled(c.motd_enabled ?? false)
+    setMotdMessage(c.motd_message ?? '')
+    setMotdSourcePlayer(c.motd_source_player ?? '')
   }, [])
 
   const load = useCallback(() => {
@@ -90,6 +96,9 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
         welcome_message_enabled: welcomeMessageEnabled,
         welcome_message: welcomeMessage,
         welcome_whisper_source_player: welcomeWhisperSourcePlayer,
+        motd_enabled: motdEnabled,
+        motd_message: motdMessage,
+        motd_source_player: motdSourcePlayer,
       }
       const saved = await api.welcomePackage.saveConfig(cfg)
       applyConfig(saved)
@@ -155,6 +164,9 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
         || welcomeMessageEnabled !== (savedConfig.welcome_message_enabled ?? false)
         || welcomeMessage !== (savedConfig.welcome_message ?? '')
         || welcomeWhisperSourcePlayer !== (savedConfig.welcome_whisper_source_player ?? '')
+        || motdEnabled !== (savedConfig.motd_enabled ?? false)
+        || motdMessage !== (savedConfig.motd_message ?? '')
+        || motdSourcePlayer !== (savedConfig.motd_source_player ?? '')
 
     const isDirty = packageAdded + packageRemoved + packageUpdated > 0 || settingsChanged
     return { packageAdded, packageRemoved, packageUpdated, settingsChanged, isDirty }
@@ -166,6 +178,9 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
     welcomeMessageEnabled,
     welcomeMessage,
     welcomeWhisperSourcePlayer,
+    motdEnabled,
+    motdMessage,
+    motdSourcePlayer,
     savedConfig,
   ])
 
@@ -187,6 +202,12 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
             setWelcomeMessage={setWelcomeMessage}
             welcomeWhisperSourcePlayer={welcomeWhisperSourcePlayer}
             setWelcomeWhisperSourcePlayer={setWelcomeWhisperSourcePlayer}
+            motdEnabled={motdEnabled}
+            setMotdEnabled={setMotdEnabled}
+            motdMessage={motdMessage}
+            setMotdMessage={setMotdMessage}
+            motdSourcePlayer={motdSourcePlayer}
+            setMotdSourcePlayer={setMotdSourcePlayer}
             save={save}
             saving={saving}
             runNow={runNow}

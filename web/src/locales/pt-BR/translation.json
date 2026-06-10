@@ -1367,6 +1367,15 @@
       "grants": "Concessões",
       "packages": "Pacotes"
     },
-    "title": "Kits de boas-vindas"
+    "title": "Kits de boas-vindas",
+    "motd": {
+      "enabledHint": "Sussurrado através da persona GM a cada entrada (toda sessão, não apenas a primeira). Use {player} para o nome do jogador.",
+      "enabledLabel": "Enviar uma mensagem aos jogadores sempre que entrarem",
+      "messageLabel": "Mensagem",
+      "messagePlaceholder": "Bem-vindo de volta, {player}! Confira o Discord para eventos.",
+      "senderLabel": "ID FLS do remetente (opcional)",
+      "senderPlaceholder": "Deixe em branco para usar a persona GM configurada",
+      "title": "Mensagem do dia"
+    }
   }
 }

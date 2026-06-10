@@ -1367,6 +1367,15 @@
       "grants": "Attributions",
       "packages": "Paquets"
     },
-    "title": "Kits de bienvenue"
+    "title": "Kits de bienvenue",
+    "motd": {
+      "enabledHint": "Chuchoté via le personnage GM à chaque connexion (chaque session, pas seulement la première). Utilisez {player} pour le nom du joueur.",
+      "enabledLabel": "Envoyer un message aux joueurs à chaque connexion",
+      "messageLabel": "Message",
+      "messagePlaceholder": "Bon retour, {player} ! Consultez le Discord pour les événements.",
+      "senderLabel": "ID FLS de l'expéditeur (optionnel)",
+      "senderPlaceholder": "Laisser vide pour utiliser le personnage GM configuré",
+      "title": "Message du jour"
+    }
   }
 }

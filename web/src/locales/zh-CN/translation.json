@@ -1344,6 +1344,15 @@
       "grants": "授予记录",
       "packages": "礼包"
     },
-    "title": "欢迎礼包"
+    "title": "欢迎礼包",
+    "motd": {
+      "enabledHint": "每次加入时通过 GM 身份私聊发送（每个会话都发送，不仅是首次）。使用 {player} 表示玩家名称。",
+      "enabledLabel": "每次玩家加入时发送消息",
+      "messageLabel": "消息",
+      "messagePlaceholder": "欢迎回来，{player}！查看 Discord 了解活动。",
+      "senderLabel": "发送者 FLS ID（可选）",
+      "senderPlaceholder": "留空则使用已配置的 GM 角色",
+      "title": "每日消息"
+    }
   }
 }

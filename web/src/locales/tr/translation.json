@@ -1344,6 +1344,15 @@
       "grants": "Verilmişler",
       "packages": "Paketler"
     },
-    "title": "Karşılama Kitleri"
+    "title": "Karşılama Kitleri",
+    "motd": {
+      "enabledHint": "Her katılışta GM kimliği üzerinden fısıldanır (sadece ilk değil, her oturumda). Oyuncu adı için {player} kullanın.",
+      "enabledLabel": "Oyunculara her katıldıklarında bir mesaj gönder",
+      "messageLabel": "Mesaj",
+      "messagePlaceholder": "Tekrar hoş geldin, {player}! Etkinlikler için Discord'a göz at.",
+      "senderLabel": "Gönderici FLS Kimliği (isteğe bağlı)",
+      "senderPlaceholder": "Yapılandırılmış GM kişiliğini kullanmak için boş bırakın",
+      "title": "Günün Mesajı"
+    }
   }
 }

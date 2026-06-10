@@ -678,6 +678,9 @@ export interface WelcomePackageConfig {
   welcome_message_enabled: boolean
   welcome_message: string
   welcome_whisper_source_player: string
+  motd_enabled: boolean
+  motd_message: string
+  motd_source_player: string
 }
 
 export interface WelcomeGrantRecord {

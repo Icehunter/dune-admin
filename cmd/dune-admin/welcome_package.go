@@ -173,11 +173,24 @@ type welcomePackageRuntime struct {
 	welcomeMessageEnabled      bool
 	welcomeMessage             string
 	welcomeWhisperSourcePlayer string
+	// MOTD (#163/#167/#135): a per-join message, independent of the package
+	// system — fires every time a player joins, even when no package is active.
+	motdEnabled      bool
+	motdMessage      string
+	motdSourcePlayer string
 }
 
 // welcomeMessageOptions carries the optional whisper config passed to
 // buildWelcomeRuntime. Keeping it in a struct avoids a long parameter list.
 type welcomeMessageOptions struct {
+	enabled      bool
+	message      string
+	sourcePlayer string
+}
+
+// motdOptions carries the optional Message-of-the-Day config passed to
+// buildWelcomeRuntime as a trailing variadic so existing callers are unaffected.
+type motdOptions struct {
 	enabled      bool
 	message      string
 	sourcePlayer string
@@ -233,7 +246,7 @@ func getWelcomeRuntime() welcomePackageRuntime {
 // buildWelcomeRuntime normalizes raw config (version default, interval clamp)
 // into a runtime value. Shared by startup and the config API so both apply the
 // same defaults.
-func buildWelcomeRuntime(enabled bool, activeVersions []string, scanSecs int, packages []welcomePackage, msg welcomeMessageOptions) welcomePackageRuntime {
+func buildWelcomeRuntime(enabled bool, activeVersions []string, scanSecs int, packages []welcomePackage, msg welcomeMessageOptions, motd ...motdOptions) welcomePackageRuntime {
 	if packages == nil {
 		packages = []welcomePackage{}
 	}
@@ -252,7 +265,7 @@ func buildWelcomeRuntime(enabled bool, activeVersions []string, scanSecs int, pa
 	if interval < welcomeMinScanInterval {
 		interval = welcomeDefaultScanInterval
 	}
-	return welcomePackageRuntime{
+	rt := welcomePackageRuntime{
 		enabled:                    enabled,
 		interval:                   interval,
 		activeVersions:             valid,
@@ -261,6 +274,12 @@ func buildWelcomeRuntime(enabled bool, activeVersions []string, scanSecs int, pa
 		welcomeMessage:             msg.message,
 		welcomeWhisperSourcePlayer: msg.sourcePlayer,
 	}
+	if len(motd) > 0 {
+		rt.motdEnabled = motd[0].enabled
+		rt.motdMessage = motd[0].message
+		rt.motdSourcePlayer = motd[0].sourcePlayer
+	}
+	return rt
 }
 
 const welcomeMinScanInterval = 5 * time.Second
@@ -289,13 +308,37 @@ func runWelcomePackageScanner(ctx context.Context) {
 
 func welcomePackageScanTick(ctx context.Context) {
 	rt := getWelcomeRuntime()
-	if !rt.enabled || welcomeStoreDB == nil {
+	motdActive := rt.motdEnabled && strings.TrimSpace(rt.motdMessage) != ""
+	pkgActive := rt.enabled && welcomeStoreDB != nil && len(rt.activePackages()) > 0
+
+	// Keep the join-detection baseline fresh only while MOTD is active. When it
+	// is off, reset so re-enabling starts from a clean baseline (no MOTD to
+	// players who were already online when the operator flipped it on).
+	if !motdActive {
+		welcomePresence.reset()
+	}
+	if !motdActive && !pkgActive {
 		return
 	}
-	activePkgs := rt.activePackages()
-	if len(activePkgs) == 0 {
+
+	// MOTD and package grants both consume the current online set — fetch once.
+	online, err := listWelcomeOnlineAccounts(ctx)
+	if err != nil {
+		log.Printf("welcome: list online accounts: %v", err)
 		return
 	}
+	if pkgActive {
+		runWelcomePackageGrants(ctx, rt, online)
+	}
+	if motdActive {
+		runMOTDOnJoin(ctx, rt, online)
+	}
+}
+
+// runWelcomePackageGrants grants the active package(s) to eligible accounts in
+// the given online snapshot, sending the package's companion welcome message
+// (once per version) when configured.
+func runWelcomePackageGrants(ctx context.Context, rt welcomePackageRuntime, online []welcomeAccount) {
 	var whisperFn func(context.Context, int64, string, string) error
 	if rt.welcomeMessageEnabled && strings.TrimSpace(rt.welcomeMessage) != "" {
 		msg := rt.welcomeMessage
@@ -304,12 +347,13 @@ func welcomePackageScanTick(ctx context.Context) {
 			return sendWelcomeWhisper(wctx, accountID, srcPlayer, msg)
 		}
 	}
-	for _, pkg := range activePkgs {
+	listOnline := func(context.Context) ([]welcomeAccount, error) { return online, nil }
+	for _, pkg := range rt.activePackages() {
 		if err := validateWelcomeItems(pkg.Items); err != nil {
 			continue
 		}
 		g, f, _, err := welcomePackageScanOnce(ctx, pkg.Version, pkg.Items, welcomeScanDeps{
-			listAccounts: listWelcomeOnlineAccounts,
+			listAccounts: listOnline,
 			grant:        welcomeGrantViaGiveItems,
 			whisper:      whisperFn,
 			store:        welcomeStoreDB,

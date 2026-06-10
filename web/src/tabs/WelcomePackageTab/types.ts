@@ -27,6 +27,13 @@ export interface WelcomeSharedProps {
   setWelcomeMessage: (v: string) => void
   welcomeWhisperSourcePlayer: string
   setWelcomeWhisperSourcePlayer: (v: string) => void
+  // MOTD state (per-join message, independent of the package)
+  motdEnabled: boolean
+  setMotdEnabled: (v: boolean) => void
+  motdMessage: string
+  setMotdMessage: (v: string) => void
+  motdSourcePlayer: string
+  setMotdSourcePlayer: (v: string) => void
   // actions
   save: () => Promise<void>
   runNow: () => Promise<void>

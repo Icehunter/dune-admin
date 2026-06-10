@@ -1390,6 +1390,15 @@
       "grants": "Przyznania",
       "packages": "Pakiety"
     },
-    "title": "Zestawy powitalne"
+    "title": "Zestawy powitalne",
+    "motd": {
+      "enabledHint": "Wysyłane jako szept przez personę GM przy każdym dołączeniu (przy każdej sesji, nie tylko pierwszej). Użyj {player} dla nazwy gracza.",
+      "enabledLabel": "Wysyłaj wiadomość do graczy przy każdym dołączeniu",
+      "messageLabel": "Wiadomość",
+      "messagePlaceholder": "Witaj ponownie, {player}! Sprawdź wydarzenia na Discordzie.",
+      "senderLabel": "ID FLS nadawcy (opcjonalne)",
+      "senderPlaceholder": "Zostaw puste, aby użyć skonfigurowanej persony GM",
+      "title": "Wiadomość dnia"
+    }
   }
 }

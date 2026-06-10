@@ -170,6 +170,8 @@ welcome_packages:
 
 dune-admin keeps a library of named packages plus an active-version pointer. An in-process scanner grants the active package once per `(player, version)`, tracked in a persistent SQLite ledger at `~/.dune-admin/welcome-package.db` (so a restart never re-grants). Bumping the active version re-issues to everyone. It defaults **off** (it mutates every player's inventory) and delivers items through the same live-RMQ + DB-fallback path as manual give-items.
 
+**Message of the Day (MOTD).** The same tab (**Welcome Kits → Config**) also has a separate **Message of the Day** card: an in-game message whispered to a player from the GM persona **every time they join** — every session, unlike the once-per-version welcome above. It's decoupled from the package system, so it works even with no active package. Use `{player}` in the message for the player's character name, and leave the sender blank to use the seeded GM persona. A presence tracker diffs the online set on each scan tick to detect joins, and seeds a silent baseline on startup so a restart never re-messages players already in-game. Defaults **off**; configure and toggle it live (no restart) in the UI.
+
 ### Server settings
 
 The **Server Settings** tab manages gameplay config (mining/vehicle output, PvP & security zones, sandstorm/sandworm toggles, building limits, item deterioration, server name/password, …). How it writes depends on the provider:
@@ -226,7 +228,7 @@ Tabs are organised into a grouped left sidebar.
 | Tab | What it does |
 |-----|--------------|
 | **Market Bot** | View live market listings; control the embedded market bot |
-| **Welcome Kits** | Auto-grant a configured item package to every player once, on first login |
+| **Welcome Kits** | Auto-grant a configured item package to every player once, on first login — plus an optional Message-of-the-Day whispered on every join |
 
 ---
 

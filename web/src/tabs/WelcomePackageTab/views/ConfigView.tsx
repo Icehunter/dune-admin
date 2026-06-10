@@ -14,6 +14,9 @@ type ConfigViewProps = Pick<
   | 'welcomeMessageEnabled' | 'setWelcomeMessageEnabled'
   | 'welcomeMessage' | 'setWelcomeMessage'
   | 'welcomeWhisperSourcePlayer' | 'setWelcomeWhisperSourcePlayer'
+  | 'motdEnabled' | 'setMotdEnabled'
+  | 'motdMessage' | 'setMotdMessage'
+  | 'motdSourcePlayer' | 'setMotdSourcePlayer'
   | 'save' | 'saving'
   | 'runNow' | 'running'
   | 'load' | 'loading'
@@ -28,6 +31,9 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
   welcomeMessageEnabled, setWelcomeMessageEnabled,
   welcomeMessage, setWelcomeMessage,
   welcomeWhisperSourcePlayer, setWelcomeWhisperSourcePlayer,
+  motdEnabled, setMotdEnabled,
+  motdMessage, setMotdMessage,
+  motdSourcePlayer, setMotdSourcePlayer,
   save, saving,
   runNow, running,
   load, loading,
@@ -77,67 +83,107 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
         />
       </div>
 
-      {/* Active versions — flex-1 fills remaining space */}
-      <div className="flex flex-col flex-1 min-h-0 gap-1">
-        <SectionLabel>{t('welcome.activeVersionGranted')}</SectionLabel>
-        {packages.length === 0
-          ? <p className="text-xs text-muted mt-1">{t('welcome.noPackageSelected')}</p>
-          : (
-              <ListBox
-                aria-label={t('welcome.activeVersionGranted')}
-                selectionMode="multiple"
-                selectedKeys={new Set(activeVersions)}
-                onSelectionChange={(keys) => {
-                  setActiveVersions(Array.from(keys).map(String))
-                }}
-                className="flex-1 min-h-0 overflow-y-auto rounded-[var(--radius)] border border-border"
-              >
-                {packages.map((p) => (
-                  <ListBox.Item key={p.version} id={p.version} textValue={p.version}>
-                    {p.version}
-                    <ListBox.ItemIndicator />
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            )}
-      </div>
-
-      {/* Welcome message panel — fixed height */}
-      <Panel className="shrink-0">
-        <SectionLabel>{t('welcome.message.title')}</SectionLabel>
-
-        <Switch isSelected={welcomeMessageEnabled} onChange={setWelcomeMessageEnabled} size="sm">
-          <Switch.Control><Switch.Thumb /></Switch.Control>
-          <Switch.Content>{t('welcome.message.enabledLabel')}</Switch.Content>
-        </Switch>
-        <p className="text-xs text-muted mt-1 mb-3">
-          {t('welcome.message.enabledHint')}
-        </p>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted">{t('welcome.message.messageLabel')}</span>
-            <textarea
-              className="w-full rounded-[var(--radius)] border border-border bg-surface text-foreground text-sm px-3 py-2 resize-none focus:outline-none focus:border-accent disabled:opacity-50"
-              rows={3}
-              placeholder={t('welcome.message.messagePlaceholder')}
-              value={welcomeMessage}
-              disabled={!welcomeMessageEnabled}
-              onChange={(e) => setWelcomeMessage(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1 max-w-md">
-            <span className="text-xs text-muted">{t('welcome.message.senderLabel')}</span>
-            <input
-              className="w-full rounded-[var(--radius)] border border-border bg-surface text-foreground text-sm px-3 py-2 focus:outline-none focus:border-accent disabled:opacity-50"
-              placeholder={t('welcome.message.senderPlaceholder')}
-              value={welcomeWhisperSourcePlayer}
-              disabled={!welcomeMessageEnabled}
-              onChange={(e) => setWelcomeWhisperSourcePlayer(e.target.value)}
-            />
-          </div>
+      {/* Scrollable middle: active versions + message panels */}
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-3 pr-1">
+        {/* Active versions */}
+        <div className="flex flex-col gap-1">
+          <SectionLabel>{t('welcome.activeVersionGranted')}</SectionLabel>
+          {packages.length === 0
+            ? <p className="text-xs text-muted mt-1">{t('welcome.noPackageSelected')}</p>
+            : (
+                <ListBox
+                  aria-label={t('welcome.activeVersionGranted')}
+                  selectionMode="multiple"
+                  selectedKeys={new Set(activeVersions)}
+                  onSelectionChange={(keys) => {
+                    setActiveVersions(Array.from(keys).map(String))
+                  }}
+                  className="max-h-48 overflow-y-auto rounded-[var(--radius)] border border-border"
+                >
+                  {packages.map((p) => (
+                    <ListBox.Item key={p.version} id={p.version} textValue={p.version}>
+                      {p.version}
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                  ))}
+                </ListBox>
+              )}
         </div>
-      </Panel>
+
+        {/* Welcome message panel */}
+        <Panel>
+          <SectionLabel>{t('welcome.message.title')}</SectionLabel>
+
+          <Switch isSelected={welcomeMessageEnabled} onChange={setWelcomeMessageEnabled} size="sm">
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            <Switch.Content>{t('welcome.message.enabledLabel')}</Switch.Content>
+          </Switch>
+          <p className="text-xs text-muted mt-1 mb-3">
+            {t('welcome.message.enabledHint')}
+          </p>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{t('welcome.message.messageLabel')}</span>
+              <textarea
+                className="w-full rounded-[var(--radius)] border border-border bg-surface text-foreground text-sm px-3 py-2 resize-none focus:outline-none focus:border-accent disabled:opacity-50"
+                rows={3}
+                placeholder={t('welcome.message.messagePlaceholder')}
+                value={welcomeMessage}
+                disabled={!welcomeMessageEnabled}
+                onChange={(e) => setWelcomeMessage(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1 max-w-md">
+              <span className="text-xs text-muted">{t('welcome.message.senderLabel')}</span>
+              <input
+                className="w-full rounded-[var(--radius)] border border-border bg-surface text-foreground text-sm px-3 py-2 focus:outline-none focus:border-accent disabled:opacity-50"
+                placeholder={t('welcome.message.senderPlaceholder')}
+                value={welcomeWhisperSourcePlayer}
+                disabled={!welcomeMessageEnabled}
+                onChange={(e) => setWelcomeWhisperSourcePlayer(e.target.value)}
+              />
+            </div>
+          </div>
+        </Panel>
+
+        {/* MOTD panel */}
+        <Panel>
+          <SectionLabel>{t('welcome.motd.title')}</SectionLabel>
+
+          <Switch isSelected={motdEnabled} onChange={setMotdEnabled} size="sm">
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            <Switch.Content>{t('welcome.motd.enabledLabel')}</Switch.Content>
+          </Switch>
+          <p className="text-xs text-muted mt-1 mb-3">
+            {t('welcome.motd.enabledHint')}
+          </p>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted">{t('welcome.motd.messageLabel')}</span>
+              <textarea
+                className="w-full rounded-[var(--radius)] border border-border bg-surface text-foreground text-sm px-3 py-2 resize-none focus:outline-none focus:border-accent disabled:opacity-50"
+                rows={3}
+                placeholder={t('welcome.motd.messagePlaceholder')}
+                value={motdMessage}
+                disabled={!motdEnabled}
+                onChange={(e) => setMotdMessage(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1 max-w-md">
+              <span className="text-xs text-muted">{t('welcome.motd.senderLabel')}</span>
+              <input
+                className="w-full rounded-[var(--radius)] border border-border bg-surface text-foreground text-sm px-3 py-2 focus:outline-none focus:border-accent disabled:opacity-50"
+                placeholder={t('welcome.motd.senderPlaceholder')}
+                value={motdSourcePlayer}
+                disabled={!motdEnabled}
+                onChange={(e) => setMotdSourcePlayer(e.target.value)}
+              />
+            </div>
+          </div>
+        </Panel>
+      </div>
 
       {/* Action bar — fixed at bottom */}
       <div className="flex items-center gap-3 shrink-0">

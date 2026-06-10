@@ -37,6 +37,28 @@ func TestBuildWelcomeRuntimeWithMessage_DisabledByDefault(t *testing.T) {
 	}
 }
 
+// TestBuildWelcomeRuntimeWithMotd verifies the optional MOTD options flow into
+// the runtime and are independent of the package being enabled.
+func TestBuildWelcomeRuntimeWithMotd(t *testing.T) {
+	t.Parallel()
+	rt := buildWelcomeRuntime(
+		false, nil, 30, nil, welcomeMessageOptions{},
+		motdOptions{enabled: true, message: "Welcome back, {player}!", sourcePlayer: "gm-1"},
+	)
+	if !rt.motdEnabled {
+		t.Fatal("want motdEnabled=true")
+	}
+	if rt.motdMessage != "Welcome back, {player}!" {
+		t.Fatalf("wrong motd message: %q", rt.motdMessage)
+	}
+	if rt.motdSourcePlayer != "gm-1" {
+		t.Fatalf("wrong motd source player: %q", rt.motdSourcePlayer)
+	}
+	if rt.enabled {
+		t.Fatal("package should remain disabled — MOTD is independent")
+	}
+}
+
 // TestBuildWelcomeRuntimeBackcompat verifies existing behaviour is preserved.
 func TestBuildWelcomeRuntimeBackcompat(t *testing.T) {
 	t.Parallel()

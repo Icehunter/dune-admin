@@ -24,6 +24,9 @@ type welcomeConfigResponse struct {
 	WelcomeMessageEnabled      bool             `json:"welcome_message_enabled"`
 	WelcomeMessage             string           `json:"welcome_message"`
 	WelcomeWhisperSourcePlayer string           `json:"welcome_whisper_source_player"`
+	MotdEnabled                bool             `json:"motd_enabled"`
+	MotdMessage                string           `json:"motd_message"`
+	MotdSourcePlayer           string           `json:"motd_source_player"`
 }
 
 func currentWelcomeConfig() welcomeConfigResponse {
@@ -49,6 +52,9 @@ func currentWelcomeConfig() welcomeConfigResponse {
 		WelcomeMessageEnabled:      rt.welcomeMessageEnabled,
 		WelcomeMessage:             rt.welcomeMessage,
 		WelcomeWhisperSourcePlayer: rt.welcomeWhisperSourcePlayer,
+		MotdEnabled:                rt.motdEnabled,
+		MotdMessage:                rt.motdMessage,
+		MotdSourcePlayer:           rt.motdSourcePlayer,
 	}
 }
 
@@ -88,6 +94,10 @@ func applyWelcomeConfigFromStore() error {
 		enabled:      row.WelcomeMessageEnabled,
 		message:      row.WelcomeMessage,
 		sourcePlayer: row.WelcomeWhisperSourcePlayer,
+	}, motdOptions{
+		enabled:      row.MotdEnabled,
+		message:      row.MotdMessage,
+		sourcePlayer: row.MotdSourcePlayer,
 	}))
 	return nil
 }
@@ -172,6 +182,10 @@ func handlePutWelcomeConfig(w http.ResponseWriter, r *http.Request) {
 		enabled:      req.WelcomeMessageEnabled,
 		message:      req.WelcomeMessage,
 		sourcePlayer: req.WelcomeWhisperSourcePlayer,
+	}, motdOptions{
+		enabled:      req.MotdEnabled,
+		message:      req.MotdMessage,
+		sourcePlayer: req.MotdSourcePlayer,
 	})
 
 	if req.Enabled {
@@ -196,6 +210,9 @@ func handlePutWelcomeConfig(w http.ResponseWriter, r *http.Request) {
 			WelcomeMessageEnabled:      rt.welcomeMessageEnabled,
 			WelcomeMessage:             rt.welcomeMessage,
 			WelcomeWhisperSourcePlayer: rt.welcomeWhisperSourcePlayer,
+			MotdEnabled:                rt.motdEnabled,
+			MotdMessage:                rt.motdMessage,
+			MotdSourcePlayer:           rt.motdSourcePlayer,
 		}
 		if err := welcomeStoreDB.saveConfig(row); err != nil {
 			log.Printf("handlePutWelcomeConfig: save to store: %v", err)

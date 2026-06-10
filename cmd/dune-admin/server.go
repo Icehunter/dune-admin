@@ -225,6 +225,7 @@ func startServer(addr string) {
 	mux.HandleFunc("DELETE /api/v1/locations", handleDeleteLocation)
 
 	// ── live map ────────────────────────────────────────────────────────────────
+	mux.HandleFunc("GET /api/v1/maps", handleListMaps)
 	mux.HandleFunc("GET /api/v1/map/markers", handleGetMapMarkers)
 
 	// ── logs ──────────────────────────────────────────────────────────────────
@@ -309,6 +310,15 @@ func startServer(addr string) {
 	// ── give-items packs (operator-configurable pack library) ─────────────────
 	mux.HandleFunc("GET /api/v1/give-packs/config", handleGetGivePacksConfig)
 	mux.HandleFunc("PUT /api/v1/give-packs/config", handlePutGivePacksConfig)
+
+	// ── live events engine ────────────────────────────────────────────────────
+	mux.HandleFunc("GET /api/v1/events", handleListEvents)
+	mux.HandleFunc("POST /api/v1/events", handleCreateEvent)
+	mux.HandleFunc("PUT /api/v1/events/{id}", handleUpdateEvent)
+	mux.HandleFunc("DELETE /api/v1/events/{id}", handleDeleteEvent)
+	mux.HandleFunc("POST /api/v1/events/{id}/enable", handleSetEventEnabled)
+	mux.HandleFunc("GET /api/v1/events/{id}/status", handleGetEventStatus)
+	mux.HandleFunc("POST /api/v1/events/{id}/reset", handleResetEvent)
 
 	// ── swagger UI ────────────────────────────────────────────────────────────
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)

@@ -110,6 +110,10 @@ func renderK8SManifest(outPath string) error {
 		"market_bot_buy_threshold": buyThreshold,
 		"market_bot_max_buys":      maxBuys,
 	}
+	manifestCfg["events_enabled"] = eventsEnabled(loadedConfig)
+	if loadedConfig.EventsPollSeconds > 0 {
+		manifestCfg["events_poll_seconds"] = loadedConfig.EventsPollSeconds
+	}
 	addIfNonEmpty(manifestCfg, "market_bot_remote_url", loadedConfig.MarketBotRemoteURL)
 	addIfNonEmpty(manifestCfg, "discord_guild_id", loadedConfig.DiscordGuildID)
 	addIfNonEmpty(manifestCfg, "discord_roles_viewer", loadedConfig.DiscordRolesViewer)

@@ -362,7 +362,11 @@
     "remove": "Supprimer",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
-    "send": "Envoyer"
+    "send": "Envoyer",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "optional": "optional"
   },
   "database": {
     "columnColumn": "Colonne",
@@ -676,7 +680,8 @@
     "players": "Joueurs",
     "server": "Paramètres serveur",
     "storage": "Stockage",
-    "welcome": "Kits de bienvenue"
+    "welcome": "Kits de bienvenue",
+    "events": "Live Events"
   },
   "players": {
     "actions": {
@@ -1416,5 +1421,85 @@
     },
     "runConfirmTitle": "Attribuer le pack de bienvenue maintenant ?",
     "runConfirmBody": "Ceci attribue le(s) pack(s) {{versions}} à tous les joueurs en ligne éligibles immédiatement. Continuer ?"
+  },
+  "events": {
+    "title": "Events ({{count}})",
+    "subtitle": "Live in-game events and social milestone announcements.",
+    "ariaLabel": "Events list",
+    "create": "New Event",
+    "noEvents": "No events configured.",
+    "failedToLoad": "Failed to load events: {{message}}",
+    "failedToLoadStatus": "Failed to load event status: {{message}}",
+    "toggleFailed": "Failed to toggle event: {{message}}",
+    "deleteFailed": "Failed to delete event: {{message}}",
+    "resetFailed": "Failed to reset event: {{message}}",
+    "resetSuccess": "Event claims cleared.",
+    "confirmDelete": "Delete event \"{{name}}\"?",
+    "confirmReset": "Clear all claims for \"{{name}}\"? This will allow the event to fire again for all players.",
+    "toggleEnabled": "Toggle enabled",
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "enabled": "Enabled",
+      "claims": "Ver."
+    },
+    "types": {
+      "zoneRace": "Zone Race",
+      "milestone": "Milestone"
+    },
+    "status": {
+      "title": "Claims — {{name}}",
+      "claimsLabel": "Event claim records",
+      "noClaims": "No claims recorded yet.",
+      "reset": "Clear Claims"
+    },
+    "claims": {
+      "accountId": "Account",
+      "version": "Ver.",
+      "status": "Status",
+      "attempts": "Attempts",
+      "claimedAt": "Claimed At",
+      "lastError": "Last Error"
+    },
+    "editor": {
+      "createTitle": "New Event",
+      "editTitle": "Edit Event",
+      "basics": "Basic Info",
+      "name": "Name",
+      "namePlaceholder": "e.g. Desert Race, Level 50 Club",
+      "nameRequired": "Name is required.",
+      "type": "Type",
+      "zoneConfig": "Zone Config",
+      "zoneMap": "Map Name",
+      "zoneMapPlaceholder": "Select map…",
+      "radius": "Radius",
+      "participants": "Participants",
+      "milestoneConfig": "Milestone Config",
+      "signal": "Signal",
+      "levelThreshold": "Required Level",
+      "tagName": "Tag Name",
+      "awardPast": "Award past achievements",
+      "awardPastHint": "Grant rewards to players who already qualify when the event is enabled.",
+      "rewardLabel": "Reward",
+      "currency": "Currency",
+      "items": "Items",
+      "xpRewards": "XP Rewards",
+      "xpTrack": "Track",
+      "xpAmount": "Amount",
+      "announceLabel": "Announcement",
+      "announceTemplate": "Announce Template",
+      "templateHint": "Placeholders: {player} {event} {value}.",
+      "channelDefault": "Posts to the configured Discord announce channel.",
+      "created": "Event created.",
+      "updated": "Event updated.",
+      "saveFailed": "Failed to save event: {{message}}",
+      "xpType": "Type",
+      "addParticipant": "Add player…",
+      "noPlayersLoaded": "No players loaded — start the server and reload."
+    },
+    "signals": {
+      "level": "Character Level",
+      "achievementTag": "Achievement Tag"
+    }
   }
 }

@@ -5593,6 +5593,32 @@ var liveMapKeys = map[string]int64{
 	"DeepDesert": 8,
 }
 
+// cmdFetchDistinctMaps returns all distinct non-empty map names from dune.actors,
+// sorted alphabetically.
+func cmdFetchDistinctMaps(ctx context.Context, db *pgxpool.Pool) ([]string, error) {
+	rows, err := db.Query(ctx, `
+		SELECT DISTINCT COALESCE(map, '')
+		FROM dune.actors
+		WHERE map IS NOT NULL AND map != ''
+		ORDER BY 1`)
+	if err != nil {
+		return nil, fmt.Errorf("fetch distinct maps: %w", err)
+	}
+	defer rows.Close()
+	var maps []string
+	for rows.Next() {
+		var m string
+		if err := rows.Scan(&m); err != nil {
+			return nil, fmt.Errorf("scan map: %w", err)
+		}
+		maps = append(maps, m)
+	}
+	if maps == nil {
+		maps = []string{}
+	}
+	return maps, nil
+}
+
 // validateMapKey rejects any map the Live Map does not support, so caller input
 // can never reach the query as an unexpected value.
 func validateMapKey(key string) error {
@@ -6438,4 +6464,134 @@ func cmdFetchPlayerInventoryCtx(ctx context.Context, db *pgxpool.Pool, actorID i
 		items = append(items, it)
 	}
 	return items, rows.Err()
+}
+
+// ── events engine DB helpers ──────────────────────────────────────────────────
+
+// cmdFetchEventPlayers returns all online players (excluding the GM identity)
+// with the IDs the events engine needs: AccountID, player_controller_id
+// (ControllerID), player_pawn_id (ActorID), and character name.
+func cmdFetchEventPlayers(ctx context.Context, pool *pgxpool.Pool) ([]eventPlayer, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT ps.account_id,
+		       COALESCE(ps.player_controller_id, 0),
+		       ps.player_pawn_id,
+		       COALESCE(ps.character_name, '')
+		FROM dune.player_state ps
+		WHERE ps.online_status = 'Online'
+		  AND ps.player_pawn_id IS NOT NULL
+		  AND ps.account_id <> $1`, gmIdentityAccountID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch event players: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]eventPlayer, 0)
+	for rows.Next() {
+		var p eventPlayer
+		if err := rows.Scan(&p.AccountID, &p.ControllerID, &p.ActorID, &p.Name); err != nil {
+			return nil, fmt.Errorf("scan event player: %w", err)
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// cmdFetchOnlinePositions returns a map of account_id → position for all
+// provided account IDs that are currently online and have a live actor.
+func cmdFetchOnlinePositions(ctx context.Context, pool *pgxpool.Pool, accountIDs []int64) (map[int64]playerPosition, error) {
+	if len(accountIDs) == 0 {
+		return map[int64]playerPosition{}, nil
+	}
+	rows, err := pool.Query(ctx, `
+		SELECT ps.account_id,
+		       COALESCE(a.partition_id, 0),
+		       COALESCE(a.map, ''),
+		       ((a.transform).location).x,
+		       ((a.transform).location).y,
+		       ((a.transform).location).z
+		FROM dune.player_state ps
+		JOIN dune.actors a ON a.id = ps.player_pawn_id
+		WHERE ps.online_status = 'Online'
+		  AND ps.player_pawn_id IS NOT NULL
+		  AND ps.account_id = ANY($1)`, accountIDs)
+	if err != nil {
+		return nil, fmt.Errorf("fetch online positions: %w", err)
+	}
+	defer rows.Close()
+
+	out := make(map[int64]playerPosition)
+	for rows.Next() {
+		var accountID int64
+		var pos playerPosition
+		if err := rows.Scan(&accountID, &pos.PartitionID, &pos.Map, &pos.X, &pos.Y, &pos.Z); err != nil {
+			return nil, fmt.Errorf("scan position: %w", err)
+		}
+		out[accountID] = pos
+	}
+	return out, rows.Err()
+}
+
+// cmdFetchCharacterLevel returns the character level for the given account,
+// derived from FLevelComponent.TotalXPEarned → xpToLevel.
+func cmdFetchCharacterLevel(ctx context.Context, pool *pgxpool.Pool, accountID int64) (int, error) {
+	var charXP int64
+	err := pool.QueryRow(ctx, `
+		SELECT COALESCE((fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint, 0)
+		FROM dune.fgl_entities fe
+		JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
+		JOIN dune.player_state ps ON ps.player_pawn_id = afe.actor_id
+		WHERE afe.slot_name = 'DuneCharacter' AND ps.account_id = $1`, accountID).Scan(&charXP)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("fetch character level for account %d: %w", accountID, err)
+	}
+	return xpToLevel(charXP), nil
+}
+
+// cmdFetchPlayerTagsForAccount is the injectable (ctx+pool) form of
+// cmdGetPlayerTags, used by the events engine dependency injection.
+func cmdFetchPlayerTagsForAccount(ctx context.Context, pool *pgxpool.Pool, accountID int64) ([]string, error) {
+	rows, err := pool.Query(ctx,
+		`SELECT tag FROM dune.player_tags WHERE account_id = $1 ORDER BY tag`, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch player tags for account %d: %w", accountID, err)
+	}
+	defer rows.Close()
+
+	var tags []string
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, fmt.Errorf("scan player tag: %w", err)
+		}
+		tags = append(tags, tag)
+	}
+	return tags, rows.Err()
+}
+
+// cmdGiveItemCtx is the context-aware injectable form used by the events engine.
+// It delegates to the existing runGiveItem helper which uses globalDB internally.
+// The pool parameter is accepted for API uniformity but runGiveItem always uses
+// globalDB — callers must ensure globalDB is non-nil before calling.
+func cmdGiveItemCtx(_ context.Context, _ *pgxpool.Pool, actorID int64, template string, qty, quality int64) error {
+	msg := runGiveItem(actorID, template, qty, quality)
+	if m, ok := msg.(msgMutate); ok && m.err != nil {
+		return m.err
+	}
+	return nil
+}
+
+// cmdAwardXPCtx is the context-aware injectable form used by the events engine.
+// It delegates to the existing cmdAwardXP Cmd which uses globalDB internally.
+// The pool parameter is accepted for API uniformity but the underlying Cmd always
+// uses globalDB — callers must ensure globalDB is non-nil before calling.
+func cmdAwardXPCtx(_ context.Context, _ *pgxpool.Pool, playerID int64, track string, amount int32) error {
+	msg := cmdAwardXP(playerID, track, amount)()
+	if m, ok := msg.(msgMutate); ok && m.err != nil {
+		return m.err
+	}
+	return nil
 }

@@ -730,6 +730,38 @@ export interface GivePacksConfig {
   packs: GivePack[]
 }
 
+export type EventType = 'zone_race' | 'milestone'
+
+export interface EventDefinition {
+  id: number
+  name: string
+  type: EventType
+  enabled: boolean
+  version: number
+  config: string
+  reward: string
+  announce_channel_id: string
+  announce_template: string
+  created_at: string
+  updated_at: string
+}
+
+export interface EventClaimRecord {
+  event_id: number
+  version: number
+  account_id: number
+  status: string
+  claimed_at: string
+  attempts: number
+  last_error: string
+  updated_at: string
+}
+
+export interface EventStatus {
+  event: EventDefinition
+  claims: EventClaimRecord[]
+}
+
 export const api = {
   status: () => req<Status>('GET', '/status'),
   reconnect: () => req<Status>('POST', '/reconnect'),
@@ -1102,5 +1134,20 @@ export const api = {
   givePacks: {
     config: () => req<GivePacksConfig>('GET', '/give-packs/config'),
     saveConfig: (cfg: GivePacksConfig) => req<GivePacksConfig>('PUT', '/give-packs/config', cfg),
+  },
+
+  maps: {
+    list: () => req<string[]>('GET', '/maps'),
+  },
+
+  events: {
+    list: () => req<EventDefinition[]>('GET', '/events'),
+    create: (def: Partial<EventDefinition>) => req<EventDefinition>('POST', '/events', def),
+    update: (id: number, def: Partial<EventDefinition>) => req<EventDefinition>('PUT', `/events/${id}`, def),
+    delete: (id: number) => req<{ ok: boolean }>('DELETE', `/events/${id}`),
+    setEnabled: (id: number, enabled: boolean) =>
+      req<{ ok: boolean }>('POST', `/events/${id}/enable`, { enabled }),
+    status: (id: number) => req<EventStatus>('GET', `/events/${id}/status`),
+    reset: (id: number) => req<{ ok: boolean }>('POST', `/events/${id}/reset`),
   },
 }

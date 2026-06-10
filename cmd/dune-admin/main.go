@@ -217,6 +217,12 @@ type appConfig struct {
 	// Legacy pre-library fields, migrated into WelcomePackages on load.
 	WelcomePackageVersion string               `yaml:"welcome_package_version,omitempty" json:"welcome_package_version,omitempty"`
 	WelcomePackageItems   []welcomePackageItem `yaml:"welcome_package_items,omitempty"   json:"welcome_package_items,omitempty"`
+
+	// ── Live events engine ─────────────────────────────────────────────────
+	// EventsEnabled starts the background polling engine. Pointer so we can
+	// distinguish "unset" (default-off) from "explicitly false".
+	EventsEnabled     *bool `yaml:"events_enabled"      json:"events_enabled"`
+	EventsPollSeconds int   `yaml:"events_poll_seconds" json:"events_poll_seconds"`
 }
 
 // marketBotEnabled returns the effective bot-enabled flag. Missing yaml key →
@@ -838,6 +844,11 @@ func main() {
 
 	initLocationStore()
 	initGivePacksStore()
+	initEventStore()
+
+	if cancel := startEventEngineIfEnabled(loadedConfig); cancel != nil {
+		defer cancel()
+	}
 
 	startServer(listenAddr)
 }
@@ -891,6 +902,22 @@ func initGivePacksStore() {
 			fmt.Fprintf(os.Stderr, "give-packs seed: %v\n", seedErr)
 		}
 	}
+}
+
+// initEventStore opens (or creates) the events SQLite store and sets
+// globalEventStore. A failure is non-fatal — handlers guard for a nil store.
+func initEventStore() {
+	if globalStore != nil {
+		globalEventStore = newEventStore(globalStore)
+		return
+	}
+	var err error
+	s, err := openEventStore(filepath.Join(configDir(), "events.db"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "event store: %v (events disabled)\n", err)
+		return
+	}
+	globalEventStore = s
 }
 
 // globalWelcomeCancel stops the welcome-package scanner goroutine on shutdown.

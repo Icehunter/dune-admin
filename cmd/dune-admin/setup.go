@@ -95,6 +95,10 @@ func runSetup() {
 
 	setupDiscordBot(ok, ask, &cfg)
 
+	// ── Live events engine ─────────────────────────────────────────────────────
+
+	setupEventsEngine(ok, ask, &cfg)
+
 	// ── Write config ───────────────────────────────────────────────────────────
 
 	writeSetupConfig(ok, fail, cfg)
@@ -653,6 +657,33 @@ func setupDiscordBot(ok func(string), ask func(prompt, def string) string, cfg *
 	cfg.DiscordAnnounceChannelID = strings.TrimSpace(ask("Announce channel ID (for reward/event announcements, leave blank to skip)", ""))
 
 	ok("Discord bot configured")
+	fmt.Println()
+}
+
+// ── Events engine setup ───────────────────────────────────────────────────────
+
+func setupEventsEngine(ok func(string), ask func(string, string) string, cfg *appConfig) {
+	fmt.Println("── Live Events Engine (optional) ───────────────────────────────────────────")
+	enableStr := strings.TrimSpace(ask("Enable live events engine? (y/n)", "n"))
+	if !strings.EqualFold(enableStr, "y") && !strings.EqualFold(enableStr, "yes") {
+		f := false
+		cfg.EventsEnabled = &f
+		ok("Live events engine disabled")
+		fmt.Println()
+		return
+	}
+	t := true
+	cfg.EventsEnabled = &t
+	pollStr := strings.TrimSpace(ask("Poll interval in seconds (1–60, default 7)", "7"))
+	poll, err := strconv.Atoi(pollStr)
+	if err != nil || poll < 1 {
+		poll = 7
+	}
+	if poll > 60 {
+		poll = 60
+	}
+	cfg.EventsPollSeconds = poll
+	ok("Live events engine configured")
 	fmt.Println()
 }
 

@@ -4,7 +4,7 @@ import { toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { BotConfig } from '../../../api/client'
-import { NumberInput, Panel, SectionLabel } from '../../../dune-ui'
+import { FieldInput, NumberInput, Panel, SectionLabel } from '../../../dune-ui'
 
 export type ConfigEditorHandle = {
   save: () => Promise<void>
@@ -90,17 +90,19 @@ const BotConfigEditorComponent = forwardRef<
         <SectionLabel>{t('market.bot.configEditor.tickIntervals')}</SectionLabel>
         <div className="grid grid-cols-2 gap-3 mt-1">
           <Field label={t('market.bot.configEditor.listTickInterval')} hint={t('market.bot.configEditor.listTickHint')}>
-            <input
-              className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
+            <FieldInput
+              ariaLabel={t('market.bot.configEditor.listTickInterval')}
+              className="w-full"
               value={draft.list_interval}
-              onChange={(e) => set('list_interval', e.target.value)}
+              onChange={(v) => set('list_interval', v)}
             />
           </Field>
           <Field label={t('market.bot.configEditor.buyTickInterval')} hint={t('market.bot.configEditor.buyTickHint')}>
-            <input
-              className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-full"
+            <FieldInput
+              ariaLabel={t('market.bot.configEditor.buyTickInterval')}
+              className="w-full"
               value={draft.buy_interval}
-              onChange={(e) => set('buy_interval', e.target.value)}
+              onChange={(v) => set('buy_interval', v)}
             />
           </Field>
         </div>

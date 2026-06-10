@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Button, Spinner, Tooltip, toast } from '@heroui/react'
+import { Button, Spinner, TextArea, Tooltip, toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import type { RawSection } from '../../../api/client'
 import { api } from '../../../api/client'
@@ -146,12 +146,15 @@ export const RawSectionPanel: React.FC<RawSectionPanelProps> = ({ sections, onSa
 
       {!collapsed && (editing
         ? (
-            <textarea
+            <TextArea
               ref={textareaRef}
+              aria-label={shortSection(sectionName)}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={Math.max(4, draft.split('\n').length + 1)}
-              className="w-full bg-surface border border-border rounded px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60 resize-y"
+              fullWidth
+              className="text-xs font-mono"
+              style={{ resize: 'vertical' }}
               spellCheck={false}
               placeholder={t('server.rawPlaceholder')}
             />

@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { Button, Chip, Header, ListBox, Modal, SearchField, Select, Separator, Spinner, toast } from '@heroui/react'
+import { Button, Chip, Header, Input, ListBox, Modal, SearchField, Select, Separator, Spinner, toast } from '@heroui/react'
 import type { Selection } from '@heroui/react'
 import type { DataGridColumn } from '@heroui-pro/react'
 import { DataGrid } from '@heroui-pro/react'
@@ -395,8 +395,8 @@ export const ManagePacksModal: React.FC<ManagePacksModalProps> = ({
                       </Button>
                       <div className="flex flex-col gap-1">
                         <span className="text-xs text-muted">{t('players.givePacks.packId')}</span>
-                        <input
-                          className="bg-surface border border-border rounded-[var(--radius)] px-3 py-2 text-sm text-foreground placeholder:text-muted w-28"
+                        <Input
+                          className="w-28"
                           aria-label={t('players.givePacks.packId')}
                           placeholder={t('players.givePacks.packId')}
                           value={formID}
@@ -406,8 +406,8 @@ export const ManagePacksModal: React.FC<ManagePacksModalProps> = ({
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-xs text-muted">{t('players.givePacks.packName')}</span>
-                        <input
-                          className="bg-surface border border-border rounded-[var(--radius)] px-3 py-2 text-sm text-foreground placeholder:text-muted w-24"
+                        <Input
+                          className="w-24"
                           aria-label={t('players.givePacks.packName')}
                           placeholder={t('players.givePacks.packName')}
                           value={formName}
@@ -417,8 +417,8 @@ export const ManagePacksModal: React.FC<ManagePacksModalProps> = ({
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-xs text-muted">{t('players.givePacks.category')}</span>
-                        <input
-                          className="bg-surface border border-border rounded-[var(--radius)] px-3 py-2 text-sm text-foreground placeholder:text-muted w-28"
+                        <Input
+                          className="w-28"
                           aria-label={t('players.givePacks.category')}
                           placeholder={t('players.givePacks.category')}
                           value={formCategory}

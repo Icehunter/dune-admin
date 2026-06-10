@@ -166,19 +166,20 @@ export const MarketSidebar: React.FC<MarketSidebarProps> = ({ categories, select
         </SearchField.Group>
       </SearchField>
 
-      <button
-        type="button"
+      <Button
+        size="sm"
+        variant="ghost"
         className={
-          'w-full rounded-[var(--radius)] px-3 py-1.5 text-left text-sm font-medium transition-colors '
+          'w-full justify-start rounded-[var(--radius)] px-3 font-medium '
           + (selected === ''
             ? 'text-accent'
             : 'text-foreground hover:bg-default/60')
         }
         style={selected === '' ? { backgroundColor: 'color-mix(in srgb, var(--accent) 14%, var(--surface))' } : undefined}
-        onClick={() => onSelect('')}
+        onPress={() => onSelect('')}
       >
         {t('market.sidebar.allItems')}
-      </button>
+      </Button>
 
       <div className="flex-1 overflow-y-auto">
         {items.length > 0 && (

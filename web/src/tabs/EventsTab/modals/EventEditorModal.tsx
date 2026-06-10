@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useState, useEffect, useMemo } from 'react'
 import {
-  Button, ListBox, Modal, SearchField, Select, Switch, TextField, toast,
+  Button, CloseButton, ListBox, Modal, SearchField, Select, Switch, TextField, toast,
 } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { FieldInput, FieldSelect, Icon, NumberInput, Panel, SectionLabel } from '../../../dune-ui'
@@ -411,17 +411,14 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                               className="inline-flex items-center gap-1 rounded-full bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium"
                             >
                               {playerName(id)}
-                              <button
-                                type="button"
-                                className="leading-none opacity-60 hover:opacity-100"
-                                onClick={() => setZone((z) => ({
+                              <CloseButton
+                                className="size-4 opacity-60 hover:opacity-100"
+                                onPress={() => setZone((z) => ({
                                   ...z,
                                   participants: z.participants.filter((p) => p !== id),
                                 }))}
                                 aria-label={`Remove ${playerName(id)}`}
-                              >
-                                ×
-                              </button>
+                              />
                             </span>
                           ))}
                         </div>

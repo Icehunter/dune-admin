@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useState } from 'react'
-import { Button, ListBox, Spinner, Switch } from '@heroui/react'
+import { Button, Input, ListBox, Spinner, Switch, TextArea } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { ConfirmDialog, Icon, NumberInput, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
 import type { WelcomeSharedProps } from '../types'
@@ -127,8 +127,9 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{t('welcome.message.messageLabel')}</span>
-              <textarea
-                className="w-full rounded-[var(--radius)] border border-border bg-surface text-foreground text-sm px-3 py-2 resize-none focus:outline-none focus:border-accent disabled:opacity-50"
+              <TextArea
+                aria-label={t('welcome.message.messageLabel')}
+                fullWidth
                 rows={3}
                 placeholder={t('welcome.message.messagePlaceholder')}
                 value={welcomeMessage}
@@ -138,8 +139,9 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
             </div>
             <div className="flex flex-col gap-1 max-w-md">
               <span className="text-xs text-muted">{t('welcome.message.senderLabel')}</span>
-              <input
-                className="w-full rounded-[var(--radius)] border border-border bg-surface text-foreground text-sm px-3 py-2 focus:outline-none focus:border-accent disabled:opacity-50"
+              <Input
+                aria-label={t('welcome.message.senderLabel')}
+                className="w-full"
                 placeholder={t('welcome.message.senderPlaceholder')}
                 value={welcomeWhisperSourcePlayer}
                 disabled={!welcomeMessageEnabled}
@@ -164,8 +166,9 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted">{t('welcome.motd.messageLabel')}</span>
-              <textarea
-                className="w-full rounded-[var(--radius)] border border-border bg-surface text-foreground text-sm px-3 py-2 resize-none focus:outline-none focus:border-accent disabled:opacity-50"
+              <TextArea
+                aria-label={t('welcome.motd.messageLabel')}
+                fullWidth
                 rows={3}
                 placeholder={t('welcome.motd.messagePlaceholder')}
                 value={motdMessage}
@@ -175,8 +178,9 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
             </div>
             <div className="flex flex-col gap-1 max-w-md">
               <span className="text-xs text-muted">{t('welcome.motd.senderLabel')}</span>
-              <input
-                className="w-full rounded-[var(--radius)] border border-border bg-surface text-foreground text-sm px-3 py-2 focus:outline-none focus:border-accent disabled:opacity-50"
+              <Input
+                aria-label={t('welcome.motd.senderLabel')}
+                className="w-full"
                 placeholder={t('welcome.motd.senderPlaceholder')}
                 value={motdSourcePlayer}
                 disabled={!motdEnabled}

@@ -6,7 +6,7 @@ import { useAtomValue } from 'jotai'
 import { unwrap } from 'jotai/utils'
 import { api } from '../../api/client'
 import type { MarketItem, MarketListing } from '../../api/client'
-import { Panel, SectionLabel } from '../../dune-ui'
+import { DataTable, Panel, SectionLabel } from '../../dune-ui'
 import { iconUrl, qualityLabel } from '../../utils/icons'
 import { getItemEntry } from '../../data/itemData'
 import { qualityDataAtom } from '../../data/store'
@@ -127,24 +127,13 @@ export const ItemDetail: React.FC<ItemDetailProps> = ({ item, onClose }) => {
                       ? (
                           <>
                             <div className="text-xs text-muted mb-1">{t('market.itemDetail.armorValueByQuality')}</div>
-                            <table className="w-full text-xs mb-2">
-                              <thead>
-                                <tr className="text-muted">
-                                  {QUALITY_LABELS.map((ql, i) => (
-                                    <th key={i} className="text-center pb-1 font-normal">{ql.slice(0, 3)}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  {(qualityData?.armor ?? []).map((mult, i) => (
-                                    <td key={i} className="text-center font-mono text-foreground">
-                                      {Math.round(entry!.armor_value! * mult)}
-                                    </td>
-                                  ))}
-                                </tr>
-                              </tbody>
-                            </table>
+                            {(qualityData?.armor ?? []).map((mult, i) => (
+                              <Row
+                                key={i}
+                                label={QUALITY_LABELS[i] ?? `Q${i}`}
+                                value={String(Math.round(entry!.armor_value! * mult))}
+                              />
+                            ))}
                           </>
                         )
                       : (
@@ -169,25 +158,13 @@ export const ItemDetail: React.FC<ItemDetailProps> = ({ item, onClose }) => {
                   <Panel>
                     <SectionLabel>{t('market.itemDetail.weaponQualityScaling')}</SectionLabel>
                     <div className="text-xs text-muted mb-1">{t('market.itemDetail.damageMultiplierByQuality')}</div>
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="text-muted">
-                          {QUALITY_LABELS.map((ql, i) => (
-                            <th key={i} className="text-center pb-1 font-normal">{ql.slice(0, 3)}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          {(qualityData?.weapon_damage ?? []).map((mult, i) => (
-                            <td key={i} className="text-center font-mono text-foreground">
-                              {mult.toFixed(2)}
-                              ×
-                            </td>
-                          ))}
-                        </tr>
-                      </tbody>
-                    </table>
+                    {(qualityData?.weapon_damage ?? []).map((mult, i) => (
+                      <Row
+                        key={i}
+                        label={QUALITY_LABELS[i] ?? `Q${i}`}
+                        value={`${mult.toFixed(2)}×`}
+                      />
+                    ))}
                   </Panel>
                 )}
 
@@ -206,26 +183,32 @@ export const ItemDetail: React.FC<ItemDetailProps> = ({ item, onClose }) => {
                             {qualities.map((q) => (
                               <div key={q}>
                                 <div className="text-xs font-medium text-muted mb-1">{qualityLabel(q)}</div>
-                                <table className="w-full text-xs">
-                                  <thead>
-                                    <tr className="text-muted">
-                                      <th className="text-left pb-1 font-normal">{t('market.itemDetail.seller')}</th>
-                                      <th className="text-right pb-1 font-normal">{t('market.itemDetail.stockCol')}</th>
-                                      <th className="text-right pb-1 font-normal">{t('market.itemDetail.priceCol')}</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {byQuality[q].sort((a, b) => a.price - b.price).map((l) => (
-                                      <tr key={l.order_id} className="border-t border-border/40">
-                                        <td className={`py-0.5 ${l.owner_type === 'bot' ? 'text-accent' : 'text-foreground'}`}>
-                                          {l.owner_name}
-                                        </td>
-                                        <td className="py-0.5 text-right text-muted">{l.stock.toLocaleString()}</td>
-                                        <td className="py-0.5 text-right font-mono">{l.price.toLocaleString()}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                                <DataTable<MarketListing, 'seller' | 'stock' | 'price'>
+                                  aria-label={`${t('market.itemDetail.activeListings')} — ${qualityLabel(q)}`}
+                                  columns={[
+                                    { key: 'seller', label: t('market.itemDetail.seller'), isRowHeader: true },
+                                    { key: 'stock', label: t('market.itemDetail.stockCol'), align: 'end', width: 80 },
+                                    { key: 'price', label: t('market.itemDetail.priceCol'), align: 'end', width: 100 },
+                                  ]}
+                                  rows={byQuality[q]}
+                                  rowId={(l) => String(l.order_id)}
+                                  initialSort={{ column: 'price', direction: 'ascending' }}
+                                  sortValue={(l, k) => (k === 'seller' ? l.owner_name : l[k])}
+                                  renderCell={(l, k) => {
+                                    switch (k) {
+                                      case 'seller':
+                                        return (
+                                          <span className={`truncate block ${l.owner_type === 'bot' ? 'text-accent' : 'text-foreground'}`}>
+                                            {l.owner_name}
+                                          </span>
+                                        )
+                                      case 'stock':
+                                        return <span className="text-muted tabular-nums">{l.stock.toLocaleString()}</span>
+                                      case 'price':
+                                        return <span className="font-mono">{l.price.toLocaleString()}</span>
+                                    }
+                                  }}
+                                />
                               </div>
                             ))}
                           </div>

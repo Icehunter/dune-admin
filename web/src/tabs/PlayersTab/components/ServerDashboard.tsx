@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { Spinner, toast } from '@heroui/react'
 import { AreaChart, BarChart, Segment } from '@heroui-pro/react'
 import { api } from '../../../api/client'
-import type { FactionTrends, ServerSummary } from '../../../api/client'
-import { PageHeader, Panel, SectionLabel } from '../../../dune-ui'
+import type { FactionStat, FactionTrends, ServerSummary } from '../../../api/client'
+import { DataTable, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
+import type { Column } from '../../../dune-ui'
 
 function Sep() {
   return <div className="w-px h-8 bg-border mx-3 shrink-0" />
@@ -47,6 +48,26 @@ function fmtPlaytime(secs: number): string {
   const h = Math.floor(secs / 3600)
   const m = Math.floor((secs % 3600) / 60)
   return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+type FactionCol = 'faction' | 'players' | 'avg_level' | 'solaris' | 'scrip' | 'econ_pct'
+
+const econPct = (f: FactionStat, totalSolaris: number): number =>
+  totalSolaris > 0 ? f.solaris / totalSolaris * 100 : 0
+
+function renderFactionCell(f: FactionStat, key: FactionCol, totalSolaris: number): React.ReactNode {
+  switch (key) {
+    case 'faction': return f.faction
+    case 'players': return <span className="tabular-nums">{f.players.toLocaleString()}</span>
+    case 'avg_level': return <span className="tabular-nums">{f.avg_level.toFixed(1)}</span>
+    case 'solaris': return <span className="tabular-nums">{f.solaris.toLocaleString()}</span>
+    case 'scrip': return <span className="tabular-nums">{f.scrip.toLocaleString()}</span>
+    case 'econ_pct': return <span className="tabular-nums">{`${econPct(f, totalSolaris).toFixed(1)}%`}</span>
+  }
+}
+
+function factionSortValue(f: FactionStat, key: FactionCol, totalSolaris: number): string | number {
+  return key === 'faction' ? f.faction : key === 'econ_pct' ? econPct(f, totalSolaris) : f[key]
 }
 
 // ServerDashboard is the Players-tab landing (#130): server-wide aggregates and
@@ -167,35 +188,21 @@ export const ServerDashboard: React.FC = () => {
                 {summary.by_faction.length === 0
                   ? <p className="text-muted text-sm">{t('players.dashboard.noPlayers')}</p>
                   : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="text-left text-muted">
-                              <th className="pb-1 font-normal">{t('players.dashboard.factionCol')}</th>
-                              <th className="pb-1 text-right font-normal">{t('players.dashboard.playersCol')}</th>
-                              <th className="pb-1 text-right font-normal">{t('players.dashboard.avgLevelCol')}</th>
-                              <th className="pb-1 text-right font-normal">{t('players.dashboard.solarisCol')}</th>
-                              <th className="pb-1 text-right font-normal">{t('players.dashboard.scripCol')}</th>
-                              <th className="pb-1 text-right font-normal">{t('players.dashboard.econPctCol')}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {summary.by_faction.map((f) => (
-                              <tr key={f.faction} className="border-t border-border/40">
-                                <td className="py-1 text-foreground">{f.faction}</td>
-                                <td className="py-1 text-right tabular-nums">{f.players.toLocaleString()}</td>
-                                <td className="py-1 text-right tabular-nums">{f.avg_level.toFixed(1)}</td>
-                                <td className="py-1 text-right tabular-nums">{f.solaris.toLocaleString()}</td>
-                                <td className="py-1 text-right tabular-nums">{f.scrip.toLocaleString()}</td>
-                                <td className="py-1 text-right tabular-nums">
-                                  {summary.total_solaris > 0 ? (f.solaris / summary.total_solaris * 100).toFixed(1) : '0.0'}
-                                  %
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <DataTable<FactionStat, FactionCol>
+                        aria-label={t('players.dashboard.byFaction')}
+                        columns={[
+                          { key: 'faction', label: t('players.dashboard.factionCol'), isRowHeader: true },
+                          { key: 'players', label: t('players.dashboard.playersCol'), align: 'end' },
+                          { key: 'avg_level', label: t('players.dashboard.avgLevelCol'), align: 'end' },
+                          { key: 'solaris', label: t('players.dashboard.solarisCol'), align: 'end' },
+                          { key: 'scrip', label: t('players.dashboard.scripCol'), align: 'end' },
+                          { key: 'econ_pct', label: t('players.dashboard.econPctCol'), align: 'end' },
+                        ] satisfies Column<FactionCol>[]}
+                        rows={summary.by_faction}
+                        rowId={(f) => f.faction}
+                        renderCell={(f, key) => renderFactionCell(f, key, summary.total_solaris)}
+                        sortValue={(f, key) => factionSortValue(f, key, summary.total_solaris)}
+                      />
                     )}
               </Panel>
 

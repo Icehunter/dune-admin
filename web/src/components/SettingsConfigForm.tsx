@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useState, useEffect, useContext, createContext, type MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Select, ListBox, Spinner, Switch, toast } from '@heroui/react'
+import { Button, CloseButton, Input, Select, ListBox, Spinner, Switch, toast } from '@heroui/react'
 import { Segment } from '@heroui-pro/react'
 import { api, MASKED } from '../api/client'
 import type { AppConfig } from '../api/client'
@@ -214,7 +214,7 @@ function RolePicker({ value, onChange, roles, label, hint }: RolePickerProps) {
             {selectedIds.map((id) => (
               <span key={id} className="inline-flex items-center gap-1 rounded-full bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium">
                 {nameOf(id)}
-                <button type="button" onClick={() => removeRole(id)} className="leading-none opacity-60 hover:opacity-100">×</button>
+                <CloseButton aria-label={`Remove ${nameOf(id)}`} className="size-4 opacity-60 hover:opacity-100" onPress={() => removeRole(id)} />
               </span>
             ))}
           </div>

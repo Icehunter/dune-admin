@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Chip, Switch, toast } from '@heroui/react'
+import { Button, Chip, Link, Switch, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { api } from '../../api/client'
 import type { EventDefinition, EventClaimRecord } from '../../api/client'
@@ -155,13 +155,12 @@ export const EventsTab: React.FC = () => {
           switch (key) {
             case 'name':
               return (
-                <button
-                  className="text-left text-accent hover:underline"
-                  onClick={() => loadStatus(ev)}
-                  type="button"
+                <Link
+                  className="text-left text-accent"
+                  onPress={() => loadStatus(ev)}
                 >
                   {ev.name}
-                </button>
+                </Link>
               )
             case 'type':
               return (

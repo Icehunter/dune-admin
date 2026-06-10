@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Chip, Modal, Spinner, toast } from '@heroui/react'
+import { Button, Chip, Input, Modal, Spinner, TextArea, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { Icon as IconifyIcon } from '@iconify/react'
 import { api } from '../api/client'
@@ -108,8 +108,6 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
     { key: 'actions', label: '', width: 120, sortable: false },
   ]
 
-  const inputCls = 'w-full bg-surface text-foreground border border-border rounded px-2 py-1 text-sm'
-
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
       <PageHeader title={t('guilds.title', { count: guilds.length })} subtitle={t('guilds.subtitle')}>
@@ -209,16 +207,18 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
                           <SectionLabel>{t('guilds.editGuild')}</SectionLabel>
                           <div>
                             <label className="text-xs text-muted">{t('guilds.nameLabel')}</label>
-                            <input
-                              className={inputCls}
+                            <Input
+                              aria-label={t('guilds.nameLabel')}
+                              className="w-full"
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
                             />
                           </div>
                           <div>
                             <label className="text-xs text-muted">{t('guilds.descLabel')}</label>
-                            <textarea
-                              className={inputCls}
+                            <TextArea
+                              aria-label={t('guilds.descLabel')}
+                              fullWidth
                               rows={2}
                               value={editDesc}
                               onChange={(e) => setEditDesc(e.target.value)}

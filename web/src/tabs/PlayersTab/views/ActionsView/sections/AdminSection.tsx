@@ -1,7 +1,7 @@
 import { useState, type Key, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
-import { Button, Input, ListBox, SearchField, Select, toast } from '@heroui/react'
+import { Button, Checkbox, Input, ListBox, SearchField, Select, TextArea, toast } from '@heroui/react'
 import { Panel, SectionLabel } from '../../../../../dune-ui'
 import { vehiclesSyncAtom } from '../../../../../data/store'
 import { api } from '../../../../../api/client'
@@ -479,22 +479,24 @@ export function AdminSection({ player, onManageLocations, onTeleportPicker, onSp
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted shrink-0">{t('players.actions.admin.whisperFrom')}</span>
-            <input
-              type="text"
+            <Input
+              aria-label={t('players.actions.admin.whisperFrom')}
               value={whisperSenderName}
               onChange={(e) => setWhisperSenderName(e.target.value)}
               placeholder="GM"
               maxLength={32}
-              className="w-32 bg-surface border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:border-accent/60"
+              className="w-32"
             />
           </div>
-          <textarea
+          <TextArea
+            aria-label={t('players.actions.admin.whisper')}
             value={whisperText}
             onChange={(e) => setWhisperText(e.target.value)}
             placeholder={`Message to ${player.name}\u2026`}
             rows={2}
             maxLength={500}
-            className="w-full bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent/60 resize-y"
+            fullWidth
+            style={{ resize: 'vertical' }}
           />
           <div className="flex items-center justify-end gap-2">
             <span className="text-xs text-muted">
@@ -614,10 +616,9 @@ export function AdminSection({ player, onManageLocations, onTeleportPicker, onSp
             >
               {t('players.actions.admin.pickOnMap')}
             </Button>
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <input type="checkbox" checked={spawnVehiclePersistent} onChange={(e) => setSpawnVehiclePersistent(e.target.checked)} />
+            <Checkbox isSelected={spawnVehiclePersistent} onChange={setSpawnVehiclePersistent}>
               <span className="text-xs">{t('players.actions.admin.persistent')}</span>
-            </label>
+            </Checkbox>
             <Button
               size="sm"
               variant="ghost"

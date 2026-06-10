@@ -1,7 +1,7 @@
 import { Button, ListBox, Select, Tooltip } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import type { ServerSetting } from '../../../api/client'
-import { NumberInput, Icon } from '../../../dune-ui'
+import { FieldInput, NumberInput, Icon } from '../../../dune-ui'
 import { SOURCE_FILE, LAYER_STYLE, USER_SOURCES } from '../constants'
 import { sourceLabel, trimFloat } from '../utils'
 
@@ -90,11 +90,11 @@ export const SettingRow: React.FC<SettingRowProps> = ({
             )
           : item.type === 'string'
             ? (
-                <input
-                  type="text"
+                <FieldInput
+                  ariaLabel={item.label}
                   value={display}
-                  onChange={(e) => onChange(e.target.value)}
-                  className="w-40 bg-surface border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60"
+                  onChange={onChange}
+                  className="w-40 font-mono"
                 />
               )
             : (

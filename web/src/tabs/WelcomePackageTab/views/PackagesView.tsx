@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Chip, ListBox, SearchField, Select, Separator, Spinner } from '@heroui/react'
+import { Button, Chip, Input, ListBox, SearchField, Select, Separator, Spinner } from '@heroui/react'
 import type { Selection } from '@heroui/react'
 import type { DataGridColumn } from '@heroui-pro/react'
 import { DataGrid } from '@heroui-pro/react'
@@ -253,8 +253,9 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
         <div className="flex items-end gap-2">
           <div className="flex flex-col gap-0.5">
             <label className="text-xs text-muted">{t('welcome.newVersionLabel')}</label>
-            <input
-              className="bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground w-36"
+            <Input
+              aria-label={t('welcome.newVersionLabel')}
+              className="w-36"
               placeholder={t('welcome.newVersionPlaceholder')}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}

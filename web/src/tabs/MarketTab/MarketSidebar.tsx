@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useMemo, useState } from 'react'
-import { Button } from '@heroui/react'
+import { Button, SearchField } from '@heroui/react'
+import { FileTree } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../../dune-ui'
 
@@ -12,7 +13,7 @@ type MarketSidebarProps = {
 
 type Node = {
   label: string
-  path: string // full path used for filtering
+  path: string // full path used for filtering — also the FileTree item key
   displayPath: string // path used as tree key (items/ stripped)
   children: Node[]
 }
@@ -63,7 +64,7 @@ function collectAncestorPaths(categories: string[], selected: string): Set<strin
   const ancestors = new Set<string>()
   for (const cat of categories) {
     if (cat === selected || cat.startsWith(selected + '/') || selected.startsWith(cat + '/')) {
-      const parts = cat.replace(/^items\//, '').split('/')
+      const parts = cat.replace(/^items\//, '').replace(/^schematics\//, '').split('/')
       let cur = ''
       for (const p of parts) {
         cur = cur ? `${cur}/${p}` : p
@@ -74,111 +75,68 @@ function collectAncestorPaths(categories: string[], selected: string): Set<strin
   return ancestors
 }
 
-type TreeNodeProps = {
-  node: Node
-  selected: string
-  depth: number
-  expanded: Set<string>
-  onToggle: (displayPath: string) => void
-  onSelect: (path: string) => void
+// Recursively map a Node tree into nested FileTree.Item elements. The item key
+// (`id`) is the full filter path so selection maps straight back onto onSelect.
+function renderNode(node: Node) {
+  return (
+    <FileTree.Item key={node.displayPath} id={node.path} textValue={node.label} title={formatLabel(node.label)}>
+      {node.children.map((child) => renderNode(child))}
+    </FileTree.Item>
+  )
 }
 
-function TreeNode({ node, selected, depth, expanded, onToggle, onSelect }: TreeNodeProps) {
-  const isExact = selected === node.path
-  const isAncestor = !isExact && selected.startsWith(node.path + '/')
-  const hasChildren = node.children.length > 0
-  const isOpen = expanded.has(node.displayPath)
+// Prune a tree to nodes whose label (or a descendant's label) matches the query.
+// A matching branch keeps all of its descendants so the user can drill in.
+function filterNodes(nodes: Node[], q: string): Node[] {
+  const out: Node[] = []
+  for (const node of nodes) {
+    const selfMatch = formatLabel(node.label).toLowerCase().includes(q) || node.label.toLowerCase().includes(q)
+    if (selfMatch) {
+      out.push(node)
+      continue
+    }
+    const kids = filterNodes(node.children, q)
+    if (kids.length) out.push({ ...node, children: kids })
+  }
+  return out
+}
 
-  return (
-    <div>
-      <div
-        className={[
-          'group flex items-center rounded transition-colors',
-          isExact ? 'bg-accent/15' : 'hover:bg-surface',
-        ].join(' ')}
-        style={{ paddingLeft: `${depth * 12}px` }}
-      >
-        {/* Expand/collapse toggle — only shown for nodes with children */}
-        {hasChildren
-          ? (
-              <button
-                className="flex items-center justify-center w-5 h-5 shrink-0 text-muted hover:text-foreground transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onToggle(node.displayPath)
-                }}
-                aria-label={isOpen ? 'Collapse' : 'Expand'}
-              >
-                <Icon name={isOpen ? 'chevron-down' : 'chevron-right'} />
-              </button>
-            )
-          : (
-              <span className="w-5 shrink-0 flex items-center justify-center">
-                <span className="w-1 h-1 rounded-full bg-border/60" />
-              </span>
-            )}
-
-        {/* Label button */}
-        <button
-          className={[
-            'flex-1 text-left py-1 pr-2 text-sm truncate',
-            isExact ? 'text-accent font-medium' : isAncestor ? 'text-foreground/80' : 'text-muted',
-          ].join(' ')}
-          onClick={() => {
-            onSelect(node.path)
-            if (hasChildren && !isOpen) onToggle(node.displayPath)
-          }}
-        >
-          {formatLabel(node.label)}
-        </button>
-      </div>
-
-      {/* Children with left border guide */}
-      {hasChildren && isOpen && (
-        <div className="relative">
-          <div
-            className="absolute top-0 bottom-0 border-l border-border/30"
-            style={{ left: `${depth * 12 + 10}px` }}
-          />
-          {node.children.map((child) => (
-            <TreeNode
-              key={child.displayPath}
-              node={child}
-              selected={selected}
-              depth={depth + 1}
-              expanded={expanded}
-              onToggle={onToggle}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
+function flattenKeys(nodes: Node[]): string[] {
+  return nodes.flatMap((n) => [n.path, ...flattenKeys(n.children)])
 }
 
 export const MarketSidebar: React.FC<MarketSidebarProps> = ({ categories, selected, onSelect }: MarketSidebarProps) => {
   const { t } = useTranslation()
-  const { items, schematics } = useMemo(() => buildTree(categories), [categories])
+  const { items: allItems, schematics: allSchematics } = useMemo(() => buildTree(categories), [categories])
   const [collapsed, setCollapsed] = useState(false)
+  const [search, setSearch] = useState('')
 
-  // Default: top-level nodes open. Auto-expand ancestors of selected node.
-  const defaultExpanded = useMemo(() => {
+  const q = search.trim().toLowerCase()
+  const items = useMemo(() => (q ? filterNodes(allItems, q) : allItems), [allItems, q])
+  const schematics = useMemo(() => (q ? filterNodes(allSchematics, q) : allSchematics), [allSchematics, q])
+
+  // While searching, expand every surviving branch so matches are visible.
+  // Otherwise: open top-level nodes plus the ancestors of the selected node.
+  const expandedProps = useMemo(() => {
+    if (q) {
+      return { expandedKeys: [...flattenKeys(items), ...flattenKeys(schematics)] }
+    }
     const set = new Set<string>()
-    for (const node of [...items, ...schematics]) set.add(node.displayPath)
-    for (const p of collectAncestorPaths(categories, selected)) set.add(p)
-    return set
-  }, [items, schematics, categories, selected])
+    for (const node of [...allItems, ...allSchematics]) set.add(node.path)
+    const ancestors = collectAncestorPaths(categories, selected)
+    const all = (function flatten(nodes: Node[]): Node[] {
+      return nodes.flatMap((n) => [n, ...flatten(n.children)])
+    })([...allItems, ...allSchematics])
+    for (const n of all) {
+      if (ancestors.has(n.displayPath)) set.add(n.path)
+    }
+    return { defaultExpandedKeys: [...set] }
+  }, [q, items, schematics, allItems, allSchematics, categories, selected])
 
-  const [expanded, setExpanded] = useState<Set<string>>(defaultExpanded)
-
-  const toggle = (displayPath: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(displayPath)) next.delete(displayPath)
-      else next.add(displayPath)
-      return next
-    })
+  const onSelectionChange = (keys: 'all' | Set<React.Key>) => {
+    if (keys === 'all') return
+    const k = [...keys][0]
+    if (k != null) onSelect(String(k))
   }
 
   if (collapsed) {
@@ -192,54 +150,71 @@ export const MarketSidebar: React.FC<MarketSidebarProps> = ({ categories, select
   }
 
   return (
-    <div className="w-48 shrink-0 flex flex-col gap-0.5 overflow-y-auto pr-1">
-      <div className="flex items-center justify-between mb-1">
+    <div className="w-56 shrink-0 flex flex-col gap-1 overflow-hidden pr-1">
+      <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-muted uppercase tracking-wider">{t('market.sidebar.categories')}</span>
         <Button size="sm" variant="ghost" isIconOnly aria-label={t('market.sidebar.collapseAriaLabel')} onPress={() => setCollapsed(true)}>
           <Icon name="chevron-left" />
         </Button>
       </div>
 
-      <Button
-        size="sm"
-        variant={selected === '' ? 'primary' : 'ghost'}
-        className="w-full justify-start text-sm mb-1"
-        onPress={() => onSelect('')}
+      <SearchField aria-label={t('market.sidebar.categories')} value={search} onChange={setSearch}>
+        <SearchField.Group>
+          <SearchField.SearchIcon />
+          <SearchField.Input placeholder={t('market.sidebar.categories')} />
+          <SearchField.ClearButton />
+        </SearchField.Group>
+      </SearchField>
+
+      <button
+        type="button"
+        className={
+          'w-full rounded-[var(--radius)] px-3 py-1.5 text-left text-sm font-medium transition-colors '
+          + (selected === ''
+            ? 'text-accent'
+            : 'text-foreground hover:bg-default/60')
+        }
+        style={selected === '' ? { backgroundColor: 'color-mix(in srgb, var(--accent) 14%, var(--surface))' } : undefined}
+        onClick={() => onSelect('')}
       >
         {t('market.sidebar.allItems')}
-      </Button>
+      </button>
 
-      {items.map((node) => (
-        <TreeNode
-          key={node.displayPath}
-          node={node}
-          selected={selected}
-          depth={0}
-          expanded={expanded}
-          onToggle={toggle}
-          onSelect={onSelect}
-        />
-      ))}
+      <div className="flex-1 overflow-y-auto">
+        {items.length > 0 && (
+          <FileTree
+            aria-label={t('market.sidebar.categories')}
+            selectionMode="single"
+            selectedKeys={selected ? new Set([selected]) : new Set()}
+            onSelectionChange={onSelectionChange}
+            {...expandedProps}
+            showGuideLines
+            size="sm"
+          >
+            {items.map((node) => renderNode(node))}
+          </FileTree>
+        )}
 
-      {schematics.length > 0 && (
-        <>
-          <div className="my-2 border-t border-border/40" />
-          <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wider px-1 mb-0.5">
-            {t('market.sidebar.schematics')}
-          </span>
-          {schematics.map((node) => (
-            <TreeNode
-              key={node.displayPath}
-              node={node}
-              selected={selected}
-              depth={0}
-              expanded={expanded}
-              onToggle={toggle}
-              onSelect={node.path.startsWith('schematics/') ? onSelect : onSelect}
-            />
-          ))}
-        </>
-      )}
+        {schematics.length > 0 && (
+          <>
+            <div className="my-2 border-t border-border/40" />
+            <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wider px-1 mb-0.5 block">
+              {t('market.sidebar.schematics')}
+            </span>
+            <FileTree
+              aria-label={t('market.sidebar.schematics')}
+              selectionMode="single"
+              selectedKeys={selected ? new Set([selected]) : new Set()}
+              onSelectionChange={onSelectionChange}
+              {...expandedProps}
+              showGuideLines
+              size="sm"
+            >
+              {schematics.map((node) => renderNode(node))}
+            </FileTree>
+          </>
+        )}
+      </div>
     </div>
   )
 }

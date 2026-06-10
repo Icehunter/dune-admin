@@ -13,11 +13,6 @@ function fmt(ts: string | null | undefined): string {
   }
 }
 
-function fmtBalance(n: number | undefined): string {
-  if (n == null) return '—'
-  return n.toLocaleString()
-}
-
 interface BotStatusCardProps {
   status: BotStatus
 }
@@ -28,41 +23,56 @@ export const BotStatusCard: React.FC<BotStatusCardProps> = ({ status }) => {
   const statusColor = status.running ? 'success' : 'warning'
 
   return (
-    <div className="flex flex-wrap gap-4 items-start">
-      <div className="flex flex-col gap-1 min-w-[120px]">
-        <span className="text-xs text-muted uppercase tracking-wider">{t('market.bot.status.label')}</span>
-        <Chip
-          size="sm"
-          color={statusColor}
-          variant="soft"
-        >
-          {statusLabel}
-        </Chip>
-      </div>
-
-      <Stat label={t('market.bot.status.uptime')} value={status.uptime || '—'} />
-      <Stat label={t('market.bot.status.listings')} value={status.listing_count?.toLocaleString() ?? '—'} />
-      <Stat label={t('market.bot.status.balance')} value={fmtBalance(status.balance)} />
-      <Stat label={t('market.bot.status.errors')} value={String(status.error_count ?? 0)} accent={status.error_count > 0 ? 'danger' : undefined} />
-      <Stat label={t('market.bot.status.lastListTick')} value={fmt(status.last_list_tick)} />
-      <Stat label={t('market.bot.status.lastBuyTick')} value={fmt(status.last_buy_tick)} />
-      {status.next_list_tick != null && <Stat label={t('market.bot.status.nextListTick')} value={fmt(status.next_list_tick)} />}
-      {status.next_buy_tick != null && <Stat label={t('market.bot.status.nextBuyTick')} value={fmt(status.next_buy_tick)} />}
+    <div className="flex items-center flex-wrap gap-0">
+      <Stat label={t('market.bot.status.label')} first>
+        <Chip size="sm" color={statusColor} variant="soft">{statusLabel}</Chip>
+      </Stat>
+      <Sep />
+      <Stat label={t('market.bot.status.uptime')}>{status.uptime || '—'}</Stat>
+      <Sep />
+      <Stat label={t('market.bot.status.listings')}>{status.listing_count?.toLocaleString() ?? '—'}</Stat>
+      <Sep />
+      <Stat label={t('market.bot.status.balance')}>{(status.balance ?? 0).toLocaleString()}</Stat>
+      <Sep />
+      <Stat label={t('market.bot.status.errors')} danger={status.error_count > 0}>
+        {String(status.error_count ?? 0)}
+      </Stat>
+      <Sep />
+      <Stat label={t('market.bot.status.lastListTick')}>{fmt(status.last_list_tick)}</Stat>
+      <Sep />
+      <Stat label={t('market.bot.status.lastBuyTick')}>{fmt(status.last_buy_tick)}</Stat>
+      {status.next_list_tick != null && (
+        <>
+          <Sep />
+          <Stat label={t('market.bot.status.nextListTick')}>{fmt(status.next_list_tick)}</Stat>
+        </>
+      )}
+      {status.next_buy_tick != null && (
+        <>
+          <Sep />
+          <Stat label={t('market.bot.status.nextBuyTick')}>{fmt(status.next_buy_tick)}</Stat>
+        </>
+      )}
     </div>
   )
 }
 
-interface StatProps {
-  label: string
-  value: string
-  accent?: 'danger'
+function Sep() {
+  return <div className="w-px h-8 bg-border mx-3 shrink-0" />
 }
 
-function Stat({ label, value, accent }: StatProps) {
+interface StatProps {
+  label: string
+  first?: boolean
+  danger?: boolean
+  children: React.ReactNode
+}
+
+function Stat({ label, danger, children }: StatProps) {
   return (
-    <div className="flex flex-col gap-1 min-w-[100px]">
-      <span className="text-xs text-muted uppercase tracking-wider">{label}</span>
-      <span className={`text-sm font-mono ${accent === 'danger' ? 'text-danger' : 'text-foreground'}`}>{value}</span>
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">{label}</span>
+      <span className={`text-sm font-mono ${danger ? 'text-danger' : 'text-foreground'}`}>{children}</span>
     </div>
   )
 }

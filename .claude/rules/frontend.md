@@ -79,8 +79,9 @@ Import shared components from `../dune-ui` when a wrapper exists:
 
 ```ts
 import {
-  DataTable, Icon, PageHeader, Panel, SectionDivider, SectionLabel,
-  InfoCard, Dropzone, SideNav, NumberInput, FieldInput, FieldSelect, TimeInput,
+  ActionBar, ConfirmDialog, DataTable, Dropzone, FieldInput, FieldSelect,
+  Icon, InfoCard, LoadingState, NumberInput, PageHeader, Panel,
+  SectionDivider, SectionLabel, SideNav, TimeInput,
 } from '../dune-ui'
 import type { Column } from '../dune-ui'
 ```

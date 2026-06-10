@@ -2,6 +2,7 @@ import type React from 'react'
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Modal, Spinner, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
 import { DataTable, SectionLabel, type Column } from '../../../dune-ui'
 import { api } from '../../../api/client'
 import type { TeleportLocation } from '../../../api/client'
@@ -151,9 +152,13 @@ export const ManageLocationsModal: React.FC<ManageLocationsModalProps> = ({ onCl
                     rowId={(loc) => loc.name}
                     initialSort={{ column: 'name', direction: 'ascending' }}
                     emptyState={(
-                      <div className="text-center py-8 text-xs text-muted">
-                        {t('players.actions.admin.manageLocationsModal.noLocations')}
-                      </div>
+                      <EmptyState size="sm">
+                        <EmptyState.Header>
+                          <EmptyState.Title>
+                            {t('players.actions.admin.manageLocationsModal.noLocations')}
+                          </EmptyState.Title>
+                        </EmptyState.Header>
+                      </EmptyState>
                     )}
                     renderCell={(loc, key) => {
                       switch (key) {

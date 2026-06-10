@@ -69,7 +69,7 @@ export const SettingRow: React.FC<SettingRowProps> = ({
       <div className="flex items-center gap-1.5 shrink-0">
         {item.type === 'bool'
           ? (
-              <Select selectedKey={display} onSelectionChange={(k) => onChange(String(k))} className="w-32">
+              <Select selectedKey={display} onSelectionChange={(k) => onChange(String(k))} className="w-32" aria-label={item.label}>
                 <Select.Trigger className="h-7 text-xs">
                   <Select.Value />
                   <Select.Indicator />

@@ -181,7 +181,7 @@ export function ProgressionSection({ player }: ProgressionSectionProps) {
         <SectionLabel>{t('players.actions.progression.progressionUnlock')}</SectionLabel>
         <div className="text-xs text-muted">{t('players.actions.progression.progressionUnlockDesc')}</div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Select selectedKey={unlockFaction} onSelectionChange={handleFactionSelect} className="w-36">
+          <Select selectedKey={unlockFaction} onSelectionChange={handleFactionSelect} className="w-36" aria-label={t('players.actions.progression.progressionUnlock')}>
             <Select.Trigger>
               <Select.Value />
               <Select.Indicator />
@@ -199,7 +199,7 @@ export function ProgressionSection({ player }: ProgressionSectionProps) {
               </ListBox>
             </Select.Popover>
           </Select>
-          <Select selectedKey={unlockPreset} onSelectionChange={handlePresetSelect} className="w-48">
+          <Select selectedKey={unlockPreset} onSelectionChange={handlePresetSelect} className="w-48" aria-label="Unlock preset">
             <Select.Trigger>
               <Select.Value />
               <Select.Indicator />

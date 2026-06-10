@@ -1,9 +1,7 @@
 import type React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-} from 'recharts'
+import { AreaChart } from '@heroui-pro/react'
 import type { StatSnapshot } from '../../../api/client'
 import { SectionLabel } from '../../../dune-ui'
 
@@ -24,7 +22,7 @@ export const XPChart: React.FC<XPChartProps> = ({ data }) => {
   const { t } = useTranslation()
   const [hidden, setHidden] = useState<Set<string>>(new Set())
 
-  const LINES: { key: keyof StatSnapshot, label: string, color: string }[] = [
+  const LINES = [
     { key: 'char_xp', label: t('players.detail.xpCharXP'), color: '#c9820a' },
     { key: 'combat_xp', label: t('players.detail.xpCombat'), color: '#e05252' },
     { key: 'crafting_xp', label: t('players.detail.xpCrafting'), color: '#5296e0' },
@@ -46,9 +44,7 @@ export const XPChart: React.FC<XPChartProps> = ({ data }) => {
     return (
       <div>
         <SectionLabel>{t('players.detail.xpHistory')}</SectionLabel>
-        <p className="text-muted text-sm mt-2">
-          {t('players.detail.xpHistoryEmpty')}
-        </p>
+        <p className="text-muted text-sm mt-2">{t('players.detail.xpHistoryEmpty')}</p>
       </div>
     )
   }
@@ -58,57 +54,59 @@ export const XPChart: React.FC<XPChartProps> = ({ data }) => {
   return (
     <div>
       <SectionLabel>{t('players.detail.xpHistory')}</SectionLabel>
-      <div className="mt-3 h-56">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-            <XAxis
-              dataKey="snapped_at"
-              tickFormatter={fmtTime}
-              tick={{ fontSize: 11, fill: 'var(--muted)' }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              tickFormatter={fmtXP}
-              tick={{ fontSize: 11, fill: 'var(--muted)' }}
-              tickLine={false}
-              axisLine={false}
-              width={44}
-            />
-            <Tooltip
-              formatter={(val, name) => [fmtXP(val as number), String(name)]}
-              labelFormatter={(d) => fmtTime(String(d))}
-              contentStyle={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                fontSize: 12,
-              }}
-            />
-            <Legend
-              onClick={(e) => toggle(e.dataKey as string)}
-              formatter={(value, entry) => (
-                <span style={{ color: hidden.has((entry as { dataKey: string }).dataKey) ? 'var(--muted)' : undefined }}>
-                  {value}
-                </span>
-              )}
-            />
-            {visibleLines.map((l) => (
-              <Line
-                key={l.key}
-                type="monotone"
-                dataKey={l.key}
-                name={l.label}
-                stroke={l.color}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-                connectNulls
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+        {LINES.map((l) => (
+          <button
+            key={l.key}
+            type="button"
+            className="flex cursor-pointer select-none items-center gap-1.5 text-xs"
+            style={{ opacity: hidden.has(l.key) ? 0.4 : 1 }}
+            onClick={() => toggle(l.key)}
+          >
+            <span className="size-2 shrink-0 rounded-full" style={{ background: l.color }} />
+            <span className="text-muted">{l.label}</span>
+          </button>
+        ))}
       </div>
+      <AreaChart
+        data={data as unknown as Record<string, string | number>[]}
+        height={200}
+        margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
+      >
+        <defs>
+          {LINES.map((l) => (
+            <linearGradient key={l.key} id={`xp-${l.key}`} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={l.color} stopOpacity={0.2} />
+              <stop offset="100%" stopColor={l.color} stopOpacity={0.02} />
+            </linearGradient>
+          ))}
+        </defs>
+        <AreaChart.Grid vertical={false} />
+        <AreaChart.XAxis dataKey="snapped_at" tickFormatter={fmtTime} tickMargin={8} />
+        <AreaChart.YAxis tickFormatter={fmtXP} width={44} />
+        {visibleLines.map((l) => (
+          <AreaChart.Area
+            key={l.key}
+            type="monotone"
+            dataKey={l.key}
+            name={l.label}
+            stroke={l.color}
+            strokeWidth={2}
+            dot={false}
+            connectNulls
+            fill={`url(#xp-${l.key})`}
+          />
+        ))}
+        <AreaChart.Tooltip
+          content={(
+            <AreaChart.TooltipContent
+              indicator="line"
+              labelFormatter={(d) => fmtTime(String(d))}
+              valueFormatter={(v) => fmtXP(Number(v))}
+            />
+          )}
+        />
+      </AreaChart>
     </div>
   )
 }

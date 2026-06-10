@@ -410,7 +410,7 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
         </div>
       )}
 
-      <div className="flex flex-1 min-h-0 gap-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 gap-2 overflow-hidden">
         <FilterPanel
           filter={filter}
           onToggle={toggleFilter}

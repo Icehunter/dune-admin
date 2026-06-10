@@ -9,8 +9,9 @@
  */
 
 import { atom, getDefaultStore } from 'jotai'
-import { loadable } from 'jotai/utils'
-import { useAtom } from 'jotai'
+import { unwrap } from 'jotai/utils'
+import { useAtomValue } from 'jotai'
+import { useMemo } from 'react'
 import type { Atom } from 'jotai'
 import { apiBase, isCdnDeploy } from '../api/client'
 
@@ -167,23 +168,25 @@ export const packsAtom = atom<Promise<PacksData>>(async () => {
   }
 })
 
+// ── Sync (unwrapped) atoms — safe to use without Suspense ─────────────────────
+
+export const gameplayTagsSyncAtom = unwrap(gameplayTagsAtom, (): string[] => [])
+export const skillModulesSyncAtom = unwrap(skillModulesAtom, (): SkillModule[] => [])
+export const vehiclesSyncAtom = unwrap(vehiclesAtom, (): Vehicle[] => [])
+export const cheatScriptsSyncAtom = unwrap(cheatScriptsAtom, (): CheatScript[] => [])
+export const packsSyncAtom = unwrap(packsAtom, (): PacksData => ({ packs: {} }))
+
 // ── React hook ────────────────────────────────────────────────────────────────
 
-/** Wraps a data atom with loadable so components can read it without Suspense. */
+/** Wraps a data atom with unwrap so components can read it without Suspense. */
 export function useDataFile<T>(fileAtom: Atom<Promise<T>>): {
   data: T | null
   loading: boolean
   error: string | null
 } {
-  const [state] = useAtom(loadable(fileAtom))
-  switch (state.state) {
-    case 'loading':
-      return { data: null, loading: true, error: null }
-    case 'hasError':
-      return { data: null, loading: false, error: String(state.error) }
-    default:
-      return { data: state.data, loading: false, error: null }
-  }
+  const syncAtom = useMemo(() => unwrap(fileAtom, (): T | null => null), [fileAtom])
+  const data = useAtomValue(syncAtom)
+  return { data, loading: data === null, error: null }
 }
 
 // ── Imperative accessors (non-React call sites) ───────────────────────────────

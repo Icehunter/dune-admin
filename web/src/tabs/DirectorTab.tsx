@@ -35,8 +35,9 @@ function fieldKind(
 const DirectorEditor: React.FC<{
   kind: FieldKind
   value: string
+  ariaLabel: string
   onChange: (v: string) => void
-}> = ({ kind, value, onChange }) => {
+}> = ({ kind, value, ariaLabel, onChange }) => {
   if (kind.kind === 'bool') {
     return (
       <FieldSelect
@@ -44,6 +45,7 @@ const DirectorEditor: React.FC<{
         value={value.trim().toLowerCase()}
         onChange={onChange}
         options={['true', 'false']}
+        ariaLabel={ariaLabel}
       />
     )
   }
@@ -56,6 +58,7 @@ const DirectorEditor: React.FC<{
         value={value}
         onChange={onChange}
         options={opts}
+        ariaLabel={ariaLabel}
       />
     )
   }
@@ -211,6 +214,7 @@ export const DirectorTab: React.FC = () => {
                           <DirectorEditor
                             kind={fieldKind(sec.name, line.value, line.comment, instancingOptions)}
                             value={cur}
+                            ariaLabel={line.key}
                             onChange={(v) => setVal(sec.name, line.key, v)}
                           />
                         )

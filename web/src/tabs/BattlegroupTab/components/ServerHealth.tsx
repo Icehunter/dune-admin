@@ -81,39 +81,53 @@ export const BgVmCard: React.FC<{ bg?: BGInfo, servers: ServerRow[] }> = ({ bg, 
   const uptime = bgUptimeSeconds(servers)
   return (
     <HealthCard title={t('serverHealth.bgVm')} icon="activity">
-      <div className="text-3xl font-semibold" style={{ color: phaseColor(bg?.phase ?? '') }}>
+      <span
+        className="text-3xl font-semibold"
+        style={{ color: phaseColor(bg?.phase ?? '') }}
+      >
         {bg?.phase || '—'}
-      </div>
-      <div className="text-sm text-muted">
+      </span>
+      <span className="text-sm text-muted">
         {uptime > 0 ? t('serverHealth.upFor', { uptime: formatUptime(uptime) }) : t('serverHealth.noUptime')}
-      </div>
+      </span>
     </HealthCard>
   )
 }
 
 // ── Component-health rows ─────────────────────────────────────────────────────
-const HealthRow: React.FC<{ label: string, value: string, color?: string }> = ({ label, value, color }) => (
-  <div className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
-    <span className="text-muted text-sm">{label}</span>
-    <span className="font-semibold text-sm" style={color ? { color } : undefined}>{value}</span>
-  </div>
-)
-
+// HealthRow → ItemCard with label as title and colored value as action Chip
 export const ComponentHealthCard: React.FC<HealthProps> = ({ bg, servers, status }) => {
   const { t } = useTranslation()
   const uptime = bgUptimeSeconds(servers)
   const directorSet = !!status?.director_url
   return (
     <HealthCard title={t('serverHealth.components')} icon="server">
-      <div className="flex flex-col">
-        <HealthRow label={t('serverHealth.bgState')} value={bg?.phase || '—'} color={phaseColor(bg?.phase ?? '')} />
-        <HealthRow label={t('serverHealth.database')} value={bg?.database || '—'} color={phaseColor(bg?.database ?? '')} />
-        <HealthRow
-          label={t('serverHealth.director')}
-          value={directorSet ? t('serverHealth.configured') : t('serverHealth.notConfigured')}
-          color={directorSet ? 'var(--success)' : 'var(--muted)'}
-        />
-        <HealthRow label={t('serverHealth.uptime')} value={formatUptime(uptime)} />
+      <div className="flex flex-col divide-y divide-border/30">
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-sm text-muted">{t('serverHealth.bgState')}</span>
+          <span className="text-sm font-semibold" style={{ color: phaseColor(bg?.phase ?? '') }}>
+            {bg?.phase || '—'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-sm text-muted">{t('serverHealth.database')}</span>
+          <span className="text-sm font-semibold" style={{ color: phaseColor(bg?.database ?? '') }}>
+            {bg?.database || '—'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-sm text-muted">{t('serverHealth.director')}</span>
+          <span
+            className="text-sm font-semibold"
+            style={{ color: directorSet ? 'var(--success)' : 'var(--muted)' }}
+          >
+            {directorSet ? t('serverHealth.configured') : t('serverHealth.notConfigured')}
+          </span>
+        </div>
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-sm text-muted">{t('serverHealth.uptime')}</span>
+          <span className="text-sm font-semibold text-foreground">{formatUptime(uptime)}</span>
+        </div>
       </div>
     </HealthCard>
   )
@@ -124,10 +138,13 @@ export const GameReadyCard: React.FC<{ bg?: BGInfo, servers: ServerRow[] }> = ({
   const { t } = useTranslation()
   const ready = allServersReady(bg?.phase, servers)
   return (
-    <HealthCard title={t('serverHealth.readyState')} icon="heart-pulse">
-      <div className="flex items-center gap-2">
-        <Icon name={ready ? 'circle-check' : 'circle-x'} className={`size-6 ${ready ? 'text-success' : 'text-muted'}`} />
-        <span className="text-2xl font-semibold" style={{ color: ready ? 'var(--success)' : 'var(--muted)' }}>
+    <HealthCard title={t('serverHealth.readyState')} icon={ready ? 'circle-check' : 'circle-x'}>
+      <div
+        className="flex items-center gap-2"
+        style={{ color: ready ? 'var(--success)' : 'var(--muted)' }}
+      >
+        <Icon name={ready ? 'circle-check' : 'circle-x'} className="size-6" />
+        <span className="text-2xl font-semibold">
           {ready ? t('serverHealth.ready') : t('serverHealth.notReady')}
         </span>
       </div>

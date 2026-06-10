@@ -1,17 +1,18 @@
 import type React from 'react'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
-  Button, Header, ListBox, Modal,
+  Button, Chip, Header, ListBox, Modal,
   SearchField, Select, Separator, Spinner, TextField, toast,
 } from '@heroui/react'
+import type { Selection } from '@heroui/react'
+import type { DataGridColumn } from '@heroui-pro/react'
+import { DataGrid } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
-import { loadable } from 'jotai/utils'
 import { api } from '../../../api/client'
 import type { Player } from '../../../api/client'
-import { Icon, LoadingState, NumberInput } from '../../../dune-ui'
-import { packsAtom } from '../../../data/store'
-import type { PacksData } from '../types'
+import { ActionBar, Icon, LoadingState, NumberInput } from '../../../dune-ui'
+import { packsSyncAtom } from '../../../data/store'
 
 interface GiveItemsModalProps {
   player: Player
@@ -21,7 +22,7 @@ interface GiveItemsModalProps {
 
 type SkippedItem = { template: string, reason: string }
 type GiveResult = { given: string[], skipped: SkippedItem[] } | null
-type StagedItem = { template: string, qty: number, quality: number }
+type StagedItem = { template: string, qty: number, quality: number, _key: string }
 
 export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, onClose }) => {
   const { t } = useTranslation()
@@ -34,31 +35,31 @@ export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, on
   const [staged, setStaged] = useState<StagedItem[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<GiveResult>(null)
-  const [packsState] = useAtom(loadable(packsAtom))
-  const packsData: PacksData = useMemo(
-    () => packsState.state === 'hasData' ? packsState.data : { packs: {} },
-    [packsState],
-  )
+  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set())
+  const [packsData] = useAtom(packsSyncAtom)
+
+  const keyCounter = useRef(0)
+  const nextKey = () => String(keyCounter.current++)
 
   useEffect(() => {
     if (!open) return
-    Promise.resolve()
-      .then(() => {
-        setLoading(true)
-        setQuery('')
-        setSelected('')
-        setQty(1)
-        setQuality(0)
-        setStaged([])
-        setResult(null)
-      })
+    void Promise.resolve().then(() => {
+      setLoading(true)
+      setQuery('')
+      setSelected('')
+      setQty(1)
+      setQuality(0)
+      setStaged([])
+      setResult(null)
+      setSelectedKeys(new Set())
+    })
       .then(() => api.players.templates())
       .then((tmpls) => { setTemplates(tmpls) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [open])
 
-  const nameMap = useMemo(() => new Map(templates.map((t) => [t.id, t.name])), [templates])
+  const nameMap = useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
 
   const filtered = useMemo(() => {
     if (!query) return []
@@ -90,28 +91,49 @@ export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, on
       toast.warning(t('players.give.selectTemplate'))
       return
     }
-    setStaged((prev) => [...prev, { template: selected, qty, quality }])
+    setStaged((prev) => [...prev, { template: selected, qty, quality, _key: nextKey() }])
     setQuery('')
     setSelected('')
     setQty(1)
     setQuality(0)
   }
 
-  const removeFromStaged = (idx: number) => {
-    setStaged((prev) => prev.filter((_, i) => i !== idx))
+  const removeFromStaged = (key: string) => {
+    setStaged((prev) => prev.filter((it) => it._key !== key))
+    setSelectedKeys((prev) => {
+      if (prev === 'all') return new Set(staged.filter((it) => it._key !== key).map((it) => it._key))
+      const next = new Set(prev as Set<string>)
+      next.delete(key)
+      return next
+    })
   }
 
-  const updateStaged = (idx: number, field: 'qty' | 'quality', value: number) => {
-    setStaged((prev) => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item))
+  const updateStaged = (key: string, field: 'qty' | 'quality', value: number) => {
+    setStaged((prev) => prev.map((item) => item._key === key ? { ...item, [field]: value } : item))
+  }
+
+  const selectionCount = selectedKeys === 'all' ? staged.length : (selectedKeys as Set<string>).size
+
+  const handleBulkDelete = () => {
+    if (selectedKeys === 'all') {
+      setStaged([])
+    }
+    else {
+      const keys = selectedKeys as Set<string>
+      setStaged((prev) => prev.filter((it) => !keys.has(it._key)))
+    }
+    setSelectedKeys(new Set())
   }
 
   const handleSubmit = async () => {
     if (staged.length === 0) return
     setSubmitting(true)
     try {
-      const res = await api.players.giveItems(player.id, staged)
+      const items = staged.map(({ template, qty, quality }) => ({ template, qty, quality }))
+      const res = await api.players.giveItems(player.id, items)
       setResult(res)
       setStaged([])
+      setSelectedKeys(new Set())
       if (res.skipped.length === 0) {
         toast.success(t('players.give.gaveItems', { count: res.given.length, player: player.name }))
         onClose()
@@ -125,198 +147,271 @@ export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, on
     }
   }
 
+  const columns: DataGridColumn<StagedItem>[] = [
+    {
+      id: 'template',
+      isRowHeader: true,
+      header: t('players.inventory.columns.template'),
+      minWidth: 200,
+      allowsResizing: true,
+      cell: (item) => (
+        <div className="leading-tight py-0.5">
+          <div className="truncate text-sm">{nameMap.get(item.template) || item.template}</div>
+          {nameMap.get(item.template) && (
+            <div className="font-mono text-[10px] text-muted truncate">{item.template}</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 'qty',
+      header: t('players.give.qty'),
+      minWidth: 130,
+      maxWidth: 250,
+      allowsResizing: true,
+      cell: (item) => (
+        <NumberInput
+          ariaLabel={`${t('players.give.qty')} for ${item.template}`}
+          min={1}
+          value={item.qty}
+          onChange={(v) => updateStaged(item._key, 'qty', v)}
+          className="w-full"
+        />
+      ),
+    },
+    {
+      id: 'quality',
+      header: t('players.give.quality'),
+      minWidth: 130,
+      maxWidth: 250,
+      allowsResizing: true,
+      cell: (item) => (
+        <NumberInput
+          ariaLabel={`${t('players.give.quality')} for ${item.template}`}
+          min={0}
+          value={item.quality}
+          onChange={(v) => updateStaged(item._key, 'quality', v)}
+          className="w-full"
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      width: 52,
+      cell: (item) => (
+        <Button
+          size="sm"
+          variant="danger-soft"
+          isIconOnly
+          onPress={() => removeFromStaged(item._key)}
+          aria-label={t('common.remove')}
+        >
+          <Icon name="trash" />
+        </Button>
+      ),
+    },
+  ]
+
   return (
-    <Modal>
-      <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && onClose()}>
-        <Modal.Container size="cover" scroll="outside">
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading className="text-accent">
-                {t('players.give.modalTitle', { name: player.name })}
-              </Modal.Heading>
-            </Modal.Header>
-            <Modal.Body className="flex flex-col gap-3">
-              {loading
-                ? (
-                    <LoadingState size="sm" />
-                  )
-                : (
-                    <>
-                      {/* Load Pack — HeroUI Select with grouped sections */}
-                      <Select
-                        aria-label={t('players.give.loadPack')}
-                        placeholder={t('players.give.loadPack')}
-                        selectedKey={null}
-                        onSelectionChange={(k) => {
-                          const id = k ? String(k) : ''
-                          const pack = packsData.packs[id]
-                          if (pack) setStaged((prev) => [...prev, ...pack.items])
-                        }}
-                        className="w-full"
-                      >
-                        <Select.Trigger>
-                          <Select.Value />
-                          <Select.Indicator />
-                        </Select.Trigger>
-                        <Select.Popover>
-                          <ListBox>
-                            {Object.entries(groupedPacks)
-                              .sort(([a], [b]) => a.localeCompare(b))
-                              .map(([cat, packs], i, arr) => (
-                                <ListBox.Section key={cat}>
-                                  <Header>{cat.replace(/-/g, ' ')}</Header>
-                                  {packs.map((p) => (
-                                    <ListBox.Item key={p.id} id={p.id} textValue={p.name}>
-                                      {p.name}
-                                      <ListBox.ItemIndicator />
-                                    </ListBox.Item>
-                                  ))}
-                                  {i < arr.length - 1 && <Separator />}
-                                </ListBox.Section>
-                              ))}
-                          </ListBox>
-                        </Select.Popover>
-                      </Select>
-
-                      {/* Template (flex-1) + Qty / Quality + Add — single row */}
-                      <div className="flex items-end gap-3">
-                        <TextField className="flex-1 min-w-0" aria-label={t('players.inventory.columns.template')}>
-                          <div className="relative w-full">
-                            <SearchField
-                              className="w-full"
-                              value={query}
-                              onChange={(v) => {
-                                setQuery(v)
-                                setSelected('')
-                              }}
-                            >
-                              <SearchField.Group>
-                                <SearchField.SearchIcon />
-                                <SearchField.Input placeholder={t('players.give.searchTemplates')} />
-                                <SearchField.ClearButton />
-                              </SearchField.Group>
-                            </SearchField>
-                            {filtered.length > 0 && (
-                              <div className="absolute z-50 w-full mt-1 rounded-[var(--radius)] border border-border bg-surface overflow-y-auto max-h-52">
-                                {filtered.map((tpl) => (
-                                  <div
-                                    key={tpl.id}
-                                    className="px-3 py-1.5 text-xs cursor-pointer hover:bg-surface-hover"
-                                    onClick={() => pick(tpl)}
-                                  >
-                                    <span className="font-mono">{tpl.id}</span>
-                                    {tpl.name
-                                      ? (
-                                          <span className="text-muted">
-                                            {' '}
-                                            —
-                                            {tpl.name}
-                                          </span>
-                                        )
-                                      : null}
-                                  </div>
+    <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && onClose()}>
+      <Modal.Container size="cover" scroll="outside">
+        <Modal.Dialog>
+          <Modal.CloseTrigger />
+          <Modal.Header>
+            <Modal.Heading className="text-accent">
+              {t('players.give.modalTitle', { name: player.name })}
+            </Modal.Heading>
+          </Modal.Header>
+          <Modal.Body className="flex flex-col gap-3 h-[80vh] min-h-0">
+            {loading
+              ? (
+                  <LoadingState size="sm" />
+                )
+              : (
+                  <>
+                    {/* Load Pack */}
+                    <Select
+                      aria-label={t('players.give.loadPack')}
+                      placeholder={t('players.give.loadPack')}
+                      selectedKey={null}
+                      onSelectionChange={(k) => {
+                        const id = k ? String(k) : ''
+                        const pack = packsData.packs[id]
+                        if (pack) {
+                          setStaged((prev) => [
+                            ...prev,
+                            ...pack.items.map((item) => ({ ...item, _key: nextKey() })),
+                          ])
+                        }
+                      }}
+                      className="w-full shrink-0"
+                    >
+                      <Select.Trigger>
+                        <Select.Value />
+                        <Select.Indicator />
+                      </Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          {Object.entries(groupedPacks)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([cat, packs], i, arr) => (
+                              <ListBox.Section key={cat}>
+                                <Header>{cat.replace(/-/g, ' ')}</Header>
+                                {packs.map((p) => (
+                                  <ListBox.Item key={p.id} id={p.id} textValue={p.name}>
+                                    {p.name}
+                                    <ListBox.ItemIndicator />
+                                  </ListBox.Item>
                                 ))}
-                              </div>
-                            )}
-                          </div>
-                        </TextField>
-                        <NumberInput
-                          prefix={t('players.give.qty')}
-                          ariaLabel={t('players.give.qty')}
-                          min={1}
-                          value={qty}
-                          onChange={setQty}
-                          className="w-56 shrink-0"
-                        />
-                        <NumberInput
-                          prefix={t('players.give.quality')}
-                          ariaLabel={t('players.give.quality')}
-                          min={0}
-                          value={quality}
-                          onChange={setQuality}
-                          className="w-56 shrink-0"
-                        />
-                        <Button size="sm" onPress={addToStaged} isDisabled={!selected} className="shrink-0">
-                          <Icon name="plus" />
-                          {' '}
-                          {t('players.give.add')}
-                        </Button>
-                      </div>
-
-                      {staged.length > 0 && (
-                        <>
-                          <div className="flex flex-col gap-1 overflow-y-auto flex-1 min-h-0">
-                            {staged.map((item, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius)] text-xs bg-surface border border-border"
-                              >
-                                <div className="flex-1 min-w-0 leading-tight">
-                                  <div className="truncate text-foreground">{nameMap.get(item.template) || item.template}</div>
-                                  {nameMap.get(item.template) && (
-                                    <div className="font-mono text-[10px] text-muted truncate">{item.template}</div>
-                                  )}
-                                </div>
-                                <NumberInput
-                                  ariaLabel={`${t('players.give.qty')} for ${item.template}`}
-                                  prefix={t('players.give.qty')}
-                                  min={1}
-                                  value={item.qty}
-                                  onChange={(v) => updateStaged(idx, 'qty', v)}
-                                  className="w-56"
-                                />
-                                <NumberInput
-                                  ariaLabel={`${t('players.give.quality')} for ${item.template}`}
-                                  prefix={t('players.give.quality')}
-                                  min={0}
-                                  value={item.quality}
-                                  onChange={(v) => updateStaged(idx, 'quality', v)}
-                                  className="w-56"
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="danger-soft"
-                                  onPress={() => removeFromStaged(idx)}
-                                  aria-label={t('common.remove')}
-                                >
-                                  <Icon name="x" />
-                                </Button>
-                              </div>
+                                {i < arr.length - 1 && <Separator />}
+                              </ListBox.Section>
                             ))}
-                          </div>
-                        </>
-                      )}
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
 
-                      {result && (
-                        <div className="text-xs shrink-0 rounded-[var(--radius)] px-3 py-2 bg-surface border border-border">
-                          {result.given.length > 0 && (
-                            <div className="text-success">
-                              {t('players.give.gave')}
-                              {result.given.join(', ')}
+                    {/* Template + Qty + Quality + Add */}
+                    <div className="flex items-end gap-3 shrink-0">
+                      <TextField className="flex-1 min-w-0" aria-label={t('players.inventory.columns.template')}>
+                        <div className="relative w-full">
+                          <SearchField
+                            className="w-full"
+                            value={query}
+                            onChange={(v) => {
+                              setQuery(v)
+                              setSelected('')
+                            }}
+                          >
+                            <SearchField.Group>
+                              <SearchField.SearchIcon />
+                              <SearchField.Input placeholder={t('players.give.searchTemplates')} />
+                              <SearchField.ClearButton />
+                            </SearchField.Group>
+                          </SearchField>
+                          {filtered.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 rounded-[var(--radius)] border border-border bg-surface overflow-y-auto max-h-52">
+                              {filtered.map((tpl) => (
+                                <div
+                                  key={tpl.id}
+                                  className="px-3 py-1.5 text-xs cursor-pointer hover:bg-surface-hover"
+                                  onClick={() => pick(tpl)}
+                                >
+                                  <span className="font-mono">{tpl.id}</span>
+                                  {tpl.name
+                                    ? (
+                                        <span className="text-muted">
+                                          {' '}
+                                          —
+                                          {tpl.name}
+                                        </span>
+                                      )
+                                    : null}
+                                </div>
+                              ))}
                             </div>
                           )}
-                          {result.skipped.map((s, i) => (
-                            <div key={i} className="text-danger">
-                              {t('players.give.skipped', { template: s.template, reason: s.reason })}
-                            </div>
-                          ))}
                         </div>
-                      )}
-                    </>
-                  )}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="tertiary" size="sm" slot="close">{t('common.cancel')}</Button>
-              <Button size="sm" onPress={handleSubmit} isDisabled={submitting || staged.length === 0}>
-                {submitting ? <Spinner size="sm" color="current" /> : <Icon name="gift" />}
-                {' '}
-                {t('players.give.giveCount', { count: staged.length })}
-              </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+                      </TextField>
+                      <NumberInput
+                        prefix={t('players.give.qty')}
+                        ariaLabel={t('players.give.qty')}
+                        min={1}
+                        value={qty}
+                        onChange={setQty}
+                        className="w-56 shrink-0"
+                      />
+                      <NumberInput
+                        prefix={t('players.give.quality')}
+                        ariaLabel={t('players.give.quality')}
+                        min={0}
+                        value={quality}
+                        onChange={setQuality}
+                        className="w-56 shrink-0"
+                      />
+                      <Button size="sm" onPress={addToStaged} isDisabled={!selected} className="shrink-0">
+                        <Icon name="plus" />
+                        {' '}
+                        {t('players.give.add')}
+                      </Button>
+                    </div>
+
+                    {/* Staged items DataGrid */}
+                    {staged.length > 0 && (
+                      <DataGrid
+                        aria-label={t('players.give.modalTitle', { name: player.name })}
+                        columns={columns}
+                        data={staged}
+                        getRowId={(item) => item._key}
+                        selectedKeys={selectedKeys}
+                        selectionMode="multiple"
+                        showSelectionCheckboxes
+                        onSelectionChange={setSelectedKeys}
+                        className="flex-1 min-h-0"
+                        scrollContainerClassName="h-full overflow-y-auto"
+                        allowsColumnResize
+                      />
+                    )}
+
+                    {result && (
+                      <div className="text-xs shrink-0 rounded-[var(--radius)] px-3 py-2 bg-surface border border-border">
+                        {result.given.length > 0 && (
+                          <div className="text-success">
+                            {t('players.give.gave')}
+                            {result.given.join(', ')}
+                          </div>
+                        )}
+                        {result.skipped.map((s, i) => (
+                          <div key={i} className="text-danger">
+                            {t('players.give.skipped', { template: s.template, reason: s.reason })}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="tertiary" size="sm" slot="close">{t('common.cancel')}</Button>
+            <Button size="sm" onPress={handleSubmit} isDisabled={submitting || staged.length === 0}>
+              {submitting ? <Spinner size="sm" color="current" /> : <Icon name="gift" />}
+              {' '}
+              {t('players.give.giveCount', { count: staged.length })}
+            </Button>
+          </Modal.Footer>
+        </Modal.Dialog>
+      </Modal.Container>
+
+      <ActionBar aria-label={t('players.give.modalTitle', { name: player.name })} isOpen={selectionCount > 0}>
+        <ActionBar.Prefix>
+          <Chip size="sm" className="shrink-0 tabular-nums">{selectionCount}</Chip>
+        </ActionBar.Prefix>
+        <Separator />
+        <ActionBar.Content>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-danger"
+            onPress={handleBulkDelete}
+            aria-label={t('common.deleteSelected')}
+          >
+            <Icon name="trash-2" />
+            <span className="action-bar__label">{t('common.deleteSelected')}</span>
+          </Button>
+        </ActionBar.Content>
+        <Separator />
+        <ActionBar.Suffix>
+          <Button
+            isIconOnly
+            size="sm"
+            variant="ghost"
+            onPress={() => setSelectedKeys(new Set())}
+            aria-label={t('common.clearSelection')}
+          >
+            <Icon name="x" />
+          </Button>
+        </ActionBar.Suffix>
+      </ActionBar>
+    </Modal.Backdrop>
   )
 }

@@ -111,166 +111,164 @@ export const AddItemsModal: React.FC<AddItemsModalProps> = ({
   }
 
   return (
-    <Modal>
-      <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && onClose()}>
-        <Modal.Container size="cover" scroll="outside">
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading className="text-accent">
-                {container.name || t('storage.containerTitle', { id: container.id })}
-                {' '}
-                —
-                {' '}
-                {t('storage.addItems')}
-              </Modal.Heading>
-            </Modal.Header>
-            <Modal.Body className="flex flex-col gap-3">
-              {loading
-                ? (
-                    <LoadingState size="sm" />
-                  )
-                : (
-                    <>
-                      <div className="flex items-end gap-3 shrink-0">
-                        <TextField className="flex-1 min-w-0" aria-label={t('storage.addModal.templateLabel')}>
-                          <div className="relative w-full">
-                            <SearchField
-                              className="w-full"
-                              value={query}
-                              onChange={(v) => {
-                                setQuery(v)
-                                setSelected('')
-                              }}
-                            >
-                              <SearchField.Group>
-                                <SearchField.SearchIcon />
-                                <SearchField.Input placeholder={t('storage.addModal.searchPlaceholder')} />
-                                <SearchField.ClearButton />
-                              </SearchField.Group>
-                            </SearchField>
-                            {filtered.length > 0 && (
-                              <div className="absolute z-50 w-full mt-1 rounded-[var(--radius)] border border-border bg-surface overflow-y-auto max-h-52">
-                                {filtered.map((tmpl) => (
-                                  <div
-                                    key={tmpl.id}
-                                    className="px-3 py-1.5 text-xs cursor-pointer hover:bg-surface-hover"
-                                    onClick={() => pick(tmpl)}
-                                  >
-                                    <span className="font-mono">{tmpl.id}</span>
-                                    {tmpl.name
-                                      ? (
-                                          <span className="text-muted">
-                                            {' '}
-                                            —
-                                            {tmpl.name}
-                                          </span>
-                                        )
-                                      : null}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </TextField>
-                        <NumberInput
-                          prefix={t('storage.addModal.qtyLabel')}
-                          ariaLabel={t('storage.addModal.qtyLabel')}
-                          min={1}
-                          value={qty}
-                          onChange={setQty}
-                          className="w-56 shrink-0"
-                        />
-                        <NumberInput
-                          prefix={t('storage.addModal.qualityLabel')}
-                          ariaLabel={t('storage.addModal.qualityLabel')}
-                          min={0}
-                          value={quality}
-                          onChange={setQuality}
-                          className="w-56 shrink-0"
-                        />
-                        <Button size="sm" onPress={addToStaged} isDisabled={!selected} className="shrink-0">
-                          <Icon name="plus" />
-                          {' '}
-                          {t('storage.addModal.add')}
-                        </Button>
-                      </div>
-
-                      {staged.length > 0 && (
-                        <>
-                          <div className="flex flex-col gap-1 overflow-y-auto flex-1 min-h-0">
-                            {staged.map((item, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius)] text-xs bg-surface border border-border"
-                              >
-                                <span className="flex-1 font-mono">{item.template}</span>
-                                <NumberInput
-                                  ariaLabel={`Qty for ${item.template}`}
-                                  prefix={t('storage.addModal.qtyColLabel')}
-                                  min={1}
-                                  value={item.qty}
-                                  onChange={(v) => updateStaged(idx, 'qty', v)}
-                                  className="w-56"
-                                />
-                                <NumberInput
-                                  ariaLabel={`Quality for ${item.template}`}
-                                  prefix={t('storage.addModal.qualityColLabel')}
-                                  min={0}
-                                  value={item.quality}
-                                  onChange={(v) => updateStaged(idx, 'quality', v)}
-                                  className="w-56"
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="danger-soft"
-                                  onPress={() => removeFromStaged(idx)}
-                                  aria-label="Remove"
+    <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && onClose()}>
+      <Modal.Container size="cover" scroll="outside">
+        <Modal.Dialog>
+          <Modal.CloseTrigger />
+          <Modal.Header>
+            <Modal.Heading className="text-accent">
+              {container.name || t('storage.containerTitle', { id: container.id })}
+              {' '}
+              —
+              {' '}
+              {t('storage.addItems')}
+            </Modal.Heading>
+          </Modal.Header>
+          <Modal.Body className="flex flex-col gap-3">
+            {loading
+              ? (
+                  <LoadingState size="sm" />
+                )
+              : (
+                  <>
+                    <div className="flex items-end gap-3 shrink-0">
+                      <TextField className="flex-1 min-w-0" aria-label={t('storage.addModal.templateLabel')}>
+                        <div className="relative w-full">
+                          <SearchField
+                            className="w-full"
+                            value={query}
+                            onChange={(v) => {
+                              setQuery(v)
+                              setSelected('')
+                            }}
+                          >
+                            <SearchField.Group>
+                              <SearchField.SearchIcon />
+                              <SearchField.Input placeholder={t('storage.addModal.searchPlaceholder')} />
+                              <SearchField.ClearButton />
+                            </SearchField.Group>
+                          </SearchField>
+                          {filtered.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 rounded-[var(--radius)] border border-border bg-surface overflow-y-auto max-h-52">
+                              {filtered.map((tmpl) => (
+                                <div
+                                  key={tmpl.id}
+                                  className="px-3 py-1.5 text-xs cursor-pointer hover:bg-surface-hover"
+                                  onClick={() => pick(tmpl)}
                                 >
-                                  <Icon name="x" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {result && (
-                        <div className="text-xs shrink-0 rounded-[var(--radius)] px-3 py-2 bg-surface border border-border">
-                          {result.given.length > 0 && (
-                            <div className="text-success">
-                              ✓ Added:
-                              {result.given.join(', ')}
+                                  <span className="font-mono">{tmpl.id}</span>
+                                  {tmpl.name
+                                    ? (
+                                        <span className="text-muted">
+                                          {' '}
+                                          —
+                                          {tmpl.name}
+                                        </span>
+                                      )
+                                    : null}
+                                </div>
+                              ))}
                             </div>
                           )}
-                          {result.skipped.map((s, i) => (
-                            <div key={i} className="text-danger">
-                              ✕ Skipped
-                              {s.template}
-                              :
-                              {s.reason}
+                        </div>
+                      </TextField>
+                      <NumberInput
+                        prefix={t('storage.addModal.qtyLabel')}
+                        ariaLabel={t('storage.addModal.qtyLabel')}
+                        min={1}
+                        value={qty}
+                        onChange={setQty}
+                        className="w-56 shrink-0"
+                      />
+                      <NumberInput
+                        prefix={t('storage.addModal.qualityLabel')}
+                        ariaLabel={t('storage.addModal.qualityLabel')}
+                        min={0}
+                        value={quality}
+                        onChange={setQuality}
+                        className="w-56 shrink-0"
+                      />
+                      <Button size="sm" onPress={addToStaged} isDisabled={!selected} className="shrink-0">
+                        <Icon name="plus" />
+                        {' '}
+                        {t('storage.addModal.add')}
+                      </Button>
+                    </div>
+
+                    {staged.length > 0 && (
+                      <>
+                        <div className="flex flex-col gap-1 overflow-y-auto flex-1 min-h-0">
+                          {staged.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius)] text-xs bg-surface border border-border"
+                            >
+                              <span className="flex-1 font-mono">{item.template}</span>
+                              <NumberInput
+                                ariaLabel={`Qty for ${item.template}`}
+                                prefix={t('storage.addModal.qtyColLabel')}
+                                min={1}
+                                value={item.qty}
+                                onChange={(v) => updateStaged(idx, 'qty', v)}
+                                className="w-56"
+                              />
+                              <NumberInput
+                                ariaLabel={`Quality for ${item.template}`}
+                                prefix={t('storage.addModal.qualityColLabel')}
+                                min={0}
+                                value={item.quality}
+                                onChange={(v) => updateStaged(idx, 'quality', v)}
+                                className="w-56"
+                              />
+                              <Button
+                                size="sm"
+                                variant="danger-soft"
+                                onPress={() => removeFromStaged(idx)}
+                                aria-label="Remove"
+                              >
+                                <Icon name="trash" />
+                              </Button>
                             </div>
                           ))}
                         </div>
-                      )}
-                    </>
-                  )}
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="tertiary" size="sm" slot="close">{t('common.cancel')}</Button>
-              <Button size="sm" onPress={handleSubmit} isDisabled={submitting || staged.length === 0}>
-                {submitting ? <Spinner size="sm" color="current" /> : <Icon name="plus" />}
-                {t('storage.addModal.add')}
-                {' '}
-                {staged.length}
-                {' '}
-                Item
-                {staged.length !== 1 ? 's' : ''}
-              </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+                      </>
+                    )}
+
+                    {result && (
+                      <div className="text-xs shrink-0 rounded-[var(--radius)] px-3 py-2 bg-surface border border-border">
+                        {result.given.length > 0 && (
+                          <div className="text-success">
+                            ✓ Added:
+                            {result.given.join(', ')}
+                          </div>
+                        )}
+                        {result.skipped.map((s, i) => (
+                          <div key={i} className="text-danger">
+                            ✕ Skipped
+                            {s.template}
+                            :
+                            {s.reason}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="tertiary" size="sm" slot="close">{t('common.cancel')}</Button>
+            <Button size="sm" onPress={handleSubmit} isDisabled={submitting || staged.length === 0}>
+              {submitting ? <Spinner size="sm" color="current" /> : <Icon name="plus" />}
+              {t('storage.addModal.add')}
+              {' '}
+              {staged.length}
+              {' '}
+              Item
+              {staged.length !== 1 ? 's' : ''}
+            </Button>
+          </Modal.Footer>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   )
 }

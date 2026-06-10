@@ -1,6 +1,8 @@
 import type React from 'react'
 import { useState, useEffect } from 'react'
 import { Button, Chip, Modal, Spinner, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { Player, InventoryItem, VehicleRow } from '../../../api/client'
@@ -137,143 +139,159 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, on
   }
 
   return (
-    <Modal>
-      <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && onClose()}>
-        <Modal.Container size="cover" scroll="outside">
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading className="text-accent">
-                {player.name}
-                {' — '}
-                {t('players.inventory.title')}
-              </Modal.Heading>
-            </Modal.Header>
-            <Modal.Body className="flex flex-col gap-4">
-              {loading
-                ? (
-                    <LoadingState size="md" />
-                  )
-                : (
-                    <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden">
-                      <Panel className="flex-1 min-h-0 overflow-hidden">
-                        <div className="shrink-0 flex items-center justify-between">
-                          <SectionLabel>{t('players.inventory.itemsLabel')}</SectionLabel>
-                          <Button size="sm" variant="ghost" onPress={handleRepairAllGear}>{t('players.inventory.repairGear')}</Button>
-                        </div>
-                        <div className="shrink-0 rounded-[var(--radius)] px-4 py-2 text-xs font-medium bg-danger/10 border border-danger/40 text-danger flex items-center gap-2">
-                          <Icon name="triangle-alert" className="shrink-0" />
-                          <span>{t('players.inventory.repairNotice')}</span>
-                        </div>
-                        <DataTable<InventoryItem, ItemKey>
-                          aria-label={t('players.inventory.title')}
-                          className="flex-1 min-h-0"
-                          columns={ITEM_COLUMNS}
-                          rows={items}
-                          rowId={(i) => String(i.id)}
-                          initialSort={{ column: 'template', direction: 'ascending' }}
-                          sortValue={(i, k) => {
-                            if (k === 'template') return i.name || i.template_id
-                            if (k === 'stack') return i.stack_size
-                            if (k === 'quality') return i.quality
-                            if (k === 'durability') return typeof i.durability === 'number' ? i.durability : 0
-                            return ''
-                          }}
-                          emptyState={<div className="py-8 text-center text-muted">{t('players.inventory.noItemsFound')}</div>}
-                          renderCell={(i, key) => {
-                            switch (key) {
-                              case 'template':
-                                return (
-                                  <span className="inline-flex flex-col">
-                                    <span className="font-semibold">{i.name || i.template_id}</span>
-                                    {i.name && <span className="font-mono text-muted text-[10px]">{i.template_id}</span>}
-                                  </span>
-                                )
-                              case 'stack': return <span className="text-muted">{i.stack_size}</span>
-                              case 'quality': return <span className="text-muted">{i.quality}</span>
-                              case 'durability': return (
-                                <span className="text-muted">
-                                  {i.durability}
-                                  {' / '}
-                                  {i.max_durability}
+    <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && onClose()}>
+      <Modal.Container size="cover" scroll="outside">
+        <Modal.Dialog>
+          <Modal.CloseTrigger />
+          <Modal.Header>
+            <Modal.Heading className="text-accent">
+              {player.name}
+              {' — '}
+              {t('players.inventory.title')}
+            </Modal.Heading>
+          </Modal.Header>
+          <Modal.Body className="flex flex-col gap-4">
+            {loading
+              ? (
+                  <LoadingState size="md" />
+                )
+              : (
+                  <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden">
+                    <Panel className="flex-1 min-h-0 overflow-hidden">
+                      <div className="shrink-0 flex items-center justify-between">
+                        <SectionLabel>{t('players.inventory.itemsLabel')}</SectionLabel>
+                        <Button size="sm" variant="ghost" onPress={handleRepairAllGear}>{t('players.inventory.repairGear')}</Button>
+                      </div>
+                      <div className="shrink-0 rounded-[var(--radius)] px-4 py-2 text-xs font-medium bg-danger/10 border border-danger/40 text-danger flex items-center gap-2">
+                        <Icon name="triangle-alert" className="shrink-0" />
+                        <span>{t('players.inventory.repairNotice')}</span>
+                      </div>
+                      <DataTable<InventoryItem, ItemKey>
+                        aria-label={t('players.inventory.title')}
+                        className="flex-1 min-h-0"
+                        columns={ITEM_COLUMNS}
+                        rows={items}
+                        rowId={(i) => String(i.id)}
+                        initialSort={{ column: 'template', direction: 'ascending' }}
+                        sortValue={(i, k) => {
+                          if (k === 'template') return i.name || i.template_id
+                          if (k === 'stack') return i.stack_size
+                          if (k === 'quality') return i.quality
+                          if (k === 'durability') return typeof i.durability === 'number' ? i.durability : 0
+                          return ''
+                        }}
+                        emptyState={(
+                          <EmptyState size="sm">
+                            <EmptyState.Header>
+                              <EmptyState.Media variant="icon">
+                                <IconifyIcon icon="gravity-ui:box" className="size-5" />
+                              </EmptyState.Media>
+                              <EmptyState.Title>{t('players.inventory.noItemsFound')}</EmptyState.Title>
+                            </EmptyState.Header>
+                          </EmptyState>
+                        )}
+                        renderCell={(i, key) => {
+                          switch (key) {
+                            case 'template':
+                              return (
+                                <span className="inline-flex flex-col">
+                                  <span className="font-semibold">{i.name || i.template_id}</span>
+                                  {i.name && <span className="font-mono text-muted text-[10px]">{i.template_id}</span>}
                                 </span>
                               )
-                              case 'actions':
-                                return (
-                                  <div className="flex gap-1">
-                                    {i.max_durability !== 'N/A' && (
-                                      <Button size="sm" variant="ghost" onPress={() => handleRepair(i)}>{t('players.inventory.repair')}</Button>
-                                    )}
-                                    <Button size="sm" variant="danger-soft" onPress={() => handleDelete(i.id)}>X</Button>
-                                  </div>
-                                )
-                            }
-                          }}
-                        />
-                      </Panel>
+                            case 'stack': return <span className="text-muted">{i.stack_size}</span>
+                            case 'quality': return <span className="text-muted">{i.quality}</span>
+                            case 'durability': return (
+                              <span className="text-muted">
+                                {i.durability}
+                                {' / '}
+                                {i.max_durability}
+                              </span>
+                            )
+                            case 'actions':
+                              return (
+                                <div className="flex gap-1">
+                                  {i.max_durability !== 'N/A' && (
+                                    <Button size="sm" variant="ghost" onPress={() => handleRepair(i)}>{t('players.inventory.repair')}</Button>
+                                  )}
+                                  <Button isIconOnly size="sm" variant="danger-soft" aria-label={t('common.delete')} onPress={() => handleDelete(i.id)}><Icon name="trash" /></Button>
+                                </div>
+                              )
+                          }
+                        }}
+                      />
+                    </Panel>
 
-                      <Panel className="shrink-0">
-                        <div className="flex items-center gap-2">
-                          <SectionLabel>{t('players.vehicles.vehiclesLabel')}</SectionLabel>
-                          {vehiclesLoading && <Spinner size="sm" color="current" />}
-                        </div>
-                        <div className="shrink-0 rounded-[var(--radius)] px-4 py-2 text-xs font-medium bg-danger/10 border border-danger/40 text-danger flex items-center gap-2">
-                          <Icon name="triangle-alert" className="shrink-0" />
-                          <span>{t('players.vehicles.repairNotice')}</span>
-                        </div>
-                        <DataTable<VehicleRow, VehicleKey>
-                          aria-label={t('players.vehicles.vehiclesLabel')}
-                          className="max-h-[180px]"
-                          columns={VEHICLE_COLUMNS}
-                          rows={vehicles}
-                          rowId={(v) => String(v.id)}
-                          initialSort={{ column: 'class', direction: 'ascending' }}
-                          sortValue={(v, k) => {
-                            if (k === 'class') return v.class
-                            if (k === 'location') return v.map ?? ''
-                            if (k === 'chassis') return v.chassis_durability
-                            if (k === 'name') return v.vehicle_name ?? ''
-                            return ''
-                          }}
-                          emptyState={<div className="py-8 text-center text-muted">{t('players.vehicles.noVehiclesFound')}</div>}
-                          renderCell={(v, key) => {
-                            switch (key) {
-                              case 'class': return <span className="font-semibold">{v.class}</span>
-                              case 'location': return <span className="text-muted">{v.map || '–'}</span>
-                              case 'chassis':
-                                return (
-                                  <span className={v.chassis_durability < 0.3 ? 'text-danger' : 'text-muted'}>
-                                    {Math.round(v.chassis_durability * 100)}
-                                    %
-                                  </span>
-                                )
-                              case 'name': return <span className="text-muted">{v.vehicle_name || '–'}</span>
-                              case 'type':
-                                return (
-                                  <div className="flex gap-1">
-                                    {v.is_backup && <Chip size="sm" color="accent" variant="soft">{t('players.vehicles.backup')}</Chip>}
-                                    {v.is_recovered && <Chip size="sm" color="warning" variant="soft">{t('players.vehicles.recovered')}</Chip>}
-                                  </div>
-                                )
-                              case 'actions':
-                                return !v.is_backup
-                                  ? (
-                                      <div className="flex gap-1">
-                                        <Button size="sm" variant="ghost" onPress={() => handleRepairVehicle(v)}>{t('players.vehicles.repair')}</Button>
-                                        <Button size="sm" variant="ghost" onPress={() => handleRefuelVehicle(v)}>{t('players.vehicles.refuel')}</Button>
-                                      </div>
-                                    )
-                                  : null
-                            }
-                          }}
-                        />
-                      </Panel>
-                    </div>
-                  )}
-            </Modal.Body>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+                    <Panel className="shrink-0">
+                      <div className="flex items-center gap-2">
+                        <SectionLabel>{t('players.vehicles.vehiclesLabel')}</SectionLabel>
+                        {vehiclesLoading && <Spinner size="sm" color="current" />}
+                      </div>
+                      <div className="shrink-0 rounded-[var(--radius)] px-4 py-2 text-xs font-medium bg-danger/10 border border-danger/40 text-danger flex items-center gap-2">
+                        <Icon name="triangle-alert" className="shrink-0" />
+                        <span>{t('players.vehicles.repairNotice')}</span>
+                      </div>
+                      <DataTable<VehicleRow, VehicleKey>
+                        aria-label={t('players.vehicles.vehiclesLabel')}
+                        className="max-h-[180px]"
+                        columns={VEHICLE_COLUMNS}
+                        rows={vehicles}
+                        rowId={(v) => String(v.id)}
+                        initialSort={{ column: 'class', direction: 'ascending' }}
+                        sortValue={(v, k) => {
+                          if (k === 'class') return v.class
+                          if (k === 'location') return v.map ?? ''
+                          if (k === 'chassis') return v.chassis_durability
+                          if (k === 'name') return v.vehicle_name ?? ''
+                          return ''
+                        }}
+                        emptyState={(
+                          <EmptyState size="sm">
+                            <EmptyState.Header>
+                              <EmptyState.Media variant="icon">
+                                <IconifyIcon icon="gravity-ui:car" className="size-5" />
+                              </EmptyState.Media>
+                              <EmptyState.Title>{t('players.vehicles.noVehiclesFound')}</EmptyState.Title>
+                            </EmptyState.Header>
+                          </EmptyState>
+                        )}
+                        renderCell={(v, key) => {
+                          switch (key) {
+                            case 'class': return <span className="font-semibold">{v.class}</span>
+                            case 'location': return <span className="text-muted">{v.map || '–'}</span>
+                            case 'chassis':
+                              return (
+                                <span className={v.chassis_durability < 0.3 ? 'text-danger' : 'text-muted'}>
+                                  {Math.round(v.chassis_durability * 100)}
+                                  %
+                                </span>
+                              )
+                            case 'name': return <span className="text-muted">{v.vehicle_name || '–'}</span>
+                            case 'type':
+                              return (
+                                <div className="flex gap-1">
+                                  {v.is_backup && <Chip size="sm" color="accent" variant="soft">{t('players.vehicles.backup')}</Chip>}
+                                  {v.is_recovered && <Chip size="sm" color="warning" variant="soft">{t('players.vehicles.recovered')}</Chip>}
+                                </div>
+                              )
+                            case 'actions':
+                              return !v.is_backup
+                                ? (
+                                    <div className="flex gap-1">
+                                      <Button size="sm" variant="ghost" onPress={() => handleRepairVehicle(v)}>{t('players.vehicles.repair')}</Button>
+                                      <Button size="sm" variant="ghost" onPress={() => handleRefuelVehicle(v)}>{t('players.vehicles.refuel')}</Button>
+                                    </div>
+                                  )
+                                : null
+                          }
+                        }}
+                      />
+                    </Panel>
+                  </div>
+                )}
+          </Modal.Body>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   )
 }

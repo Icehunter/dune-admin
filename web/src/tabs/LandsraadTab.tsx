@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Chip, Spinner, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
 import { api } from '../api/client'
 import type { LandsraadOverview, LandsraadTask } from '../api/client'
 import { DataTable, Icon, PageHeader, Panel, SectionLabel, type Column } from '../dune-ui'
@@ -139,7 +140,13 @@ export const LandsraadTab: React.FC = () => {
                 default: return ''
               }
             }}
-            emptyState={<div className="py-8 text-center text-muted">{t('landsraad.noTasks')}</div>}
+            emptyState={(
+              <EmptyState size="sm">
+                <EmptyState.Header>
+                  <EmptyState.Title>{t('landsraad.noTasks')}</EmptyState.Title>
+                </EmptyState.Header>
+              </EmptyState>
+            )}
             renderCell={(tk, key) => {
               switch (key) {
                 case 'board_index':

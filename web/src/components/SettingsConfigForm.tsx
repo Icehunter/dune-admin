@@ -1,10 +1,13 @@
 import type React from 'react'
-import { useState, useEffect, type MutableRefObject } from 'react'
+import { useState, useEffect, useContext, createContext, type MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Select, ListBox, Spinner, Switch, Tabs, toast } from '@heroui/react'
+import { Button, Input, Select, ListBox, Spinner, Switch, toast } from '@heroui/react'
+import { Segment } from '@heroui-pro/react'
 import { api, MASKED } from '../api/client'
 import type { AppConfig } from '../api/client'
 import { NumberInput, Panel, SectionLabel } from '../dune-ui'
+
+const FieldLabelContext = createContext('')
 
 // ── defaults (all empty — never show fake values) ─────────────────────────────
 
@@ -74,20 +77,22 @@ interface FieldProps {
 
 function F({ label, hint, children }: FieldProps) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs text-muted font-medium">
-        {label}
-        {hint && (
-          <span className="opacity-60 font-normal">
-            {' '}
-            (
-            {hint}
-            )
-          </span>
-        )}
-      </label>
-      {children}
-    </div>
+    <FieldLabelContext.Provider value={label}>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-muted font-medium">
+          {label}
+          {hint && (
+            <span className="opacity-60 font-normal">
+              {' '}
+              (
+              {hint}
+              )
+            </span>
+          )}
+        </span>
+        {children}
+      </div>
+    </FieldLabelContext.Provider>
   )
 }
 
@@ -96,9 +101,11 @@ interface TextInputProps {
   onChange: (v: string) => void
   placeholder?: string
   type?: string
+  autoComplete?: string
 }
 
-function TI({ value, onChange, placeholder, type = 'text' }: TextInputProps) {
+function TI({ value, onChange, placeholder, type = 'text', autoComplete }: TextInputProps) {
+  const fieldLabel = useContext(FieldLabelContext)
   return (
     <Input
       className="font-mono"
@@ -106,7 +113,8 @@ function TI({ value, onChange, placeholder, type = 'text' }: TextInputProps) {
       value={String(value)}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      aria-label={placeholder ?? 'value'}
+      aria-label={fieldLabel || placeholder || 'value'}
+      autoComplete={autoComplete ?? (type === 'password' ? 'new-password' : 'off')}
     />
   )
 }
@@ -296,42 +304,35 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
   const isLocal = cfg.control === 'local'
   const isAmp = cfg.control === 'amp'
 
+  const TABS = [
+    { id: 'connection', label: t('settings.tabs.connection') },
+    { id: 'control', label: t('settings.tabs.control') },
+    { id: 'broker', label: t('settings.tabs.broker') },
+    { id: 'discord', label: t('settings.tabs.discord') },
+    { id: 'advanced', label: t('settings.tabs.advanced') },
+  ]
+
   return (
-    // Outer flex col: tabs + single save bar below
-    <div className="flex flex-col flex-1 min-h-0 gap-0">
-      <Tabs
+    <form className="flex flex-col flex-1 min-h-0 gap-3" onSubmit={(e) => e.preventDefault()} autoComplete="off">
+      {/* sr-only (not display:none) — Chrome's credential heuristic skips display:none elements */}
+      <input type="text" autoComplete="username" aria-hidden="true" tabIndex={-1} readOnly className="sr-only" />
+      <Segment
         selectedKey={tab}
         onSelectionChange={(k) => setTab(String(k))}
-        className="flex flex-col flex-1 min-h-0"
+        size="sm"
+        className="shrink-0 w-fit ml-auto"
       >
-        {/* Tab bar — never scrolls */}
-        <Tabs.ListContainer className="shrink-0">
-          <Tabs.List aria-label="Config sections" className="gap-1">
-            <Tabs.Tab id="connection">
-              {t('settings.tabs.connection')}
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="control">
-              {t('settings.tabs.control')}
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="broker">
-              {t('settings.tabs.broker')}
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="discord">
-              {t('settings.tabs.discord')}
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="advanced">
-              {t('settings.tabs.advanced')}
-              <Tabs.Indicator />
-            </Tabs.Tab>
-          </Tabs.List>
-        </Tabs.ListContainer>
+        {TABS.map(({ id, label }) => (
+          <Segment.Item key={id} id={id}>
+            <Segment.Separator />
+            {label}
+          </Segment.Item>
+        ))}
+      </Segment>
 
-        {/* ── Connection ─────────────────────────────────────────────────── */}
-        <Tabs.Panel id="connection" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+      {/* ── Connection ─────────────────────────────────────────────────── */}
+      {tab === 'connection' && (
+        <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
             <SectionLabel>{t('settings.sections.database')}</SectionLabel>
             <G2>
@@ -376,10 +377,12 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
               </F>
             </G2>
           </Panel>
-        </Tabs.Panel>
+        </div>
+      )}
 
-        {/* ── Control ────────────────────────────────────────────────────── */}
-        <Tabs.Panel id="control" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+      {/* ── Control ────────────────────────────────────────────────────── */}
+      {tab === 'control' && (
+        <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
             <SectionLabel>{t('settings.sections.controlPlane')}</SectionLabel>
             <div className="mt-1 flex flex-col gap-1">
@@ -387,6 +390,7 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
                 selectedKey={cfg.control || 'local'}
                 onSelectionChange={(k) => setCfg((prev) => ({ ...prev, control: String(k) }))}
                 className="w-64"
+                aria-label={t('settings.sections.controlPlane')}
               >
                 <Select.Trigger>
                   <Select.Value />
@@ -488,10 +492,12 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
           {!isKubectl && !isDocker && !isLocal && !isAmp && (
             <p className="text-xs text-muted pt-2">{t('settings.control.selectMode')}</p>
           )}
-        </Tabs.Panel>
+        </div>
+      )}
 
-        {/* ── Broker ─────────────────────────────────────────────────────── */}
-        <Tabs.Panel id="broker" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+      {/* ── Broker ─────────────────────────────────────────────────────── */}
+      {tab === 'broker' && (
+        <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
             <SectionLabel>{t('settings.sections.rabbitmq')}</SectionLabel>
             <p className="text-xs text-muted -mt-1">{t('settings.broker.optionalHint')}</p>
@@ -511,10 +517,13 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
               </div>
             </G2>
           </Panel>
-        </Tabs.Panel>
+        </div>
+      )}
 
-        {/* ── Discord ────────────────────────────────────────────────────── */}
-        <Tabs.Panel id="discord" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+      {/* ── Discord ────────────────────────────────────────────────────── */}
+      {tab === 'discord' && (
+        <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+          <input type="text" autoComplete="username" aria-hidden="true" tabIndex={-1} readOnly className="sr-only" />
           <Panel>
             <SectionLabel>{t('settings.sections.discordBot')}</SectionLabel>
             <p className="text-xs text-muted -mt-1">{t('settings.discord.hint')}</p>
@@ -565,10 +574,12 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
               </F>
             </G2>
           </Panel>
-        </Tabs.Panel>
+        </div>
+      )}
 
-        {/* ── Advanced ───────────────────────────────────────────────────── */}
-        <Tabs.Panel id="advanced" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+      {/* ── Advanced ───────────────────────────────────────────────────── */}
+      {tab === 'advanced' && (
+        <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
             <SectionLabel>{t('settings.sections.server')}</SectionLabel>
             <G2>
@@ -637,9 +648,8 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
               </Button>
             </div>
           </Panel>
-        </Tabs.Panel>
-      </Tabs>
-
-    </div>
+        </div>
+      )}
+    </form>
   )
 }

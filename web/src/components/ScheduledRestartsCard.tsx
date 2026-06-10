@@ -119,7 +119,7 @@ export const ScheduledRestartsCard: React.FC = () => {
                   </ToggleButtonGroup>
                   <TimeInput value={rule.time} onChange={(v) => setRuleTime(i, v)} ariaLabel="time" />
                   <Button size="sm" variant="ghost" isIconOnly aria-label={t('restarts.removeRule')} onPress={() => removeRule(i)}>
-                    <Icon name="x" />
+                    <Icon name="trash" />
                   </Button>
                 </div>
               ))}

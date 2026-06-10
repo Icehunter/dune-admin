@@ -1,6 +1,8 @@
 import type React from 'react'
 import { useState, useEffect } from 'react'
 import { Button, Chip, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { Player, VehicleRow } from '../../../api/client'
@@ -84,7 +86,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({ player }) => {
         className="min-h-0 max-h-full"
         columns={VEHICLE_COLUMNS}
         rows={vehicles}
-        rowId={(v) => String(v.id)}
+        rowId={(v) => `${v.id}-${v.is_backup ? 'b' : 'a'}`}
         initialSort={{ column: 'class', direction: 'ascending' }}
         sortValue={(v, k) => {
           if (k === 'class') return v.class
@@ -93,7 +95,16 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({ player }) => {
           if (k === 'name') return v.vehicle_name ?? ''
           return ''
         }}
-        emptyState={<div className="py-8 text-center text-muted">{t('players.vehicles.noVehiclesFound')}</div>}
+        emptyState={(
+          <EmptyState size="sm">
+            <EmptyState.Header>
+              <EmptyState.Media variant="icon">
+                <IconifyIcon icon="gravity-ui:car" className="size-5" />
+              </EmptyState.Media>
+              <EmptyState.Title>{t('players.vehicles.noVehiclesFound')}</EmptyState.Title>
+            </EmptyState.Header>
+          </EmptyState>
+        )}
         renderCell={(v, key) => {
           switch (key) {
             case 'class': return <span className="font-semibold">{v.class}</span>

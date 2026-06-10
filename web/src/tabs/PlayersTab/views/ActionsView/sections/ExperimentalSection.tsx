@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
-import { loadable } from 'jotai/utils'
 import { Button, Input } from '@heroui/react'
 import { Panel, SectionLabel } from '../../../../../dune-ui'
 import { api } from '../../../../../api/client'
 import type { Player } from '../../../../../api/client'
 import { busyAtom } from '../store'
-import { cheatScriptsAtom } from '../../../../../data/store'
+import { cheatScriptsSyncAtom } from '../../../../../data/store'
 import { useRun, useGate } from '../hooks/useActions'
 
 interface ExperimentalSectionProps { player: Player }
@@ -18,8 +17,7 @@ export function ExperimentalSection({ player }: ExperimentalSectionProps) {
   const run = useRun(player.id)
   const gate = useGate(player.id)
   const [customScriptName, setCustomScriptName] = useState('')
-  const [scriptsState] = useAtom(loadable(cheatScriptsAtom))
-  const scripts = scriptsState.state === 'hasData' ? scriptsState.data : []
+  const [scripts] = useAtom(cheatScriptsSyncAtom)
 
   const handleRunScript = (name: string, danger: boolean) => {
     const label = t(`players.actions.experimental.scripts.${name}` as never)

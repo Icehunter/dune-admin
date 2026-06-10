@@ -1,10 +1,9 @@
 import { useState, type Key, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
-import { loadable } from 'jotai/utils'
 import { Button, Input, ListBox, SearchField, Select, toast } from '@heroui/react'
 import { Panel, SectionLabel } from '../../../../../dune-ui'
-import { vehiclesAtom } from '../../../../../data/store'
+import { vehiclesSyncAtom } from '../../../../../data/store'
 import { api } from '../../../../../api/client'
 import type { Player } from '../../../../../api/client'
 import { busyAtom, partitionsAtom, allPlayersAtom } from '../store'
@@ -24,8 +23,7 @@ export function AdminSection({ player, onManageLocations, onTeleportPicker, onSp
   const [allPlayers] = useAtom(allPlayersAtom(player.id))
   const run = useRun(player.id)
   const gate = useGate(player.id)
-  const [vehiclesState] = useAtom(loadable(vehiclesAtom))
-  const allVehicles = vehiclesState.state === 'hasData' ? vehiclesState.data : []
+  const [allVehicles] = useAtom(vehiclesSyncAtom)
 
   const [selectedPartition, setSelectedPartition] = useState('')
   const [teleportX, setTeleportX] = useState('')
@@ -416,6 +414,7 @@ export function AdminSection({ player, onManageLocations, onTeleportPicker, onSp
               onChange={handleTargetSearch}
               onFocus={() => setTargetDropdownOpen(true)}
               className="w-full"
+              aria-label={t('players.actions.admin.pickTarget')}
             >
               <SearchField.Group>
                 <SearchField.SearchIcon />

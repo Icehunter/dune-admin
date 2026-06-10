@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Chip, Spinner, Switch, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { api, getWsBase } from '../api/client'
 import type { LogPod, CheatEntry } from '../api/client'
 import { DataTable, Icon, LoadingState, SideNav, type Column } from '../dune-ui'
@@ -233,7 +235,16 @@ export const LogsTab: React.FC<LogsTabProps> = ({ control }) => {
                           if (k === 'character') return c.character_name
                           return c.cheat_type
                         }}
-                        emptyState={<div className="py-8 text-center text-muted">{t('logs.noCheatEvents')}</div>}
+                        emptyState={(
+                          <EmptyState size="sm">
+                            <EmptyState.Header>
+                              <EmptyState.Media variant="icon">
+                                <IconifyIcon icon="gravity-ui:document" className="size-5" />
+                              </EmptyState.Media>
+                              <EmptyState.Title>{t('logs.noCheatEvents')}</EmptyState.Title>
+                            </EmptyState.Header>
+                          </EmptyState>
+                        )}
                         renderCell={(c, key) => {
                           switch (key) {
                             case 'time': return <span className="font-mono text-muted">{c.event_time}</span>

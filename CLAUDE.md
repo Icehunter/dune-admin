@@ -52,13 +52,7 @@ pnpm lint         # ESLint
 pnpm preview      # preview production build
 ```
 
-Versioning:
-
-```bash
-make version-patch  # bump x.y.Z, tag, push (triggers release workflow)
-make version-minor  # bump x.Y.0, tag, push
-make version-major  # bump X.0.0, tag, push
-```
+Versioning: `make version-patch / version-minor / version-major` — bumps, tags, pushes.
 
 ## Critical Gotchas
 
@@ -85,219 +79,29 @@ make version-major  # bump X.0.0, tag, push
 - **`make verify` does NOT run gosec**: run `make gosec` separately before any push that touches `exec.Command`, SQL, or file paths. The pre-push git hook gates on it. Suppress false positives with `// #nosec G204,G702 -- <reason>` (both IDs required). Never `git push --no-verify`.
 - **Market bot — player orders are inviolable**: never delete, expire, or modify non-NPC exchange orders. Every `DELETE`/`UPDATE` on exchange tables must include `WHERE … AND is_npc_order = TRUE AND owner_id = <botID>`. Buy query uses SELECT filter for expired player orders — not DELETE.
 
-## Modular Rules
+## Rules & Skills
 
 Detailed standards in `.claude/rules/`:
 
-| File | Applies To | Content |
-| --- | --- | --- |
-| `testing.md` | `*_test.go` | TDD, mocking, coverage |
-| `architecture.md` | `*.go` | Flat package, handler/db/model patterns |
-| `patterns.md` | `*.go` | DI, global state, cache invalidation, player-order safety |
-| `error-handling.md` | `*.go` | Error wrapping, logging, HTTP status codes |
-| `concurrency.md` | `*.go` | Goroutines, context, mutex |
-| `api-design.md` | `handlers_*.go`, `server.go` | REST handlers, response helpers |
-| `frontend.md` | `web/**` | Tab patterns, dune-ui, API client |
-| `documentation.md` | `*.md` | Markdown standards |
+| File | Content |
+| --- | --- |
+| `testing.md` | TDD, mocking, coverage |
+| `architecture.md` | Flat package, handler/db/model patterns |
+| `patterns.md` | DI, global state, cache invalidation, player-order safety |
+| `error-handling.md` | Error wrapping, logging, HTTP status codes |
+| `concurrency.md` | Goroutines, context, mutex |
+| `api-design.md` | REST handlers, response helpers |
+| `frontend.md` | Tab patterns, dune-ui, API client, theming |
+| `amp.md` | AMP control plane topology, config keys, provider methods |
+| `documentation.md` | Markdown standards |
 
 Reusable skills in `.claude/skills/`:
 
-| Skill | Trigger | What it does |
-| --- | --- | --- |
-| `tdd-go` | add handler / fix bug / implement feature | TDD checklist for Go handlers + db.go functions |
-| `new-tab` | add tab / new tab / create tab | Full-stack scaffold: route → handler → db.go → api client → React tab |
-| `pre-push-checklist` | ready to push / PR | make gosec + vulncheck + user approval gate |
-
----
-
-## Project Structure
-
-```
-cmd/dune-admin/             — entire Go backend (package main, flat)
-  main.go                   — config loading, flag parsing, startup
-  server.go                 — HTTP mux, CORS middleware, jsonOK/jsonErr/decode
-  connection.go             — globalDB, globalSSH, globalExecutor, globalControl
-  executor.go               — Executor interface (local vs SSH)
-  control.go                — ControlPlane interface
-  control_docker.go / control_kubectl.go / control_local.go / control_amp.go
-  executor_amp.go           — ampExecutor: localExecutor with sudo-elevated WriteFile
-  db.go                     — all DB queries (pgx/v5); journey cache
-  model.go                  — shared domain types (playerInfo, itemInfo, etc.)
-  handlers_*.go             — one file per feature area (players, bases, logs, etc.)
-  helpers.go                — shared utility functions
-  security_test.go          — isReadOnlySQL, isValidK8sName, originAllowed
-web/
-  src/
-    App.tsx                 — root component, tab routing, Clerk auth shell
-    api/client.ts           — typed fetch wrapper (ApiError, req<T>, api.* namespaces)
-    tabs/                   — one entry per top-level tab (file or directory)
-    components/             — tab-local components (not globally shared)
-    dune-ui/                — project component library (wraps HeroUI v3)
-    hooks/                  — useStatus.ts, useTableSort.ts
-    data/                   — static JSON lookups
-```
-
----
-
-## Go Backend Patterns
-
-### Handler Structure
-
-All handlers follow the same call-through pattern:
-
-```go
-func handleGetFoo(w http.ResponseWriter, r *http.Request) {
-    if globalDB == nil {
-        jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
-        return
-    }
-    result, err := cmdFetchFoo(r.Context(), globalDB, ...)
-    if err != nil {
-        log.Printf("handleGetFoo: %v", err)
-        jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
-        return
-    }
-    jsonOK(w, result)
-}
-```
-
-- Query functions (`cmdFetch*`) live in `db.go`
-- Use `jsonOK` / `jsonErr` from `server.go` — never write to `w` directly
-- Pass `r.Context()` through to all DB calls
-
-### Response Helpers (`server.go`)
-
-```go
-jsonOK(w, v)              // 200 + JSON-encoded v
-jsonErr(w, err, code)     // code + {"error": err.Error()}
-decode(r, &v)             // decode request body JSON into v
-```
-
-### Global State
-
-| Global | Type | Purpose |
-| --- | --- | --- |
-| `globalDB` | `*pgxpool.Pool` | Postgres connection pool |
-| `globalSSH` | `*ssh.Client` | SSH connection (nil when local) |
-| `globalExecutor` | `Executor` | local or SSH executor |
-| `globalControl` | `ControlPlane` | kubectl / docker / local / amp |
-
-All globals set once in `connectAll()` (`connection.go`). Never reassign from handlers.
-
-### SQL Queries
-
-All Postgres queries live in `db.go`. Always use the `dune.` schema prefix. Use pgx v5
-named parameters; scan results with `rows.Scan(...)`. Wrap errors — never panic.
-
-### Security Constraints
-
-- `isReadOnlySQL` — only SELECT/EXPLAIN/SHOW/WITH allowed on the admin SQL endpoint
-- `isValidK8sName` — validates pod/namespace names before any shell/kubectl invocation
-- CORS — strict allowlist via `ALLOWED_ORIGINS` env var; tests in `security_test.go`
-- `gosec` runs in CI at `-severity high -confidence high`; G702 suppressed where known false positive
-
----
-
-## Frontend Patterns
-
-### Tab Components
-
-Each tab is either a single `.tsx` file (simple) or a directory (complex):
-
-```
-tabs/FooTab.tsx             — simple tab
-tabs/PlayersTab/
-  index.tsx                 — root component
-  types.ts                  — local types
-  components/               — tab-local components
-  modals/                   — modal components
-  views/                    — sub-views (if needed)
-```
-
-**`BasesTab.tsx` is the canonical reference pattern** for new simple tabs.
-
-Minimal tab structure:
-
-```tsx
-export default function FooTab() {
-  const [data, setData] = useState<FooRow[]>([])
-  const [loading, setLoading] = useState(false)
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      setData(await api.foo.list())
-    } catch (e) {
-      toast.danger(`Failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [])
-  // ...
-}
-```
-
-### API Client (`web/src/api/client.ts`)
-
-All backend calls go through `req<T>(method, path, body?)`. Import the `api` namespace:
-
-```ts
-import { api, ApiError } from '../api/client'
-
-const result = await api.bases.list()
-```
-
-Backend URL is runtime-configurable via `localStorage('dune_admin_backend')` (default `http://localhost:8080`).
-Vite dev proxies `/api` and WebSocket `/api/v1/logs/stream` → `:8080`.
-
-### Component Library (`dune-ui/`)
-
-Import shared components from `../dune-ui` when a wrapper exists — not directly from `@heroui/react`:
-
-```ts
-import { DataTable, Icon, PageHeader, Panel, SectionDivider, SectionLabel,
-         InfoCard, Dropzone, SideNav, NumberInput, FieldInput, FieldSelect } from '../dune-ui'
-import type { Column } from '../dune-ui'
-```
-
-Use `@heroui/react` directly only for primitives not wrapped in `dune-ui` (Button, Card, Chip, Spinner, toast).
-
-`StatusChip` was removed — use `<Chip size="sm" variant="soft" color={...}>` inline instead.
-
-### Theming
-
-All colours are CSS custom properties in `web/src/index.css`. **Never use raw Tailwind colour utilities**
-(`bg-amber-900`, `text-zinc-400`, etc.) — use semantic tokens:
-
-- `bg-background`, `bg-surface`, `bg-surface-secondary`
-- `text-foreground`, `text-muted`, `text-accent`
-- `border-border`
-
-Inline `style={{ color: '...' }}` overrides are a sign the semantic token approach wasn't used.
-
-### Auth
-
-`hasClerk = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY`. Absent key → app renders without auth
-(local dev). The `isSignedIn` prop gates destructive features (Bases, Blueprints export).
-
----
-
-## Configuration
-
-Config loaded in order (first match per field wins):
-
-1. `~/.dune-admin/config.yaml` — written by `make setup`
-2. `.env` in working directory — legacy fallback
-3. Environment variables
-4. CLI flags
-
-Key env vars: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`, `DB_SCHEMA`,
-`SSH_HOST`, `SSH_USER`, `SSH_KEY`, `CONTROL` (kubectl/docker/local/amp),
-`LISTEN_ADDR` (default `:8080`), `ALLOWED_ORIGINS`.
-
----
+| Skill | Trigger |
+| --- | --- |
+| `tdd-go` | add handler / fix bug / implement feature |
+| `new-tab` | add tab / new tab / create tab |
+| `pre-push-checklist` | ready to push / PR |
 
 ## CI / Workflows
 
@@ -308,84 +112,6 @@ Key env vars: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`, `DB_SCHEMA`
 | `sca.yml` | push/PR → main | `pnpm audit --audit-level=high` |
 | `deploy.yml` | push → main | Build frontend + Cloudflare Pages deploy |
 | `release.yml` | push tag `v*` | GoReleaser (multi-platform) + frontend deploy |
-
----
-
-## AMP Control Plane
-
-The `amp` control plane targets CubeCoders AMP installations. Selected via `control: amp` in config.
-
-### Topology
-
-```
-host (e.g. Ubuntu VM)
- └── AMP web panel (port 8080)
-      └── podman container "AMP_<instance>"  (cubecoders/ampbase)
-           ├── ampinstmgr (lifecycle)
-           ├── RabbitMQ broker (admin + game vhosts)
-           ├── Postgres
-           └── 1..N DuneSandboxServer-Linux-Shipping processes (one per partition)
-```
-
-`dune-admin` runs **on the host**. Uses `localExecutor` for shell and `ampExecutor` to write INI files
-as the AMP user.
-
-### Config Keys
-
-```yaml
-control: amp
-amp_instance:   DuneAwakening01
-amp_container:  AMP_DuneAwakening01       # default: AMP_<instance>
-amp_container_runtime: podman             # podman (default) | docker — game-server container CLI
-amp_user:       amp
-amp_log_path:   /AMP/duneawakening/logs   # in-container log dir
-amp_api_user:   admin                     # AMP panel login — enables gameplay-settings writes via the AMP Web API
-amp_api_pass:   yourpassword
-amp_api_port:   8081                       # instance ADS API port (default 8081)
-director_url:   http://127.0.0.1:11717    # optional — enables /director/ proxy
-broker_exec_prefix: "sudo -i -u amp podman exec AMP_DuneAwakening01"
-server_ini_dir: /home/amp/.ampdata/instances/DuneAwakening01/duneawakening/server/state
-db_host: 127.0.0.1
-db_port: 15432
-```
-
-### Sudoers
-
-```
-dune-admin ALL=(amp) NOPASSWD: /usr/bin/ampinstmgr, /usr/bin/podman, /usr/bin/tee
-```
-
-Use `/usr/bin/docker` instead of `/usr/bin/podman` when `amp_container_runtime: docker`. The
-runtime-binary grant covers both `exec` (logs/broker) and `restart` (cycling the container to apply
-server settings). Narrow `tee` to specific INI paths under `server_ini_dir` in production.
-
-### Provider Behaviour
-
-| Method | Implementation |
-| --- | --- |
-| `GetStatus` | Lists `DuneSandboxServer-Linux-Shipping` host processes; reports container DB phase |
-| `ExecCommand` | start/stop: `ampinstmgr -s/-q <amp_instance>`. restart (container mode): `<runtime> restart <container>` — `ampinstmgr` does NOT reap the game procs; container restart is the only thing that cycles them. restart (native): `ampinstmgr -q && -s` |
-| `writeServerSettings` | AMP Web API `Core/Login` + `Core/SetConfig` (node `Meta.GenericModule.<FieldName>`) via in-container curl; needs `amp_api_*`. Curated gameplay settings only |
-| `ListProcesses` | Host `ps` for game-server processes, decorated with map/port/partition |
-| `ListLogSources` | `<runtime> exec <container> ls <amp_log_path>` (runtime per `amp_container_runtime`) |
-| `StreamLog` | `<runtime> exec <container> tail -F <amp_log_path>/<name>` |
-| `CaptureJWT` | Extracts `ServiceAuthToken` from game-server process args on host |
-| `ListExchanges` / `EnsureCaptureUser` | `rabbitmqctl` via `broker_exec_prefix` |
-| `DiscoverIniDir` | Returns `server_ini_dir` (or derives conventional AMP path) |
-| `ReadDefaultINI` | `<runtime> exec <container> find / -name <file>` then `cat` |
-
-**Server settings under AMP go through the AMP Web API, not INI writes.** AMP regenerates
-`UserEngine.ini` / `UserGame.ini` from its own config on every start, so a direct file edit is
-clobbered. The curated gameplay schema (`serverSettingsSchema` — real CVars + `/Script` UPROPERTYs,
-keyed by `FieldName`) is written via `ampControl.writeServerSettings` → AMP `Core/SetConfig`. Non-AMP
-planes (docker/kubectl/local) and raw-INI-section edits still write files directly via
-`ampExecutor.WriteFile` (`sudo -i -u <amp_user> tee <path> > /dev/null`). Either way, settings only
-take effect after a game restart via `ExecCommand("restart")`.
-
-`ampControl.startEnsureCaptureUserLoop` re-applies the `dune_cap` user+permissions every 15s
-so capture survives broker restarts without manual intervention.
-
----
 
 ## Code Review Checklist
 

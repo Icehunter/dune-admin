@@ -2,6 +2,7 @@ import type React from 'react'
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Chip, Switch, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
 import { api } from '../../api/client'
 import type { EventDefinition, EventClaimRecord } from '../../api/client'
 import { DataTable, Icon, PageHeader, Panel, SectionLabel, type Column } from '../../dune-ui'
@@ -143,7 +144,13 @@ export const EventsTab: React.FC = () => {
           if (k === 'actions' || k === 'version') return ''
           return (e as unknown as Record<string, string | number>)[k] ?? ''
         }}
-        emptyState={<div className="py-8 text-center text-muted">{t('events.noEvents')}</div>}
+        emptyState={(
+          <EmptyState size="sm">
+            <EmptyState.Header>
+              <EmptyState.Title>{t('events.noEvents')}</EmptyState.Title>
+            </EmptyState.Header>
+          </EmptyState>
+        )}
         renderCell={(ev, key) => {
           switch (key) {
             case 'name':
@@ -202,7 +209,7 @@ export const EventsTab: React.FC = () => {
                 {t('events.status.reset')}
               </Button>
               <Button size="sm" variant="ghost" onPress={() => setSelectedEvent(null)}>
-                <Icon name="x" />
+                <Icon name="trash" />
               </Button>
             </div>
           </div>
@@ -215,7 +222,13 @@ export const EventsTab: React.FC = () => {
             rowId={(c) => `${c.event_id}-${c.version}-${c.account_id}`}
             initialSort={{ column: 'claimed_at', direction: 'descending' }}
             sortValue={(c, k) => (c as unknown as Record<string, string | number>)[k] ?? ''}
-            emptyState={<div className="py-4 text-center text-muted text-xs">{t('events.status.noClaims')}</div>}
+            emptyState={(
+              <EmptyState size="sm">
+                <EmptyState.Header>
+                  <EmptyState.Title>{t('events.status.noClaims')}</EmptyState.Title>
+                </EmptyState.Header>
+              </EmptyState>
+            )}
             renderCell={(c, key) => {
               switch (key) {
                 case 'account_id':

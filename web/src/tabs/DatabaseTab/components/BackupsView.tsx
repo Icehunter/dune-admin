@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Spinner, Switch, ToggleButton, ToggleButtonGroup, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { api } from '../../../api/client'
 import type { DBBackupFile, ScheduledBackups, BackupRule } from '../../../api/client'
 import { Panel, SectionLabel, PageHeader, Icon, ConfirmDialog, NumberInput, TimeInput } from '../../../dune-ui'
@@ -120,7 +122,7 @@ const ScheduleCard: React.FC = () => {
                     aria-label={t('backups.schedule.removeRule')}
                     onPress={() => removeRule(i)}
                   >
-                    <Icon name="x" />
+                    <Icon name="trash" />
                   </Button>
                 </div>
               ))}
@@ -259,7 +261,16 @@ export const BackupsView: React.FC = () => {
           {loading
             ? <div className="py-3 flex justify-center"><Spinner size="sm" color="current" /></div>
             : backups.length === 0
-              ? <div className="text-sm text-muted py-2">{t('backups.recent.empty')}</div>
+              ? (
+                  <EmptyState size="sm">
+                    <EmptyState.Header>
+                      <EmptyState.Media variant="icon">
+                        <IconifyIcon icon="gravity-ui:document" className="size-5" />
+                      </EmptyState.Media>
+                      <EmptyState.Title>{t('backups.recent.empty')}</EmptyState.Title>
+                    </EmptyState.Header>
+                  </EmptyState>
+                )
               : (
                   <div className="flex flex-col gap-1">
                     <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-2 text-xs uppercase tracking-wide text-muted">

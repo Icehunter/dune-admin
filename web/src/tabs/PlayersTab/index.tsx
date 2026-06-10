@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Button, SearchField, Spinner, toast } from '@heroui/react'
+import { Segment } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
 import type { Player } from '../../api/client'
@@ -166,18 +167,19 @@ export const PlayersTab: React.FC<PlayersTabProps> = ({ isActive = false }) => {
                   <span className="font-semibold text-accent">{selected.name}</span>
                   <StatusDot status={selected.online_status} />
                   <span className="text-muted text-xs">{selected.online_status}</span>
-                  <div className="ml-auto flex gap-1">
+                  <Segment
+                    size="sm"
+                    className="ml-auto"
+                    selectedKey={activeTab}
+                    onSelectionChange={(key) => setActiveTab(key as DetailTab)}
+                  >
                     {DETAIL_TABS.map((tab) => (
-                      <Button
-                        key={tab.key}
-                        size="sm"
-                        variant={activeTab === tab.key ? 'secondary' : 'ghost'}
-                        onPress={() => setActiveTab(tab.key)}
-                      >
+                      <Segment.Item key={tab.key} id={tab.key}>
+                        <Segment.Separator />
                         {tab.label}
-                      </Button>
+                      </Segment.Item>
                     ))}
-                  </div>
+                  </Segment>
                 </div>
 
                 {/* Tab content — each tab owns its own scroll/height context */}

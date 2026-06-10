@@ -1,5 +1,7 @@
 import type React from 'react'
 import { Button, Spinner } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { useTranslation } from 'react-i18next'
 import { DataTable, Icon, PageHeader, type Column } from '../../../dune-ui'
 import type { WelcomeGrantRecord } from '../../../api/client'
@@ -65,7 +67,16 @@ export const GrantsView: React.FC<GrantsViewProps> = ({ grants, retry, revoke, l
             default: return ''
           }
         }}
-        emptyState={<div className="py-8 text-center text-muted">{t('welcome.noGrants')}</div>}
+        emptyState={(
+          <EmptyState size="sm">
+            <EmptyState.Header>
+              <EmptyState.Media variant="icon">
+                <IconifyIcon icon="gravity-ui:persons" className="size-5" />
+              </EmptyState.Media>
+              <EmptyState.Title>{t('welcome.noGrants')}</EmptyState.Title>
+            </EmptyState.Header>
+          </EmptyState>
+        )}
         renderCell={(g, key) => {
           switch (key) {
             case 'character':

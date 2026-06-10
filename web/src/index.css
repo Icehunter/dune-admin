@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@heroui/styles";
+@import "@heroui-pro/react/css";
 
 /* unicode-range restricts Duneway to the Latin/Cyrillic blocks it actually covers.
    Symbols, arrows, dingbats (U+2000+) fall through to the system font immediately,
@@ -90,6 +91,10 @@
   --surface-tertiary: #4e3411; /* top elevation (table headers) */
   --overlay: #1a1610; /* modal body */
   --overlay-foreground: #e8dcc8;
+
+  /* Pro Segment navigation — match surface so the pill sits on a dark base */
+  --segment: var(--surface); /* #1a1610 */
+  --segment-foreground: var(--foreground);
 
   --default: #1a1610;
   --default-foreground: #e8dcc8;
@@ -240,8 +245,8 @@ body,
 [role="rowheader"],
 [role="gridcell"] {
   padding: 0.375rem 0.75rem !important; /* py-1.5 px-3 */
-  font-size: 0.75rem; /* text-xs */
-  line-height: 1.25rem;
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.375rem;
 }
 
 /* Column headers — sit on the body bg with a hairline divider below.
@@ -269,10 +274,29 @@ body,
   background: var(--surface) !important;
 }
 
-/* Accent left stripe on row hover — inset shadow avoids layout shift. */
+/* Row hover: tinted background on all cells + accent stripe on the very first
+   cell (which may be the injected checkbox cell when selectionMode="multiple"). */
 [role="row"]:hover > [role="rowheader"],
-[role="row"]:hover > [role="gridcell"]:first-of-type {
+[role="row"]:hover > [role="gridcell"] {
+  background: color-mix(in srgb, var(--accent) 7%, var(--background)) !important;
+}
+[role="row"]:nth-child(even):hover > [role="rowheader"],
+[role="row"]:nth-child(even):hover > [role="gridcell"] {
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface)) !important;
+}
+[role="row"]:hover > *:first-child {
   box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+
+/* ── ActionBar — default toolbar bg is too dark against our near-black theme.
+   Use a lighter surface with an accent-tinted border so the pill stands out. */
+.action-bar__wrapper {
+  background: var(--surface-secondary) !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent) !important;
 }
 
 /* ── Tabs.Panel — HeroUI's default panel bg is too amber for our theme.
@@ -319,6 +343,96 @@ body,
 [role="tab"][aria-selected="true"],
 [role="tab"][data-state="active"] {
   color: var(--accent-foreground) !important;
+}
+
+/* ── Widget: match Panel's gradient + add visible border */
+.widget {
+  border: 1px solid var(--border);
+  background: linear-gradient(170deg, var(--surface-secondary) 0%, var(--background) 100%) !important;
+}
+
+/* ── Panel (dune-ui) uses Widget internally; allow content to grow naturally
+   without clipping (Widget defaults to overflow:hidden for chart use cases). */
+.dune-panel,
+.dune-panel .widget__content {
+  overflow: visible;
+}
+
+.dune-panel .widget__content {
+  margin: 0 !important;
+}
+
+/* KPIGroup inside a Widget: suppress its own card treatment so Widget.Content
+   provides the single surface (avoids double border + double background). */
+.widget .kpi-group {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+/* ── FileTree: hide the selection checkbox — we want sidebar-style highlight
+   navigation, not a multi-select checklist. */
+.file-tree__checkbox {
+  display: none;
+}
+
+/* Selected item: accent-tinted background + accent label text. */
+.file-tree__item[data-selected=true] {
+  background-color: color-mix(in srgb, var(--accent) 14%, var(--surface)) !important;
+}
+
+.file-tree__item[data-selected=true] .file-tree__label {
+  color: var(--accent) !important;
+  font-weight: 500;
+}
+
+/* FileTree sm size also uses text-xs; bump to match other nav elements. */
+.file-tree__item--sm {
+  font-size: var(--text-sm, 0.875rem) !important;
+}
+
+/* ── Segment: sm variant uses text-xs (12px) which is too small with Duneway;
+   bump to match md (text-sm / 14px) for readability. */
+.segment__item--sm {
+  font-size: var(--text-sm, 0.875rem) !important;
+  line-height: var(--text-sm--line-height, 1.25rem) !important;
+}
+
+/* ── Sidebar inset + AppLayout: AppLayout renders .app-layout__body instead of
+   .sidebar__main, so the built-in card rule never fires. Replicate it here and
+   use --radius (sharp) instead of rounded-2xl (default).
+
+   Body background is --background (darkest) so panels float as elevated surfaces.
+   The header (navbar) area is --surface (lighter) for visual separation.        */
+.sidebar__provider:has(.sidebar--inset) .app-layout__body {
+  background-color: var(--background);
+  box-shadow: var(--surface-shadow, none);
+  margin: 0.5rem 0.5rem 0.5rem 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  min-height: calc(100svh - 1rem);
+  transition: margin var(--sidebar-duration, 200ms) var(--sidebar-ease, ease);
+}
+
+/* Navbar/header area: slightly lighter than the content body so it reads as
+   a distinct surface from the dark panel background beneath.                  */
+.app-layout__header,
+.app-layout__header .navbar {
+  background-color: var(--surface) !important;
+}
+
+.sidebar__provider[data-state="collapsed"]:has(.sidebar--inset) .app-layout__body {
+  margin-left: 0.5rem;
+}
+
+/* ── Navbar.Item current state — amber accent instead of default foreground.
+   HeroUI Pro's navbar active indicator uses data-current="true"; we need to
+   also clear any focus-ring color that can appear blue on click.             */
+.navbar__item[data-current="true"] {
+  color: var(--accent) !important;
 }
 
 /* ── Listbox option hover / focus / selected — used by every Select,

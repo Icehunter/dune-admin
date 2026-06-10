@@ -1,5 +1,6 @@
 import type React from 'react'
 import type { ReactNode } from 'react'
+import { KPI, KPIGroup } from '@heroui-pro/react'
 
 type CardProps = { children: ReactNode, className?: string }
 
@@ -13,29 +14,36 @@ type ItemProps = {
 /**
  * Bordered, slightly-elevated label/value row card — the "Phase Reconciling
  * | Database Ready" health row pattern from BattlegroupTab.
+ *
+ * Backed by KPIGroup + KPI internally; the InfoCard / InfoCard.Item API is
+ * preserved so existing call sites need no changes.
  */
 export const InfoCard: React.FC<CardProps> & { Item: React.FC<ItemProps> } = ({ children, className = '' }) => {
   return (
-    <div
-      className={
-        'flex items-center gap-6 rounded-[var(--radius)] px-4 py-3 text-sm shrink-0 '
-        + 'bg-surface border border-border/60 dune-lift '
-        + className
-      }
-    >
+    <KPIGroup className={`flex-wrap ${className}`} orientation="horizontal">
       {children}
-    </div>
+    </KPIGroup>
   )
 }
 
 export const InfoCardItem: React.FC<ItemProps> = ({ label, value, valueColor }) => {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-muted">{label}</span>
-      <span className="font-semibold" style={valueColor ? { color: valueColor } : undefined}>
-        {value}
-      </span>
-    </div>
+    <>
+      <KPI>
+        <KPI.Header>
+          <KPI.Title>{label}</KPI.Title>
+        </KPI.Header>
+        <KPI.Content>
+          <span
+            className="text-2xl font-semibold"
+            style={valueColor ? { color: valueColor } : undefined}
+          >
+            {value}
+          </span>
+        </KPI.Content>
+      </KPI>
+      <KPIGroup.Separator />
+    </>
   )
 }
 

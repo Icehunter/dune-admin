@@ -1,7 +1,8 @@
 import type React from 'react'
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tabs, toast } from '@heroui/react'
+import { toast } from '@heroui/react'
+import { Segment } from '@heroui-pro/react'
 import { useAtom, useSetAtom } from 'jotai'
 import { ConfirmDialog, Panel } from '../../../../dune-ui'
 import { ManageLocationsModal } from '../../modals/ManageLocationsModal'
@@ -68,23 +69,23 @@ export const ActionsView: React.FC<ActionsViewProps> = ({ player }) => {
   return (
     <>
       <div className="flex flex-row h-full min-h-0 gap-3">
-        <Panel className="shrink-0 p-0 overflow-hidden">
-          <Tabs
+        <Panel className="shrink-0 p-2 overflow-hidden">
+          {/* Vertical section nav. The Segment base style is a horizontal inline
+              row; flex-col + stretch stacks the items full-width to match the
+              previous vertical Tabs layout. */}
+          <Segment
             orientation="vertical"
+            aria-label="Actions sections"
             selectedKey={section}
             onSelectionChange={(k) => setSection(k as ActionSection)}
+            className="flex flex-col items-stretch w-44"
           >
-            <Tabs.ListContainer>
-              <Tabs.List aria-label="Actions sections">
-                {ACTION_SECTIONS.map((s) => (
-                  <Tabs.Tab key={s.key} id={s.key}>
-                    {t(s.label as never)}
-                    <Tabs.Indicator />
-                  </Tabs.Tab>
-                ))}
-              </Tabs.List>
-            </Tabs.ListContainer>
-          </Tabs>
+            {ACTION_SECTIONS.map((s) => (
+              <Segment.Item key={s.key} id={s.key} className="justify-start">
+                {t(s.label as never)}
+              </Segment.Item>
+            ))}
+          </Segment>
         </Panel>
 
         <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, SearchField, Spinner, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { api } from '../../api/client'
 import type { ServerSetting, ServerSettingUpdate, RawSection } from '../../api/client'
 import { PageHeader, Panel, SectionLabel, Icon } from '../../dune-ui'
@@ -225,9 +227,14 @@ export const ServerSettingsTab: React.FC = () => {
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 pb-6 pr-1">
 
         {searching && !hasResults && (
-          <div className="text-sm text-muted py-8 text-center">
-            {t('server.noMatchSettings', { query: search.trim() })}
-          </div>
+          <EmptyState size="sm">
+            <EmptyState.Header>
+              <EmptyState.Media variant="icon">
+                <IconifyIcon icon="gravity-ui:magnifier" className="size-5" />
+              </EmptyState.Media>
+              <EmptyState.Title>{t('server.noMatchSettings', { query: search.trim() })}</EmptyState.Title>
+            </EmptyState.Header>
+          </EmptyState>
         )}
 
         {commonItems.length > 0 && (

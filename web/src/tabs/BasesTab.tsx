@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Spinner, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
 import { api, ApiError } from '../api/client'
 import type { BaseRow } from '../api/client'
 import { DataTable, Icon, PageHeader, type Column } from '../dune-ui'
@@ -103,7 +104,13 @@ export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
               rowId={(b) => String(b.id)}
               initialSort={{ column: 'id', direction: 'ascending' }}
               sortValue={(b, k) => (k === 'actions' ? '' : (b as unknown as Record<string, string | number>)[k])}
-              emptyState={<div className="py-8 text-center text-muted">{t('bases.noBasesFound')}</div>}
+              emptyState={(
+                <EmptyState size="sm">
+                  <EmptyState.Header>
+                    <EmptyState.Title>{t('bases.noBasesFound')}</EmptyState.Title>
+                  </EmptyState.Header>
+                </EmptyState>
+              )}
               renderCell={(b, key) => {
                 switch (key) {
                   case 'id':

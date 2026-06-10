@@ -26,10 +26,10 @@ func discordBotEnabled(cfg appConfig) bool {
 	return *cfg.DiscordBotEnabled
 }
 
-// startEmbeddedDiscordBotIfEnabled opens a Discord gateway session, registers
-// guild-scoped slash commands, and attaches the interaction handler. Returns a
-// cancel func that cleanly closes the session, or nil when the bot is disabled
-// or token/guild are not configured.
+// startEmbeddedDiscordBotIfEnabled starts the Discord bot in the background
+// and returns a cancel func that cleanly closes the session on shutdown.
+// Returns nil when the bot is disabled or token/guild are not configured.
+// The gateway connection is established asynchronously so startup is not blocked.
 //
 // Mirrors startEmbeddedMarketBotIfEnabled (main.go) — outbound gateway WS,
 // so no public ingress is needed; works behind NAT.
@@ -46,10 +46,18 @@ func startEmbeddedDiscordBotIfEnabled(cfg appConfig) context.CancelFunc {
 		return nil
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	go discordConnect(ctx, cfg)
+	return cancel
+}
+
+// discordConnect opens the Discord gateway, runs post-open setup, then blocks
+// until ctx is cancelled. Runs in its own goroutine so startup is non-blocking.
+func discordConnect(ctx context.Context, cfg appConfig) {
 	dg, err := discordgo.New("Bot " + cfg.DiscordBotToken)
 	if err != nil {
 		fmt.Printf("discord: failed to create session: %v\n", err)
-		return nil
+		return
 	}
 
 	// Interactions (slash commands) are delivered over the gateway socket, so
@@ -68,14 +76,16 @@ func startEmbeddedDiscordBotIfEnabled(cfg appConfig) context.CancelFunc {
 
 	if err := dg.Open(); err != nil {
 		fmt.Printf("discord: failed to open gateway connection: %v\n", err)
-		return nil
+		return
+	}
+
+	if ctx.Err() != nil {
+		_ = dg.Close()
+		return
 	}
 
 	discordPostOpen(dg, cfg, dcfg)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go discordShutdownWatcher(ctx, dg)
-	return cancel
+	discordShutdownWatcher(ctx, dg)
 }
 
 // discordPostOpen runs non-fatal setup after the Discord gateway is open:

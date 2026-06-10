@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Chip } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { DataTable, LoadingState, Panel, SectionLabel } from '../../../../../dune-ui'
 import { api } from '../../../../../api/client'
 import type { Player, GameEvent, DungeonRecord } from '../../../../../api/client'
@@ -125,7 +127,16 @@ export function HistorySection({ player }: HistorySectionProps) {
             if (k === 'event_type') return evt.event_type
             return ''
           }}
-          emptyState={<div className="py-8 text-center text-muted">{t('players.actions.history.noEvents')}</div>}
+          emptyState={(
+            <EmptyState size="sm">
+              <EmptyState.Header>
+                <EmptyState.Media variant="icon">
+                  <IconifyIcon icon="gravity-ui:clock" className="size-5" />
+                </EmptyState.Media>
+                <EmptyState.Title>{t('players.actions.history.noEvents')}</EmptyState.Title>
+              </EmptyState.Header>
+            </EmptyState>
+          )}
           renderCell={renderGameEventCell}
         />
       </Panel>
@@ -149,7 +160,13 @@ export function HistorySection({ player }: HistorySectionProps) {
             if (k === 'duration') return d.duration_ms
             return d.players_num
           }}
-          emptyState={<div className="py-8 text-center text-muted">{t('players.actions.history.noDungeons')}</div>}
+          emptyState={(
+            <EmptyState size="sm">
+              <EmptyState.Header>
+                <EmptyState.Title>{t('players.actions.history.noDungeons')}</EmptyState.Title>
+              </EmptyState.Header>
+            </EmptyState>
+          )}
           renderCell={renderDungeonCell}
         />
       </Panel>

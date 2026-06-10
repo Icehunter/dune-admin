@@ -342,7 +342,6 @@ export const BattlegroupTab: React.FC<BattlegroupTabProps> = ({ isActive = false
         </div>
 
         {/* ── Scheduled Restarts (#145) ──────────────────────────────── */}
-        <SectionDivider title={t('restarts.title')} />
         <ScheduledRestartsCard />
 
       </div>

@@ -1,11 +1,25 @@
 import type React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BarChart, Bar, LineChart, Line, Legend, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Button, Spinner, toast } from '@heroui/react'
+import { Spinner, toast } from '@heroui/react'
+import { AreaChart, BarChart, Segment } from '@heroui-pro/react'
 import { api } from '../../../api/client'
 import type { FactionTrends, ServerSummary } from '../../../api/client'
-import { InfoCard, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
+import { PageHeader, Panel, SectionLabel } from '../../../dune-ui'
+
+function Sep() {
+  return <div className="w-px h-8 bg-border mx-3 shrink-0" />
+}
+
+interface StatProps { label: string, children: React.ReactNode }
+function Stat({ label, children }: StatProps) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">{label}</span>
+      <span className="text-sm font-mono text-foreground">{children}</span>
+    </div>
+  )
+}
 
 // Faction line colors keyed by name (recharts can't read CSS tokens at render).
 // Atreides green, Harkonnen red, Smuggler spice-amber; unaffiliated (None /
@@ -90,55 +104,53 @@ export const ServerDashboard: React.FC = () => {
           )
         : (
             <>
-              <InfoCard className="flex-wrap">
-                <InfoCard.Item label={t('players.dashboard.totalPlayers')} value={summary.total_players} />
-                <InfoCard.Item label={t('players.dashboard.online')} value={summary.online_players} />
-                <InfoCard.Item label={t('players.dashboard.avgLevel')} value={summary.avg_char_level.toFixed(1)} />
-                <InfoCard.Item label={t('players.dashboard.totalPlaytime')} value={fmtPlaytime(summary.total_playtime_secs)} />
-                <InfoCard.Item label={t('players.dashboard.totalSolaris')} value={summary.total_solaris.toLocaleString()} />
-                <InfoCard.Item label={t('players.dashboard.totalScrip')} value={summary.total_scrip.toLocaleString()} />
-              </InfoCard>
-
               <Panel>
-                <SectionLabel>{t('players.dashboard.activityTrend', { days: summary.trend_days })}</SectionLabel>
-                <div className="mt-3 h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={summary.activity_trend} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-                      <XAxis
-                        dataKey="day"
-                        tickFormatter={fmtDate}
-                        tick={{ fontSize: 11, fill: 'var(--muted)' }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        tick={{ fontSize: 11, fill: 'var(--muted)' }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={32}
-                      />
-                      <Tooltip
-                        cursor={{ fill: 'var(--surface-hover)' }}
-                        formatter={(val) => [String(val as number), t('players.dashboard.sessions')]}
-                        labelFormatter={(d) => fmtDate(String(d))}
-                        contentStyle={{
-                          background: 'var(--surface)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)',
-                          fontSize: 12,
-                        }}
-                        labelStyle={{ color: 'var(--foreground)' }}
-                      />
-                      <Bar dataKey="count" fill="var(--accent)" radius={[3, 3, 0, 0]} maxBarSize={28} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="flex items-center flex-wrap gap-0">
+                  <Stat label={t('players.dashboard.totalPlayers')}>{summary.total_players.toLocaleString()}</Stat>
+                  <Sep />
+                  <Stat label={t('players.dashboard.online')}>{summary.online_players.toLocaleString()}</Stat>
+                  <Sep />
+                  <Stat label={t('players.dashboard.avgLevel')}>{summary.avg_char_level.toFixed(1)}</Stat>
+                  <Sep />
+                  <Stat label={t('players.dashboard.totalPlaytime')}>{fmtPlaytime(summary.total_playtime_secs)}</Stat>
+                  <Sep />
+                  <Stat label={t('players.dashboard.totalSolaris')}>{summary.total_solaris.toLocaleString()}</Stat>
+                  <Sep />
+                  <Stat label={t('players.dashboard.totalScrip')}>{summary.total_scrip.toLocaleString()}</Stat>
                 </div>
               </Panel>
 
               <Panel>
+                <SectionLabel>{t('players.dashboard.activityTrend', { days: summary.trend_days })}</SectionLabel>
+                <BarChart
+                  data={summary.activity_trend}
+                  height={176}
+                  margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
+                >
+                  <BarChart.Grid vertical={false} />
+                  <BarChart.XAxis dataKey="day" tickFormatter={fmtDate} tickMargin={8} />
+                  <BarChart.YAxis allowDecimals={false} width={32} />
+                  <BarChart.Bar
+                    dataKey="count"
+                    fill="var(--accent)"
+                    radius={[3, 3, 0, 0]}
+                    maxBarSize={28}
+                    name={t('players.dashboard.sessions')}
+                  />
+                  <BarChart.Tooltip
+                    content={(
+                      <BarChart.TooltipContent
+                        labelFormatter={(d) => fmtDate(String(d))}
+                        valueFormatter={(v) => String(v)}
+                      />
+                    )}
+                  />
+                </BarChart>
+              </Panel>
+
+              <Panel>
                 <SectionLabel>{t('players.dashboard.byMap')}</SectionLabel>
-                <div className="mt-3 flex flex-col gap-1">
+                <div className="flex flex-col gap-1">
                   {summary.by_map.length === 0
                     ? <p className="text-muted text-sm">{t('players.dashboard.noPlayers')}</p>
                     : summary.by_map.map((m) => (
@@ -153,9 +165,9 @@ export const ServerDashboard: React.FC = () => {
               <Panel>
                 <SectionLabel>{t('players.dashboard.byFaction')}</SectionLabel>
                 {summary.by_faction.length === 0
-                  ? <p className="text-muted text-sm mt-3">{t('players.dashboard.noPlayers')}</p>
+                  ? <p className="text-muted text-sm">{t('players.dashboard.noPlayers')}</p>
                   : (
-                      <div className="mt-3 overflow-x-auto">
+                      <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-left text-muted">
@@ -190,65 +202,72 @@ export const ServerDashboard: React.FC = () => {
               <Panel>
                 <div className="flex items-center justify-between gap-2">
                   <SectionLabel>{t('players.dashboard.growthTitle')}</SectionLabel>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant={metric === 'solaris' ? 'secondary' : 'ghost'} onPress={() => setMetric('solaris')}>
+                  <Segment
+                    size="sm"
+                    selectedKey={metric}
+                    onSelectionChange={(key) => setMetric(key as 'solaris' | 'level')}
+                  >
+                    <Segment.Item id="solaris">
+                      <Segment.Separator />
                       {t('players.dashboard.metricSolaris')}
-                    </Button>
-                    <Button size="sm" variant={metric === 'level' ? 'secondary' : 'ghost'} onPress={() => setMetric('level')}>
+                    </Segment.Item>
+                    <Segment.Item id="level">
+                      <Segment.Separator />
                       {t('players.dashboard.metricLevel')}
-                    </Button>
-                  </div>
+                    </Segment.Item>
+                  </Segment>
                 </div>
-                <p className="text-muted mt-1 text-xs">{t('players.dashboard.growthApprox')}</p>
+                <p className="text-muted text-xs">{t('players.dashboard.growthApprox')}</p>
                 {!trends || trends.points.length === 0
-                  ? <p className="text-muted text-sm mt-3">{t('players.dashboard.noPlayers')}</p>
+                  ? <p className="text-muted text-sm">{t('players.dashboard.noPlayers')}</p>
                   : (
-                      <div className="mt-3 h-56">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart
-                            data={trends.points.map((p) => ({ day: p.day, ...p.values }))}
-                            margin={{ top: 4, right: 8, left: 8, bottom: 0 }}
-                          >
-                            <XAxis
-                              dataKey="day"
-                              tickFormatter={fmtDate}
-                              tick={{ fontSize: 11, fill: 'var(--muted)' }}
-                              tickLine={false}
-                              axisLine={false}
-                            />
-                            <YAxis
-                              tick={{ fontSize: 11, fill: 'var(--muted)' }}
-                              tickLine={false}
-                              axisLine={false}
-                              width={48}
-                              tickFormatter={(v) => compactNum.format(v as number)}
-                            />
-                            <Tooltip
-                              labelFormatter={(d) => fmtDate(String(d))}
-                              formatter={(val) => (val as number).toLocaleString()}
-                              cursor={{ stroke: 'var(--border)' }}
-                              contentStyle={{
-                                background: 'var(--surface)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 'var(--radius)',
-                                fontSize: 12,
-                              }}
-                              labelStyle={{ color: 'var(--foreground)' }}
-                            />
-                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1">
+                          {trends.factions.map((fac, i) => (
+                            <div key={fac} className="flex items-center gap-1.5">
+                              <span className="size-2 shrink-0 rounded-full" style={{ background: factionColor(fac, i) }} />
+                              <span className="text-muted text-xs">{fac}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <AreaChart
+                          data={trends.points.map((p) => ({ day: p.day, ...p.values }))}
+                          height={200}
+                          margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
+                        >
+                          <defs>
                             {trends.factions.map((fac, i) => (
-                              <Line
-                                key={fac}
-                                type="monotone"
-                                dataKey={fac}
-                                stroke={factionColor(fac, i)}
-                                strokeWidth={2}
-                                dot={false}
-                              />
+                              <linearGradient key={fac} id={`faction-${i}`} x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stopColor={factionColor(fac, i)} stopOpacity={0.2} />
+                                <stop offset="100%" stopColor={factionColor(fac, i)} stopOpacity={0.02} />
+                              </linearGradient>
                             ))}
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                          </defs>
+                          <AreaChart.Grid vertical={false} />
+                          <AreaChart.XAxis dataKey="day" tickFormatter={fmtDate} tickMargin={8} />
+                          <AreaChart.YAxis width={48} tickFormatter={(v: number) => compactNum.format(v)} />
+                          {trends.factions.map((fac, i) => (
+                            <AreaChart.Area
+                              key={fac}
+                              type="monotone"
+                              dataKey={fac}
+                              stroke={factionColor(fac, i)}
+                              strokeWidth={2}
+                              dot={false}
+                              fill={`url(#faction-${i})`}
+                            />
+                          ))}
+                          <AreaChart.Tooltip
+                            content={(
+                              <AreaChart.TooltipContent
+                                indicator="line"
+                                labelFormatter={(d) => fmtDate(String(d))}
+                                valueFormatter={(v) => (v as number).toLocaleString()}
+                              />
+                            )}
+                          />
+                        </AreaChart>
+                      </>
                     )}
               </Panel>
             </>

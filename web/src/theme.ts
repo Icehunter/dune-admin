@@ -28,6 +28,7 @@ const OVERRIDE_KEYS = [
   '--surface-secondary', '--surface-tertiary', '--surface-hover',
   '--border', '--separator', '--field-border',
   '--accent-soft-bg', '--accent-soft-border', '--scrollbar', '--muted',
+  '--default',
 ]
 
 const PALETTES: Record<ThemeId, Record<string, string>> = {
@@ -39,6 +40,7 @@ const PALETTES: Record<ThemeId, Record<string, string>> = {
     '--surface-secondary': '#13241b', '--surface-tertiary': '#1c4631', '--surface-hover': '#13241b',
     '--border': '#1c4631', '--separator': '#13241b', '--field-border': '#2b6b48',
     '--accent-soft-bg': '#13241b', '--accent-soft-border': '#2b6b48', '--scrollbar': '#2b6b48', '--muted': '#7c917f',
+    '--default': '#0f1c14',
   },
   harkonnen: {
     '--accent': '#cf2b2b', '--accent-foreground': '#ffffff', '--focus': '#e85555', '--link': '#e85555',
@@ -47,6 +49,7 @@ const PALETTES: Record<ThemeId, Record<string, string>> = {
     '--surface-secondary': '#241010', '--surface-tertiary': '#4a1818', '--surface-hover': '#241010',
     '--border': '#4a1818', '--separator': '#241010', '--field-border': '#6b2b2b',
     '--accent-soft-bg': '#241010', '--accent-soft-border': '#6b2b2b', '--scrollbar': '#6b2b2b', '--muted': '#9a7a7a',
+    '--default': '#1c0f0f',
   },
   fremen: {
     '--accent': '#2f88c9', '--accent-foreground': '#06121c', '--focus': '#4aa6e8', '--link': '#4aa6e8',
@@ -55,6 +58,7 @@ const PALETTES: Record<ThemeId, Record<string, string>> = {
     '--surface-secondary': '#101e2a', '--surface-tertiary': '#18374e', '--surface-hover': '#101e2a',
     '--border': '#18374e', '--separator': '#101e2a', '--field-border': '#2b577b',
     '--accent-soft-bg': '#101e2a', '--accent-soft-border': '#2b577b', '--scrollbar': '#2b577b', '--muted': '#708a9a',
+    '--default': '#0f1a26',
   },
 }
 

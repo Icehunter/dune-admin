@@ -1,8 +1,11 @@
 import type React from 'react'
-import { useMemo, useState } from 'react'
-import { Button, ListBox, SearchField, Select, Spinner } from '@heroui/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Button, Chip, ListBox, SearchField, Select, Separator, Spinner } from '@heroui/react'
+import type { Selection } from '@heroui/react'
+import type { DataGridColumn } from '@heroui-pro/react'
+import { DataGrid } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
-import { Icon, NumberInput, PageHeader } from '../../../dune-ui'
+import { ActionBar, Icon, NumberInput, PageHeader } from '../../../dune-ui'
 import type { WelcomeSharedProps, WelcomePackageItem } from '../types'
 import type { WelcomePackage } from '../../../api/client'
 import { DiffStatus } from '../components/DiffStatus'
@@ -11,6 +14,8 @@ type PackagesViewProps = Pick<
   WelcomeSharedProps,
   'packages' | 'setPackages' | 'activeVersions' | 'templates' | 'save' | 'saving' | 'load' | 'loading' | 'configDiff'
 >
+
+type KeyedItem = WelcomePackageItem & { _key: string }
 
 export const PackagesView: React.FC<PackagesViewProps> = ({
   packages,
@@ -31,15 +36,37 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
   const [addSelected, setAddSelected] = useState('')
   const [addQty, setAddQty] = useState(1)
   const [addQuality, setAddQuality] = useState(0)
+  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set())
 
-  const selectedPkg = packages.find((p) => p.version === selected)
-  const items: WelcomePackageItem[] = selectedPkg?.items ?? []
+  const keyCounter = useRef(0)
+  const nextKey = () => String(keyCounter.current++)
 
-  const setItems = (next: WelcomePackageItem[]) => {
-    setPackages(packages.map((p) => (p.version === selected ? { ...p, items: next } : p)))
+  // Clear selection when selected package changes
+  useEffect(() => {
+    void Promise.resolve().then(() => setSelectedKeys(new Set()))
+  }, [selected])
+
+  const nameMap = useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
+
+  // Derive keyed items from the selected package (index-based keys, cleared on any removal)
+  const keyedItems = useMemo(() => {
+    const pkg = packages.find((p) => p.version === selected)
+    return (pkg?.items ?? []).map((it, i) => ({ ...it, _key: String(i) }))
+  }, [packages, selected])
+
+  const setItems = (next: KeyedItem[]) => {
+    const stripped: WelcomePackageItem[] = next.map(({ template, qty, quality }) => ({ template, qty, quality }))
+    setPackages(packages.map((p) => (p.version === selected ? { ...p, items: stripped } : p)))
   }
 
-  const nameMap = useMemo(() => new Map(templates.map((t) => [t.id, t.name])), [templates])
+  const removeItem = (key: string) => {
+    setItems(keyedItems.filter((it) => it._key !== key))
+    setSelectedKeys(new Set())
+  }
+
+  const setItem = (key: string, patch: Partial<WelcomePackageItem>) => {
+    setItems(keyedItems.map((it) => (it._key === key ? { ...it, ...patch } : it)))
+  }
 
   const addFiltered = useMemo(() => {
     if (!addQuery) return []
@@ -56,16 +83,12 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
 
   const addItem = () => {
     if (!addSelected) return
-    setItems([...items, { template: addSelected, qty: addQty, quality: addQuality }])
+    setItems([...keyedItems, { template: addSelected, qty: addQty, quality: addQuality, _key: nextKey() }])
     setAddQuery('')
     setAddSelected('')
     setAddQty(1)
     setAddQuality(0)
   }
-
-  const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i))
-  const setItem = (i: number, patch: Partial<WelcomePackageItem>) =>
-    setItems(items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
 
   const addVersion = () => {
     const name = newName.trim()
@@ -81,6 +104,85 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
     setPackages(next)
     if (selected === v) setSelected(next[0]?.version ?? '')
   }
+
+  const selectionCount = selectedKeys === 'all' ? keyedItems.length : (selectedKeys as Set<string>).size
+
+  const handleBulkDelete = () => {
+    if (selectedKeys === 'all') {
+      setItems([])
+    }
+    else {
+      const keys = selectedKeys as Set<string>
+      setItems(keyedItems.filter((it) => !keys.has(it._key)))
+    }
+    setSelectedKeys(new Set())
+  }
+
+  const columns: DataGridColumn<KeyedItem>[] = [
+    {
+      id: 'template',
+      isRowHeader: true,
+      header: t('players.inventory.columns.template'),
+      minWidth: 200,
+      allowsResizing: true,
+      cell: (item) => (
+        <div className="leading-tight py-0.5">
+          <div className="truncate text-sm">{nameMap.get(item.template) || item.template}</div>
+          {nameMap.get(item.template) && (
+            <div className="font-mono text-[10px] text-muted truncate">{item.template}</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 'qty',
+      header: t('players.give.qty'),
+      minWidth: 130,
+      maxWidth: 250,
+      allowsResizing: true,
+      cell: (item) => (
+        <NumberInput
+          ariaLabel={t('players.give.qty')}
+          min={1}
+          value={item.qty}
+          onChange={(v) => setItem(item._key, { qty: v })}
+          className="w-full"
+        />
+      ),
+    },
+    {
+      id: 'quality',
+      header: t('players.give.quality'),
+      minWidth: 130,
+      maxWidth: 250,
+      allowsResizing: true,
+      cell: (item) => (
+        <NumberInput
+          ariaLabel={t('players.give.quality')}
+          min={0}
+          value={item.quality}
+          onChange={(v) => setItem(item._key, { quality: v })}
+          className="w-full"
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      width: 52,
+      cell: (item) => (
+        <Button
+          size="sm"
+          variant="danger-soft"
+          isIconOnly
+          onPress={() => removeItem(item._key)}
+          aria-label={t('welcome.removeItem')}
+        >
+          <Icon name="trash" />
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -98,7 +200,6 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
         </Button>
       </PageHeader>
 
-      {/* Unsaved changes banner */}
       {configDiff.isDirty && (
         <div className="shrink-0 rounded-[var(--radius)] mb-3 px-4 py-2 text-xs font-medium bg-warning/10 border border-warning/40 text-warning flex items-center gap-2">
           <Icon name="triangle-alert" />
@@ -106,7 +207,7 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
         </div>
       )}
 
-      {/* Fixed: version picker + new version input */}
+      {/* Version picker + new version input */}
       <div className="flex flex-wrap items-end gap-3 pb-3 shrink-0">
         <div className="flex items-end gap-2">
           <div className="flex flex-col gap-0.5">
@@ -168,7 +269,7 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
         </div>
       </div>
 
-      {/* Fixed: add-item row */}
+      {/* Add-item row */}
       {selected && (
         <div className="flex items-center gap-2 pb-3 shrink-0">
           <div className="relative flex-1">
@@ -218,33 +319,28 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
         </div>
       )}
 
-      {/* Scrollable: item list */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5 pr-1">
-        {!selected
-          ? <p className="text-xs text-muted">{t('welcome.noPackageSelected')}</p>
-          : items.length === 0
-            ? <p className="text-xs text-muted">{t('welcome.noItemsYet')}</p>
-            : items.map((it, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius)] text-xs bg-surface border border-border"
-                >
-                  <div className="flex-1 min-w-0 leading-tight">
-                    <div className="truncate text-foreground">{nameMap.get(it.template) || it.template}</div>
-                    {nameMap.get(it.template) && (
-                      <div className="font-mono text-[10px] text-muted truncate">{it.template}</div>
-                    )}
-                  </div>
-                  <NumberInput ariaLabel="Qty" prefix="Qty" min={1} value={it.qty} onChange={(v) => setItem(i, { qty: v })} className="w-48 shrink-0" />
-                  <NumberInput ariaLabel="Quality" prefix="Quality" min={0} value={it.quality} onChange={(v) => setItem(i, { quality: v })} className="w-48 shrink-0" />
-                  <Button size="sm" variant="danger-soft" onPress={() => removeItem(i)} aria-label={t('welcome.removeItem')}>
-                    <Icon name="x" />
-                  </Button>
-                </div>
-              ))}
-      </div>
+      {/* Item DataGrid */}
+      {!selected
+        ? <p className="text-xs text-muted shrink-0">{t('welcome.noPackageSelected')}</p>
+        : keyedItems.length === 0
+          ? <p className="text-xs text-muted shrink-0">{t('welcome.noItemsYet')}</p>
+          : (
+              <DataGrid
+                aria-label={t('welcome.sections.packages')}
+                columns={columns}
+                data={keyedItems}
+                getRowId={(item) => item._key}
+                selectedKeys={selectedKeys}
+                selectionMode="multiple"
+                showSelectionCheckboxes
+                onSelectionChange={setSelectedKeys}
+                className="flex-1 min-h-0"
+                scrollContainerClassName="h-full overflow-y-auto"
+                allowsColumnResize
+              />
+            )}
 
-      {/* Fixed: save button + diff status */}
+      {/* Save button + diff status */}
       <div className="pt-3 shrink-0 flex items-center gap-3">
         <Button size="sm" variant="secondary" onPress={save} isDisabled={saving}>
           {saving
@@ -259,6 +355,37 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
         </Button>
         <DiffStatus diff={configDiff} />
       </div>
+
+      <ActionBar aria-label={t('welcome.sections.packages')} isOpen={selectionCount > 0}>
+        <ActionBar.Prefix>
+          <Chip size="sm" className="shrink-0 tabular-nums">{selectionCount}</Chip>
+        </ActionBar.Prefix>
+        <Separator />
+        <ActionBar.Content>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-danger"
+            onPress={handleBulkDelete}
+            aria-label={t('common.deleteSelected')}
+          >
+            <Icon name="trash-2" />
+            <span className="action-bar__label">{t('common.deleteSelected')}</span>
+          </Button>
+        </ActionBar.Content>
+        <Separator />
+        <ActionBar.Suffix>
+          <Button
+            isIconOnly
+            size="sm"
+            variant="ghost"
+            onPress={() => setSelectedKeys(new Set())}
+            aria-label={t('common.clearSelection')}
+          >
+            <Icon name="x" />
+          </Button>
+        </ActionBar.Suffix>
+      </ActionBar>
     </div>
   )
 }

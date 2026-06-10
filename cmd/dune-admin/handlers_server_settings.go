@@ -501,7 +501,7 @@ func overlayAMPSettings(settings []ServerSetting, ampValues map[string]string) [
 			continue
 		}
 		v, ok := ampValues[fn]
-		if !ok {
+		if !ok || v == "" {
 			continue
 		}
 		settings[i].Current = v

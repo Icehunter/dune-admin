@@ -72,6 +72,44 @@ func TestOverlayAMPSettings_EmptyMapIsNoOp(t *testing.T) {
 	}
 }
 
+// AMP returns "" (null/unset) for fields it has never explicitly stored.
+// The overlay must not clobber the INI-derived value in that case.
+func TestOverlayAMPSettings_EmptyAMPValueKeepsINIValue(t *testing.T) {
+	t.Parallel()
+	settings := []ServerSetting{
+		{
+			Default: "True", Current: "True", FieldName: "SandwormEnabled",
+			Source: "userEngine",
+			Layers: []SettingLayer{{Source: "userEngine", Value: "True"}},
+		},
+		{
+			Default: "1.0", Current: "2.0", FieldName: "MiningRate",
+			Source: "userGame",
+			Layers: []SettingLayer{{Source: "userGame", Value: "2.0"}},
+		},
+	}
+	// AMP returns empty string for both — means "not configured in AMP".
+	amp := map[string]string{
+		"SandwormEnabled": "",
+		"MiningRate":      "",
+	}
+	out := overlayAMPSettings(settings, amp)
+
+	if out[0].Current != "True" || out[0].Source != "userEngine" || out[0].IsOverride {
+		t.Fatalf("bool: empty AMP value must not override INI value: %+v", out[0])
+	}
+	if out[1].Current != "2.0" || out[1].Source != "userGame" {
+		t.Fatalf("float: empty AMP value must not override INI value: %+v", out[1])
+	}
+	for _, s := range out {
+		for _, l := range s.Layers {
+			if l.Source == ampSettingsSource {
+				t.Fatalf("no amp layer expected when AMP value is empty: %+v", s.Layers)
+			}
+		}
+	}
+}
+
 func TestCuratedFieldNamesFrom(t *testing.T) {
 	t.Parallel()
 	settings := []ServerSetting{

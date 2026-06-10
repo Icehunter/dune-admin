@@ -1365,6 +1365,8 @@
       "senderLabel": "Gönderici FLS Kimliği (isteğe bağlı)",
       "senderPlaceholder": "Yapılandırılmış GM kişiliğini kullanmak için boş bırakın",
       "title": "Günün Mesajı"
-    }
+    },
+    "runConfirmTitle": "Karşılama paketi şimdi verilsin mi?",
+    "runConfirmBody": "Bu, {{versions}} paket(ler)ini uygun tüm çevrimiçi oyunculara hemen verir. Devam edilsin mi?"
   }
 }

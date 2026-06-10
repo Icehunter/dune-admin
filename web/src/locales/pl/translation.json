@@ -1411,6 +1411,8 @@
       "senderLabel": "ID FLS nadawcy (opcjonalne)",
       "senderPlaceholder": "Zostaw puste, aby użyć skonfigurowanej persony GM",
       "title": "Wiadomość dnia"
-    }
+    },
+    "runConfirmTitle": "Przyznać pakiet powitalny teraz?",
+    "runConfirmBody": "Spowoduje to natychmiastowe przyznanie pakietu(ów) {{versions}} wszystkim kwalifikującym się graczom online. Kontynuować?"
   }
 }

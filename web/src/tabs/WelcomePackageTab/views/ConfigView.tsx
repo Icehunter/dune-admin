@@ -1,7 +1,8 @@
 import type React from 'react'
+import { useState } from 'react'
 import { Button, ListBox, Spinner, Switch } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
-import { Icon, NumberInput, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
+import { ConfirmDialog, Icon, NumberInput, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
 import type { WelcomeSharedProps } from '../types'
 import { DiffStatus } from '../components/DiffStatus'
 
@@ -40,6 +41,7 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
   configDiff,
 }) => {
   const { t } = useTranslation()
+  const [confirmRun, setConfirmRun] = useState(false)
 
   return (
     <div className="flex flex-col h-full min-h-0 gap-3">
@@ -198,7 +200,7 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
                 </>
               )}
         </Button>
-        <Button size="sm" variant="outline" onPress={runNow} isDisabled={running}>
+        <Button size="sm" variant="outline" onPress={() => setConfirmRun(true)} isDisabled={running}>
           {running
             ? <Spinner size="sm" color="current" />
             : (
@@ -211,6 +213,22 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
         </Button>
         <DiffStatus diff={configDiff} />
       </div>
+
+      {/* Confirm exactly which package(s) will be granted before running, so an
+          accidentally-selected version isn't granted by surprise (#162). */}
+      <ConfirmDialog
+        open={confirmRun}
+        title={t('welcome.runConfirmTitle')}
+        description={t('welcome.runConfirmBody', {
+          versions: activeVersions.length ? activeVersions.join(', ') : t('welcome.noPackageSelected'),
+        })}
+        confirmLabel={t('welcome.runNow')}
+        onConfirm={() => {
+          setConfirmRun(false)
+          void runNow()
+        }}
+        onCancel={() => setConfirmRun(false)}
+      />
     </div>
   )
 }

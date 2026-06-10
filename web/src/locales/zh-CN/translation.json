@@ -1365,6 +1365,8 @@
       "senderLabel": "发送者 FLS ID（可选）",
       "senderPlaceholder": "留空则使用已配置的 GM 角色",
       "title": "每日消息"
-    }
+    },
+    "runConfirmTitle": "立即发放欢迎礼包？",
+    "runConfirmBody": "这将立即向所有符合条件的在线玩家发放礼包 {{versions}}。是否继续？"
   }
 }

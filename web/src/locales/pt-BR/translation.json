@@ -1388,6 +1388,8 @@
       "senderLabel": "ID FLS do remetente (opcional)",
       "senderPlaceholder": "Deixe em branco para usar a persona GM configurada",
       "title": "Mensagem do dia"
-    }
+    },
+    "runConfirmTitle": "Conceder pacote de boas-vindas agora?",
+    "runConfirmBody": "Isto concede o(s) pacote(s) {{versions}} a todos os jogadores online elegíveis agora. Continuar?"
   }
 }

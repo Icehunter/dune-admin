@@ -1388,6 +1388,8 @@
       "senderLabel": "ID FLS del remitente (opcional)",
       "senderPlaceholder": "Dejar en blanco para usar el personaje GM configurado",
       "title": "Mensaje del día"
-    }
+    },
+    "runConfirmTitle": "¿Otorgar paquete de bienvenida ahora?",
+    "runConfirmBody": "Esto otorga el/los paquete(s) {{versions}} a todos los jugadores en línea elegibles ahora mismo. ¿Continuar?"
   }
 }

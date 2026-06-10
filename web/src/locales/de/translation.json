@@ -1365,6 +1365,8 @@
       "senderLabel": "Absender-FLS-ID (optional)",
       "senderPlaceholder": "Leer lassen, um die hinterlegte GM-Persona zu verwenden",
       "title": "Nachricht des Tages"
-    }
+    },
+    "runConfirmTitle": "Willkommenspaket jetzt vergeben?",
+    "runConfirmBody": "Dies vergibt das/die Paket(e) {{versions}} sofort an alle berechtigten Online-Spieler. Fortfahren?"
   }
 }

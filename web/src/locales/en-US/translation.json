@@ -1365,6 +1365,8 @@
       "senderLabel": "Sender FLS ID (optional)",
       "senderPlaceholder": "Leave blank to use the seeded GM persona",
       "title": "Message of the Day"
-    }
+    },
+    "runConfirmTitle": "Grant welcome package now?",
+    "runConfirmBody": "This grants package(s) {{versions}} to all eligible online players right now. Continue?"
   }
 }

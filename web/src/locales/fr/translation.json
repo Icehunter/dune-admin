@@ -1388,6 +1388,8 @@
       "senderLabel": "ID FLS de l'expéditeur (optionnel)",
       "senderPlaceholder": "Laisser vide pour utiliser le personnage GM configuré",
       "title": "Message du jour"
-    }
+    },
+    "runConfirmTitle": "Attribuer le pack de bienvenue maintenant ?",
+    "runConfirmBody": "Ceci attribue le(s) pack(s) {{versions}} à tous les joueurs en ligne éligibles immédiatement. Continuer ?"
   }
 }

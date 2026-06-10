@@ -1365,6 +1365,8 @@
       "senderLabel": "送信者のFLS ID（任意）",
       "senderPlaceholder": "空白のままにすると設定済みGMペルソナが使用されます",
       "title": "今日のメッセージ"
-    }
+    },
+    "runConfirmTitle": "ウェルカムパッケージを今すぐ付与しますか？",
+    "runConfirmBody": "対象のオンラインプレイヤー全員にパッケージ {{versions}} を今すぐ付与します。続行しますか？"
   }
 }

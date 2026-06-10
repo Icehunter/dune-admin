@@ -211,7 +211,16 @@
     "updated": "{{version}} に更新しました。サーバーを再起動しています…",
     "updateFailed": "更新に失敗しました：{{message}}",
     "updateNow": "今すぐ更新",
-    "viewReleaseNotes": "リリースノートを表示"
+    "viewReleaseNotes": "リリースノートを表示",
+    "backendUnreachable": {
+      "body": "Web アプリは読み込まれましたが、dune-admin バックエンドに接続できませんでした。dune-admin の実行ファイルが起動しており、このブラウザからアクセスできることを確認してください。",
+      "hint1": "サーバーで dune-admin のサービス/実行ファイルが起動していることを確認してください。",
+      "hint2": "上記のバックエンド URL が正しく、到達可能であることを確認してください（ホスト、ポート、ファイアウォール、HTTPS）。",
+      "hint3": "プロキシの背後または別のホストにある場合は、設定でバックエンド URL を指定してください。",
+      "retry": "再試行",
+      "targetLabel": "設定されたバックエンド",
+      "title": "dune-admin バックエンドに接続できません"
+    }
   },
   "bases": {
     "ariaLabel": "プレイヤー拠点",

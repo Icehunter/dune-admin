@@ -211,7 +211,16 @@
     "updated": "Aktualisiert auf {{version}}. Server wird neu gestartet…",
     "updateFailed": "Update fehlgeschlagen: {{message}}",
     "updateNow": "Jetzt aktualisieren",
-    "viewReleaseNotes": "Versionshinweise anzeigen"
+    "viewReleaseNotes": "Versionshinweise anzeigen",
+    "backendUnreachable": {
+      "body": "Die Web-App wurde geladen, konnte sich aber nicht mit dem dune-admin-Backend verbinden. Stelle sicher, dass die dune-admin-Anwendung läuft und von diesem Browser erreichbar ist.",
+      "hint1": "Stelle sicher, dass der dune-admin-Dienst/die Anwendung auf dem Server läuft.",
+      "hint2": "Prüfe, ob die obige Backend-URL korrekt und erreichbar ist (Host, Port, Firewall, HTTPS).",
+      "hint3": "Hinter einem Proxy oder auf einem anderen Host? Lege die Backend-URL in den Einstellungen fest.",
+      "retry": "Erneut versuchen",
+      "targetLabel": "Konfiguriertes Backend",
+      "title": "dune-admin-Backend nicht erreichbar"
+    }
   },
   "bases": {
     "ariaLabel": "Spielerbasen",

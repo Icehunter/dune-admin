@@ -211,7 +211,16 @@
     "updated": "Mis à jour vers {{version}}. Le serveur redémarre…",
     "updateFailed": "Échec de la mise à jour : {{message}}",
     "updateNow": "Mettre à jour",
-    "viewReleaseNotes": "Voir les notes de version"
+    "viewReleaseNotes": "Voir les notes de version",
+    "backendUnreachable": {
+      "body": "L'application web s'est chargée, mais elle n'a pas pu se connecter au backend dune-admin. Vérifiez que l'exécutable dune-admin est en cours d'exécution et accessible depuis ce navigateur.",
+      "hint1": "Vérifiez que le service/exécutable dune-admin est en cours d'exécution sur le serveur.",
+      "hint2": "Vérifiez que l'URL du backend ci-dessus est correcte et accessible (hôte, port, pare-feu, HTTPS).",
+      "hint3": "Derrière un proxy ou sur un autre hôte ? Définissez l'URL du backend dans les Paramètres.",
+      "retry": "Réessayer",
+      "targetLabel": "Backend configuré",
+      "title": "Impossible de joindre le backend dune-admin"
+    }
   },
   "bases": {
     "ariaLabel": "Bases des joueurs",

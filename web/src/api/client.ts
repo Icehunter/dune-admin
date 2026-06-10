@@ -41,6 +41,13 @@ export function getWsBase(): string {
   return getApiBase().replace(/^http/, 'ws')
 }
 
+// currentBackendBase is the resolved backend origin (without the /api/v1 suffix),
+// shown to the user when the SPA can't reach the backend so they can see which
+// target it's trying.
+export function currentBackendBase(): string {
+  return getApiBase().replace(/\/api\/v1$/, '')
+}
+
 // apiBase is the resolved /api/v1 URL for this deployment. Exported so the
 // data store can derive the /api/v1/data/{file} URL without duplicating logic.
 export const apiBase = getApiBase()

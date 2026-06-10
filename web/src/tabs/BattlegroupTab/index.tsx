@@ -26,7 +26,7 @@ interface BattlegroupTabProps {
 
 export const BattlegroupTab: React.FC<BattlegroupTabProps> = ({ isActive = false }) => {
   const { t } = useTranslation()
-  const connStatus = useStatus()
+  const { status: connStatus } = useStatus()
   const [status, setStatus] = useState<DetailedStatus | null>(null)
   const [statusLoading, setStatusLoading] = useState(false)
 

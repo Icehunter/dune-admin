@@ -5,6 +5,7 @@ import { Button, Chip, Modal, Spinner, Tabs, Toast, ToggleButton, ToggleButtonGr
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useStatus } from './hooks/useStatus'
+import { BackendUnreachable } from './components/BackendUnreachable'
 import { SettingsConfigForm } from './components/SettingsConfigForm'
 import { LanguageSelector } from './components/LanguageSelector'
 import { ThemeSelector } from './components/ThemeSelector'
@@ -98,7 +99,7 @@ export const App: React.FC = () => {
 }
 
 const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
-  const status = useStatus()
+  const { status, state: connState } = useStatus()
   const location = useLocation()
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
@@ -257,6 +258,12 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
       {mounted.has(id) ? node : null}
     </TabPane>
   )
+
+  // #165: when the SPA never reached the backend, show an informative setup
+  // screen instead of an empty, non-working dashboard.
+  if (connState === 'error') {
+    return <BackendUnreachable onRetry={() => window.location.reload()} />
+  }
 
   return (
     // Keyed on the active language so switching language remounts the content

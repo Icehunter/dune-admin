@@ -186,6 +186,14 @@ export type AppConfig = {
   market_bot_max_buys: number
   market_bot_remote_url: string
   market_bot_remote_token: string // masked when non-empty
+  // Discord bot
+  discord_bot_enabled: boolean
+  discord_bot_token: string // masked when non-empty
+  discord_guild_id: string
+  discord_roles_viewer: string
+  discord_roles_economy: string
+  discord_roles_admin: string
+  discord_announce_channel_id: string
   // Advanced
   listen_addr: string
   scrip_currency: number
@@ -216,6 +224,8 @@ export type Player = {
   map: string
   faction_id: number
   online_status: string
+  discord_user_id: string
+  discord_avatar: string
 }
 export type LabeledCount = {
   label: string
@@ -1058,6 +1068,10 @@ export const api = {
     lifecycle: (cmd: 'start' | 'stop' | 'restart') => req<{ output: string }>('POST', '/market-bot/exec', { cmd }),
     cleanup: () => req<{ orders_deleted: number, items_deleted: number }>('POST', '/market-bot/cleanup'),
     logsReady: () => req<{ ready: boolean, reason?: string, namespace?: string, name?: string }>('GET', '/market-bot/logs-ready'),
+  },
+
+  discord: {
+    roles: () => req<{ id: string, name: string }[]>('GET', '/discord/roles'),
   },
 
   update: {

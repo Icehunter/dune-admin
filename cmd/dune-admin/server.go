@@ -295,6 +295,9 @@ func startServer(addr string) {
 	mux.HandleFunc("GET /api/v1/market-bot/logs-ready", handleMarketBotLogsReady)
 	mux.HandleFunc("GET /api/v1/market-bot/logs", handleMarketBotLogs)
 
+	// ── discord ───────────────────────────────────────────────────────────────
+	mux.HandleFunc("GET /api/v1/discord/roles", handleGetDiscordRoles)
+
 	// ── welcome package ───────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/v1/welcome-package/config", handleGetWelcomeConfig)
 	mux.HandleFunc("PUT /api/v1/welcome-package/config", handlePutWelcomeConfig)

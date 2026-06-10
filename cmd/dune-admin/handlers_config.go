@@ -50,6 +50,9 @@ func maskSecrets(cfg *appConfig) {
 	if cfg.AmpAPIPass != "" {
 		cfg.AmpAPIPass = masked
 	}
+	if cfg.DiscordBotToken != "" {
+		cfg.DiscordBotToken = masked
+	}
 }
 
 // preserveMaskedSecrets restores real secret values when the client sent back
@@ -64,7 +67,8 @@ func preserveMaskedSecrets(
 		cfg.BrokerPass == masked ||
 		cfg.BrokerJWTSecret == masked ||
 		cfg.MarketBotRemoteToken == masked ||
-		cfg.AmpAPIPass == masked
+		cfg.AmpAPIPass == masked ||
+		cfg.DiscordBotToken == masked
 
 	if !needsRestore {
 		return
@@ -93,6 +97,9 @@ func preserveMaskedSecrets(
 	}
 	if cfg.AmpAPIPass == masked {
 		cfg.AmpAPIPass = old.AmpAPIPass
+	}
+	if cfg.DiscordBotToken == masked {
+		cfg.DiscordBotToken = old.DiscordBotToken
 	}
 }
 

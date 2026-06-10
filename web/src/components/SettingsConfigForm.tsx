@@ -28,6 +28,13 @@ const EMPTY: AppConfig = {
   market_bot_buy_interval: '', market_bot_list_interval: '',
   market_bot_buy_threshold: 0, market_bot_max_buys: 0,
   market_bot_remote_url: '', market_bot_remote_token: '',
+  discord_bot_enabled: false,
+  discord_bot_token: '',
+  discord_guild_id: '',
+  discord_roles_viewer: '',
+  discord_roles_economy: '',
+  discord_roles_admin: '',
+  discord_announce_channel_id: '',
   listen_addr: '', scrip_currency: 0,
 }
 
@@ -35,7 +42,7 @@ const EMPTY: AppConfig = {
 // default" (effectively true). If the API returns null for these, coerce to
 // true so the checkbox reflects the real server default rather than silently
 // inheriting EMPTY's false and overwriting the default-on value on save.
-const pointerBoolFields = new Set<keyof AppConfig>(['amp_use_container', 'market_bot_enabled'])
+const pointerBoolFields = new Set<keyof AppConfig>(['amp_use_container', 'market_bot_enabled', 'discord_bot_enabled'])
 
 function mergeConfig(fetched: Record<string, unknown>): AppConfig {
   const result: AppConfig = { ...EMPTY }
@@ -132,6 +139,82 @@ function G2({ children }: GridRowProps) {
   return <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">{children}</div>
 }
 
+// ── RolePicker ────────────────────────────────────────────────────────────────
+
+interface DiscordRole { id: string, name: string }
+
+interface RolePickerProps {
+  value: string
+  onChange: (v: string) => void
+  roles: DiscordRole[]
+  label: string
+  hint?: string
+}
+
+function RolePicker({ value, onChange, roles, label, hint }: RolePickerProps) {
+  const { t } = useTranslation()
+  const [pickKey, setPickKey] = useState(0)
+
+  const selectedIds = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []
+  const nameOf = (id: string) => roles.find((r) => r.id === id)?.name ?? id
+  const available = roles.filter((r) => !selectedIds.includes(r.id))
+
+  const addRole = (id: string) => {
+    if (id && !selectedIds.includes(id)) {
+      onChange([...selectedIds, id].join(','))
+    }
+    setPickKey((k) => k + 1)
+  }
+
+  const removeRole = (id: string) => onChange(selectedIds.filter((s) => s !== id).join(','))
+
+  return (
+    <F label={label} hint={hint}>
+      <div className="flex flex-col gap-1.5">
+        {available.length > 0
+          ? (
+              <Select
+                key={pickKey}
+                selectedKey=""
+                aria-label={t('settings.discord.addRole')}
+                onSelectionChange={(k) => addRole(String(k))}
+              >
+                <Select.Trigger>
+                  <span className="text-sm text-muted flex-1">{t('settings.discord.addRole')}</span>
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    {available.map((r) => (
+                      <ListBox.Item key={r.id} id={r.id} textValue={r.name}>
+                        {r.name}
+                        <ListBox.ItemIndicator />
+                      </ListBox.Item>
+                    ))}
+                  </ListBox>
+                </Select.Popover>
+              </Select>
+            )
+          : (
+              roles.length === 0 && selectedIds.length === 0 && (
+                <p className="text-xs text-muted">{t('settings.discord.rolesNotLoaded')}</p>
+              )
+            )}
+        {selectedIds.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {selectedIds.map((id) => (
+              <span key={id} className="inline-flex items-center gap-1 rounded-full bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium">
+                {nameOf(id)}
+                <button type="button" onClick={() => removeRole(id)} className="leading-none opacity-60 hover:opacity-100">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </F>
+  )
+}
+
 // ── main component ────────────────────────────────────────────────────────────
 
 interface SettingsConfigFormProps {
@@ -146,12 +229,18 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
   const [tab, setTab] = useState('connection')
   const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem('dune_admin_backend') || '')
 
+  const [discordRoles, setDiscordRoles] = useState<DiscordRole[]>([])
+
   useEffect(() => {
     api.config.get()
       .then((c) => setCfg(mergeConfig(c as Record<string, unknown>)))
       .catch((e) => toast.danger(t('settings.loadFailed', { message: e instanceof Error ? e.message : String(e) })))
       .finally(() => setLoading(false))
   }, [t])
+
+  useEffect(() => {
+    api.discord.roles().then(setDiscordRoles).catch(() => setDiscordRoles([]))
+  }, [])
 
   const set = (key: keyof AppConfig) => (v: string) =>
     setCfg((prev) => ({
@@ -227,6 +316,10 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
             </Tabs.Tab>
             <Tabs.Tab id="broker">
               {t('settings.tabs.broker')}
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="discord">
+              {t('settings.tabs.discord')}
               <Tabs.Indicator />
             </Tabs.Tab>
             <Tabs.Tab id="advanced">
@@ -415,6 +508,60 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
               <div className="sm:col-span-2">
                 <CB label={t('settings.broker.useTls')} checked={cfg.broker_tls} onChange={setBool('broker_tls')} />
               </div>
+            </G2>
+          </Panel>
+        </Tabs.Panel>
+
+        {/* ── Discord ────────────────────────────────────────────────────── */}
+        <Tabs.Panel id="discord" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+          <Panel>
+            <SectionLabel>{t('settings.sections.discordBot')}</SectionLabel>
+            <p className="text-xs text-muted -mt-1">{t('settings.discord.hint')}</p>
+            <G2>
+              <div className="sm:col-span-2">
+                <CB
+                  label={t('settings.discord.enabled')}
+                  checked={cfg.discord_bot_enabled}
+                  onChange={setBool('discord_bot_enabled')}
+                />
+              </div>
+              <F label={t('settings.discord.token')} hint={t('settings.discord.tokenHint')}>
+                <TI value={cfg.discord_bot_token} onChange={set('discord_bot_token')} type="password" placeholder={MASKED} />
+              </F>
+              <F label={t('settings.discord.guildId')} hint={t('settings.discord.guildIdHint')}>
+                <TI value={cfg.discord_guild_id} onChange={set('discord_guild_id')} placeholder="123456789012345678" />
+              </F>
+            </G2>
+          </Panel>
+
+          <Panel>
+            <SectionLabel>{t('settings.sections.discordRoles')}</SectionLabel>
+            <p className="text-xs text-muted -mt-1">{t('settings.discord.rolesHint')}</p>
+            <G2>
+              <RolePicker
+                label={t('settings.discord.rolesViewer')}
+                hint={t('settings.discord.rolesViewerHint')}
+                value={cfg.discord_roles_viewer}
+                onChange={set('discord_roles_viewer')}
+                roles={discordRoles}
+              />
+              <RolePicker
+                label={t('settings.discord.rolesEconomy')}
+                hint={t('settings.discord.rolesEconomyHint')}
+                value={cfg.discord_roles_economy}
+                onChange={set('discord_roles_economy')}
+                roles={discordRoles}
+              />
+              <RolePicker
+                label={t('settings.discord.rolesAdmin')}
+                hint={t('settings.discord.rolesAdminHint')}
+                value={cfg.discord_roles_admin}
+                onChange={set('discord_roles_admin')}
+                roles={discordRoles}
+              />
+              <F label={t('settings.discord.announceChannel')} hint={t('settings.discord.announceChannelHint')}>
+                <TI value={cfg.discord_announce_channel_id} onChange={set('discord_announce_channel_id')} placeholder="444444444444444444" />
+              </F>
             </G2>
           </Panel>
         </Tabs.Panel>

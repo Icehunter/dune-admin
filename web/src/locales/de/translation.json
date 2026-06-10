@@ -1005,6 +1005,9 @@
       "factionTier": "Fraktionsstufe",
       "failedToLoad": "Statistiken konnten nicht geladen werden.",
       "lastSeen": "Zuletzt gesehen",
+      "discord": "Discord",
+      "discordLinked": "Verknüpft",
+      "discordUnlinked": "—",
       "milestones": "Meilensteine",
       "playtime": "Spielzeit",
       "pois": "Interessenpunkte",
@@ -1252,7 +1255,9 @@
       "rabbitmq": "RabbitMQ (optional)",
       "server": "Server",
       "serverCommands": "Serverbefehle",
-      "ssh": "SSH (leer lassen für lokal)"
+      "ssh": "SSH (leer lassen für lokal)",
+      "discordBot": "Discord Bot",
+      "discordRoles": "Rollenstufen"
     },
     "ssh": {
       "hostPort": "Host : Port",
@@ -1265,7 +1270,27 @@
       "advanced": "Erweitert",
       "broker": "Broker",
       "connection": "Verbindung",
-      "control": "Steuerung"
+      "control": "Steuerung",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "Erstelle einen Bot unter discord.com/developers/applications, aktiviere den Bot, kopiere das Token und lade ihn mit dem Scope applications.commands in deinen Server ein.",
+      "enabled": "Discord-Bot aktivieren",
+      "token": "Bot-Token",
+      "tokenHint": "Nach dem Speichern maskiert — neuen Wert einfügen zum Rotieren",
+      "guildId": "Server-ID",
+      "guildIdHint": "Rechtsklick auf dein Server-Symbol → Server-ID kopieren",
+      "rolesHint": "Kommagetrennte Rollen-IDs. Höhere Stufen beinhalten alle Befehle niedrigerer Stufen.",
+      "rolesViewer": "Betrachter-Rollen-IDs",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "Wirtschafts-Rollen-IDs",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "Admin-Rollen-IDs",
+      "rolesAdminHint": "Alle Befehle",
+      "announceChannel": "Ankündigungs-Kanal-ID",
+      "announceChannelHint": "Kanal für Bot-Ankündigungen (Belohnungen, Events)",
+      "addRole": "Rolle hinzufügen…",
+      "rolesNotLoaded": "Bot verbinden, um Rollen nach Name zu durchsuchen"
     }
   },
   "storage": {

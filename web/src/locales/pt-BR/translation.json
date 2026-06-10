@@ -1020,6 +1020,9 @@
       "factionTier": "Nível de facção",
       "failedToLoad": "Falha ao carregar estatísticas.",
       "lastSeen": "Visto por último",
+      "discord": "Discord",
+      "discordLinked": "Vinculado",
+      "discordUnlinked": "—",
       "milestones": "Marcos",
       "playtime": "Tempo de jogo",
       "pois": "Pontos de interesse",
@@ -1273,7 +1276,9 @@
       "rabbitmq": "RabbitMQ (opcional)",
       "server": "Servidor",
       "serverCommands": "Comandos do servidor",
-      "ssh": "SSH (deixe em branco para local)"
+      "ssh": "SSH (deixe em branco para local)",
+      "discordBot": "Discord Bot",
+      "discordRoles": "Níveis de cargo"
     },
     "ssh": {
       "hostPort": "Host : porta",
@@ -1286,7 +1291,27 @@
       "advanced": "Avançado",
       "broker": "Broker",
       "connection": "Conexão",
-      "control": "Controle"
+      "control": "Controle",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "Crie um bot em discord.com/developers/applications, ative-o, copie o token e convide-o para seu servidor com o escopo applications.commands.",
+      "enabled": "Ativar bot do Discord",
+      "token": "Token do bot",
+      "tokenHint": "Mascarado após salvar — cole um novo valor para rotacionar",
+      "guildId": "ID do servidor",
+      "guildIdHint": "Clique com o botão direito no ícone do servidor → Copiar ID do servidor",
+      "rolesHint": "IDs de cargos separados por vírgula. Níveis superiores incluem todos os comandos dos níveis inferiores.",
+      "rolesViewer": "IDs de cargo visualizador",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "IDs de cargo economia",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "IDs de cargo administrador",
+      "rolesAdminHint": "Todos os comandos",
+      "announceChannel": "ID do canal de anúncios",
+      "announceChannelHint": "Canal para anúncios do bot (recompensas, eventos)",
+      "addRole": "Adicionar cargo…",
+      "rolesNotLoaded": "Conecte o bot para buscar cargos por nome"
     }
   },
   "storage": {

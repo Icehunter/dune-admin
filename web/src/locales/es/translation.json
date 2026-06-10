@@ -1020,6 +1020,9 @@
       "factionTier": "Rango de facción",
       "failedToLoad": "Error al cargar estadísticas.",
       "lastSeen": "Última vez visto",
+      "discord": "Discord",
+      "discordLinked": "Vinculado",
+      "discordUnlinked": "—",
       "milestones": "Hitos",
       "playtime": "Tiempo de juego",
       "pois": "Puntos de interés",
@@ -1273,7 +1276,9 @@
       "rabbitmq": "RabbitMQ (opcional)",
       "server": "Servidor",
       "serverCommands": "Comandos del servidor",
-      "ssh": "SSH (dejar en blanco para local)"
+      "ssh": "SSH (dejar en blanco para local)",
+      "discordBot": "Discord Bot",
+      "discordRoles": "Niveles de rol"
     },
     "ssh": {
       "hostPort": "Host : puerto",
@@ -1286,7 +1291,27 @@
       "advanced": "Avanzado",
       "broker": "Broker",
       "connection": "Conexión",
-      "control": "Control"
+      "control": "Control",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "Crea un bot en discord.com/developers/applications, actívalo, copia el token e invítalo a tu servidor con el scope applications.commands.",
+      "enabled": "Activar bot de Discord",
+      "token": "Token del bot",
+      "tokenHint": "Enmascarado tras guardar — pega un nuevo valor para rotarlo",
+      "guildId": "ID del servidor",
+      "guildIdHint": "Clic derecho en el icono del servidor → Copiar ID del servidor",
+      "rolesHint": "IDs de roles separados por comas. Los niveles superiores incluyen todos los comandos de niveles inferiores.",
+      "rolesViewer": "IDs de roles de espectador",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "IDs de roles de economía",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "IDs de roles de administrador",
+      "rolesAdminHint": "Todos los comandos",
+      "announceChannel": "ID del canal de anuncios",
+      "announceChannelHint": "Canal para anuncios del bot (recompensas, eventos)",
+      "addRole": "Añadir rol…",
+      "rolesNotLoaded": "Conecta el bot para buscar roles por nombre"
     }
   },
   "storage": {

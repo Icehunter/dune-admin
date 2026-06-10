@@ -1,12 +1,16 @@
 import type { ReactNode } from 'react'
 
+type RenderSlot = ReactNode | ((active: boolean) => ReactNode)
+
 type Item<K extends string> = {
   key: K
   label: ReactNode
   /** Optional sub-label rendered below the main label (e.g. namespace, item count). */
   sublabel?: ReactNode
-  /** Optional right-aligned hint (e.g. "18 items" count chip). */
-  hint?: ReactNode
+  /** Optional right-aligned hint (e.g. "18 items" count chip). Receives active state when a function. */
+  hint?: RenderSlot
+  /** Optional left icon/avatar rendered outside the truncated label area. Receives active state when a function. */
+  icon?: RenderSlot
   /** Indentation level (0 = top-level, 1 = child item). */
   depth?: number
 }
@@ -53,13 +57,14 @@ export const SideNav = <K extends string>({
               key={item.key}
               onClick={() => onSelect(item.key)}
               className={
-                'text-left rounded-[var(--radius)] text-sm transition-colors flex items-start gap-2 '
+                'text-left rounded-[var(--radius)] text-sm transition-colors flex items-center gap-2 '
                 + (item.depth ? 'pl-6 pr-3 py-1.5 ' : 'px-3 py-2 ')
                 + (isActive
                   ? 'bg-accent text-accent-foreground font-semibold'
                   : 'text-foreground hover:bg-surface-hover')
               }
             >
+              {item.icon && <div className="shrink-0">{typeof item.icon === 'function' ? item.icon(isActive) : item.icon}</div>}
               <div className="flex-1 min-w-0">
                 <div className="truncate">{item.label}</div>
                 {item.sublabel && (
@@ -68,7 +73,7 @@ export const SideNav = <K extends string>({
                   </div>
                 )}
               </div>
-              {item.hint && <div className="shrink-0 text-xs">{item.hint}</div>}
+              {item.hint && <div className="shrink-0 text-xs">{typeof item.hint === 'function' ? item.hint(isActive) : item.hint}</div>}
             </button>
           )
         })}

@@ -1035,6 +1035,9 @@
       "factionTier": "Poziom frakcji",
       "failedToLoad": "Nie udało się załadować statystyk.",
       "lastSeen": "Ostatnio widziany",
+      "discord": "Discord",
+      "discordLinked": "Połączono",
+      "discordUnlinked": "—",
       "milestones": "Kamienie milowe",
       "playtime": "Czas gry",
       "pois": "Punkty zainteresowania",
@@ -1294,7 +1297,9 @@
       "rabbitmq": "RabbitMQ (opcjonalne)",
       "server": "Serwer",
       "serverCommands": "Polecenia serwera",
-      "ssh": "SSH (pozostaw puste dla lokalnego)"
+      "ssh": "SSH (pozostaw puste dla lokalnego)",
+      "discordBot": "Discord Bot",
+      "discordRoles": "Poziomy ról"
     },
     "ssh": {
       "hostPort": "Host : port",
@@ -1307,7 +1312,27 @@
       "advanced": "Zaawansowane",
       "broker": "Broker",
       "connection": "Połączenie",
-      "control": "Sterowanie"
+      "control": "Sterowanie",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "Utwórz bota na discord.com/developers/applications, włącz go, skopiuj token i zaproś na swój serwer z zakresem applications.commands.",
+      "enabled": "Włącz bota Discord",
+      "token": "Token bota",
+      "tokenHint": "Maskowany po zapisaniu — wklej nową wartość, aby ją zmienić",
+      "guildId": "ID serwera",
+      "guildIdHint": "Kliknij prawym przyciskiem ikonę serwera → Kopiuj ID serwera",
+      "rolesHint": "ID ról oddzielone przecinkami. Wyższe poziomy obejmują wszystkie komendy niższych poziomów.",
+      "rolesViewer": "ID ról obserwatora",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "ID ról ekonomii",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "ID ról administratora",
+      "rolesAdminHint": "Wszystkie komendy",
+      "announceChannel": "ID kanału ogłoszeń",
+      "announceChannelHint": "Kanał dla ogłoszeń bota (nagrody, wydarzenia)",
+      "addRole": "Dodaj rolę…",
+      "rolesNotLoaded": "Połącz bota, aby przeglądać role według nazwy"
     }
   },
   "storage": {

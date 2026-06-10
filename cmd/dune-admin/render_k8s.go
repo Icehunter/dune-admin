@@ -111,6 +111,11 @@ func renderK8SManifest(outPath string) error {
 		"market_bot_max_buys":      maxBuys,
 	}
 	addIfNonEmpty(manifestCfg, "market_bot_remote_url", loadedConfig.MarketBotRemoteURL)
+	addIfNonEmpty(manifestCfg, "discord_guild_id", loadedConfig.DiscordGuildID)
+	addIfNonEmpty(manifestCfg, "discord_roles_viewer", loadedConfig.DiscordRolesViewer)
+	addIfNonEmpty(manifestCfg, "discord_roles_economy", loadedConfig.DiscordRolesEconomy)
+	addIfNonEmpty(manifestCfg, "discord_roles_admin", loadedConfig.DiscordRolesAdmin)
+	addIfNonEmpty(manifestCfg, "discord_announce_channel_id", loadedConfig.DiscordAnnounceChannelID)
 	addIfNonEmpty(manifestCfg, "ssh_host", loadedConfig.SSHHost)
 	addIfNonEmpty(manifestCfg, "ssh_user", loadedConfig.SSHUser)
 	addIfNonEmpty(manifestCfg, "ssh_key", loadedConfig.SSHKey)
@@ -159,6 +164,9 @@ func renderK8SManifest(outPath string) error {
 	out.WriteString("  BROKER_JWT_SECRET: " + yamlScalar(brokerJWTVal) + "\n")
 	if loadedConfig.MarketBotRemoteToken != "" {
 		out.WriteString("  MARKET_BOT_REMOTE_TOKEN: " + yamlScalar(loadedConfig.MarketBotRemoteToken) + "\n")
+	}
+	if loadedConfig.DiscordBotToken != "" {
+		out.WriteString("  DISCORD_BOT_TOKEN: " + yamlScalar(loadedConfig.DiscordBotToken) + "\n")
 	}
 
 	out.WriteString(`---

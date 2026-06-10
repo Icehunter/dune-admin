@@ -1005,6 +1005,9 @@
       "factionTier": "阵营等级",
       "failedToLoad": "加载属性失败。",
       "lastSeen": "最后在线",
+      "discord": "Discord",
+      "discordLinked": "已关联",
+      "discordUnlinked": "—",
       "milestones": "里程碑",
       "playtime": "游戏时长",
       "pois": "兴趣点",
@@ -1252,7 +1255,9 @@
       "rabbitmq": "RabbitMQ（可选）",
       "server": "服务器",
       "serverCommands": "服务器命令",
-      "ssh": "SSH（本地连接请留空）"
+      "ssh": "SSH（本地连接请留空）",
+      "discordBot": "Discord Bot",
+      "discordRoles": "身份组层级"
     },
     "ssh": {
       "hostPort": "主机：端口",
@@ -1265,7 +1270,27 @@
       "advanced": "高级",
       "broker": "Broker",
       "connection": "连接",
-      "control": "控制"
+      "control": "控制",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "在 discord.com/developers/applications 创建机器人，启用后复制令牌，并以 applications.commands 权限范围将其邀请至服务器。",
+      "enabled": "启用 Discord 机器人",
+      "token": "机器人令牌",
+      "tokenHint": "保存后将被遮蔽 — 粘贴新值以轮换",
+      "guildId": "服务器 ID",
+      "guildIdHint": "右键点击服务器图标 → 复制服务器 ID",
+      "rolesHint": "以逗号分隔的身份组 ID。较高层级包含所有低层级的指令。",
+      "rolesViewer": "查看者身份组 ID",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "经济身份组 ID",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "管理员身份组 ID",
+      "rolesAdminHint": "所有指令",
+      "announceChannel": "公告频道 ID",
+      "announceChannelHint": "用于机器人公告的频道（奖励、活动）",
+      "addRole": "添加身份组…",
+      "rolesNotLoaded": "连接机器人以按名称浏览身份组"
     }
   },
   "storage": {

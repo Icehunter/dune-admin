@@ -1035,6 +1035,9 @@
       "factionTier": "Уровень фракции",
       "failedToLoad": "Не удалось загрузить статистику.",
       "lastSeen": "Последний визит",
+      "discord": "Discord",
+      "discordLinked": "Привязан",
+      "discordUnlinked": "—",
       "milestones": "Вехи",
       "playtime": "Время в игре",
       "pois": "Точки интереса",
@@ -1294,7 +1297,9 @@
       "rabbitmq": "RabbitMQ (необязательно)",
       "server": "Сервер",
       "serverCommands": "Команды сервера",
-      "ssh": "SSH (оставьте пустым для локального)"
+      "ssh": "SSH (оставьте пустым для локального)",
+      "discordBot": "Discord Bot",
+      "discordRoles": "Уровни ролей"
     },
     "ssh": {
       "hostPort": "Хост : порт",
@@ -1307,7 +1312,27 @@
       "advanced": "Расширенные",
       "broker": "Broker",
       "connection": "Подключение",
-      "control": "Управление"
+      "control": "Управление",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "Создайте бота на discord.com/developers/applications, включите его, скопируйте токен и пригласите на сервер с областью applications.commands.",
+      "enabled": "Включить Discord-бота",
+      "token": "Токен бота",
+      "tokenHint": "Скрыт после сохранения — вставьте новое значение для смены",
+      "guildId": "ID сервера",
+      "guildIdHint": "Правый клик по иконке сервера → Скопировать ID сервера",
+      "rolesHint": "ID ролей через запятую. Более высокие уровни включают все команды нижних уровней.",
+      "rolesViewer": "ID ролей наблюдателя",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "ID ролей экономики",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "ID ролей администратора",
+      "rolesAdminHint": "Все команды",
+      "announceChannel": "ID канала объявлений",
+      "announceChannelHint": "Канал для объявлений бота (награды, события)",
+      "addRole": "Добавить роль…",
+      "rolesNotLoaded": "Подключите бота для поиска ролей по имени"
     }
   },
   "storage": {

@@ -1020,6 +1020,9 @@
       "factionTier": "Rang de faction",
       "failedToLoad": "Échec du chargement des statistiques.",
       "lastSeen": "Dernière connexion",
+      "discord": "Discord",
+      "discordLinked": "Lié",
+      "discordUnlinked": "—",
       "milestones": "Jalons",
       "playtime": "Temps de jeu",
       "pois": "Points d'intérêt",
@@ -1273,7 +1276,9 @@
       "rabbitmq": "RabbitMQ (optionnel)",
       "server": "Serveur",
       "serverCommands": "Commandes serveur",
-      "ssh": "SSH (laisser vide pour local)"
+      "ssh": "SSH (laisser vide pour local)",
+      "discordBot": "Discord Bot",
+      "discordRoles": "Niveaux de rôles"
     },
     "ssh": {
       "hostPort": "Hôte : port",
@@ -1286,7 +1291,27 @@
       "advanced": "Avancé",
       "broker": "Broker",
       "connection": "Connexion",
-      "control": "Contrôle"
+      "control": "Contrôle",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "Créez un bot sur discord.com/developers/applications, activez-le, copiez le token et invitez-le sur votre serveur avec le scope applications.commands.",
+      "enabled": "Activer le bot Discord",
+      "token": "Token du bot",
+      "tokenHint": "Masqué après la sauvegarde — collez une nouvelle valeur pour le renouveler",
+      "guildId": "ID du serveur",
+      "guildIdHint": "Clic droit sur l'icône du serveur → Copier l'ID du serveur",
+      "rolesHint": "IDs de rôles séparés par des virgules. Les niveaux supérieurs incluent toutes les commandes des niveaux inférieurs.",
+      "rolesViewer": "IDs de rôles spectateur",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "IDs de rôles économie",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "IDs de rôles administrateur",
+      "rolesAdminHint": "Toutes les commandes",
+      "announceChannel": "ID du canal d'annonces",
+      "announceChannelHint": "Canal pour les annonces du bot (récompenses, événements)",
+      "addRole": "Ajouter un rôle…",
+      "rolesNotLoaded": "Connectez le bot pour parcourir les rôles par nom"
     }
   },
   "storage": {

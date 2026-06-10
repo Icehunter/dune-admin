@@ -1005,6 +1005,9 @@
       "factionTier": "Hizip kademesi",
       "failedToLoad": "İstatistikler yüklenemedi.",
       "lastSeen": "Son görülme",
+      "discord": "Discord",
+      "discordLinked": "Bağlı",
+      "discordUnlinked": "—",
       "milestones": "Kilometre Taşları",
       "playtime": "Oyun Süresi",
       "pois": "İlgi Noktaları",
@@ -1252,7 +1255,9 @@
       "rabbitmq": "RabbitMQ (isteğe bağlı)",
       "server": "Sunucu",
       "serverCommands": "Sunucu komutları",
-      "ssh": "SSH (yerel için boş bırakın)"
+      "ssh": "SSH (yerel için boş bırakın)",
+      "discordBot": "Discord Bot",
+      "discordRoles": "Rol Kademeleri"
     },
     "ssh": {
       "hostPort": "Ana Bilgisayar : port",
@@ -1265,7 +1270,27 @@
       "advanced": "Gelişmiş",
       "broker": "Broker",
       "connection": "Bağlantı",
-      "control": "Kontrol"
+      "control": "Kontrol",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "discord.com/developers/applications adresinde bir bot oluşturun, botu etkinleştirin, tokenı kopyalayın ve applications.commands kapsamıyla sunucunuza davet edin.",
+      "enabled": "Discord botunu etkinleştir",
+      "token": "Bot tokenı",
+      "tokenHint": "Kaydedilince maskelenir — döndürmek için yeni değer yapıştırın",
+      "guildId": "Sunucu ID",
+      "guildIdHint": "Sunucu simgesine sağ tıklayın → Sunucu ID'sini Kopyala",
+      "rolesHint": "Virgülle ayrılmış rol ID'leri. Üst kademeler alt kademelerin tüm komutlarını içerir.",
+      "rolesViewer": "İzleyici rol ID'leri",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "Ekonomi rol ID'leri",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "Yönetici rol ID'leri",
+      "rolesAdminHint": "Tüm komutlar",
+      "announceChannel": "Duyuru kanalı ID'si",
+      "announceChannelHint": "Bot duyuruları için kanal (ödüller, etkinlikler)",
+      "addRole": "Rol ekle…",
+      "rolesNotLoaded": "Rolleri ada göre aramak için botu bağlayın"
     }
   },
   "storage": {

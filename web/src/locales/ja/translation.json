@@ -1005,6 +1005,9 @@
       "factionTier": "派閥ティア",
       "failedToLoad": "ステータスの読み込みに失敗しました。",
       "lastSeen": "最終ログイン",
+      "discord": "Discord",
+      "discordLinked": "連携済み",
+      "discordUnlinked": "—",
       "milestones": "マイルストーン",
       "playtime": "プレイ時間",
       "pois": "ポイントオブインタレスト",
@@ -1252,7 +1255,9 @@
       "rabbitmq": "RabbitMQ（オプション）",
       "server": "サーバー",
       "serverCommands": "サーバーコマンド",
-      "ssh": "SSH（ローカルの場合は空白のまま）"
+      "ssh": "SSH（ローカルの場合は空白のまま）",
+      "discordBot": "Discord Bot",
+      "discordRoles": "ロール階層"
     },
     "ssh": {
       "hostPort": "ホスト：ポート",
@@ -1265,7 +1270,27 @@
       "advanced": "詳細設定",
       "broker": "Broker",
       "connection": "接続",
-      "control": "コントロール"
+      "control": "コントロール",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "discord.com/developers/applications でボットを作成し、有効化してトークンをコピーし、applications.commands スコープでサーバーに招待してください。",
+      "enabled": "Discord ボットを有効化",
+      "token": "ボットトークン",
+      "tokenHint": "保存後はマスク表示 — 新しい値を貼り付けてローテーション",
+      "guildId": "サーバー ID",
+      "guildIdHint": "サーバーアイコンを右クリック → サーバー ID をコピー",
+      "rolesHint": "カンマ区切りのロール ID。上位階層は下位階層のコマンドをすべて含みます。",
+      "rolesViewer": "閲覧者ロール ID",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "経済ロール ID",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "管理者ロール ID",
+      "rolesAdminHint": "全コマンド",
+      "announceChannel": "アナウンスチャンネル ID",
+      "announceChannelHint": "ボットのアナウンス用チャンネル（報酬、イベント）",
+      "addRole": "ロールを追加…",
+      "rolesNotLoaded": "ボットを接続してロール名で検索"
     }
   },
   "storage": {

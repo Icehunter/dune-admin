@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { Player, PlayerStats, SessionRecord, StatSnapshot } from '../../../api/client'
-import { LoadingState, Panel, SectionLabel } from '../../../dune-ui'
+import { Avatar } from '@heroui/react'
+import { Icon, LoadingState, Panel, SectionLabel } from '../../../dune-ui'
+import { DiscordBadge } from './DiscordBadge'
 import { SolarisChart } from './SolarisChart'
 import { SessionChart } from './SessionChart'
 import { XPChart } from './XPChart'
@@ -115,6 +117,25 @@ export const PlayerDetailPanel: React.FC<PlayerDetailPanelProps> = ({ player }) 
               label={t('players.detail.lastSeen')}
               value={stats.last_seen ? new Date(stats.last_seen as string).toLocaleDateString() : '—'}
             />
+            <div className="flex items-center justify-between py-1">
+              <span className="text-sm text-muted">{t('players.detail.discord')}</span>
+              {player.discord_user_id
+                ? (
+                    <span className="flex items-center gap-2">
+                      <Avatar className="rounded-4xl" size="sm">
+                        {player.discord_avatar
+                          ? <Avatar.Image src={player.discord_avatar} alt="Discord avatar" />
+                          : null}
+                        <Avatar.Fallback>
+                          <Icon name="user" className="size-3.5" />
+                        </Avatar.Fallback>
+                      </Avatar>
+                      <DiscordBadge discordUserId={player.discord_user_id} size={12} />
+                      <span className="text-sm font-semibold">{t('players.detail.discordLinked')}</span>
+                    </span>
+                  )
+                : <span className="text-sm text-muted/50">{t('players.detail.discordUnlinked')}</span>}
+            </div>
           </div>
         </Panel>
       </div>

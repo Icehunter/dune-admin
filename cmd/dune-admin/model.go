@@ -11,15 +11,17 @@ var dbItemTemplates []string
 // ── domain types ─────────────────────────────────────────────────────────────
 
 type playerInfo struct {
-	ID           int64  `json:"id"`
-	AccountID    int64  `json:"account_id"`
-	ControllerID int64  `json:"controller_id"`
-	FLSID        string `json:"fls_id"`
-	Name         string `json:"name"`
-	Class        string `json:"class"`
-	Map          string `json:"map"`
-	FactionID    int16  `json:"faction_id"`
-	OnlineStatus string `json:"online_status"`
+	ID            int64  `json:"id"`
+	AccountID     int64  `json:"account_id"`
+	ControllerID  int64  `json:"controller_id"`
+	FLSID         string `json:"fls_id"`
+	Name          string `json:"name"`
+	Class         string `json:"class"`
+	Map           string `json:"map"`
+	FactionID     int16  `json:"faction_id"`
+	OnlineStatus  string `json:"online_status"`
+	DiscordUserID string `json:"discord_user_id"`
+	DiscordAvatar string `json:"discord_avatar"`
 }
 
 // gmIdentity is the seeded "GM/Server" persona used as the sender for admin chat

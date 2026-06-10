@@ -1005,6 +1005,9 @@
       "factionTier": "Faction tier",
       "failedToLoad": "Failed to load stats.",
       "lastSeen": "Last seen",
+      "discord": "Discord",
+      "discordLinked": "Linked",
+      "discordUnlinked": "—",
       "milestones": "Milestones",
       "playtime": "Playtime",
       "pois": "POIs",
@@ -1252,7 +1255,9 @@
       "rabbitmq": "RabbitMQ (optional)",
       "server": "Server",
       "serverCommands": "Server commands",
-      "ssh": "SSH (leave blank for local)"
+      "ssh": "SSH (leave blank for local)",
+      "discordBot": "Discord Bot",
+      "discordRoles": "Role Tiers"
     },
     "ssh": {
       "hostPort": "Host : port",
@@ -1265,7 +1270,27 @@
       "advanced": "Advanced",
       "broker": "Broker",
       "connection": "Connection",
-      "control": "Control"
+      "control": "Control",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "Create a bot at discord.com/developers/applications, enable the bot, copy the token, and invite it to your guild with the applications.commands scope.",
+      "enabled": "Enable Discord bot",
+      "token": "Bot token",
+      "tokenHint": "Masked after save — paste a new value to rotate",
+      "guildId": "Guild ID",
+      "guildIdHint": "Right-click your server icon → Copy Server ID",
+      "rolesHint": "Comma-separated role IDs. Higher tiers include all lower-tier commands.",
+      "rolesViewer": "Viewer role IDs",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "Economy role IDs",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "Admin role IDs",
+      "rolesAdminHint": "All commands",
+      "announceChannel": "Announce channel ID",
+      "announceChannelHint": "Channel for bot announcements (rewards, events)",
+      "addRole": "Add role…",
+      "rolesNotLoaded": "Connect the bot to browse roles by name"
     }
   },
   "storage": {

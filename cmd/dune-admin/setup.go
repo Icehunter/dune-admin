@@ -91,6 +91,10 @@ func runSetup() {
 	cfg.ListenAddr = ask("HTTP listen address", defaultListenAddr)
 	fmt.Println()
 
+	// ── Discord bot ────────────────────────────────────────────────────────────
+
+	setupDiscordBot(ok, ask, &cfg)
+
 	// ── Write config ───────────────────────────────────────────────────────────
 
 	writeSetupConfig(ok, fail, cfg)
@@ -617,6 +621,38 @@ func runMarketBotSetup(ask func(string, string) string, ok func(string), cfg *ap
 	cfg.MarketBotThresh = parseFloat(ask("Buy threshold multiplier", "1.05"), 1.05)
 	cfg.MarketBotMaxBuys = parseInt(ask("Max buys per tick", "50"), 50)
 	ok("Embedded market bot configured")
+	fmt.Println()
+}
+
+// ── Discord bot setup ──────────────────────────────────────────────────────────
+
+// setupDiscordBot prompts for Discord bot configuration. Each owner creates
+// their own Discord application at https://discord.com/developers/applications,
+// copies the bot token, and pastes it here.
+func setupDiscordBot(ok func(string), ask func(prompt, def string) string, cfg *appConfig) {
+	fmt.Println("── Discord Bot (optional) ──────────────────────────────────────────────")
+	fmt.Println("Each dune-admin instance uses its own Discord application (bring-your-own-bot).")
+	fmt.Println("Create one at https://discord.com/developers/applications, copy the Bot token,")
+	fmt.Println("then invite the bot to your guild with the 'applications.commands' scope.")
+	fmt.Println()
+
+	enableStr := strings.TrimSpace(ask("Enable Discord bot? (y/n)", "n"))
+	if enableStr != "y" && enableStr != "Y" {
+		ok("Discord bot disabled")
+		fmt.Println()
+		return
+	}
+
+	t := true
+	cfg.DiscordBotEnabled = &t
+	cfg.DiscordBotToken = strings.TrimSpace(ask("Bot token", ""))
+	cfg.DiscordGuildID = strings.TrimSpace(ask("Guild (server) ID", ""))
+	cfg.DiscordRolesViewer = strings.TrimSpace(ask("Viewer role IDs (comma-separated, leave blank to skip)", ""))
+	cfg.DiscordRolesEconomy = strings.TrimSpace(ask("Economy role IDs (comma-separated, leave blank to skip)", ""))
+	cfg.DiscordRolesAdmin = strings.TrimSpace(ask("Admin role IDs (comma-separated, leave blank to skip)", ""))
+	cfg.DiscordAnnounceChannelID = strings.TrimSpace(ask("Announce channel ID (for reward/event announcements, leave blank to skip)", ""))
+
+	ok("Discord bot configured")
 	fmt.Println()
 }
 

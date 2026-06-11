@@ -11,6 +11,19 @@ import (
 // globalDB is nil in unit tests (connectAll is never called), which lets us
 // exercise the input + guard paths without a database. Not parallel: it reads
 // the globalDB package global.
+func TestHandleListMaps_NilDB(t *testing.T) {
+	orig := globalDB
+	globalDB = nil
+	defer func() { globalDB = orig }()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/maps", nil)
+	rec := httptest.NewRecorder()
+	handleListMaps(rec, req)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want 503, got %d", rec.Code)
+	}
+}
+
 func TestHandleGetMapMarkers_Input(t *testing.T) {
 	tests := []struct {
 		name       string

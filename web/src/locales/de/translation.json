@@ -360,7 +360,15 @@
     "remove": "Entfernen",
     "save": "Speichern",
     "saving": "Wird gespeichert…",
-    "send": "Senden"
+    "send": "Senden",
+    "create": "Erstellen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "clear": "Leeren",
+    "optional": "optional",
+    "deleteSelected": "Ausgewählte löschen",
+    "clearSelection": "Auswahl aufheben",
+    "noItems": "Noch keine Einträge."
   },
   "database": {
     "columnColumn": "Spalte",
@@ -411,17 +419,17 @@
     "failedToLoad": "Karte konnte nicht geladen werden: {{message}}",
     "filter": "Filter",
     "filterBases": "Basen",
-    "filterHazards": "Hazards",
-    "filterKeys": "Keys",
+    "filterHazards": "Gefahren",
+    "filterKeys": "Schlüssel",
     "filterLandsraad": "Landsraad",
     "filterDensity": "Dichte-Overlay",
-    "filterLocations": "Locations",
+    "filterLocations": "Orte",
     "filterNPCs": "NPCs",
-    "filterResources": "Resources",
+    "filterResources": "Ressourcen",
     "filterLive": "Live",
-    "filterStaticObjects": "Static Objects",
-    "filterTrainers": "Trainers",
-    "filterVendors": "Vendors",
+    "filterStaticObjects": "Statische Objekte",
+    "filterTrainers": "Trainer",
+    "filterVendors": "Händler",
     "filterSearch": "Filter suchen…",
     "players": "Spieler",
     "spawnsLoaded_one": "{{count}} statische Marker geladen",
@@ -669,7 +677,9 @@
     "players": "Spieler",
     "server": "Servereinstellungen",
     "storage": "Lager",
-    "welcome": "Willkommenspakete"
+    "welcome": "Willkommenspakete",
+    "events": "Live-Events",
+    "menu": "Navigation"
   },
   "players": {
     "actions": {
@@ -826,7 +836,17 @@
           "reward": "Belohnung"
         },
         "complete": "Abschließen",
+        "bulkActionsLabel": "Reise-Massenaktionen",
+        "bulkComplete": "Abschließen",
+        "bulkRedo": "Wiederholen",
+        "bulkReset": "Zurücksetzen",
+        "clearSelection": "Auswahl aufheben",
+        "selected": "{{count}} ausgewählt",
+        "filterAll": "Alle",
+        "filterDone": "Erledigt",
         "filterPlaceholder": "Knoten filtern...",
+        "filterRevealed": "Enthüllt",
+        "filterReward": "Belohnung",
         "journeyLabel": "Reiseknoten",
         "noMatching": "Keine passenden Knoten",
         "noNodes": "Keine Reiseknoten gefunden",
@@ -1005,6 +1025,9 @@
       "factionTier": "Fraktionsstufe",
       "failedToLoad": "Statistiken konnten nicht geladen werden.",
       "lastSeen": "Zuletzt gesehen",
+      "discord": "Discord",
+      "discordLinked": "Verknüpft",
+      "discordUnlinked": "—",
       "milestones": "Meilensteine",
       "playtime": "Spielzeit",
       "pois": "Interessenpunkte",
@@ -1077,6 +1100,8 @@
       },
       "deleteOnlineWarning": "Spieler ist online — Das Löschen von Gegenständen kann zu Inventar-Desynchronisierungen führen. Fortfahren?",
       "itemDeleted": "Gegenstand gelöscht",
+      "itemsDeleted": "{{count}} Gegenstand/Gegenstände gelöscht",
+      "deleteSelected": "Ausgewählte löschen",
       "itemsLabel": "Gegenstände",
       "noItemsFound": "Keine Gegenstände gefunden",
       "repair": "Reparieren",
@@ -1252,7 +1277,9 @@
       "rabbitmq": "RabbitMQ (optional)",
       "server": "Server",
       "serverCommands": "Serverbefehle",
-      "ssh": "SSH (leer lassen für lokal)"
+      "ssh": "SSH (leer lassen für lokal)",
+      "discordBot": "Discord-Bot",
+      "discordRoles": "Rollenstufen"
     },
     "ssh": {
       "hostPort": "Host : Port",
@@ -1265,7 +1292,27 @@
       "advanced": "Erweitert",
       "broker": "Broker",
       "connection": "Verbindung",
-      "control": "Steuerung"
+      "control": "Steuerung",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "Erstelle einen Bot unter discord.com/developers/applications, aktiviere den Bot, kopiere das Token und lade ihn mit dem Scope applications.commands in deinen Server ein.",
+      "enabled": "Discord-Bot aktivieren",
+      "token": "Bot-Token",
+      "tokenHint": "Nach dem Speichern maskiert — neuen Wert einfügen zum Rotieren",
+      "guildId": "Server-ID",
+      "guildIdHint": "Rechtsklick auf dein Server-Symbol → Server-ID kopieren",
+      "rolesHint": "Kommagetrennte Rollen-IDs. Höhere Stufen beinhalten alle Befehle niedrigerer Stufen.",
+      "rolesViewer": "Betrachter-Rollen-IDs",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "Wirtschafts-Rollen-IDs",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "Admin-Rollen-IDs",
+      "rolesAdminHint": "Alle Befehle",
+      "announceChannel": "Ankündigungs-Kanal-ID",
+      "announceChannelHint": "Kanal für Bot-Ankündigungen (Belohnungen, Events)",
+      "addRole": "Rolle hinzufügen…",
+      "rolesNotLoaded": "Bot verbinden, um Rollen nach Name zu durchsuchen"
     }
   },
   "storage": {
@@ -1293,6 +1340,7 @@
     "containersTitle_other": "Container ({{count}})",
     "containerTitle": "Container #{{id}}",
     "itemRemoved": "Gegenstand entfernt",
+    "itemsRemoved": "{{count}} Gegenstand/Gegenstände entfernt",
     "ownerLabel": "Besitzer: {{name}}",
     "remove": "Entfernen",
     "searchLabel": "Container suchen",
@@ -1368,5 +1416,85 @@
     },
     "runConfirmTitle": "Willkommenspaket jetzt vergeben?",
     "runConfirmBody": "Dies vergibt das/die Paket(e) {{versions}} sofort an alle berechtigten Online-Spieler. Fortfahren?"
+  },
+  "events": {
+    "title": "Events ({{count}})",
+    "subtitle": "Live-Events im Spiel und Ankündigungen sozialer Meilensteine.",
+    "ariaLabel": "Event-Liste",
+    "create": "Neues Event",
+    "noEvents": "Keine Events konfiguriert.",
+    "failedToLoad": "Events konnten nicht geladen werden: {{message}}",
+    "failedToLoadStatus": "Event-Status konnte nicht geladen werden: {{message}}",
+    "toggleFailed": "Event konnte nicht umgeschaltet werden: {{message}}",
+    "deleteFailed": "Event konnte nicht gelöscht werden: {{message}}",
+    "resetFailed": "Event konnte nicht zurückgesetzt werden: {{message}}",
+    "resetSuccess": "Event-Ansprüche gelöscht.",
+    "confirmDelete": "Event \"{{name}}\" löschen?",
+    "confirmReset": "Alle Ansprüche für \"{{name}}\" löschen? Dadurch kann das Event für alle Spieler erneut ausgelöst werden.",
+    "toggleEnabled": "Aktivierung umschalten",
+    "columns": {
+      "name": "Name",
+      "type": "Typ",
+      "enabled": "Aktiviert",
+      "claims": "Ver."
+    },
+    "types": {
+      "zoneRace": "Zonenrennen",
+      "milestone": "Meilenstein"
+    },
+    "status": {
+      "title": "Ansprüche — {{name}}",
+      "claimsLabel": "Event-Anspruchseinträge",
+      "noClaims": "Noch keine Ansprüche erfasst.",
+      "reset": "Ansprüche löschen"
+    },
+    "claims": {
+      "accountId": "Konto",
+      "version": "Ver.",
+      "status": "Status",
+      "attempts": "Versuche",
+      "claimedAt": "Beansprucht am",
+      "lastError": "Letzter Fehler"
+    },
+    "editor": {
+      "createTitle": "Neues Event",
+      "editTitle": "Event bearbeiten",
+      "basics": "Grundinformationen",
+      "name": "Name",
+      "namePlaceholder": "z. B. Wüstenrennen, Stufe-50-Club",
+      "nameRequired": "Name ist erforderlich.",
+      "type": "Typ",
+      "zoneConfig": "Zonen-Konfiguration",
+      "zoneMap": "Kartenname",
+      "zoneMapPlaceholder": "Karte auswählen…",
+      "radius": "Radius",
+      "participants": "Teilnehmer",
+      "milestoneConfig": "Meilenstein-Konfiguration",
+      "signal": "Signal",
+      "levelThreshold": "Erforderliche Stufe",
+      "tagName": "Tag-Name",
+      "awardPast": "Vergangene Erfolge belohnen",
+      "awardPastHint": "Belohnungen an Spieler vergeben, die beim Aktivieren des Events bereits qualifiziert sind.",
+      "rewardLabel": "Belohnung",
+      "currency": "Währung",
+      "items": "Gegenstände",
+      "xpRewards": "XP-Belohnungen",
+      "xpTrack": "Pfad",
+      "xpAmount": "Menge",
+      "announceLabel": "Ankündigung",
+      "announceTemplate": "Ankündigungsvorlage",
+      "templateHint": "Platzhalter: {player} {event} {value}.",
+      "channelDefault": "Wird im konfigurierten Discord-Ankündigungskanal gepostet.",
+      "created": "Event erstellt.",
+      "updated": "Event aktualisiert.",
+      "saveFailed": "Event konnte nicht gespeichert werden: {{message}}",
+      "xpType": "Typ",
+      "addParticipant": "Spieler hinzufügen…",
+      "noPlayersLoaded": "Keine Spieler geladen — Server starten und neu laden."
+    },
+    "signals": {
+      "level": "Charakterstufe",
+      "achievementTag": "Erfolgs-Tag"
+    }
   }
 }

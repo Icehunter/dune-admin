@@ -186,6 +186,14 @@ export type AppConfig = {
   market_bot_max_buys: number
   market_bot_remote_url: string
   market_bot_remote_token: string // masked when non-empty
+  // Discord bot
+  discord_bot_enabled: boolean
+  discord_bot_token: string // masked when non-empty
+  discord_guild_id: string
+  discord_roles_viewer: string
+  discord_roles_economy: string
+  discord_roles_admin: string
+  discord_announce_channel_id: string
   // Advanced
   listen_addr: string
   scrip_currency: number
@@ -216,6 +224,8 @@ export type Player = {
   map: string
   faction_id: number
   online_status: string
+  discord_user_id: string
+  discord_avatar: string
 }
 export type LabeledCount = {
   label: string
@@ -720,6 +730,38 @@ export interface GivePacksConfig {
   packs: GivePack[]
 }
 
+export type EventType = 'zone_race' | 'milestone'
+
+export interface EventDefinition {
+  id: number
+  name: string
+  type: EventType
+  enabled: boolean
+  version: number
+  config: string
+  reward: string
+  announce_channel_id: string
+  announce_template: string
+  created_at: string
+  updated_at: string
+}
+
+export interface EventClaimRecord {
+  event_id: number
+  version: number
+  account_id: number
+  status: string
+  claimed_at: string
+  attempts: number
+  last_error: string
+  updated_at: string
+}
+
+export interface EventStatus {
+  event: EventDefinition
+  claims: EventClaimRecord[]
+}
+
 export const api = {
   status: () => req<Status>('GET', '/status'),
   reconnect: () => req<Status>('POST', '/reconnect'),
@@ -1060,6 +1102,10 @@ export const api = {
     logsReady: () => req<{ ready: boolean, reason?: string, namespace?: string, name?: string }>('GET', '/market-bot/logs-ready'),
   },
 
+  discord: {
+    roles: () => req<{ id: string, name: string }[]>('GET', '/discord/roles'),
+  },
+
   update: {
     check: () => req<UpdateCheckResult>('GET', '/update/check'),
     apply: (force?: boolean) => req<UpdateApplyResult>('POST', '/update/apply', force ? { force: true } : undefined),
@@ -1088,5 +1134,20 @@ export const api = {
   givePacks: {
     config: () => req<GivePacksConfig>('GET', '/give-packs/config'),
     saveConfig: (cfg: GivePacksConfig) => req<GivePacksConfig>('PUT', '/give-packs/config', cfg),
+  },
+
+  maps: {
+    list: () => req<string[]>('GET', '/maps'),
+  },
+
+  events: {
+    list: () => req<EventDefinition[]>('GET', '/events'),
+    create: (def: Partial<EventDefinition>) => req<EventDefinition>('POST', '/events', def),
+    update: (id: number, def: Partial<EventDefinition>) => req<EventDefinition>('PUT', `/events/${id}`, def),
+    delete: (id: number) => req<{ ok: boolean }>('DELETE', `/events/${id}`),
+    setEnabled: (id: number, enabled: boolean) =>
+      req<{ ok: boolean }>('POST', `/events/${id}/enable`, { enabled }),
+    status: (id: number) => req<EventStatus>('GET', `/events/${id}/status`),
+    reset: (id: number) => req<{ ok: boolean }>('POST', `/events/${id}/reset`),
   },
 }

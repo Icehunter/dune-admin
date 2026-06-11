@@ -194,6 +194,18 @@ type appConfig struct {
 	MarketBotRemoteURL   string  `yaml:"market_bot_remote_url"   json:"market_bot_remote_url"`
 	MarketBotRemoteToken string  `yaml:"market_bot_remote_token" json:"market_bot_remote_token"`
 
+	// ── Discord bot ────────────────────────────────────────────────────────
+	// DiscordBotEnabled starts the embedded Discord gateway bot. Pointer so we
+	// can distinguish "unset" (default-off) from "explicitly false".
+	DiscordBotEnabled *bool  `yaml:"discord_bot_enabled"          json:"discord_bot_enabled"`
+	DiscordBotToken   string `yaml:"discord_bot_token"            json:"discord_bot_token"`
+	DiscordGuildID    string `yaml:"discord_guild_id"             json:"discord_guild_id"`
+	// Comma-separated Discord role IDs for each capability tier.
+	DiscordRolesViewer       string `yaml:"discord_roles_viewer"         json:"discord_roles_viewer"`
+	DiscordRolesEconomy      string `yaml:"discord_roles_economy"        json:"discord_roles_economy"`
+	DiscordRolesAdmin        string `yaml:"discord_roles_admin"          json:"discord_roles_admin"`
+	DiscordAnnounceChannelID string `yaml:"discord_announce_channel_id"  json:"discord_announce_channel_id"`
+
 	// ── Welcome package ────────────────────────────────────────────────────
 	// Auto-grants a configured item package to every player once, on first
 	// login. Defaults OFF — it mutates every player's inventory, so it must be
@@ -205,6 +217,12 @@ type appConfig struct {
 	// Legacy pre-library fields, migrated into WelcomePackages on load.
 	WelcomePackageVersion string               `yaml:"welcome_package_version,omitempty" json:"welcome_package_version,omitempty"`
 	WelcomePackageItems   []welcomePackageItem `yaml:"welcome_package_items,omitempty"   json:"welcome_package_items,omitempty"`
+
+	// ── Live events engine ─────────────────────────────────────────────────
+	// EventsEnabled starts the background polling engine. Pointer so we can
+	// distinguish "unset" (default-off) from "explicitly false".
+	EventsEnabled     *bool `yaml:"events_enabled"      json:"events_enabled"`
+	EventsPollSeconds int   `yaml:"events_poll_seconds" json:"events_poll_seconds"`
 }
 
 // marketBotEnabled returns the effective bot-enabled flag. Missing yaml key →
@@ -306,6 +324,12 @@ func loadConfig() {
 			setEnvIfMissing("BROKER_JWT_SECRET", cfg.BrokerJWTSecret)
 			setEnvIfMissing("BACKUP_DIR", cfg.BackupDir)
 			setEnvIfMissing("SERVER_INI_DIR", cfg.ServerIniDir)
+			setEnvIfMissing("DISCORD_BOT_TOKEN", cfg.DiscordBotToken)
+			setEnvIfMissing("DISCORD_GUILD_ID", cfg.DiscordGuildID)
+			setEnvIfMissing("DISCORD_ROLES_VIEWER", cfg.DiscordRolesViewer)
+			setEnvIfMissing("DISCORD_ROLES_ECONOMY", cfg.DiscordRolesEconomy)
+			setEnvIfMissing("DISCORD_ROLES_ADMIN", cfg.DiscordRolesAdmin)
+			setEnvIfMissing("DISCORD_ANNOUNCE_CHANNEL_ID", cfg.DiscordAnnounceChannelID)
 			detectStaleEnvFile(".")
 			return
 		}
@@ -746,20 +770,25 @@ func startEmbeddedMarketBotIfEnabled(cfg appConfig) context.CancelFunc {
 	return botCancel
 }
 
+// immediateModeLabel returns the error prefix for immediate-mode failures
+// (render-k8s, clean-market) so the logged error is clearly attributed.
+func immediateModeLabel() string {
+	if renderK8SOut != "" {
+		return "render-k8s: "
+	}
+	if cleanMarketMode {
+		return "clean-market: "
+	}
+	return ""
+}
+
 func main() {
 	flag.Parse()
 
 	handled, err := runImmediateModes()
 	if handled {
 		if err != nil {
-			label := ""
-			if renderK8SOut != "" {
-				label = "render-k8s: "
-			}
-			if cleanMarketMode {
-				label = "clean-market: "
-			}
-			fmt.Fprintln(os.Stderr, label+err.Error())
+			fmt.Fprintln(os.Stderr, immediateModeLabel()+err.Error())
 			os.Exit(1)
 		}
 		return
@@ -794,6 +823,10 @@ func main() {
 		remoteBotProxy = newRemoteBotClient(loadedConfig.MarketBotRemoteURL, loadedConfig.MarketBotRemoteToken)
 	}
 
+	if cancel := startEmbeddedDiscordBotIfEnabled(loadedConfig); cancel != nil {
+		defer cancel()
+	}
+
 	globalWelcomeCancel = startWelcomePackageScanner(loadedConfig)
 	defer stopWelcomeScanner()
 
@@ -811,6 +844,11 @@ func main() {
 
 	initLocationStore()
 	initGivePacksStore()
+	initEventStore()
+
+	if cancel := startEventEngineIfEnabled(loadedConfig); cancel != nil {
+		defer cancel()
+	}
 
 	startServer(listenAddr)
 }
@@ -864,6 +902,22 @@ func initGivePacksStore() {
 			fmt.Fprintf(os.Stderr, "give-packs seed: %v\n", seedErr)
 		}
 	}
+}
+
+// initEventStore opens (or creates) the events SQLite store and sets
+// globalEventStore. A failure is non-fatal — handlers guard for a nil store.
+func initEventStore() {
+	if globalStore != nil {
+		globalEventStore = newEventStore(globalStore)
+		return
+	}
+	var err error
+	s, err := openEventStore(filepath.Join(configDir(), "events.db"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "event store: %v (events disabled)\n", err)
+		return
+	}
+	globalEventStore = s
 }
 
 // globalWelcomeCancel stops the welcome-package scanner goroutine on shutdown.

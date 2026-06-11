@@ -360,7 +360,15 @@
     "remove": "Remove",
     "save": "Save",
     "saving": "Saving…",
-    "send": "Send"
+    "send": "Send",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "clear": "Clear",
+    "optional": "optional",
+    "deleteSelected": "Delete selected",
+    "clearSelection": "Clear selection",
+    "noItems": "No items yet."
   },
   "database": {
     "columnColumn": "Column",
@@ -669,7 +677,9 @@
     "players": "Players",
     "server": "Server Settings",
     "storage": "Storage",
-    "welcome": "Welcome Kits"
+    "welcome": "Welcome Kits",
+    "events": "Live Events",
+    "menu": "Navigation"
   },
   "players": {
     "actions": {
@@ -826,7 +836,17 @@
           "reward": "Reward"
         },
         "complete": "Complete",
+        "bulkActionsLabel": "Journey bulk actions",
+        "bulkComplete": "Complete",
+        "bulkRedo": "Re-do",
+        "bulkReset": "Reset",
+        "clearSelection": "Clear selection",
+        "selected": "{{count}} selected",
+        "filterAll": "All",
+        "filterDone": "Done",
         "filterPlaceholder": "Filter nodes...",
+        "filterRevealed": "Revealed",
+        "filterReward": "Reward",
         "journeyLabel": "Journey nodes",
         "noMatching": "No matching nodes",
         "noNodes": "No journey nodes found",
@@ -1005,6 +1025,9 @@
       "factionTier": "Faction tier",
       "failedToLoad": "Failed to load stats.",
       "lastSeen": "Last seen",
+      "discord": "Discord",
+      "discordLinked": "Linked",
+      "discordUnlinked": "—",
       "milestones": "Milestones",
       "playtime": "Playtime",
       "pois": "POIs",
@@ -1077,6 +1100,8 @@
       },
       "deleteOnlineWarning": "Player is online — deleting items may cause inventory desyncs. Continue?",
       "itemDeleted": "Item deleted",
+      "itemsDeleted": "Deleted {{count}} item(s)",
+      "deleteSelected": "Delete selected",
       "itemsLabel": "Items",
       "noItemsFound": "No items found",
       "repair": "Repair",
@@ -1252,7 +1277,9 @@
       "rabbitmq": "RabbitMQ (optional)",
       "server": "Server",
       "serverCommands": "Server commands",
-      "ssh": "SSH (leave blank for local)"
+      "ssh": "SSH (leave blank for local)",
+      "discordBot": "Discord Bot",
+      "discordRoles": "Role Tiers"
     },
     "ssh": {
       "hostPort": "Host : port",
@@ -1265,7 +1292,27 @@
       "advanced": "Advanced",
       "broker": "Broker",
       "connection": "Connection",
-      "control": "Control"
+      "control": "Control",
+      "discord": "Discord"
+    },
+    "discord": {
+      "hint": "Create a bot at discord.com/developers/applications, enable the bot, copy the token, and invite it to your guild with the applications.commands scope.",
+      "enabled": "Enable Discord bot",
+      "token": "Bot token",
+      "tokenHint": "Masked after save — paste a new value to rotate",
+      "guildId": "Guild ID",
+      "guildIdHint": "Right-click your server icon → Copy Server ID",
+      "rolesHint": "Comma-separated role IDs. Higher tiers include all lower-tier commands.",
+      "rolesViewer": "Viewer role IDs",
+      "rolesViewerHint": "/status, /lookup",
+      "rolesEconomy": "Economy role IDs",
+      "rolesEconomyHint": "/give-currency",
+      "rolesAdmin": "Admin role IDs",
+      "rolesAdminHint": "All commands",
+      "announceChannel": "Announce channel ID",
+      "announceChannelHint": "Channel for bot announcements (rewards, events)",
+      "addRole": "Add role…",
+      "rolesNotLoaded": "Connect the bot to browse roles by name"
     }
   },
   "storage": {
@@ -1293,6 +1340,7 @@
     "containersTitle_other": "Containers ({{count}})",
     "containerTitle": "Container #{{id}}",
     "itemRemoved": "Item removed",
+    "itemsRemoved": "Removed {{count}} item(s)",
     "ownerLabel": "Owner: {{name}}",
     "remove": "Remove",
     "searchLabel": "Search containers",
@@ -1368,5 +1416,85 @@
     },
     "runConfirmTitle": "Grant welcome package now?",
     "runConfirmBody": "This grants package(s) {{versions}} to all eligible online players right now. Continue?"
+  },
+  "events": {
+    "title": "Events ({{count}})",
+    "subtitle": "Live in-game events and social milestone announcements.",
+    "ariaLabel": "Events list",
+    "create": "New Event",
+    "noEvents": "No events configured.",
+    "failedToLoad": "Failed to load events: {{message}}",
+    "failedToLoadStatus": "Failed to load event status: {{message}}",
+    "toggleFailed": "Failed to toggle event: {{message}}",
+    "deleteFailed": "Failed to delete event: {{message}}",
+    "resetFailed": "Failed to reset event: {{message}}",
+    "resetSuccess": "Event claims cleared.",
+    "confirmDelete": "Delete event \"{{name}}\"?",
+    "confirmReset": "Clear all claims for \"{{name}}\"? This will allow the event to fire again for all players.",
+    "toggleEnabled": "Toggle enabled",
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "enabled": "Enabled",
+      "claims": "Ver."
+    },
+    "types": {
+      "zoneRace": "Zone Race",
+      "milestone": "Milestone"
+    },
+    "signals": {
+      "level": "Character Level",
+      "achievementTag": "Achievement Tag"
+    },
+    "status": {
+      "title": "Claims — {{name}}",
+      "claimsLabel": "Event claim records",
+      "noClaims": "No claims recorded yet.",
+      "reset": "Clear Claims"
+    },
+    "claims": {
+      "accountId": "Account",
+      "version": "Ver.",
+      "status": "Status",
+      "attempts": "Attempts",
+      "claimedAt": "Claimed At",
+      "lastError": "Last Error"
+    },
+    "editor": {
+      "createTitle": "New Event",
+      "editTitle": "Edit Event",
+      "basics": "Basic Info",
+      "name": "Name",
+      "namePlaceholder": "e.g. Desert Race, Level 50 Club",
+      "nameRequired": "Name is required.",
+      "type": "Type",
+      "zoneConfig": "Zone Config",
+      "zoneMap": "Map Name",
+      "zoneMapPlaceholder": "Select map…",
+      "radius": "Radius",
+      "participants": "Participants",
+      "addParticipant": "Add player…",
+      "noPlayersLoaded": "No players loaded — start the server and reload.",
+      "milestoneConfig": "Milestone Config",
+      "signal": "Signal",
+      "levelThreshold": "Required Level",
+      "tagName": "Tag Name",
+      "awardPast": "Award past achievements",
+      "awardPastHint": "Grant rewards to players who already qualify when the event is enabled.",
+      "rewardLabel": "Reward",
+      "currency": "Currency",
+      "items": "Items",
+      "xpRewards": "XP Rewards",
+      "xpType": "Type",
+      "xpTrack": "Track",
+      "xpAmount": "Amount",
+      "announceLabel": "Announcement",
+      "announceTemplate": "Announce Template",
+      "templateHint": "Placeholders: {player} {event} {value}.",
+      "channelDefault": "Posts to the configured Discord announce channel.",
+      "created": "Event created.",
+      "updated": "Event updated.",
+      "saveFailed": "Failed to save event: {{message}}"
+    }
   }
 }

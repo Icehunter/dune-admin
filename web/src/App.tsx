@@ -24,6 +24,7 @@ import { ServerSettingsTab } from './tabs/ServerSettingsTab'
 import { DirectorTab } from './tabs/DirectorTab'
 import { MarketTab } from './tabs/MarketTab'
 import { WelcomePackageTab } from './tabs/WelcomePackageTab'
+import { EventsTab } from './tabs/EventsTab'
 import { Icon, SideNav } from './dune-ui'
 import { api } from './api/client'
 import type { UpdateCheckResult } from './api/client'
@@ -43,6 +44,7 @@ const TAB_IDS = [
   'director',
   'market',
   'welcome',
+  'events',
 ] as const
 type TabId = (typeof TAB_IDS)[number]
 const DEFAULT_TAB: TabId = 'battlegroup'
@@ -72,6 +74,7 @@ const MServerSettingsTab = memo(ServerSettingsTab)
 const MDirectorTab = memo(DirectorTab)
 const MMarketTab = memo(MarketTab)
 const MWelcomePackageTab = memo(WelcomePackageTab)
+const MEventsTab = memo(EventsTab)
 
 const hasClerk = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -168,6 +171,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
       items: [
         { key: 'market' as TabId, label: t('nav.market') },
         { key: 'welcome' as TabId, label: t('nav.welcome') },
+        { key: 'events' as TabId, label: t('nav.events') },
       ],
     },
   ]
@@ -639,6 +643,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                 {renderTab('director', <MDirectorTab />)}
                 {renderTab('market', <MMarketTab />)}
                 {renderTab('welcome', welcomeNode)}
+                {renderTab('events', <MEventsTab />)}
               </main>
             </div>
           )
@@ -679,6 +684,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                 {renderTab('director', <MDirectorTab />)}
                 {renderTab('market', <MMarketTab />)}
                 {renderTab('welcome', welcomeNode)}
+                {renderTab('events', <MEventsTab />)}
               </main>
             </div>
           </>

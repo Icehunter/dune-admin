@@ -66,11 +66,14 @@ func cmdFetchPlayers() Msg {
 		       a.class,
 		       COALESCE(a.map, ''),
 		       COALESCE(af.faction_id, 0),
-		       COALESCE(ps.online_status::text, 'Offline')
+		       COALESCE(ps.online_status::text, 'Offline'),
+		       COALESCE(dl.discord_user_id, ''),
+		       COALESCE(dl.avatar_url, '')
 		FROM dune.actors a
 		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
 		LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
 		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id`+factionByAccountJoin+`
+		LEFT JOIN dune.discord_links dl ON dl.account_id = a.owner_account_id
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
 		ORDER BY a.id`, gmIdentityAccountID)
 	if err != nil {
@@ -81,7 +84,7 @@ func cmdFetchPlayers() Msg {
 	var players []playerInfo
 	for rows.Next() {
 		var p playerInfo
-		if err := rows.Scan(&p.ID, &p.AccountID, &p.Name, &p.ControllerID, &p.FLSID, &p.Class, &p.Map, &p.FactionID, &p.OnlineStatus); err != nil {
+		if err := rows.Scan(&p.ID, &p.AccountID, &p.Name, &p.ControllerID, &p.FLSID, &p.Class, &p.Map, &p.FactionID, &p.OnlineStatus, &p.DiscordUserID, &p.DiscordAvatar); err != nil {
 			continue
 		}
 		p.Class = shortClass(p.Class)
@@ -1591,6 +1594,82 @@ func cmdGiveCurrency(playerID int64, amount int64) Cmd {
 			"Added %d Solaris to player %d — new balance %d",
 			amount, playerID, balance)}
 	}
+}
+
+// cmdGiveCurrencyCtx is the context-aware, injectable form of cmdGiveCurrency,
+// used by the Discord bot and any caller that needs explicit ctx/db injection
+// for testability. It routes through the same audit-logged DB function.
+func cmdGiveCurrencyCtx(ctx context.Context, db *pgxpool.Pool, controllerID, amount int64) (int64, error) {
+	if db == nil {
+		return 0, fmt.Errorf("database not connected")
+	}
+	if controllerID == 0 {
+		return 0, fmt.Errorf("player controller ID required")
+	}
+	_, err := db.Exec(ctx, `
+		SELECT dune.adjust_player_virtual_currency_balance(
+			$1::bigint,
+			dune.get_solaris_id(),
+			$2::bigint
+		)`, controllerID, amount)
+	if err != nil {
+		return 0, fmt.Errorf("adjust currency player=%d: %w", controllerID, err)
+	}
+	var balance int64
+	if err := db.QueryRow(ctx, `
+		SELECT balance FROM dune.player_virtual_currency_balances
+		WHERE player_controller_id = $1::bigint AND currency_id = dune.get_solaris_id()`,
+		controllerID).Scan(&balance); err != nil {
+		return 0, fmt.Errorf("read new balance player=%d: %w", controllerID, err)
+	}
+	return balance, nil
+}
+
+// cmdFindPlayersByName looks up player characters whose character_name contains
+// the given substring (case-insensitive). Returns all matches; the caller is
+// responsible for handling 0 (not found) or >1 (ambiguous) results.
+// The GM identity account is excluded, matching the cmdFetchPlayers convention.
+func cmdFindPlayersByName(ctx context.Context, db *pgxpool.Pool, name string) ([]playerInfo, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+	rows, err := db.Query(ctx, `
+		SELECT a.id,
+		       COALESCE(a.owner_account_id, 0),
+		       COALESCE(ps.character_name, ''),
+		       COALESCE(ps.player_controller_id, 0),
+		       COALESCE(ac."user", ''),
+		       a.class,
+		       COALESCE(a.map, ''),
+		       COALESCE(af.faction_id, 0),
+		       COALESCE(ps.online_status::text, 'Offline')
+		FROM dune.actors a
+		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
+		LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
+		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id`+factionByAccountJoin+`
+		WHERE ps.character_name ILIKE '%' || $1 || '%'
+		  AND a.class ILIKE '%PlayerCharacter%'
+		  AND a.owner_account_id <> $2
+		ORDER BY a.id`,
+		name, gmIdentityAccountID)
+	if err != nil {
+		return nil, fmt.Errorf("find players by name %q: %w", name, err)
+	}
+	defer rows.Close()
+
+	var players []playerInfo
+	for rows.Next() {
+		var p playerInfo
+		if err := rows.Scan(&p.ID, &p.AccountID, &p.Name, &p.ControllerID, &p.FLSID, &p.Class, &p.Map, &p.FactionID, &p.OnlineStatus); err != nil {
+			return nil, fmt.Errorf("scan player row: %w", err)
+		}
+		p.Class = shortClass(p.Class)
+		players = append(players, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("find players by name %q rows: %w", name, err)
+	}
+	return players, nil
 }
 
 func cmdGiveFactionRep(actorID int64, factionID int16, delta int32) Cmd {
@@ -5514,6 +5593,32 @@ var liveMapKeys = map[string]int64{
 	"DeepDesert": 8,
 }
 
+// cmdFetchDistinctMaps returns all distinct non-empty map names from dune.actors,
+// sorted alphabetically.
+func cmdFetchDistinctMaps(ctx context.Context, db *pgxpool.Pool) ([]string, error) {
+	rows, err := db.Query(ctx, `
+		SELECT DISTINCT COALESCE(map, '')
+		FROM dune.actors
+		WHERE map IS NOT NULL AND map != ''
+		ORDER BY 1`)
+	if err != nil {
+		return nil, fmt.Errorf("fetch distinct maps: %w", err)
+	}
+	defer rows.Close()
+	var maps []string
+	for rows.Next() {
+		var m string
+		if err := rows.Scan(&m); err != nil {
+			return nil, fmt.Errorf("scan map: %w", err)
+		}
+		maps = append(maps, m)
+	}
+	if maps == nil {
+		maps = []string{}
+	}
+	return maps, nil
+}
+
 // validateMapKey rejects any map the Live Map does not support, so caller input
 // can never reach the query as an unexpected value.
 func validateMapKey(key string) error {
@@ -6240,4 +6345,251 @@ func cmdRefillWaterOffline(ctx context.Context, actorID int64) (int64, error) {
 		return 0, fmt.Errorf("refill water offline actor %d: %w", actorID, err)
 	}
 	return tag.RowsAffected(), nil
+}
+
+// ── Discord link table ────────────────────────────────────────────────────────
+
+// cmdEnsureDiscordLinksTable creates the discord_links table if it doesn't
+// exist. Called once at bot startup; safe to call concurrently.
+func cmdEnsureDiscordLinksTable(ctx context.Context, db *pgxpool.Pool) error {
+	_, err := db.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS dune.discord_links (
+			discord_user_id TEXT        PRIMARY KEY,
+			account_id      BIGINT      NOT NULL,
+			character_name  TEXT        NOT NULL,
+			avatar_url      TEXT        NOT NULL DEFAULT '',
+			registered_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+		)`)
+	if err != nil {
+		return fmt.Errorf("ensure discord_links table: %w", err)
+	}
+	// Add avatar_url to existing tables that were created before this column existed.
+	_, _ = db.Exec(ctx, `
+		ALTER TABLE dune.discord_links
+		ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT ''`)
+	return nil
+}
+
+// cmdRegisterDiscordLink upserts a Discord user → in-game character mapping.
+func cmdRegisterDiscordLink(ctx context.Context, db *pgxpool.Pool, discordUserID string, accountID int64, charName, avatarURL string) error {
+	_, err := db.Exec(ctx, `
+		INSERT INTO dune.discord_links (discord_user_id, account_id, character_name, avatar_url)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (discord_user_id) DO UPDATE
+		  SET account_id     = EXCLUDED.account_id,
+		      character_name = EXCLUDED.character_name,
+		      avatar_url     = EXCLUDED.avatar_url,
+		      registered_at  = now()`,
+		discordUserID, accountID, charName, avatarURL)
+	if err != nil {
+		return fmt.Errorf("register discord link %s: %w", discordUserID, err)
+	}
+	return nil
+}
+
+// cmdGetDiscordLink returns the (accountID, charName) for the given Discord
+// user. Returns (0, "", nil) when no row exists.
+func cmdGetDiscordLink(ctx context.Context, db *pgxpool.Pool, discordUserID string) (int64, string, error) {
+	var accountID int64
+	var charName string
+	err := db.QueryRow(ctx, `
+		SELECT account_id, character_name
+		FROM dune.discord_links
+		WHERE discord_user_id = $1`, discordUserID).Scan(&accountID, &charName)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, "", nil
+	}
+	if err != nil {
+		return 0, "", fmt.Errorf("get discord link %s: %w", discordUserID, err)
+	}
+	return accountID, charName, nil
+}
+
+// cmdDeleteDiscordLink removes the link for the given Discord user. Returns
+// true if a row was deleted, false if none was found.
+func cmdDeleteDiscordLink(ctx context.Context, db *pgxpool.Pool, discordUserID string) (bool, error) {
+	tag, err := db.Exec(ctx, `
+		DELETE FROM dune.discord_links WHERE discord_user_id = $1`, discordUserID)
+	if err != nil {
+		return false, fmt.Errorf("delete discord link %s: %w", discordUserID, err)
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// cmdFetchPlayerCurrencyCtx returns all currency balances for a single player
+// identified by their player_controller_id.
+func cmdFetchPlayerCurrencyCtx(ctx context.Context, db *pgxpool.Pool, controllerID int64) ([]currencyRow, error) {
+	rows, err := db.Query(ctx, `
+		SELECT player_controller_id, currency_id, balance
+		FROM dune.player_virtual_currency_balances
+		WHERE player_controller_id = $1
+		ORDER BY currency_id`, controllerID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch currency for controller %d: %w", controllerID, err)
+	}
+	defer rows.Close()
+	var out []currencyRow
+	for rows.Next() {
+		var r currencyRow
+		if err := rows.Scan(&r.PlayerID, &r.CurrencyID, &r.Balance); err != nil {
+			return nil, fmt.Errorf("scan currency row: %w", err)
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// cmdFetchPlayerInventoryCtx returns the inventory items for a single player
+// actor (actor_id = playerInfo.ID).
+func cmdFetchPlayerInventoryCtx(ctx context.Context, db *pgxpool.Pool, actorID int64) ([]itemInfo, error) {
+	rows, err := db.Query(ctx, `
+		SELECT i.id, i.template_id, i.stack_size, i.quality_level,
+		       COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'CurrentDurability'), 'N/A'),
+		       COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'MaxDurability'), 'N/A')
+		FROM dune.items i
+		JOIN dune.inventories inv ON i.inventory_id = inv.id
+		WHERE inv.actor_id = $1::bigint
+		ORDER BY i.template_id`, actorID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch inventory for actor %d: %w", actorID, err)
+	}
+	defer rows.Close()
+	var items []itemInfo
+	for rows.Next() {
+		var it itemInfo
+		if err := rows.Scan(&it.ID, &it.TemplateID, &it.StackSize, &it.Quality, &it.Durability, &it.MaxDurability); err != nil {
+			return nil, fmt.Errorf("scan inventory row: %w", err)
+		}
+		it.Name = itemData.Names[strings.ToLower(it.TemplateID)]
+		items = append(items, it)
+	}
+	return items, rows.Err()
+}
+
+// ── events engine DB helpers ──────────────────────────────────────────────────
+
+// cmdFetchEventPlayers returns all online players (excluding the GM identity)
+// with the IDs the events engine needs: AccountID, player_controller_id
+// (ControllerID), player_pawn_id (ActorID), and character name.
+func cmdFetchEventPlayers(ctx context.Context, pool *pgxpool.Pool) ([]eventPlayer, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT ps.account_id,
+		       COALESCE(ps.player_controller_id, 0),
+		       ps.player_pawn_id,
+		       COALESCE(ps.character_name, '')
+		FROM dune.player_state ps
+		WHERE ps.online_status = 'Online'
+		  AND ps.player_pawn_id IS NOT NULL
+		  AND ps.account_id <> $1`, gmIdentityAccountID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch event players: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]eventPlayer, 0)
+	for rows.Next() {
+		var p eventPlayer
+		if err := rows.Scan(&p.AccountID, &p.ControllerID, &p.ActorID, &p.Name); err != nil {
+			return nil, fmt.Errorf("scan event player: %w", err)
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// cmdFetchOnlinePositions returns a map of account_id → position for all
+// provided account IDs that are currently online and have a live actor.
+func cmdFetchOnlinePositions(ctx context.Context, pool *pgxpool.Pool, accountIDs []int64) (map[int64]playerPosition, error) {
+	if len(accountIDs) == 0 {
+		return map[int64]playerPosition{}, nil
+	}
+	rows, err := pool.Query(ctx, `
+		SELECT ps.account_id,
+		       COALESCE(a.partition_id, 0),
+		       COALESCE(a.map, ''),
+		       ((a.transform).location).x,
+		       ((a.transform).location).y,
+		       ((a.transform).location).z
+		FROM dune.player_state ps
+		JOIN dune.actors a ON a.id = ps.player_pawn_id
+		WHERE ps.online_status = 'Online'
+		  AND ps.player_pawn_id IS NOT NULL
+		  AND ps.account_id = ANY($1)`, accountIDs)
+	if err != nil {
+		return nil, fmt.Errorf("fetch online positions: %w", err)
+	}
+	defer rows.Close()
+
+	out := make(map[int64]playerPosition)
+	for rows.Next() {
+		var accountID int64
+		var pos playerPosition
+		if err := rows.Scan(&accountID, &pos.PartitionID, &pos.Map, &pos.X, &pos.Y, &pos.Z); err != nil {
+			return nil, fmt.Errorf("scan position: %w", err)
+		}
+		out[accountID] = pos
+	}
+	return out, rows.Err()
+}
+
+// cmdFetchCharacterLevel returns the character level for the given account,
+// derived from FLevelComponent.TotalXPEarned → xpToLevel.
+func cmdFetchCharacterLevel(ctx context.Context, pool *pgxpool.Pool, accountID int64) (int, error) {
+	var charXP int64
+	err := pool.QueryRow(ctx, `
+		SELECT COALESCE((fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint, 0)
+		FROM dune.fgl_entities fe
+		JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
+		JOIN dune.player_state ps ON ps.player_pawn_id = afe.actor_id
+		WHERE afe.slot_name = 'DuneCharacter' AND ps.account_id = $1`, accountID).Scan(&charXP)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("fetch character level for account %d: %w", accountID, err)
+	}
+	return xpToLevel(charXP), nil
+}
+
+// cmdFetchPlayerTagsForAccount is the injectable (ctx+pool) form of
+// cmdGetPlayerTags, used by the events engine dependency injection.
+func cmdFetchPlayerTagsForAccount(ctx context.Context, pool *pgxpool.Pool, accountID int64) ([]string, error) {
+	rows, err := pool.Query(ctx,
+		`SELECT tag FROM dune.player_tags WHERE account_id = $1 ORDER BY tag`, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch player tags for account %d: %w", accountID, err)
+	}
+	defer rows.Close()
+
+	var tags []string
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, fmt.Errorf("scan player tag: %w", err)
+		}
+		tags = append(tags, tag)
+	}
+	return tags, rows.Err()
+}
+
+// cmdGiveItemCtx is the injectable form used by the events engine.
+// ctx and pool are accepted for API uniformity but are not forwarded —
+// runGiveItem always uses globalDB. Callers must ensure globalDB is non-nil.
+func cmdGiveItemCtx(_ context.Context, _ *pgxpool.Pool, actorID int64, template string, qty, quality int64) error {
+	msg := runGiveItem(actorID, template, qty, quality)
+	if m, ok := msg.(msgMutate); ok && m.err != nil {
+		return m.err
+	}
+	return nil
+}
+
+// cmdAwardXPCtx is the injectable form used by the events engine.
+// ctx and pool are accepted for API uniformity but are not forwarded —
+// the underlying Cmd always uses globalDB. Callers must ensure globalDB is non-nil.
+func cmdAwardXPCtx(_ context.Context, _ *pgxpool.Pool, playerID int64, track string, amount int32) error {
+	msg := cmdAwardXP(playerID, track, amount)()
+	if m, ok := msg.(msgMutate); ok && m.err != nil {
+		return m.err
+	}
+	return nil
 }

@@ -119,15 +119,20 @@ func connectAll() error {
 		return fmt.Errorf("DB connect: %w", err)
 	}
 	globalDB = pool
+	ensureDBSchema(pool)
+	return nil
+}
 
-	// Best-effort: ensure the GM/Server chat persona exists for admin messaging
-	// (whisper, map announce). Idempotent (ON CONFLICT DO NOTHING); a failure here
-	// must never block startup or reconnect, so it is logged and swallowed.
-	if err := cmdEnsureGMIdentity(context.Background()); err != nil {
+// ensureDBSchema runs best-effort idempotent schema init after DB connect.
+// Failures are logged and swallowed — they must never block startup.
+func ensureDBSchema(pool *pgxpool.Pool) {
+	ctx := context.Background()
+	if err := cmdEnsureGMIdentity(ctx); err != nil {
 		log.Printf("connectAll: ensure GM identity: %v", err)
 	}
-
-	return nil
+	if err := cmdEnsureDiscordLinksTable(ctx, pool); err != nil {
+		log.Printf("connectAll: ensure discord_links table: %v", err)
+	}
 }
 
 // cmdConnect wraps connectAll in the legacy Msg return type.

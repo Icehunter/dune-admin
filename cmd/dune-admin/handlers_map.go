@@ -6,6 +6,22 @@ import (
 	"net/http"
 )
 
+// handleListMaps returns the distinct map names present in dune.actors, for use
+// as a dropdown in the event editor and other forms.
+func handleListMaps(w http.ResponseWriter, r *http.Request) {
+	if globalDB == nil {
+		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
+		return
+	}
+	maps, err := cmdFetchDistinctMaps(r.Context(), globalDB)
+	if err != nil {
+		log.Printf("handleListMaps: %v", err)
+		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, maps)
+}
+
 // handleGetMapMarkers returns the Live Map markers (players + vehicles, plus
 // bases in Phase 2b) for the requested map. The ?map= input is validated before
 // the DB is touched, so bad input fails fast with 400 and a valid map with no DB

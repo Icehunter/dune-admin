@@ -6,6 +6,7 @@ import { api } from '../../api/client'
 import type { Player } from '../../api/client'
 import { Icon, SideNav } from '../../dune-ui'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
+import { DiscordBadge } from './components/DiscordBadge'
 import { PlayerDetailPanel } from './components/PlayerDetailPanel'
 import { ServerDashboard } from './components/ServerDashboard'
 import { StatusDot } from './components/StatusDot'
@@ -75,23 +76,37 @@ export const PlayersTab: React.FC<PlayersTabProps> = ({ isActive = false }) => {
   const navItems = useMemo(() => [
     {
       key: OVERVIEW_KEY,
-      label: (
-        <span className="flex items-center gap-2 min-w-0">
-          <Icon name="layout-dashboard" />
-          <span className="truncate">{t('players.dashboard.navLabel')}</span>
-        </span>
-      ),
+      icon: <Icon name="layout-dashboard" />,
+      label: t('players.dashboard.navLabel'),
     },
-    ...filtered.map((p) => ({
-      key: String(p.id),
-      label: (
-        <span className="flex items-center gap-2 min-w-0">
-          <StatusDot status={p.online_status} />
-          <span className="truncate">{p.name}</span>
-        </span>
-      ),
-      sublabel: `${p.class} · ${p.map}`,
-    })),
+    ...filtered.map((p) => {
+      const statusDotColor = p.online_status === 'Online'
+        ? 'bg-success'
+        : p.online_status === 'LoggingOut'
+          ? 'bg-warning'
+          : 'bg-muted'
+      return {
+        key: String(p.id),
+        icon: (active: boolean) => (
+          <div className="relative w-8 h-8 shrink-0">
+            <div className="w-full h-full rounded-4xl overflow-hidden bg-surface-secondary flex items-center justify-center [transform:translateZ(0)]">
+              {p.discord_avatar
+                ? <img src={p.discord_avatar} alt={p.name} className="w-full h-full object-cover" />
+                : <Icon name="user" className="size-3.5 text-muted" />}
+            </div>
+            <span
+              className={`absolute bottom-0 right-0 z-[1] size-3 rounded-full border-2 ${statusDotColor}`}
+              style={{ borderColor: active ? 'var(--accent)' : 'var(--surface)' }}
+            />
+          </div>
+        ),
+        label: p.name,
+        sublabel: p.map,
+        hint: (active: boolean) => (
+          <DiscordBadge discordUserId={p.discord_user_id} color={active ? 'white' : '#5865F2'} />
+        ),
+      }
+    }),
   ], [filtered, t])
 
   return (

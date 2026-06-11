@@ -179,7 +179,7 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
         }}
       />
 
-      <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && setOpen(false)}>
+      <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && setOpen(false)}>
         <Modal.Container size="lg" scroll="outside">
           <Modal.Dialog className="max-h-[85vh] flex flex-col">
             <Modal.CloseTrigger />

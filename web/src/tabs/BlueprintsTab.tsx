@@ -220,7 +220,7 @@ function ImportModal({ open, onClose, onSuccess }: ImportModalProps) {
   }
 
   return (
-    <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && onClose()}>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && onClose()}>
       <Modal.Container>
         <Modal.Dialog>
           <Modal.CloseTrigger />

@@ -58,7 +58,7 @@ export const BotControlPanel: React.FC<BotControlPanelProps> = ({ open, onClose 
   }, [open, loadStatus, loadConfig])
 
   return (
-    <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && onClose()}>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && onClose()}>
       <Modal.Container size="cover" scroll="outside">
         <Modal.Dialog className="h-[92vh] flex flex-col dialog-surface-alt">
           <Modal.CloseTrigger />

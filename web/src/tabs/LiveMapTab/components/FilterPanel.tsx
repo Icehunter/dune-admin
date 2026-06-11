@@ -72,8 +72,8 @@ export function FilterPanel({
     const totalCount = [...items.values()].reduce((s, v) => s + v.count, 0)
 
     return (
-      <Panel className="!gap-0 !p-0">
-        <div className="flex items-center gap-1 px-2 py-1.5">
+      <div className="rounded-[var(--radius)] border border-border bg-surface">
+        <div className="flex items-center gap-2 px-3 py-2">
           <Checkbox
             isSelected={allOn}
             isIndeterminate={!allOn && anyOn}
@@ -98,13 +98,13 @@ export function FilterPanel({
           </button>
         </div>
         {open && (
-          <div className="border-t border-border pb-1">
+          <div className="border-t border-border px-1 py-1.5">
             {filteredItems.map(([key, { label, count }]) => (
               <TypeRow key={key} typeKey={key} label={label} count={count} category={group.id} />
             ))}
           </div>
         )}
-      </Panel>
+      </div>
     )
   }
 

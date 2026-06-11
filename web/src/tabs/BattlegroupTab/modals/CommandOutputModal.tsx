@@ -17,7 +17,7 @@ export const CommandOutputModal: React.FC<CommandOutputModalProps> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <Modal.Backdrop isOpen={runningCmd !== null} onOpenChange={(v) => { if (!v && cmdDone) onClose() }}>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={runningCmd !== null} onOpenChange={(v) => { if (!v && cmdDone) onClose() }}>
       <Modal.Container>
         <Modal.Dialog>
           <Modal.Header><Modal.Heading>{runningCmd ? t(`battlegroup.actions.${runningCmd}` as never) : ''}</Modal.Heading></Modal.Header>

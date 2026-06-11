@@ -324,7 +324,7 @@ export const ManagePacksModal: React.FC<ManagePacksModalProps> = ({
   if (!isOpen) return null
 
   return (
-    <Modal.Backdrop isOpen onOpenChange={(v) => { if (!v) onClose() }}>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen onOpenChange={(v) => { if (!v) onClose() }}>
       <Modal.Container size="cover" scroll="outside">
         <Modal.Dialog>
           <Modal.CloseTrigger />

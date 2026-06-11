@@ -43,7 +43,7 @@ export const SideNav = <K extends string>({
   return (
     <div className={`${w} shrink-0 flex flex-col rounded-[var(--radius)] bg-surface border border-border/60 dune-lift overflow-hidden`}>
       {(title || titleAction) && (
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 shrink-0 bg-gradient-to-b from-(--surface-secondary) to-transparent">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 shrink-0">
           {title && <span className="text-xs font-semibold uppercase tracking-widest text-accent">{title}</span>}
           {titleAction}
         </div>

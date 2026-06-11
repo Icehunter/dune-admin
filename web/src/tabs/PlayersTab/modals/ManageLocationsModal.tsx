@@ -80,7 +80,7 @@ export const ManageLocationsModal: React.FC<ManageLocationsModalProps> = ({ onCl
   }
 
   return (
-    <Modal.Backdrop isOpen onOpenChange={(v) => { if (!v) onClose(locations) }}>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen onOpenChange={(v) => { if (!v) onClose(locations) }}>
       <Modal.Container size="cover" scroll="outside">
         <Modal.Dialog>
           <Modal.CloseTrigger />

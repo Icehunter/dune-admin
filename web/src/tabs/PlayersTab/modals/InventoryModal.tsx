@@ -139,7 +139,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, on
   }
 
   return (
-    <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && onClose()}>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && onClose()}>
       <Modal.Container size="cover" scroll="outside">
         <Modal.Dialog>
           <Modal.CloseTrigger />

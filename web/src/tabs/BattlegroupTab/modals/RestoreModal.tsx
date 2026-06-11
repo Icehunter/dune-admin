@@ -41,7 +41,7 @@ export const RestoreModal: React.FC<RestoreModalProps> = ({
   }
 
   return (
-    <Modal.Backdrop isOpen={open} onOpenChange={(v) => { if (!v && !restoreRunning) onClose() }}>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => { if (!v && !restoreRunning) onClose() }}>
       <Modal.Container>
         <Modal.Dialog className="w-[640px] max-w-[90vw]">
           <Modal.CloseTrigger />

@@ -207,7 +207,7 @@ export const BattlegroupTab: React.FC<BattlegroupTabProps> = ({ isActive = false
         <div className="flex flex-wrap gap-3 shrink-0">
 
           {/* Generic broadcast */}
-          <div className="flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-3">
+          <div className="dune-lift flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-4">
             <div className="text-xs font-semibold uppercase tracking-widest text-accent">{t('battlegroup.genericMessage')}</div>
             <TextField aria-label={t('battlegroup.titlePlaceholder')}>
               <Input placeholder={t('battlegroup.titlePlaceholder')} value={broadcastTitle} onChange={(e) => setBroadcastTitle(e.target.value)} />
@@ -258,7 +258,7 @@ export const BattlegroupTab: React.FC<BattlegroupTabProps> = ({ isActive = false
           </div>
 
           {/* Shutdown broadcast */}
-          <div className="flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-3">
+          <div className="dune-lift flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-4">
             <div className="text-xs font-semibold uppercase tracking-widest text-accent">{t('battlegroup.shutdownBroadcast')}</div>
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted shrink-0">{t('battlegroup.shutdownType')}</label>

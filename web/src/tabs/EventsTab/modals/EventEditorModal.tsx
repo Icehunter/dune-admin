@@ -273,7 +273,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const rowCard = 'flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius)] text-xs bg-surface border border-border'
 
   return (
-    <Modal.Backdrop isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
       <Modal.Container size="cover" scroll="outside">
         <Modal.Dialog className="max-h-[90vh] flex flex-col">
           <Modal.CloseTrigger />

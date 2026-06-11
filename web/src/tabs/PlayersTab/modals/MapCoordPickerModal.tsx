@@ -69,7 +69,7 @@ export const MapCoordPickerModal: React.FC<MapCoordPickerModalProps> = ({ onPick
   }
 
   return (
-    <Modal.Backdrop isOpen onOpenChange={(v) => { if (!v) onClose() }}>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen onOpenChange={(v) => { if (!v) onClose() }}>
       <Modal.Container size="cover" scroll="outside">
         <Modal.Dialog style={{ height: '85vh', display: 'flex', flexDirection: 'column' }}>
           <Modal.CloseTrigger />

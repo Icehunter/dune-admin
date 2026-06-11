@@ -21,7 +21,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <AlertDialog.Backdrop isOpen={open} onOpenChange={(v) => !v && onCancel()}>
+    <AlertDialog.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && onCancel()}>
       <AlertDialog.Container size="sm">
         <AlertDialog.Dialog>
           <AlertDialog.Header>

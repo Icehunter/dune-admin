@@ -127,19 +127,19 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   const { t, i18n } = useTranslation()
   const [reconnecting, setReconnecting] = useState(false)
 
-  const DB_SECTIONS: { key: DbSection, label: string }[] = [
-    { key: 'backups', label: t('database.sections.backups') },
-    { key: 'tables', label: t('database.sections.tables') },
-    { key: 'describe', label: t('database.sections.describe') },
-    { key: 'sample', label: t('database.sections.sample') },
-    { key: 'search', label: t('database.sections.search') },
-    { key: 'sql', label: t('database.sections.sql') },
+  const DB_SECTIONS: { key: DbSection, label: string, icon: string }[] = [
+    { key: 'backups', label: t('database.sections.backups'), icon: 'archive' },
+    { key: 'tables', label: t('database.sections.tables'), icon: 'table' },
+    { key: 'describe', label: t('database.sections.describe'), icon: 'file-text' },
+    { key: 'sample', label: t('database.sections.sample'), icon: 'flask-conical' },
+    { key: 'search', label: t('database.sections.search'), icon: 'search' },
+    { key: 'sql', label: t('database.sections.sql'), icon: 'terminal' },
   ]
 
-  const WELCOME_SECTIONS: { key: WelcomeSection, label: string }[] = [
-    { key: 'config', label: t('welcome.sections.config') },
-    { key: 'packages', label: t('welcome.sections.packages') },
-    { key: 'grants', label: t('welcome.sections.grants') },
+  const WELCOME_SECTIONS: { key: WelcomeSection, label: string, icon: string }[] = [
+    { key: 'config', label: t('welcome.sections.config'), icon: 'sliders-horizontal' },
+    { key: 'packages', label: t('welcome.sections.packages'), icon: 'package' },
+    { key: 'grants', label: t('welcome.sections.grants'), icon: 'gift' },
   ]
 
   // Re-establish backend connections (DB + control plane) without a service
@@ -305,6 +305,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                   navigate('/database')
                 }}
               >
+                <Sidebar.MenuIcon><Icon name={s.icon} /></Sidebar.MenuIcon>
                 <Sidebar.MenuLabel>{s.label}</Sidebar.MenuLabel>
               </Sidebar.MenuItem>
             ))}
@@ -330,6 +331,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                   navigate('/welcome')
                 }}
               >
+                <Sidebar.MenuIcon><Icon name={s.icon} /></Sidebar.MenuIcon>
                 <Sidebar.MenuLabel>{s.label}</Sidebar.MenuLabel>
               </Sidebar.MenuItem>
             ))}
@@ -517,7 +519,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
       </AppLayout>
 
       {/* Settings modal — structure mirrors BotControlPanel */}
-      <Modal.Backdrop isOpen={showBackendConfig} onOpenChange={(v) => !v && setShowBackendConfig(false)}>
+      <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={showBackendConfig} onOpenChange={(v) => !v && setShowBackendConfig(false)}>
         <Modal.Container size="cover" scroll="outside">
           <Modal.Dialog className="h-[92vh] flex flex-col">
             <Modal.CloseTrigger />
@@ -632,7 +634,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
 
       {/* Update-available prompt — opened from the navbar release widget (#129).
           Reuses the backend update check for the release-notes link + Continue/Cancel. */}
-      <Modal.Backdrop isOpen={showUpdateModal} onOpenChange={(v) => !v && setShowUpdateModal(false)}>
+      <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={showUpdateModal} onOpenChange={(v) => !v && setShowUpdateModal(false)}>
         <Modal.Container size="sm">
           <Modal.Dialog>
             <Modal.CloseTrigger />

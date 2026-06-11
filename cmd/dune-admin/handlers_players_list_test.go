@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TestHandleGetPlayers_NilDB verifies the handler returns 503 when globalDB is nil.
+// TestHandleGetPlayers_NilDB verifies the handler returns 500 when globalDB is nil.
 func TestHandleGetPlayers_NilDB(t *testing.T) {
 	orig := globalDB
 	globalDB = nil

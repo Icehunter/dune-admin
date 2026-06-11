@@ -81,10 +81,10 @@ func splitRoleIDs(s string) []string {
 // discordMember represents the invoker of a Discord slash command, extracted
 // from discordgo types by the thin session adapter in discord.go.
 type discordMember struct {
-	UserID       string
-	AvatarHash   string   // Discord avatar hash; empty when user has no custom avatar
-	Roles        []string // list of role IDs the member holds
-	IsGuildOwner bool     // true when the member has the ADMINISTRATOR permission bit
+	UserID          string
+	AvatarHash      string   // Discord avatar hash; empty when user has no custom avatar
+	Roles           []string // list of role IDs the member holds
+	IsAdministrator bool     // true when the member has the ADMINISTRATOR permission bit
 }
 
 // discordInteraction is the parsed representation of a Discord slash command
@@ -159,7 +159,7 @@ func authorizeDiscord(guildID string, member discordMember, required discordTier
 	if guildID != cfg.GuildID {
 		return false
 	}
-	if member.IsGuildOwner {
+	if member.IsAdministrator {
 		return true
 	}
 	return memberTier(member, cfg) >= required

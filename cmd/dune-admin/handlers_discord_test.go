@@ -45,14 +45,14 @@ func TestAuthorizeDiscord(t *testing.T) {
 		{
 			name:     "guild owner always allowed for admin command",
 			guildID:  "guild123",
-			member:   discordMember{UserID: "owner", Roles: nil, IsGuildOwner: true},
+			member:   discordMember{UserID: "owner", Roles: nil, IsAdministrator: true},
 			required: tierAdmin,
 			want:     true,
 		},
 		{
 			name:     "guild owner allowed for viewer command",
 			guildID:  "guild123",
-			member:   discordMember{UserID: "owner", IsGuildOwner: true},
+			member:   discordMember{UserID: "owner", IsAdministrator: true},
 			required: tierViewer,
 			want:     true,
 		},
@@ -270,7 +270,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 			name: "unknown command returns ephemeral error",
 			interaction: discordInteraction{
 				GuildID: "guild123",
-				Member:  discordMember{UserID: "owner", IsGuildOwner: true},
+				Member:  discordMember{UserID: "owner", IsAdministrator: true},
 				Command: "nonexistent",
 			},
 			deps:          makeDeps("", nil, nil, nil, 0, nil),

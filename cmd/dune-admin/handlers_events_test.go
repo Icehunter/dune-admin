@@ -238,6 +238,19 @@ func TestHandleUpdateEvent_BadID(t *testing.T) {
 	}
 }
 
+func TestHandleUpdateEvent_MissingType(t *testing.T) {
+	s := setupEventStore(t)
+	def := mustCreateEvent(t, s, "original", eventTypeZoneRace)
+	body, _ := json.Marshal(map[string]any{"name": "updated"})
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/events/1", bytes.NewReader(body))
+	req.SetPathValue("id", itoa(def.ID))
+	rec := httptest.NewRecorder()
+	handleUpdateEvent(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400, got %d", rec.Code)
+	}
+}
+
 // ── delete ────────────────────────────────────────────────────────────────────
 
 func TestHandleDeleteEvent_ValidInput(t *testing.T) {

@@ -71,7 +71,7 @@ func handleUpdateEvent(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("name is required"), http.StatusBadRequest)
 		return
 	}
-	if req.Type != "" && !isValidEventType(req.Type) {
+	if !isValidEventType(req.Type) {
 		jsonErr(w, fmt.Errorf("invalid type %q", req.Type), http.StatusBadRequest)
 		return
 	}

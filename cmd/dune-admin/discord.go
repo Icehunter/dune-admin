@@ -120,10 +120,10 @@ func handleDiscordInteraction(s *discordgo.Session, i *discordgo.InteractionCrea
 	}
 
 	member := discordMember{
-		UserID:       i.Member.User.ID,
-		AvatarHash:   i.Member.User.Avatar,
-		Roles:        i.Member.Roles,
-		IsGuildOwner: (i.Member.Permissions & discordgo.PermissionAdministrator) != 0,
+		UserID:          i.Member.User.ID,
+		AvatarHash:      i.Member.User.Avatar,
+		Roles:           i.Member.Roles,
+		IsAdministrator: (i.Member.Permissions & discordgo.PermissionAdministrator) != 0,
 	}
 
 	data := i.ApplicationCommandData()

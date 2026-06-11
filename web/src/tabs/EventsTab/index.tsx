@@ -7,7 +7,7 @@ import type { EventDefinition, EventClaimRecord } from '../../api/client'
 import { DataTable, Icon, PageHeader, Panel, SectionLabel, type Column } from '../../dune-ui'
 import { EventEditorModal } from './modals/EventEditorModal'
 
-type ListKey = 'name' | 'type' | 'enabled' | 'claims' | 'actions'
+type ListKey = 'name' | 'type' | 'enabled' | 'version' | 'actions'
 type ClaimKey = 'account_id' | 'version' | 'status' | 'attempts' | 'claimed_at' | 'last_error'
 
 export const EventsTab: React.FC = () => {
@@ -24,7 +24,7 @@ export const EventsTab: React.FC = () => {
     { key: 'name', label: t('events.columns.name'), minWidth: 200 },
     { key: 'type', label: t('events.columns.type'), width: 120 },
     { key: 'enabled', label: t('events.columns.enabled'), width: 90, sortable: false },
-    { key: 'claims', label: t('events.columns.claims'), width: 80 },
+    { key: 'version', label: t('events.columns.claims'), width: 80 },
     { key: 'actions', label: '', width: 120, sortable: false },
   ]
 
@@ -140,7 +140,7 @@ export const EventsTab: React.FC = () => {
         initialSort={{ column: 'name', direction: 'ascending' }}
         sortValue={(e, k) => {
           if (k === 'enabled') return e.enabled ? 1 : 0
-          if (k === 'actions' || k === 'claims') return ''
+          if (k === 'actions' || k === 'version') return ''
           return (e as unknown as Record<string, string | number>)[k] ?? ''
         }}
         emptyState={<div className="py-8 text-center text-muted">{t('events.noEvents')}</div>}
@@ -171,7 +171,7 @@ export const EventsTab: React.FC = () => {
                   aria-label={t('events.toggleEnabled')}
                 />
               )
-            case 'claims':
+            case 'version':
               return <span className="text-muted font-mono text-xs">{ev.version}</span>
             case 'actions':
               return (

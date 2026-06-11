@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math"
 	"strings"
 	"time"
 )
@@ -495,8 +494,3 @@ func eventsEnabled(cfg appConfig) bool {
 	}
 	return *cfg.EventsEnabled
 }
-
-// Prevent unused import warning from math — math.Sqrt isn't used since we
-// skip the square root in the sphere check, but math is still needed for
-// potential future extensions. We use math.MaxFloat64 as a sentinel.
-var _ = math.MaxFloat64

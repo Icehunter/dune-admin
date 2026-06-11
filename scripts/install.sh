@@ -77,8 +77,14 @@ SKIP_TOOLCHAIN=0
 
 # Patches directory: defaults to ./patches alongside this script. Empty/missing
 # is fine — just means no patches will be applied.
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PATCHES_DIR="${SCRIPT_DIR}/patches"
+# BASH_SOURCE[0] is unset when the script is piped via `curl | bash` (no file
+# on disk), so guard with :- to avoid an unbound-variable error under set -u.
+if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+  SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+else
+  SCRIPT_DIR=""
+fi
+PATCHES_DIR="${SCRIPT_DIR:+${SCRIPT_DIR}/patches}"
 APPLY_PATCHES=1
 
 GO_VERSION="1.26.3"

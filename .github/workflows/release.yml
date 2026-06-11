@@ -72,6 +72,10 @@ jobs:
 
       - name: Build frontend (embeds into binary)
         run: make web
+        env:
+          HEROUI_AUTH_TOKEN: ${{ secrets.HEROUI_AUTH_TOKEN }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_CDN_BASE_URL: ${{ vars.VITE_CDN_BASE_URL }}
 
       - name: Install syft (SBOMs)
         run: |
@@ -83,7 +87,6 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEROUI_AUTH_TOKEN: ${{ secrets.HEROUI_AUTH_TOKEN }}
           # PAT with `repo` scope on Icehunter/homebrew-tap.
           # If unset, the brews publisher will fail; configure before
           # cutting a release that should land in the tap.

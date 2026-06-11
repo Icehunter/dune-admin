@@ -216,10 +216,10 @@
       "body": "La aplicación web se cargó, pero no pudo conectarse al backend de dune-admin. Asegúrate de que el ejecutable de dune-admin esté en ejecución y sea accesible desde este navegador.",
       "hint1": "Asegúrate de que el servicio/ejecutable de dune-admin esté en ejecución en el servidor.",
       "hint2": "Comprueba que la URL del backend anterior sea correcta y accesible (host, puerto, firewall, HTTPS).",
-      "hint3": "¿Detrás de un proxy o en otro host? Configura la URL del backend en Ajustes.",
       "retry": "Reintentar",
       "targetLabel": "Backend configurado",
-      "title": "No se puede conectar con el backend de dune-admin"
+      "title": "No se puede conectar con el backend de dune-admin",
+      "urlLabel": "Reemplazar URL del backend (dejar en blanco para detección automática)"
     }
   },
   "bases": {

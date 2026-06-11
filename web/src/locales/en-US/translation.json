@@ -216,10 +216,10 @@
       "body": "The web app loaded, but it couldn't connect to the dune-admin backend. Make sure the dune-admin executable is running and reachable from this browser.",
       "hint1": "Make sure the dune-admin service/executable is running on the server.",
       "hint2": "Check that the backend URL above is correct and reachable (host, port, firewall, HTTPS).",
-      "hint3": "Behind a proxy or on a different host? Set the backend URL in Settings.",
       "retry": "Retry",
       "targetLabel": "Configured backend",
-      "title": "Can't reach the dune-admin backend"
+      "title": "Can't reach the dune-admin backend",
+      "urlLabel": "Backend URL override (leave blank for same-host auto-detect)"
     }
   },
   "bases": {

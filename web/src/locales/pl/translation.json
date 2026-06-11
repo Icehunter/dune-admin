@@ -216,10 +216,10 @@
       "body": "Aplikacja internetowa załadowała się, ale nie mogła połączyć się z backendem dune-admin. Upewnij się, że plik wykonywalny dune-admin jest uruchomiony i osiągalny z tej przeglądarki.",
       "hint1": "Upewnij się, że usługa/plik wykonywalny dune-admin działa na serwerze.",
       "hint2": "Sprawdź, czy powyższy adres URL backendu jest poprawny i osiągalny (host, port, zapora, HTTPS).",
-      "hint3": "Za proxy lub na innym hoście? Ustaw adres URL backendu w Ustawieniach.",
       "retry": "Ponów",
       "targetLabel": "Skonfigurowany backend",
-      "title": "Nie można połączyć się z backendem dune-admin"
+      "title": "Nie można połączyć się z backendem dune-admin",
+      "urlLabel": "Nadpisanie URL backendu (zostaw puste dla automatycznego wykrywania)"
     }
   },
   "bases": {

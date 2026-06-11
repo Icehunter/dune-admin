@@ -216,10 +216,10 @@
       "body": "Web uygulaması yüklendi ancak dune-admin arka ucuna bağlanamadı. dune-admin yürütülebilir dosyasının çalıştığından ve bu tarayıcıdan erişilebilir olduğundan emin olun.",
       "hint1": "Sunucuda dune-admin hizmetinin/yürütülebilir dosyasının çalıştığından emin olun.",
       "hint2": "Yukarıdaki arka uç URL'sinin doğru ve erişilebilir olduğunu kontrol edin (ana bilgisayar, bağlantı noktası, güvenlik duvarı, HTTPS).",
-      "hint3": "Bir proxy arkasında veya farklı bir ana bilgisayarda mı? Arka uç URL'sini Ayarlar'da belirleyin.",
       "retry": "Yeniden dene",
       "targetLabel": "Yapılandırılan arka uç",
-      "title": "dune-admin arka ucuna ulaşılamıyor"
+      "title": "dune-admin arka ucuna ulaşılamıyor",
+      "urlLabel": "Arka uç URL geçersiz kılma (otomatik algılama için boş bırakın)"
     }
   },
   "bases": {

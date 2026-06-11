@@ -216,10 +216,10 @@
       "body": "网页应用已加载，但无法连接到 dune-admin 后端。请确保 dune-admin 可执行程序正在运行，并且可从此浏览器访问。",
       "hint1": "确保服务器上的 dune-admin 服务/可执行程序正在运行。",
       "hint2": "检查上面的后端 URL 是否正确且可访问（主机、端口、防火墙、HTTPS）。",
-      "hint3": "在代理后面或位于其他主机上？请在设置中配置后端 URL。",
       "retry": "重试",
       "targetLabel": "已配置的后端",
-      "title": "无法连接到 dune-admin 后端"
+      "title": "无法连接到 dune-admin 后端",
+      "urlLabel": "后端 URL 覆盖（留空以自动检测）"
     }
   },
   "bases": {

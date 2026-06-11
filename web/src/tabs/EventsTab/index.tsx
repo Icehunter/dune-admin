@@ -208,7 +208,7 @@ export const EventsTab: React.FC = () => {
                 {t('events.status.reset')}
               </Button>
               <Button size="sm" variant="ghost" onPress={() => setSelectedEvent(null)}>
-                <Icon name="trash" />
+                <Icon name="x" />
               </Button>
             </div>
           </div>

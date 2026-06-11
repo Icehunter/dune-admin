@@ -32,7 +32,7 @@ export const BotStatusCard: React.FC<BotStatusCardProps> = ({ status }) => {
       <Sep />
       <Stat label={t('market.bot.status.listings')}>{status.listing_count?.toLocaleString() ?? '—'}</Stat>
       <Sep />
-      <Stat label={t('market.bot.status.balance')}>{(status.balance ?? 0).toLocaleString()}</Stat>
+      <Stat label={t('market.bot.status.balance')}>{status.balance?.toLocaleString() ?? '—'}</Stat>
       <Sep />
       <Stat label={t('market.bot.status.errors')} danger={status.error_count > 0}>
         {String(status.error_count ?? 0)}

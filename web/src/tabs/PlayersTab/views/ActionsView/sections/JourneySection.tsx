@@ -308,7 +308,7 @@ export function JourneySection({ player }: JourneySectionProps) {
             variant="ghost"
             onPress={() => setSelectedKeys(new Set())}
           >
-            <Icon name="trash" />
+            <Icon name="x" />
           </Button>
         </ActionBar.Suffix>
       </ActionBar>

@@ -8,8 +8,8 @@ type PanelProps = {
 }
 
 export const Panel: React.FC<PanelProps> = ({ children, className = '' }) => (
-  <Widget className="dune-panel">
-    <Widget.Content className={`flex flex-col gap-2 ${className}`}>
+  <Widget className={`dune-panel ${className}`}>
+    <Widget.Content className="flex flex-col gap-2">
       {children}
     </Widget.Content>
   </Widget>

@@ -273,7 +273,7 @@ func applyOneOutcome(ctx context.Context, deps eventDeps, store *eventStore, def
 	if channelID == "" {
 		channelID = loadedConfig.DiscordAnnounceChannelID
 	}
-	if announce && o.AnnounceText != "" && channelID != "" {
+	if announce && o.AnnounceText != "" {
 		if err := deps.announce(channelID, o.AnnounceText); err != nil {
 			log.Printf("events: announce account %d: %v", o.AccountID, err)
 		}

@@ -279,6 +279,9 @@ func registerDiscordCommands(dg *discordgo.Session, guildID string) error {
 // Discord session. Guards the nil session so callers don't need to.
 // Used by the milestone/bridge spec to announce in-game rewards to Discord.
 func postDiscordAnnouncement(channelID, message string) error {
+	if channelID == "" {
+		return nil
+	}
 	if globalDiscordSession == nil {
 		return fmt.Errorf("discord session not active")
 	}

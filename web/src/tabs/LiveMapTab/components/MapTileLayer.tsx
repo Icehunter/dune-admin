@@ -1,13 +1,13 @@
-import { useEffect } from 'react'
+import * as React from 'react'
 import { useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { TILE_CDN } from '../constants'
 import type { MapTileLayerProps } from '../types'
 
-export function MapTileLayer({ tileId }: MapTileLayerProps) {
+export const MapTileLayer: React.FC<MapTileLayerProps> = ({ tileId }) => {
   const map = useMap()
 
-  useEffect(() => {
+  React.useEffect(() => {
     const layer = new L.TileLayer('', {
       tileSize: 512,
       minZoom: -3,

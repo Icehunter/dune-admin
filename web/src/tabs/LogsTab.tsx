@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Chip, Spinner, Switch, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
@@ -7,15 +6,7 @@ import { Icon as IconifyIcon } from '@iconify/react'
 import { api, getWsBase } from '../api/client'
 import type { LogPod, CheatEntry } from '../api/client'
 import { DataTable, Icon, LoadingState, SideNav, type Column } from '../dune-ui'
-
-type ActiveView = 'pod' | 'cheats'
-type NavKey = 'cheats' | `pod:${string}`
-
-type CheatKey = 'time' | 'character' | 'cheat_type'
-
-interface LogsTabProps {
-  control?: string
-}
+import type { ActiveView, NavKey, CheatKey, LogsTabProps } from './types'
 
 export const LogsTab: React.FC<LogsTabProps> = ({ control }) => {
   const { t } = useTranslation()
@@ -32,22 +23,22 @@ export const LogsTab: React.FC<LogsTabProps> = ({ control }) => {
     { key: 'cheat_type', label: t('logs.columns.cheatType'), minWidth: 200 },
   ]
 
-  const [pods, setPods] = useState<LogPod[]>([])
-  const [podsLoading, setPodsLoading] = useState(false)
-  const [selectedPod, setSelectedPod] = useState<LogPod | null>(null)
-  const [connected, setConnected] = useState(false)
-  const [autoScroll, setAutoScroll] = useState(true)
-  const [displayLines, setDisplayLines] = useState<string[]>([])
-  const [activeView, setActiveView] = useState<ActiveView>('pod')
-  const [cheats, setCheats] = useState<CheatEntry[]>([])
-  const [cheatsLoading, setCheatsLoading] = useState(false)
+  const [pods, setPods] = React.useState<LogPod[]>([])
+  const [podsLoading, setPodsLoading] = React.useState(false)
+  const [selectedPod, setSelectedPod] = React.useState<LogPod | null>(null)
+  const [connected, setConnected] = React.useState(false)
+  const [autoScroll, setAutoScroll] = React.useState(true)
+  const [displayLines, setDisplayLines] = React.useState<string[]>([])
+  const [activeView, setActiveView] = React.useState<ActiveView>('pod')
+  const [cheats, setCheats] = React.useState<CheatEntry[]>([])
+  const [cheatsLoading, setCheatsLoading] = React.useState(false)
 
-  const wsRef = useRef<WebSocket | null>(null)
-  const linesRef = useRef<string[]>([])
-  const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const logContainerRef = useRef<HTMLPreElement | null>(null)
+  const wsRef = React.useRef<WebSocket | null>(null)
+  const linesRef = React.useRef<string[]>([])
+  const flushTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
+  const logContainerRef = React.useRef<HTMLPreElement | null>(null)
 
-  const loadPods = useCallback(() => {
+  const loadPods = React.useCallback(() => {
     Promise.resolve()
       .then(() => setPodsLoading(true))
       .then(() => api.logs.pods())
@@ -56,11 +47,11 @@ export const LogsTab: React.FC<LogsTabProps> = ({ control }) => {
       .finally(() => setPodsLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     loadPods()
   }, [loadPods])
 
-  const startFlush = useCallback(() => {
+  const startFlush = React.useCallback(() => {
     if (flushTimerRef.current) return
     flushTimerRef.current = setInterval(() => {
       if (linesRef.current.length > 0) {
@@ -73,20 +64,20 @@ export const LogsTab: React.FC<LogsTabProps> = ({ control }) => {
     }, 200)
   }, [])
 
-  const stopFlush = useCallback(() => {
+  const stopFlush = React.useCallback(() => {
     if (flushTimerRef.current) {
       clearInterval(flushTimerRef.current)
       flushTimerRef.current = null
     }
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (autoScroll && logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
     }
   }, [displayLines, autoScroll])
 
-  const connectPod = useCallback((pod: LogPod) => {
+  const connectPod = React.useCallback((pod: LogPod) => {
     if (wsRef.current) {
       wsRef.current.close()
       wsRef.current = null
@@ -121,7 +112,7 @@ export const LogsTab: React.FC<LogsTabProps> = ({ control }) => {
     }
   }, [startFlush, stopFlush, t])
 
-  const disconnect = useCallback(() => {
+  const disconnect = React.useCallback(() => {
     if (wsRef.current) {
       wsRef.current.close()
       wsRef.current = null
@@ -130,7 +121,7 @@ export const LogsTab: React.FC<LogsTabProps> = ({ control }) => {
     setConnected(false)
   }, [stopFlush])
 
-  useEffect(() => () => {
+  React.useEffect(() => () => {
     disconnect()
   }, [disconnect])
 

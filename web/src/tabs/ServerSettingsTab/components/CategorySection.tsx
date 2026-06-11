@@ -1,33 +1,15 @@
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@heroui/react'
 import type { ServerSetting } from '../../../api/client'
 import { Panel, SectionLabel, Icon } from '../../../dune-ui'
 import { SettingRow } from './SettingRow'
 import { CATEGORY_ICONS, CATEGORY_LABELS, USER_SOURCES } from '../constants'
+import type { CategorySectionProps, CategoryButtonProps, CategoryPanelProps } from './types'
 
-interface CategorySectionProps {
-  title: string
-  description: string
-  categories: [string, ServerSetting[]][]
-  expandedCategory: string | null
-  onToggle: (cat: string) => void
-  searching: boolean
-  pending: Map<string, string>
-  onChange: (item: ServerSetting, value: string) => void
-  onDelete: (item: ServerSetting) => Promise<void>
-  isAmpManaged: (item: ServerSetting) => boolean
-}
-
-function CategoryButton({
+const CategoryButton: React.FC<CategoryButtonProps> = ({
   cat, catItems, isOpen, fullWidth, onToggle,
-}: {
-  cat: string
-  catItems: ServerSetting[]
-  isOpen: boolean
-  fullWidth: boolean
-  onToggle: (cat: string) => void
-}) {
+}) => {
   const { t } = useTranslation()
   const overrideCount = catItems.filter((i) =>
     i.layers.some((l) => USER_SOURCES.has(l.source)),
@@ -67,18 +49,9 @@ function CategoryButton({
   )
 }
 
-function CategoryPanel({
+const CategoryPanel: React.FC<CategoryPanelProps> = ({
   cat, catItems, searching, pending, onChange, onDelete, onToggle, isAmpManaged,
-}: {
-  cat: string
-  catItems: ServerSetting[]
-  searching: boolean
-  pending: Map<string, string>
-  onChange: (item: ServerSetting, value: string) => void
-  onDelete: (item: ServerSetting) => Promise<void>
-  onToggle: (cat: string) => void
-  isAmpManaged: (item: ServerSetting) => boolean
-}) {
+}) => {
   const { t } = useTranslation()
   const pendingKey = (item: ServerSetting) => `${item.section}|${item.key}`
 

@@ -1,15 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Chip, Spinner, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { api } from '../api/client'
 import type { LandsraadOverview, LandsraadTask } from '../api/client'
 import { DataTable, Icon, PageHeader, Panel, SectionLabel, type Column } from '../dune-ui'
+import type { TaskKey, FieldProps } from './types'
 
-type TaskKey = 'board_index' | 'house' | 'goal_amount' | 'completed' | 'sysselraad'
-
-const Field: React.FC<{ label: string, value: string }> = ({ label, value }) => (
+const Field: React.FC<FieldProps> = ({ label, value }) => (
   <div>
     <div className="text-xs text-muted">{label}</div>
     <div className="text-foreground">{value}</div>
@@ -18,10 +16,10 @@ const Field: React.FC<{ label: string, value: string }> = ({ label, value }) => 
 
 export const LandsraadTab: React.FC = () => {
   const { t } = useTranslation()
-  const [data, setData] = useState<LandsraadOverview | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [data, setData] = React.useState<LandsraadOverview | null>(null)
+  const [loading, setLoading] = React.useState(false)
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.landsraad.get())
@@ -31,7 +29,7 @@ export const LandsraadTab: React.FC = () => {
       .finally(() => setLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 

@@ -1,4 +1,4 @@
-import type React from 'react'
+import * as React from 'react'
 import type { WelcomeConfigDiff } from '../types'
 
 export const DiffStatus: React.FC<{ diff: WelcomeConfigDiff }> = ({ diff }) => {

@@ -1,26 +1,21 @@
-import type React from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AreaChart } from '@heroui-pro/react'
-import type { StatSnapshot } from '../../../api/client'
 import { SectionLabel } from '../../../dune-ui'
+import type { XPChartProps } from './types'
 
-interface XPChartProps {
-  data: StatSnapshot[]
-}
-
-function fmtXP(n: number): string {
+const fmtXP = (n: number): string => {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
   return String(n)
 }
 
-function fmtTime(iso: string): string {
+const fmtTime = (iso: string): string => {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 export const XPChart: React.FC<XPChartProps> = ({ data }) => {
   const { t } = useTranslation()
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hidden, setHidden] = React.useState<Set<string>>(new Set())
 
   const LINES = [
     { key: 'char_xp', label: t('players.detail.xpCharXP'), color: '#c9820a' },

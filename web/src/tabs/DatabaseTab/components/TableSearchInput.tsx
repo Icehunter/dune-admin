@@ -1,21 +1,13 @@
-import { useMemo, useState } from 'react'
+import * as React from 'react'
 import { SearchField } from '@heroui/react'
+import type { TableSearchInputProps } from './types'
 
-interface TableSearchInputProps {
-  value: string
-  onChange: (v: string) => void
-  onRun: () => void
-  tableNames: string[]
-  ariaLabel: string
-  placeholder: string
-}
+export const TableSearchInput: React.FC<TableSearchInputProps> = (
+  { value, onChange, onRun, tableNames, ariaLabel, placeholder },
+) => {
+  const [open, setOpen] = React.useState(false)
 
-export function TableSearchInput(
-  { value, onChange, onRun, tableNames, ariaLabel, placeholder }: TableSearchInputProps,
-) {
-  const [open, setOpen] = useState(false)
-
-  const filtered = useMemo(() => {
+  const filtered = React.useMemo(() => {
     const q = value.toLowerCase().trim()
     if (!q) return tableNames.slice(0, 40)
     return tableNames.filter((n) => n.toLowerCase().includes(q))

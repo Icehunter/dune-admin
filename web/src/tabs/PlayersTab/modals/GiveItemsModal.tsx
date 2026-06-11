@@ -1,5 +1,4 @@
-import type React from 'react'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import * as React from 'react'
 import {
   Button, Chip, Header, ListBox, Modal,
   SearchField, Select, Separator, Spinner, TextField, toast,
@@ -10,38 +9,28 @@ import { DataGrid } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
 import { api } from '../../../api/client'
-import type { Player } from '../../../api/client'
 import { ActionBar, Icon, LoadingState, NumberInput } from '../../../dune-ui'
 import { packsSyncAtom } from '../../../data/store'
-
-interface GiveItemsModalProps {
-  player: Player
-  open: boolean
-  onClose: () => void
-}
-
-type SkippedItem = { template: string, reason: string }
-type GiveResult = { given: string[], skipped: SkippedItem[] } | null
-type StagedItem = { template: string, qty: number, quality: number, _key: string }
+import type { GiveItemsModalProps, GiveResult, StagedItem } from './types'
 
 export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, onClose }) => {
   const { t } = useTranslation()
-  const [templates, setTemplates] = useState<{ id: string, name: string }[]>([])
-  const [loading, setLoading] = useState(false)
-  const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState('')
-  const [qty, setQty] = useState(1)
-  const [quality, setQuality] = useState(0)
-  const [staged, setStaged] = useState<StagedItem[]>([])
-  const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<GiveResult>(null)
-  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set())
+  const [templates, setTemplates] = React.useState<{ id: string, name: string }[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [query, setQuery] = React.useState('')
+  const [selected, setSelected] = React.useState('')
+  const [qty, setQty] = React.useState(1)
+  const [quality, setQuality] = React.useState(0)
+  const [staged, setStaged] = React.useState<StagedItem[]>([])
+  const [submitting, setSubmitting] = React.useState(false)
+  const [result, setResult] = React.useState<GiveResult>(null)
+  const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
   const [packsData] = useAtom(packsSyncAtom)
 
-  const keyCounter = useRef(0)
+  const keyCounter = React.useRef(0)
   const nextKey = () => String(keyCounter.current++)
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!open) return
     void Promise.resolve().then(() => {
       setLoading(true)
@@ -59,9 +48,9 @@ export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, on
       .finally(() => setLoading(false))
   }, [open])
 
-  const nameMap = useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
+  const nameMap = React.useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
 
-  const filtered = useMemo(() => {
+  const filtered = React.useMemo(() => {
     if (!query) return []
     const q = query.toLowerCase()
     return templates
@@ -69,7 +58,7 @@ export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, on
       .slice(0, 100)
   }, [templates, query])
 
-  const groupedPacks = useMemo(() => {
+  const groupedPacks = React.useMemo(() => {
     const groups: Record<string, { id: string, name: string, tier: number }[]> = {}
     for (const [id, pack] of Object.entries(packsData.packs)) {
       if (!groups[pack.category]) groups[pack.category] = []
@@ -216,7 +205,7 @@ export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, on
   return (
     <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && onClose()}>
       <Modal.Container size="cover" scroll="outside">
-        <Modal.Dialog>
+        <Modal.Dialog className="p-10">
           <Modal.CloseTrigger />
           <Modal.Header>
             <Modal.Heading className="text-accent">

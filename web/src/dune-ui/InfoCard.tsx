@@ -1,15 +1,6 @@
-import type React from 'react'
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import { KPI, KPIGroup } from '@heroui-pro/react'
-
-type CardProps = { children: ReactNode, className?: string }
-
-type ItemProps = {
-  label: ReactNode
-  value: ReactNode
-  /** Optional explicit value text color (e.g. phase status color). */
-  valueColor?: string
-}
+import type { CardProps, ItemProps } from './types'
 
 /**
  * Bordered, slightly-elevated label/value row card — the "Phase Reconciling

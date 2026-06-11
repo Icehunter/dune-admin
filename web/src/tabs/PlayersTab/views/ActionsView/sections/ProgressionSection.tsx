@@ -1,30 +1,27 @@
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom, useSetAtom } from 'jotai'
 import { Button, Chip, ListBox, Select } from '@heroui/react'
 import { Panel, SectionLabel } from '../../../../../dune-ui'
 import { api } from '../../../../../api/client'
-import type { Player, ProgressionPreset } from '../../../../../api/client'
+import type { ProgressionPreset } from '../../../../../api/client'
 import {
   busyAtom, contractCatalogAtom, contractCatalogLoadedAtom, contractCatalogErrorAtom, nodesLoadedAtom,
 } from '../store'
 import { useRun, useGate } from '../hooks/useActions'
-
-interface ProgressionSectionProps { player: Player }
-
-const TRAINERS = ['BeneGesserit', 'Mentat', 'Planetologist', 'Swordmaster', 'Trooper'] as const
-type TrainerKey = typeof TRAINERS[number]
+import type { ProgressionSectionProps, TrainerKey } from './types'
+import { TRAINERS } from './types'
 
 const MAIN_QUESTS = [
   { id: 'DA_MQ_ANewBeginning', label: '1. A New Beginning', nodes: 132 },
-  { id: 'DA_MQ_AssassinsHandbook', label: '2. Assassin\u2019s Handbook', nodes: 91 },
+  { id: 'DA_MQ_AssassinsHandbook', label: '2. Assassin’s Handbook', nodes: 91 },
   { id: 'DA_MQ_FindTheFremen', label: '3. Find the Fremen', nodes: 46 },
   { id: 'DA_MQ_TheGreatConvention', label: '4. The Great Convention', nodes: 90 },
   { id: 'DA_MQ_TheGreatConventionPt2', label: '5. Great Convention Pt 2', nodes: 109 },
   { id: 'DA_MQ_TheBloodline', label: '6. The Bloodline (standalone)', nodes: 0 },
 ] as const
 
-export function ProgressionSection({ player }: ProgressionSectionProps) {
+export const ProgressionSection: React.FC<ProgressionSectionProps> = ({ player }) => {
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const [contractCatalog, setContractCatalog] = useAtom(contractCatalogAtom(player.id))
@@ -34,14 +31,14 @@ export function ProgressionSection({ player }: ProgressionSectionProps) {
   const run = useRun(player.id)
   const gate = useGate(player.id)
 
-  const [presets, setPresets] = useState<ProgressionPreset[]>([])
-  const [presetsLoaded, setPresetsLoaded] = useState(false)
-  const [selectedTrainer, setSelectedTrainer] = useState<TrainerKey>('BeneGesserit')
-  const [selectedMQ, setSelectedMQ] = useState('DA_MQ_ANewBeginning')
-  const [unlockFaction, setUnlockFaction] = useState('atreides')
-  const [unlockPreset, setUnlockPreset] = useState('ch3_start')
+  const [presets, setPresets] = React.useState<ProgressionPreset[]>([])
+  const [presetsLoaded, setPresetsLoaded] = React.useState(false)
+  const [selectedTrainer, setSelectedTrainer] = React.useState<TrainerKey>('BeneGesserit')
+  const [selectedMQ, setSelectedMQ] = React.useState('DA_MQ_ANewBeginning')
+  const [unlockFaction, setUnlockFaction] = React.useState('atreides')
+  const [unlockPreset, setUnlockPreset] = React.useState('ch3_start')
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (contractCatalogLoaded) return
     api.contracts.list()
       .then((c) => {
@@ -55,7 +52,7 @@ export function ProgressionSection({ player }: ProgressionSectionProps) {
       })
   }, [contractCatalogLoaded, setContractCatalog, setContractCatalogLoaded, setContractCatalogError])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (presetsLoaded) return
     api.progression.presets()
       .then((p) => {

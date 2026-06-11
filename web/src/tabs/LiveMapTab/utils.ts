@@ -3,25 +3,25 @@ import { TYPE_MERGE_KEY, IMG_W, IMG_H, HEATMAP_TO_FILTER } from './constants'
 
 const MAP_BASE = ((import.meta.env.VITE_CDN_BASE_URL as string) ?? 'https://assets.dune.layout.tools').replace(/\/$/, '')
 
-export function mapUrl(path: string): string {
+export const mapUrl = (path: string): string => {
   return `${MAP_BASE}/${path}`
 }
 
-export function filterKey(type: string): string {
+export const filterKey = (type: string): string => {
   return TYPE_MERGE_KEY[type] ?? type
 }
 
-export function heatmapFilterKey(type: string): string {
+export const heatmapFilterKey = (type: string): string => {
   return HEATMAP_TO_FILTER[type] ?? type
 }
 
-export function clamp01(v: number): number {
+export const clamp01 = (v: number): number => {
   if (v < 0) return 0
   if (v > 1) return 1
   return v
 }
 
-export function worldToLatLng(x: number, y: number, cfg: Bounds): [number, number] {
+export const worldToLatLng = (x: number, y: number, cfg: Bounds): [number, number] => {
   const normX = (x - cfg.minX) / (cfg.maxX - cfg.minX)
   const normY = (y - cfg.minY) / (cfg.maxY - cfg.minY)
   const fracX = clamp01(cfg.flipX ? 1 - normX : normX)
@@ -29,7 +29,7 @@ export function worldToLatLng(x: number, y: number, cfg: Bounds): [number, numbe
   return [fracYup * IMG_H, fracX * IMG_W]
 }
 
-export function latLngToWorld(lat: number, lng: number, cfg: Bounds): { x: number, y: number } {
+export const latLngToWorld = (lat: number, lng: number, cfg: Bounds): { x: number, y: number } => {
   const fracX = lng / IMG_W
   const fracYup = lat / IMG_H
   const rawX = cfg.flipX ? 1 - fracX : fracX
@@ -40,7 +40,7 @@ export function latLngToWorld(lat: number, lng: number, cfg: Bounds): { x: numbe
   }
 }
 
-export function solveBounds(pts: CalibPoint[]): Bounds | null {
+export const solveBounds = (pts: CalibPoint[]): Bounds | null => {
   if (pts.length < 2) return null
   const a = pts[0]
   const b = pts[pts.length - 1]
@@ -59,7 +59,7 @@ export function solveBounds(pts: CalibPoint[]): Bounds | null {
 
 const CALIB_LS_KEY = 'dune_admin_livemap_calib'
 
-export function loadCalib(): Record<string, Bounds> {
+export const loadCalib = (): Record<string, Bounds> => {
   try {
     return JSON.parse(localStorage.getItem(CALIB_LS_KEY) ?? '{}') as Record<string, Bounds>
   }
@@ -73,7 +73,7 @@ const LIVE_FILTER_DEFAULTS: Record<string, boolean> = {
 }
 const FILTER_LS_KEY = 'dune_admin_livemap_filter'
 
-export function loadFilter(): Record<string, boolean> {
+export const loadFilter = (): Record<string, boolean> => {
   try {
     const saved = JSON.parse(localStorage.getItem(FILTER_LS_KEY) ?? '{}') as Record<string, boolean>
     return { ...LIVE_FILTER_DEFAULTS, ...saved }
@@ -83,7 +83,7 @@ export function loadFilter(): Record<string, boolean> {
   }
 }
 
-export function saveFilter(f: Record<string, boolean>): void {
+export const saveFilter = (f: Record<string, boolean>): void => {
   try {
     localStorage.setItem(FILTER_LS_KEY, JSON.stringify(f))
   }

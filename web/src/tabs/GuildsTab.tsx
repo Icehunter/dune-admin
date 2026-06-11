@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Chip, Input, Modal, Spinner, TextArea, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
@@ -7,8 +6,7 @@ import { Icon as IconifyIcon } from '@iconify/react'
 import { api } from '../api/client'
 import type { GuildSummary, GuildDetail } from '../api/client'
 import { DataTable, Icon, PageHeader, SectionLabel, type Column } from '../dune-ui'
-
-type Key = 'name' | 'faction' | 'members' | 'description' | 'actions'
+import type { GuildsTabKey, GuildsTabProps } from './types'
 
 // Faction names are the stable dune.factions enum (Atreides/Harkonnen/None/
 // Smuggler), so colour-coding by name is safe. Unknown/None → default.
@@ -22,23 +20,19 @@ const FACTION_COLOR: Record<string, 'accent' | 'danger' | 'warning' | 'default'>
 const ROLE_ADMIN = 100
 const ROLE_MEMBER = 50
 
-interface GuildsTabProps {
-  isSignedIn?: boolean
-}
-
 export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
   const { t } = useTranslation()
-  const [guilds, setGuilds] = useState<GuildSummary[]>([])
-  const [loading, setLoading] = useState(false)
-  const [detail, setDetail] = useState<GuildDetail | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [editName, setEditName] = useState('')
-  const [editDesc, setEditDesc] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [roleBusy, setRoleBusy] = useState(false)
+  const [guilds, setGuilds] = React.useState<GuildSummary[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [detail, setDetail] = React.useState<GuildDetail | null>(null)
+  const [detailLoading, setDetailLoading] = React.useState(false)
+  const [open, setOpen] = React.useState(false)
+  const [editName, setEditName] = React.useState('')
+  const [editDesc, setEditDesc] = React.useState('')
+  const [saving, setSaving] = React.useState(false)
+  const [roleBusy, setRoleBusy] = React.useState(false)
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.guilds.list())
@@ -48,7 +42,7 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
       .finally(() => setLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
@@ -100,7 +94,7 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
   const roleLabel = (id: number) =>
     id === ROLE_ADMIN ? t('guilds.roleAdmin') : id === ROLE_MEMBER ? t('guilds.roleMember') : t('guilds.roleN', { id })
 
-  const COLUMNS: Column<Key>[] = [
+  const COLUMNS: Column<GuildsTabKey>[] = [
     { key: 'name', label: t('guilds.columns.name'), minWidth: 200 },
     { key: 'faction', label: t('guilds.columns.faction'), width: 150 },
     { key: 'members', label: t('guilds.columns.members'), width: 110 },
@@ -124,7 +118,7 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
         </Button>
       </PageHeader>
 
-      <DataTable<GuildSummary, Key>
+      <DataTable<GuildSummary, GuildsTabKey>
         aria-label={t('guilds.title', { count: guilds.length })}
         className="min-h-0 max-h-full"
         columns={COLUMNS}
@@ -181,7 +175,7 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
 
       <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && setOpen(false)}>
         <Modal.Container size="lg" scroll="outside">
-          <Modal.Dialog className="max-h-[85vh] flex flex-col">
+          <Modal.Dialog className="p-10 max-h-[85vh] flex flex-col">
             <Modal.CloseTrigger />
             <Modal.Header>
               <div className="flex items-baseline gap-3 flex-wrap">

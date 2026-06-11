@@ -1,22 +1,17 @@
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { BarChart } from '@heroui-pro/react'
 import type { SessionRecord } from '../../../api/client'
 import { SectionLabel } from '../../../dune-ui'
-
-interface SessionChartProps {
-  data: SessionRecord[]
-}
-
-type DayBucket = { date: string, minutes: number }
+import type { SessionChartProps, DayBucket } from './types'
 
 const WINDOW_DAYS = 14
 
-function todayUTC(): string {
+const todayUTC = (): string => {
   return new Date().toISOString().slice(0, 10)
 }
 
-function aggregate(records: SessionRecord[]): DayBucket[] {
+const aggregate = (records: SessionRecord[]): DayBucket[] => {
   const minutesByDay = new Map<string, number>()
   for (const r of records) {
     const day = r.started_at.slice(0, 10)
@@ -34,7 +29,7 @@ function aggregate(records: SessionRecord[]): DayBucket[] {
   return buckets
 }
 
-function fmtDate(d: string): string {
+const fmtDate = (d: string): string => {
   return new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 

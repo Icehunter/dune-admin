@@ -1,22 +1,17 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
+import * as React from 'react'
 import { Input, Spinner, Switch, toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { api, MASKED } from '../../../api/client'
 import type { AppConfig } from '../../../api/client'
 import { Panel, SectionLabel } from '../../../dune-ui'
+import type { BotServerConfigHandle, StringAppConfigKey } from './types'
 
-type StringAppConfigKey = { [K in keyof AppConfig]: AppConfig[K] extends string ? K : never }[keyof AppConfig]
-
-export interface BotServerConfigHandle {
-  save: () => Promise<void>
-}
-
-export const BotServerConfig = forwardRef<BotServerConfigHandle>(function BotServerConfig(_, ref) {
+export const BotServerConfig = React.forwardRef<BotServerConfigHandle>((_, ref) => {
   const { t } = useTranslation()
-  const [cfg, setCfg] = useState<AppConfig | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [cfg, setCfg] = React.useState<AppConfig | null>(null)
+  const [loading, setLoading] = React.useState(false)
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.config.get())
@@ -31,7 +26,7 @@ export const BotServerConfig = forwardRef<BotServerConfigHandle>(function BotSer
   const setBool = (key: keyof AppConfig) => (checked: boolean) =>
     setCfg((prev) => prev ? { ...prev, [key]: checked } : prev)
 
-  useImperativeHandle(ref, () => ({
+  React.useImperativeHandle(ref, () => ({
     save: async () => {
       if (!cfg) return
       // Sends the full AppConfig. The backend treats MASKED sentinel values as

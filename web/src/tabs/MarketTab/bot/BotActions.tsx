@@ -1,22 +1,14 @@
-import type React from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import { Button, Spinner, toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
-import type { BotStatus } from '../../../api/client'
 import { Icon, ConfirmDialog } from '../../../dune-ui'
+import type { BotActionsProps, BusyOp } from './types'
 
-type BotActionsProps = {
-  status: BotStatus
-  onRefresh: () => void
-}
-
-type BusyOp = 'start' | 'stop' | 'restart' | 'cleanup'
-
-export const BotActions: React.FC<BotActionsProps> = ({ status, onRefresh }: BotActionsProps) => {
+export const BotActions: React.FC<BotActionsProps> = ({ status, onRefresh }) => {
   const { t } = useTranslation()
-  const [busy, setBusy] = useState<BusyOp | null>(null)
-  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [busy, setBusy] = React.useState<BusyOp | null>(null)
+  const [confirmOpen, setConfirmOpen] = React.useState(false)
 
   const run = async (cmd: 'start' | 'stop' | 'restart') => {
     setBusy(cmd)

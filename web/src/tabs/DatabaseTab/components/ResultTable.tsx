@@ -1,9 +1,11 @@
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { DataTable, type Column } from '../../../dune-ui'
+import type { TableData } from './types'
 
-type TableData = { headers: string[], rows: string[][] }
+type Row = { _id: string, values: string[] }
 
-export function ResultTable({ headers, rows }: TableData) {
+export const ResultTable: React.FC<TableData> = ({ headers, rows }) => {
   const { t } = useTranslation()
   const safeHeaders = headers ?? []
   const safeRows = rows ?? []
@@ -14,7 +16,6 @@ export function ResultTable({ headers, rows }: TableData) {
     key: `c${i}`,
     label: h,
   }))
-  type Row = { _id: string, values: string[] }
   const items: Row[] = safeRows.map((r, i) => ({ _id: String(i), values: r ?? [] }))
   return (
     <DataTable<Row, string>

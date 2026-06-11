@@ -1,11 +1,5 @@
-import type React from 'react'
-import type { ReactNode } from 'react'
-
-type SectionDividerProps = {
-  title: ReactNode
-  /** Optional action buttons rendered on the right side of the divider. */
-  children?: ReactNode
-}
+import * as React from 'react'
+import type { SectionDividerProps } from './types'
 
 /**
  * Amber section title with a top border + padding above to separate it from

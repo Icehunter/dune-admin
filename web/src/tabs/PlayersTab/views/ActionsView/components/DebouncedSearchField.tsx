@@ -1,21 +1,16 @@
-import { useEffect, useState } from 'react'
+import * as React from 'react'
 import { SearchField } from '@heroui/react'
 import { useDebounce } from '../hooks/useDebounce'
+import type { DebouncedSearchFieldProps } from './types'
 
-interface DebouncedSearchFieldProps {
-  onSearch: (q: string) => void
-  placeholder?: string
-  className?: string
-}
-
-export function DebouncedSearchField({
+export const DebouncedSearchField: React.FC<DebouncedSearchFieldProps> = ({
   onSearch,
   placeholder,
   className,
-}: DebouncedSearchFieldProps) {
-  const [value, setValue] = useState('')
+}) => {
+  const [value, setValue] = React.useState('')
   const debounced = useDebounce(value)
-  useEffect(() => {
+  React.useEffect(() => {
     onSearch(debounced)
   }, [debounced, onSearch])
   return (

@@ -1,27 +1,17 @@
-import type React from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Modal, Spinner, toast } from '@heroui/react'
 import { api } from '../../../api/client'
-import type { BackupFile } from '../../../api/client'
 import { Dropzone, Icon } from '../../../dune-ui'
-
-type RestoreModalProps = {
-  open: boolean
-  backupFiles: BackupFile[]
-  backupFilesLoading: boolean
-  setBackupFiles: (files: BackupFile[]) => void
-  onClose: () => void
-  onRestoreComplete: (output: string) => void
-}
+import type { RestoreModalProps } from './types'
 
 export const RestoreModal: React.FC<RestoreModalProps> = ({
   open, backupFiles, backupFilesLoading, setBackupFiles, onClose, onRestoreComplete,
 }) => {
   const { t } = useTranslation()
-  const [selectedFile, setSelectedFile] = useState('')
-  const [restoreRunning, setRestoreRunning] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const [selectedFile, setSelectedFile] = React.useState('')
+  const [restoreRunning, setRestoreRunning] = React.useState(false)
+  const [uploading, setUploading] = React.useState(false)
 
   const uploadFile = async (file: File) => {
     setUploading(true)
@@ -43,7 +33,7 @@ export const RestoreModal: React.FC<RestoreModalProps> = ({
   return (
     <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => { if (!v && !restoreRunning) onClose() }}>
       <Modal.Container>
-        <Modal.Dialog className="w-[640px] max-w-[90vw]">
+        <Modal.Dialog className="p-10 w-[640px] max-w-[90vw]">
           <Modal.CloseTrigger />
           <Modal.Header><Modal.Heading>{t('battlegroup.restore.title')}</Modal.Heading></Modal.Header>
           <Modal.Body>

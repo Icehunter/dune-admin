@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, SearchField, Spinner, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
@@ -20,22 +19,22 @@ import {
 
 export const ServerSettingsTab: React.FC = () => {
   const { t } = useTranslation()
-  const [items, setItems] = useState<ServerSetting[]>([])
-  const [raw, setRaw] = useState<RawSection[]>([])
-  const [control, setControl] = useState('')
-  const [pending, setPending] = useState<Map<string, string>>(new Map())
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [showAll, setShowAll] = useState(() =>
+  const [items, setItems] = React.useState<ServerSetting[]>([])
+  const [raw, setRaw] = React.useState<RawSection[]>([])
+  const [control, setControl] = React.useState('')
+  const [pending, setPending] = React.useState<Map<string, string>>(new Map())
+  const [loading, setLoading] = React.useState(true)
+  const [saving, setSaving] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [search, setSearch] = React.useState('')
+  const [showAll, setShowAll] = React.useState(() =>
     localStorage.getItem('serverSettings.showAll') === 'true',
   )
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(() =>
+  const [expandedCategory, setExpandedCategory] = React.useState<string | null>(() =>
     localStorage.getItem('serverSettings.expandedCategory') || null,
   )
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => {
         setLoading(true)
@@ -52,7 +51,7 @@ export const ServerSettingsTab: React.FC = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 

@@ -1,27 +1,18 @@
-import { memo, useMemo, useState } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchField } from '@heroui/react'
 import { useAtom } from 'jotai'
 import { gameplayTagsSyncAtom } from '../../../../../data/store'
 import { useDebounce } from '../hooks/useDebounce'
+import type { AddTagsPanelProps } from './types'
 
-interface AddTagsPanelProps {
-  tags: string[]
-  pendingTags: string[]
-  onAdd: (tag: string) => void
-}
-
-export const AddTagsPanel = memo(function AddTagsPanel({
-  tags,
-  pendingTags,
-  onAdd,
-}: AddTagsPanelProps) {
+export const AddTagsPanel: React.FC<AddTagsPanelProps> = React.memo(({ tags, pendingTags, onAdd }) => {
   const { t } = useTranslation()
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = React.useState('')
   const debouncedQuery = useDebounce(query)
   const [allTags] = useAtom(gameplayTagsSyncAtom)
 
-  const matches = useMemo(() => {
+  const matches = React.useMemo(() => {
     if (!debouncedQuery) return []
     const tagsSet = new Set(tags)
     const pendingSet = new Set(pendingTags)

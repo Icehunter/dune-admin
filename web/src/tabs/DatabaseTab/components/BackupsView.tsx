@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Spinner, Switch, ToggleButton, ToggleButtonGroup, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
@@ -11,7 +10,7 @@ import { TimezoneSelect } from '../../../components/TimezoneSelect'
 
 const DOW = [0, 1, 2, 3, 4, 5, 6] // Sun..Sat
 
-function fmtSize(b: number): string {
+const fmtSize = (b: number): string => {
   if (b < 1024) return `${b} B`
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
   if (b < 1024 * 1024 * 1024) return `${(b / 1024 / 1024).toFixed(1)} MB`
@@ -21,13 +20,13 @@ function fmtSize(b: number): string {
 // ── Backup schedule card (self-contained, mirrors ScheduledRestartsCard) ──────
 const ScheduleCard: React.FC = () => {
   const { t, i18n } = useTranslation()
-  const [data, setData] = useState<ScheduledBackups | null>(null)
-  const [enabled, setEnabled] = useState(false)
-  const [timezone, setTimezone] = useState('')
-  const [keepN, setKeepN] = useState(0)
-  const [rules, setRules] = useState<BackupRule[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [data, setData] = React.useState<ScheduledBackups | null>(null)
+  const [enabled, setEnabled] = React.useState(false)
+  const [timezone, setTimezone] = React.useState('')
+  const [keepN, setKeepN] = React.useState(0)
+  const [rules, setRules] = React.useState<BackupRule[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [saving, setSaving] = React.useState(false)
 
   const apply = (d: ScheduledBackups) => {
     setData(d)
@@ -37,7 +36,7 @@ const ScheduleCard: React.FC = () => {
     setRules(d.rules ?? [])
   }
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.scheduledBackups.get())
@@ -47,7 +46,7 @@ const ScheduleCard: React.FC = () => {
       .finally(() => setLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
@@ -164,14 +163,14 @@ const ScheduleCard: React.FC = () => {
 // ── Backups view ─────────────────────────────────────────────────────────────
 export const BackupsView: React.FC = () => {
   const { t } = useTranslation()
-  const [backups, setBackups] = useState<DBBackupFile[]>([])
-  const [loading, setLoading] = useState(true)
-  const [taking, setTaking] = useState(false)
-  const [restoreTarget, setRestoreTarget] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [backups, setBackups] = React.useState<DBBackupFile[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [taking, setTaking] = React.useState(false)
+  const [restoreTarget, setRestoreTarget] = React.useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null)
+  const [busy, setBusy] = React.useState(false)
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.dbBackups.list())
@@ -181,7 +180,7 @@ export const BackupsView: React.FC = () => {
       .finally(() => setLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 

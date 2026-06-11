@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Button, Chip, SearchField, Spinner, toast,
@@ -11,19 +10,7 @@ import { api } from '../../api/client'
 import type { InventoryItem } from '../../api/client'
 import { ActionBar, DataTable, Icon, LoadingState, PageHeader, SideNav, type Column } from '../../dune-ui'
 import { AddItemsModal } from './components/AddItemsModal'
-
-type ItemKey = 'id' | 'template' | 'stack_size' | 'quality' | 'durability' | 'actions'
-
-type Container = {
-  id: number
-  name: string
-  class: string
-  map: string
-  item_count: number
-  item_templates: string[]
-  item_names: string[]
-  owner_name: string
-}
+import type { Container, ItemKey } from './types'
 
 const TYPE_LABELS: Record<string, string> = {
   SpiceSilo_Placeable: 'Small Storage Container',
@@ -32,7 +19,7 @@ const TYPE_LABELS: Record<string, string> = {
   MediumStorageContainer_Placeable: 'Medium Storage Container',
 }
 
-function shortClass(cls: string): string {
+const shortClass = (cls: string): string => {
   return TYPE_LABELS[cls] ?? cls.replace(/_Placeable$/, '')
 }
 
@@ -48,16 +35,16 @@ export const StorageTab: React.FC = () => {
     { key: 'actions', label: '', width: 52, sortable: false },
   ]
 
-  const [containers, setContainers] = useState<Container[]>([])
-  const [loading, setLoading] = useState(false)
-  const [selected, setSelected] = useState<Container | null>(null)
-  const [items, setItems] = useState<InventoryItem[]>([])
-  const [itemsLoading, setItemsLoading] = useState(false)
-  const [showAdd, setShowAdd] = useState(false)
-  const [search, setSearch] = useState('')
-  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set())
+  const [containers, setContainers] = React.useState<Container[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [selected, setSelected] = React.useState<Container | null>(null)
+  const [items, setItems] = React.useState<InventoryItem[]>([])
+  const [itemsLoading, setItemsLoading] = React.useState(false)
+  const [showAdd, setShowAdd] = React.useState(false)
+  const [search, setSearch] = React.useState('')
+  const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.storage.list())
@@ -66,7 +53,7 @@ export const StorageTab: React.FC = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
@@ -124,7 +111,7 @@ export const StorageTab: React.FC = () => {
     toast.success(t('storage.itemsRemoved', { count: deletedIds.size }))
   }
 
-  const filtered = useMemo(() => {
+  const filtered = React.useMemo(() => {
     if (!search) return containers
     const q = search.toLowerCase()
     return containers.filter((c) =>
@@ -138,7 +125,7 @@ export const StorageTab: React.FC = () => {
     )
   }, [containers, search])
 
-  const navItems = useMemo(() => filtered.map((c) => ({
+  const navItems = React.useMemo(() => filtered.map((c) => ({
     key: String(c.id),
     label: c.name || `#${c.id}`,
     sublabel: [
@@ -172,7 +159,7 @@ export const StorageTab: React.FC = () => {
               {loading ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
             </Button>
           )}
-          width="w-60"
+          width="w-[276px]"
         >
           <SearchField
             aria-label={t('storage.searchLabel')}

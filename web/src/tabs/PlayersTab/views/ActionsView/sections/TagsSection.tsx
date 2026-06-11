@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
 import { Button } from '@heroui/react'
@@ -8,24 +8,22 @@ import { DataTable, Icon, LoadingState, SectionLabel } from '../../../../../dune
 import { DebouncedSearchField } from '../components/DebouncedSearchField'
 import { AddTagsPanel } from '../components/AddTagsPanel'
 import { api } from '../../../../../api/client'
-import type { Player } from '../../../../../api/client'
 import { busyAtom } from '../store'
 import { useRun } from '../hooks/useActions'
+import type { TagsSectionProps } from './types'
 
-interface TagsSectionProps { player: Player }
-
-export function TagsSection({ player }: TagsSectionProps) {
+export const TagsSection: React.FC<TagsSectionProps> = ({ player }) => {
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const run = useRun(player.id)
 
-  const [tags, setTags] = useState<string[]>([])
-  const [tagsLoaded, setTagsLoaded] = useState(false)
-  const [tagsLoading, setTagsLoading] = useState(false)
-  const [pendingTags, setPendingTags] = useState<string[]>([])
-  const [filterQuery, setFilterQuery] = useState('')
+  const [tags, setTags] = React.useState<string[]>([])
+  const [tagsLoaded, setTagsLoaded] = React.useState(false)
+  const [tagsLoading, setTagsLoading] = React.useState(false)
+  const [pendingTags, setPendingTags] = React.useState<string[]>([])
+  const [filterQuery, setFilterQuery] = React.useState('')
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve().then(() => {
       setTagsLoaded(false)
       setTags([])
@@ -33,7 +31,7 @@ export function TagsSection({ player }: TagsSectionProps) {
     })
   }, [player.id])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (tagsLoaded) return
     Promise.resolve()
       .then(() => setTagsLoading(true))

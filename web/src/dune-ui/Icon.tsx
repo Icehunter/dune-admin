@@ -1,12 +1,6 @@
-import type React from 'react'
+import * as React from 'react'
 import { Icon as IconifyIcon } from '@iconify/react'
-
-type IconProps = {
-  /** Lucide icon name (without the `lucide:` prefix), e.g. "refresh-cw". */
-  name: string
-  /** Optional size class — defaults to `size-4` (1rem square). */
-  className?: string
-}
+import type { IconProps } from './types'
 
 // Gravity-UI has crisper / better-weighted variants for these common actions.
 const ALIASES: Record<string, string> = {

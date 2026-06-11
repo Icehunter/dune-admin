@@ -1,17 +1,13 @@
-import type React from 'react'
+import * as React from 'react'
 import { Button, Spinner } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { Icon as IconifyIcon } from '@iconify/react'
 import { useTranslation } from 'react-i18next'
 import { DataTable, Icon, PageHeader, type Column } from '../../../dune-ui'
 import type { WelcomeGrantRecord } from '../../../api/client'
-import type { WelcomeSharedProps } from '../types'
+import type { GrantKey, GrantsViewProps } from './types'
 
-type GrantKey = 'character' | 'fls' | 'version' | 'status' | 'attempts' | 'updated' | 'error' | 'actions'
-
-type GrantsViewProps = Pick<WelcomeSharedProps, 'grants' | 'retry' | 'revoke' | 'load' | 'loading'>
-
-function fmtTime(s: string): string {
+const fmtTime = (s: string): string => {
   if (!s) return '—'
   const d = new Date(s)
   return Number.isNaN(d.getTime()) ? s : d.toLocaleString()

@@ -1,22 +1,20 @@
-import { useState } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
 import { Button, Input } from '@heroui/react'
 import { Panel, SectionLabel } from '../../../../../dune-ui'
 import { api } from '../../../../../api/client'
-import type { Player } from '../../../../../api/client'
 import { busyAtom } from '../store'
 import { cheatScriptsSyncAtom } from '../../../../../data/store'
 import { useRun, useGate } from '../hooks/useActions'
+import type { ExperimentalSectionProps } from './types'
 
-interface ExperimentalSectionProps { player: Player }
-
-export function ExperimentalSection({ player }: ExperimentalSectionProps) {
+export const ExperimentalSection: React.FC<ExperimentalSectionProps> = ({ player }) => {
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const run = useRun(player.id)
   const gate = useGate(player.id)
-  const [customScriptName, setCustomScriptName] = useState('')
+  const [customScriptName, setCustomScriptName] = React.useState('')
   const [scripts] = useAtom(cheatScriptsSyncAtom)
 
   const handleRunScript = (name: string, danger: boolean) => {

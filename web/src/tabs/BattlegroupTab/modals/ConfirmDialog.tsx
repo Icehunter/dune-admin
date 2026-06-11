@@ -1,20 +1,14 @@
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertDialog, Button } from '@heroui/react'
-import type { ActionDef } from '../types'
-
-type ConfirmDialogProps = {
-  action: ActionDef | null
-  onConfirm: (a: ActionDef) => void
-  onClose: () => void
-}
+import type { ConfirmDialogProps } from './types'
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ action, onConfirm, onClose }) => {
   const { t } = useTranslation()
   return (
     <AlertDialog.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={action !== null} onOpenChange={(v) => { if (!v) onClose() }}>
       <AlertDialog.Container size="sm">
-        <AlertDialog.Dialog>
+        <AlertDialog.Dialog className="p-10">
           <AlertDialog.Header>
             <AlertDialog.Icon status={action?.danger ? 'danger' : 'accent'} />
             <AlertDialog.Heading>

@@ -1,5 +1,4 @@
-import type React from 'react'
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import * as React from 'react'
 import {
   Button, Chip, Header, ListBox, SearchField, Select, Separator, Spinner, TextField, toast,
 } from '@heroui/react'
@@ -8,38 +7,31 @@ import type { DataGridColumn } from '@heroui-pro/react'
 import { DataGrid } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
-import type { Player, GivePack } from '../../../api/client'
+import type { GivePack } from '../../../api/client'
 import { ActionBar, Icon, LoadingState, NumberInput } from '../../../dune-ui'
 import { retainSkippedStaged } from './giveItemsHelpers'
 import { ManagePacksModal } from '../modals/ManagePacksModal'
-
-interface GiveItemsViewProps {
-  player: Player
-}
-
-type SkippedItem = { template: string, reason: string }
-type GiveResult = { given: string[], skipped: SkippedItem[] } | null
-type StagedItem = { template: string, qty: number, quality: number, _key: string }
+import type { GiveItemsViewProps, GiveResult, StagedItem } from './types'
 
 export const GiveItemsView: React.FC<GiveItemsViewProps> = ({ player }) => {
   const { t } = useTranslation()
-  const [templates, setTemplates] = useState<{ id: string, name: string }[]>([])
-  const [packs, setPacks] = useState<GivePack[]>([])
-  const [loading, setLoading] = useState(false)
-  const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState('')
-  const [qty, setQty] = useState(1)
-  const [quality, setQuality] = useState(0)
-  const [staged, setStaged] = useState<StagedItem[]>([])
-  const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<GiveResult>(null)
-  const [manageOpen, setManageOpen] = useState(false)
-  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set())
+  const [templates, setTemplates] = React.useState<{ id: string, name: string }[]>([])
+  const [packs, setPacks] = React.useState<GivePack[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [query, setQuery] = React.useState('')
+  const [selected, setSelected] = React.useState('')
+  const [qty, setQty] = React.useState(1)
+  const [quality, setQuality] = React.useState(0)
+  const [staged, setStaged] = React.useState<StagedItem[]>([])
+  const [submitting, setSubmitting] = React.useState(false)
+  const [result, setResult] = React.useState<GiveResult>(null)
+  const [manageOpen, setManageOpen] = React.useState(false)
+  const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
 
-  const keyCounter = useRef(0)
+  const keyCounter = React.useRef(0)
   const nextKey = () => String(keyCounter.current++)
 
-  const loadData = useCallback(() => {
+  const loadData = React.useCallback(() => {
     setLoading(true)
     setQuery('')
     setSelected('')
@@ -59,13 +51,13 @@ export const GiveItemsView: React.FC<GiveItemsViewProps> = ({ player }) => {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     void Promise.resolve().then(() => loadData())
   }, [player.id, loadData])
 
-  const nameMap = useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
+  const nameMap = React.useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
 
-  const filtered = useMemo(() => {
+  const filtered = React.useMemo(() => {
     if (!query) return []
     const q = query.toLowerCase()
     return templates
@@ -73,7 +65,7 @@ export const GiveItemsView: React.FC<GiveItemsViewProps> = ({ player }) => {
       .slice(0, 100)
   }, [templates, query])
 
-  const groupedPacks = useMemo(() => {
+  const groupedPacks = React.useMemo(() => {
     const groups: Record<string, { id: string, name: string, tier: number }[]> = {}
     for (const pack of packs) {
       if (!groups[pack.category]) groups[pack.category] = []

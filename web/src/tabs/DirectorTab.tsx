@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Spinner, toast } from '@heroui/react'
 import { api, ApiError } from '../api/client'
 import type { DirectorConfig } from '../api/client'
 import { PageHeader, Panel, SectionLabel, Icon, FieldInput, FieldSelect } from '../dune-ui'
+import type { FieldKind } from './types'
 
 // ── field-type inference (#157) ──────────────────────────────────────────────
 // The director config is untyped INI text, so we infer an editor from the value
@@ -13,16 +13,14 @@ import { PageHeader, Panel, SectionLabel, Icon, FieldInput, FieldSelect } from '
 // comment or the distinct values used across the [InstancingModes] section.
 const numberRe = /^-?\d+(\.\d+)?$/
 
-function parseAlternatives(comment?: string): string[] {
+const parseAlternatives = (comment?: string): string[] => {
   const m = comment?.match(/alternatives?:\s*(.+)/i)
   return m ? m[1].split(',').map((s) => s.trim()).filter(Boolean) : []
 }
 
-type FieldKind = { kind: 'bool' } | { kind: 'number' } | { kind: 'enum', options: string[] } | { kind: 'text' }
-
-function fieldKind(
+const fieldKind = (
   section: string, value: string, comment: string | undefined, instancingOptions: string[],
-): FieldKind {
+): FieldKind => {
   if (section === 'InstancingModes' && instancingOptions.length > 1) return { kind: 'enum', options: instancingOptions }
   const alt = parseAlternatives(comment)
   if (alt.length > 1) return { kind: 'enum', options: alt }
@@ -73,14 +71,14 @@ const DirectorEditor: React.FC<{
 // and [RMQ*] are read-only (launch-overridden + secrets). AMP control plane only.
 export const DirectorTab: React.FC = () => {
   const { t } = useTranslation()
-  const [data, setData] = useState<DirectorConfig | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [unsupported, setUnsupported] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [pending, setPending] = useState<Map<string, string>>(new Map())
+  const [data, setData] = React.useState<DirectorConfig | null>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [saving, setSaving] = React.useState(false)
+  const [unsupported, setUnsupported] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [pending, setPending] = React.useState<Map<string, string>>(new Map())
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => {
         setLoading(true)
@@ -99,13 +97,13 @@ export const DirectorTab: React.FC = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
   // The [InstancingModes] section's keys all share one enum domain (map →
   // instancing mode), so its distinct values ARE the option set for each key.
-  const instancingOptions = useMemo(() => {
+  const instancingOptions = React.useMemo(() => {
     const sec = data?.sections.find((s) => s.name === 'InstancingModes')
     if (!sec) return []
     return Array.from(new Set(sec.lines.map((l) => l.value.trim()).filter(Boolean)))

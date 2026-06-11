@@ -1,11 +1,12 @@
-import { useRef, useMemo, useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
-import type { Selection } from '@heroui/react'
+import * as React from 'react'
 import { Pagination, Skeleton } from '@heroui/react'
-import type { DataGridColumn, DataGridColumnSize } from '@heroui-pro/react'
+import type { DataGridColumn } from '@heroui-pro/react'
 import { DataGrid as HeroDataGrid } from '@heroui-pro/react'
+import type { Column, DataTableProps } from './types'
 
-function buildPages(current: number, total: number): Array<number | 'ellipsis'> {
+export type { Column }
+
+const buildPages = (current: number, total: number): Array<number | 'ellipsis'> => {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
   const pages: Array<number | 'ellipsis'> = [1]
   if (current > 3) pages.push('ellipsis')
@@ -15,71 +16,6 @@ function buildPages(current: number, total: number): Array<number | 'ellipsis'> 
   if (current < total - 2) pages.push('ellipsis')
   pages.push(total)
   return pages
-}
-
-export type Column<K extends string> = {
-  key: K
-  label: string
-  /** Whether this column is sortable. Defaults to true. */
-  sortable?: boolean
-  /** Marks the row-header column (accessibility). Typically the first one. */
-  isRowHeader?: boolean
-  /** Fixed column width (px, %, or fr — e.g. 70 or '1fr'). When omitted, column takes remaining space. */
-  width?: DataGridColumnSize
-  /** Minimum column width (px). Useful for the stretchy column or pinned columns. */
-  minWidth?: number
-  /** Pin this column to start or end so it stays visible during horizontal scroll. */
-  pinned?: 'start' | 'end'
-  /** Cell text alignment. */
-  align?: 'start' | 'center' | 'end'
-}
-
-type DataTableProps<T, K extends string> = {
-  /** Accessibility label — required by React Aria. */
-  'aria-label': string
-  'columns': Column<K>[]
-  'rows': T[]
-  /** Stable id extractor for each row. */
-  'rowId': (row: T) => string
-  /** Render the cell content for a given row + column key. */
-  'renderCell': (row: T, key: K) => ReactNode
-  /** Default sort column + direction (uncontrolled). */
-  'initialSort'?: { column: K, direction: 'ascending' | 'descending' }
-  /** Custom value getter for sorting (defaults to renderCell coerced to string). */
-  'sortValue'?: (row: T, key: K) => string | number | null | undefined
-  /** Rendered when `rows` is empty. */
-  'emptyState'?: ReactNode
-  /** Shows skeleton rows instead of data while true. */
-  'loading'?: boolean
-  /** Number of skeleton rows while loading. Defaults to 5. */
-  'skeletonRows'?: number
-  /** Called when a row is clicked / activated. */
-  'onRowAction'?: (row: T) => void
-  /** Extra classes for the root DataGrid wrapper. */
-  'className'?: string
-  /**
-   * Extra classes for the inner scroll/content area.
-   * For virtualized grids, pass a fixed height here, e.g. contentClassName="h-[500px] overflow-auto".
-   * This mirrors the docs example pattern exactly.
-   */
-  'contentClassName'?: string
-  /** Extra classes for the scroll container (non-virtualized overflow). */
-  'scrollContainerClassName'?: string
-  /** Opt into row virtualization for large datasets (1 000+ rows). */
-  'virtualized'?: boolean
-  /**
-   * Fixed row height in px — required when `virtualized` is true.
-   * Use ~42 for single-line rows, ~48 for rows with buttons. Defaults to 42.
-   */
-  'rowHeight'?: number
-  /** Row selection mode. Defaults to 'none'. */
-  'selectionMode'?: 'none' | 'single' | 'multiple'
-  /** Controlled selected row keys. */
-  'selectedKeys'?: Selection
-  /** Callback when selection changes. */
-  'onSelectionChange'?: (keys: Selection) => void
-  /** When set, enables pagination and caps each page to this many rows. */
-  'pageSize'?: number
 }
 
 export const DataTable = <T extends object, K extends string>({
@@ -104,25 +40,25 @@ export const DataTable = <T extends object, K extends string>({
   onSelectionChange,
   pageSize,
 }: DataTableProps<T, K>) => {
-  const renderCellRef = useRef(renderCell)
-  const sortValueRef = useRef(sortValue)
-  const onRowActionRef = useRef(onRowAction)
-  useEffect(() => {
+  const renderCellRef = React.useRef(renderCell)
+  const sortValueRef = React.useRef(sortValue)
+  const onRowActionRef = React.useRef(onRowAction)
+  React.useEffect(() => {
     renderCellRef.current = renderCell
     sortValueRef.current = sortValue
     onRowActionRef.current = onRowAction
   })
 
-  const [page, setPage] = useState(1)
-  useEffect(() => {
+  const [page, setPage] = React.useState(1)
+  React.useEffect(() => {
     Promise.resolve().then(() => setPage(1))
   }, [rows])
 
   const totalPages = pageSize ? Math.ceil(rows.length / pageSize) : 1
   const pagedRows = pageSize ? rows.slice((page - 1) * pageSize, page * pageSize) : rows
 
-  const rowsRef = useRef(pagedRows)
-  useEffect(() => {
+  const rowsRef = React.useRef(pagedRows)
+  React.useEffect(() => {
     rowsRef.current = pagedRows
   })
 
@@ -132,7 +68,7 @@ export const DataTable = <T extends object, K extends string>({
 
   const hasExplicitRowHeader = columns.some((c) => c.isRowHeader)
 
-  const gridColumns = useMemo<DataGridColumn<T>[]>(() => columns.map((col, i) => {
+  const gridColumns = React.useMemo<DataGridColumn<T>[]>(() => columns.map((col, i) => {
     const sortable = col.sortable !== false
     const colKey = col.key as K
     return {

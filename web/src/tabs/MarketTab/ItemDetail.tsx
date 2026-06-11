@@ -1,23 +1,17 @@
-import type React from 'react'
-import { useEffect, useState } from 'react'
+import * as React from 'react'
 import { Drawer, Spinner } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { useAtomValue } from 'jotai'
 import { unwrap } from 'jotai/utils'
 import { api } from '../../api/client'
-import type { MarketItem, MarketListing } from '../../api/client'
+import type { MarketListing } from '../../api/client'
 import { DataTable, Panel, SectionLabel } from '../../dune-ui'
 import { iconUrl, qualityLabel } from '../../utils/icons'
 import { getItemEntry } from '../../data/itemData'
 import { qualityDataAtom } from '../../data/store'
+import type { ItemDetailProps, ItemEntry, RowProps } from './types'
 
 const qualityDataSync = unwrap(qualityDataAtom, () => null)
-
-type ItemEntry = {
-  is_gradeable?: boolean
-  armor_value?: number
-  mitigation?: Record<string, number>
-}
 
 const QUALITY_LABELS = ['Standard', 'Refined', 'Superior', 'Masterwork', 'Pristine', 'Flawless']
 
@@ -35,26 +29,14 @@ const MITIGATION_LABELS: Record<string, string> = {
   sandstorm3: 'Sandstorm III',
 }
 
-interface ItemDetailProps {
-  item: MarketItem | null
-  onClose: () => void
-}
-
-interface RowProps {
-  label: string
-  value: string
-  accent?: boolean
-  wrap?: boolean
-}
-
 export const ItemDetail: React.FC<ItemDetailProps> = ({ item, onClose }) => {
   const { t } = useTranslation()
-  const [listings, setListings] = useState<MarketListing[]>([])
-  const [loading, setLoading] = useState(false)
-  const [entry, setEntry] = useState<ItemEntry | null>(null)
+  const [listings, setListings] = React.useState<MarketListing[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [entry, setEntry] = React.useState<ItemEntry | null>(null)
   const qualityData = useAtomValue(qualityDataSync)
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!item) return
     Promise.resolve()
       .then(() => {
@@ -223,7 +205,7 @@ export const ItemDetail: React.FC<ItemDetailProps> = ({ item, onClose }) => {
   )
 }
 
-function Row({ label, value, accent, wrap }: RowProps) {
+const Row: React.FC<RowProps> = ({ label, value, accent, wrap }) => {
   return (
     <div className={`flex text-xs py-0.5 ${wrap ? 'flex-col gap-0.5' : 'items-center justify-between'}`}>
       <span className="text-muted shrink-0">{label}</span>

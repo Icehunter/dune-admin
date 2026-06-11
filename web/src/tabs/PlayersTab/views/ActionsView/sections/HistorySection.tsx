@@ -1,38 +1,35 @@
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Chip } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { Icon as IconifyIcon } from '@iconify/react'
 import { DataTable, LoadingState, Panel, SectionLabel } from '../../../../../dune-ui'
 import { api } from '../../../../../api/client'
-import type { Player, GameEvent, DungeonRecord } from '../../../../../api/client'
+import type { GameEvent, DungeonRecord } from '../../../../../api/client'
+import type { HistorySectionProps, ChipColor } from './types'
 
-interface HistorySectionProps { player: Player }
-
-type ChipColor = 'default' | 'accent' | 'success' | 'warning' | 'danger'
-
-function eventColor(t: number): ChipColor {
+const eventColor = (t: number): ChipColor => {
   if (t === 1) return 'success'
   if (t === 2) return 'danger'
   if (t === 3) return 'warning'
   return 'default'
 }
 
-function difficultyColor(d: string): ChipColor {
+const difficultyColor = (d: string): ChipColor => {
   if (d === 'Hard') return 'danger'
   if (d === 'Normal') return 'warning'
   return 'default'
 }
 
-export function HistorySection({ player }: HistorySectionProps) {
+export const HistorySection: React.FC<HistorySectionProps> = ({ player }) => {
   const { t } = useTranslation()
 
-  const [events, setEvents] = useState<GameEvent[]>([])
-  const [dungeons, setDungeons] = useState<DungeonRecord[]>([])
-  const [loaded, setLoaded] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [events, setEvents] = React.useState<GameEvent[]>([])
+  const [dungeons, setDungeons] = React.useState<DungeonRecord[]>([])
+  const [loaded, setLoaded] = React.useState(false)
+  const [loading, setLoading] = React.useState(false)
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve().then(() => {
       setLoaded(false)
       setEvents([])
@@ -40,7 +37,7 @@ export function HistorySection({ player }: HistorySectionProps) {
     })
   }, [player.id])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (loaded) return
     Promise.resolve()
       .then(() => setLoading(true))

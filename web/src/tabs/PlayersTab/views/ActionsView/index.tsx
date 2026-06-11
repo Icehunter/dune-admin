@@ -1,5 +1,4 @@
-import type React from 'react'
-import { useState, useEffect, useRef } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@heroui/react'
 import { Segment } from '@heroui-pro/react'
@@ -9,7 +8,6 @@ import { ManageLocationsModal } from '../../modals/ManageLocationsModal'
 import { MapCoordPickerModal } from '../../modals/MapCoordPickerModal'
 import { ACTION_SECTIONS, type ActionSection } from '../../types'
 import { api } from '../../../../api/client'
-import type { Player } from '../../../../api/client'
 import {
   playerAtom, partitionsAtom, allPlayersAtom, charXPCurrentAtom, confirmAtom,
 } from './store'
@@ -22,14 +20,11 @@ import { AdminSection } from './sections/AdminSection'
 import { TagsSection } from './sections/TagsSection'
 import { HistorySection } from './sections/HistorySection'
 import { ExperimentalSection } from './sections/ExperimentalSection'
-
-interface ActionsViewProps {
-  player: Player
-}
+import type { ActionsViewProps } from './types'
 
 export const ActionsView: React.FC<ActionsViewProps> = ({ player }) => {
   const { t } = useTranslation()
-  const [section, setSection] = useState<ActionSection>('resources')
+  const [section, setSection] = React.useState<ActionSection>('resources')
 
   const setPlayerAtom = useSetAtom(playerAtom(player.id))
   const setPartitions = useSetAtom(partitionsAtom(player.id))
@@ -37,21 +32,21 @@ export const ActionsView: React.FC<ActionsViewProps> = ({ player }) => {
   const setCharXPCurrent = useSetAtom(charXPCurrentAtom(player.id))
   const [confirmPending, setConfirmPending] = useAtom(confirmAtom(player.id))
 
-  const [showManageLocations, setShowManageLocations] = useState(false)
-  const [showTeleportPicker, setShowTeleportPicker] = useState(false)
-  const [showSpawnPicker, setShowSpawnPicker] = useState(false)
-  const teleportPickerCb = useRef<(x: number, y: number, z: number) => void>(undefined)
-  const spawnPickerCb = useRef<(x: number, y: number, z: number) => void>(undefined)
+  const [showManageLocations, setShowManageLocations] = React.useState(false)
+  const [showTeleportPicker, setShowTeleportPicker] = React.useState(false)
+  const [showSpawnPicker, setShowSpawnPicker] = React.useState(false)
+  const teleportPickerCb = React.useRef<(x: number, y: number, z: number) => void>(undefined)
+  const spawnPickerCb = React.useRef<(x: number, y: number, z: number) => void>(undefined)
 
-  useEffect(() => {
+  React.useEffect(() => {
     setPlayerAtom(player)
   }, [player, setPlayerAtom])
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve().then(() => setSection('resources'))
   }, [player.id])
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve()
       .then(() => Promise.all([
         api.locations.list(),

@@ -2,6 +2,10 @@ import type { WelcomePackage, WelcomeGrantRecord, WelcomePackageItem } from '../
 
 export type WelcomeSection = 'config' | 'packages' | 'grants'
 
+export type WelcomePackageTabProps
+  = | { showSubnav?: false, section?: WelcomeSection, onSectionChange?: never }
+    | { showSubnav: true, section?: WelcomeSection, onSectionChange: (s: WelcomeSection) => void }
+
 export interface WelcomeConfigDiff {
   packageAdded: number
   packageRemoved: number

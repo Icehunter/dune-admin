@@ -1,42 +1,30 @@
-import type React from 'react'
-import { useState, forwardRef, useImperativeHandle } from 'react'
+import * as React from 'react'
 import { toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { BotConfig } from '../../../api/client'
 import { FieldInput, NumberInput, Panel, SectionLabel } from '../../../dune-ui'
+import type { BotConfigEditorProps, ConfigEditorHandle, FieldProps } from './types'
 
-export type ConfigEditorHandle = {
-  save: () => Promise<void>
-  reset: () => void
-  getEnabled: () => boolean
-  setEnabled: (v: boolean) => void
-}
-
-type BotConfigEditorProps = {
-  config: BotConfig
-  onSaved: (cfg: BotConfig) => void
-}
-
-function thresholdToPercent(t: number): number {
+const thresholdToPercent = (t: number): number => {
   return Math.round(t * 100)
 }
 
-function percentToThreshold(p: number): number {
+const percentToThreshold = (p: number): number => {
   return Math.round(p) / 100
 }
 
-function capitalize(s: string) {
+const capitalize = (s: string) => {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-const BotConfigEditorComponent = forwardRef<
+const BotConfigEditorComponent = React.forwardRef<
   ConfigEditorHandle,
   BotConfigEditorProps
 >(function BotConfigEditor({ config, onSaved }, ref) {
   const { t } = useTranslation()
-  const [draft, setDraft] = useState<BotConfig>(config)
-  const [buyPct, setBuyPct] = useState<number>(thresholdToPercent(config.buy_threshold))
+  const [draft, setDraft] = React.useState<BotConfig>(config)
+  const [buyPct, setBuyPct] = React.useState<number>(thresholdToPercent(config.buy_threshold))
 
   const set = <K extends keyof BotConfig>(key: K, val: BotConfig[K]) => {
     setDraft((d) => ({ ...d, [key]: val }))
@@ -58,7 +46,7 @@ const BotConfigEditorComponent = forwardRef<
     })
   }
 
-  useImperativeHandle(ref, () => ({
+  React.useImperativeHandle(ref, () => ({
     save: async () => {
       const payload: BotConfig = { ...draft, buy_threshold: percentToThreshold(buyPct) }
       const saved = await api.marketBot.saveConfig(payload)
@@ -232,13 +220,7 @@ const BotConfigEditorComponent = forwardRef<
 
 export const BotConfigEditor = BotConfigEditorComponent
 
-interface FieldProps {
-  label: string
-  hint?: string
-  children: React.ReactNode
-}
-
-function Field({ label, hint, children }: FieldProps) {
+const Field: React.FC<FieldProps> = ({ label, hint, children }) => {
   return (
     <div className="flex flex-col gap-0.5">
       <label className="text-xs text-muted">

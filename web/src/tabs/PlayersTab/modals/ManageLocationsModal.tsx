@@ -1,17 +1,11 @@
-import type React from 'react'
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Modal, Spinner, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { DataTable, SectionLabel, type Column } from '../../../dune-ui'
 import { api } from '../../../api/client'
 import type { TeleportLocation } from '../../../api/client'
-
-interface ManageLocationsModalProps {
-  onClose: (updated?: TeleportLocation[]) => void
-}
-
-type LocationKey = 'name' | 'x' | 'y' | 'z' | 'actions'
+import type { ManageLocationsModalProps, LocationKey } from './types'
 
 const COLUMNS: Column<LocationKey>[] = [
   { key: 'name', label: 'Name', isRowHeader: true, minWidth: 160 },
@@ -23,14 +17,14 @@ const COLUMNS: Column<LocationKey>[] = [
 
 export const ManageLocationsModal: React.FC<ManageLocationsModalProps> = ({ onClose }) => {
   const { t } = useTranslation()
-  const [locations, setLocations] = useState<TeleportLocation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [name, setName] = useState('')
-  const [x, setX] = useState('')
-  const [y, setY] = useState('')
-  const [z, setZ] = useState('')
+  const [locations, setLocations] = React.useState<TeleportLocation[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [name, setName] = React.useState('')
+  const [x, setX] = React.useState('')
+  const [y, setY] = React.useState('')
+  const [z, setZ] = React.useState('')
 
-  useEffect(() => {
+  React.useEffect(() => {
     api.locations.list()
       .then(setLocations)
       .catch(() => toast.danger('Failed to load locations'))
@@ -82,7 +76,7 @@ export const ManageLocationsModal: React.FC<ManageLocationsModalProps> = ({ onCl
   return (
     <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen onOpenChange={(v) => { if (!v) onClose(locations) }}>
       <Modal.Container size="cover" scroll="outside">
-        <Modal.Dialog>
+        <Modal.Dialog className="p-10">
           <Modal.CloseTrigger />
           <Modal.Header>
             <Modal.Heading className="text-accent">{t('players.actions.admin.manageLocationsModal.title')}</Modal.Heading>

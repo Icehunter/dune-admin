@@ -1,28 +1,19 @@
-import type React from 'react'
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { Button, Chip, Modal, Spinner, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { Icon as IconifyIcon } from '@iconify/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
-import type { Player, InventoryItem, VehicleRow } from '../../../api/client'
+import type { InventoryItem, VehicleRow } from '../../../api/client'
 import { DataTable, Icon, LoadingState, Panel, SectionLabel, type Column } from '../../../dune-ui'
-
-type ItemKey = 'template' | 'stack' | 'quality' | 'durability' | 'actions'
-type VehicleKey = 'class' | 'location' | 'chassis' | 'name' | 'type' | 'actions'
-
-interface InventoryModalProps {
-  player: Player
-  open: boolean
-  onClose: () => void
-}
+import type { ItemKey, VehicleKey, InventoryModalProps } from './types'
 
 export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, onClose }) => {
   const { t } = useTranslation()
-  const [items, setItems] = useState<InventoryItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const [vehicles, setVehicles] = useState<VehicleRow[]>([])
-  const [vehiclesLoading, setVehiclesLoading] = useState(false)
+  const [items, setItems] = React.useState<InventoryItem[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [vehicles, setVehicles] = React.useState<VehicleRow[]>([])
+  const [vehiclesLoading, setVehiclesLoading] = React.useState(false)
 
   const ITEM_COLUMNS: Column<ItemKey>[] = [
     { key: 'template', label: t('players.inventory.columns.template'), isRowHeader: true },
@@ -41,7 +32,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, on
     { key: 'actions', label: ' ', sortable: false },
   ]
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!open) {
       Promise.resolve().then(() => setVehicles([]))
       return
@@ -141,7 +132,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, on
   return (
     <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && onClose()}>
       <Modal.Container size="cover" scroll="outside">
-        <Modal.Dialog>
+        <Modal.Dialog className="p-10">
           <Modal.CloseTrigger />
           <Modal.Header>
             <Modal.Heading className="text-accent">

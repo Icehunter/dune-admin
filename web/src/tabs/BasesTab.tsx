@@ -1,25 +1,19 @@
-import { useState, useEffect, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Spinner, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { api, ApiError } from '../api/client'
 import type { BaseRow } from '../api/client'
 import { DataTable, Icon, PageHeader, type Column } from '../dune-ui'
-
-type Key = 'id' | 'name' | 'pieces' | 'placeables' | 'actions'
-
-interface BasesTabProps {
-  isSignedIn?: boolean
-}
+import type { BasesTabKey, BasesTabProps } from './types'
 
 export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
   const { t } = useTranslation()
-  const [bases, setBases] = useState<BaseRow[]>([])
-  const [loading, setLoading] = useState(false)
-  const [unsupported, setUnsupported] = useState(false)
+  const [bases, setBases] = React.useState<BaseRow[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [unsupported, setUnsupported] = React.useState(false)
 
-  const COLUMNS: Column<Key>[] = [
+  const COLUMNS: Column<BasesTabKey>[] = [
     { key: 'id', label: t('bases.columns.id'), width: 80 },
     { key: 'name', label: t('bases.columns.name'), minWidth: 220 },
     { key: 'pieces', label: t('bases.columns.pieces'), width: 100 },
@@ -27,7 +21,7 @@ export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
     { key: 'actions', label: '', width: 120, sortable: false },
   ]
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => {
         setLoading(true)
@@ -42,7 +36,7 @@ export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
       .finally(() => setLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
@@ -95,7 +89,7 @@ export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
             </Card>
           )
         : (
-            <DataTable<BaseRow, Key>
+            <DataTable<BaseRow, BasesTabKey>
               aria-label={t('bases.ariaLabel')}
               className="min-h-0 max-h-full"
               columns={COLUMNS}

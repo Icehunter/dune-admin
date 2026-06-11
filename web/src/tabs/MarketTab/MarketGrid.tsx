@@ -1,9 +1,9 @@
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { EmptyState } from '@heroui-pro/react'
 import { Icon as IconifyIcon } from '@iconify/react'
-import type { MarketItem } from '../../api/client'
 import { iconUrl, categoryColor, qualityLabel } from '../../utils/icons'
+import type { MarketGridProps } from './types'
 
 const RARITY_BORDER: Record<string, string> = {
   common: 'border-border',
@@ -23,11 +23,6 @@ const RARITY_TEXT: Record<string, string> = {
   legendary: 'text-rarity-legendary',
   unique: 'text-rarity-unique',
   memento: 'text-rarity-memento',
-}
-
-type MarketGridProps = {
-  items: MarketItem[]
-  onSelect: (item: MarketItem) => void
 }
 
 export const MarketGrid: React.FC<MarketGridProps> = ({ items, onSelect }: MarketGridProps) => {

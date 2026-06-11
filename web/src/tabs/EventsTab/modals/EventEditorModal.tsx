@@ -1,23 +1,22 @@
-import type React from 'react'
-import { useState, useEffect, useMemo } from 'react'
+import * as React from 'react'
 import {
   Button, CloseButton, ListBox, Modal, SearchField, Select, Switch, TextField, toast,
 } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
-import { FieldInput, FieldSelect, Icon, NumberInput, Panel, SectionLabel } from '../../../dune-ui'
+import { FieldInput, FieldSelect, Icon, NumberInput, SectionLabel } from '../../../dune-ui'
+
+const FormSection: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex flex-col gap-3 rounded-[var(--radius)] border border-border/50 bg-surface-secondary p-4">
+    {children}
+  </div>
+)
 import { api } from '../../../api/client'
 import type { EventDefinition, Player } from '../../../api/client'
 import type { MilestoneFields, MilestoneSignal, RewardFields, XPType, ZoneRaceFields } from '../types'
 import { XP_TRACKS } from '../types'
+import type { EventEditorModalProps } from './types'
 
-interface EventEditorModalProps {
-  isOpen: boolean
-  onClose: () => void
-  editing: EventDefinition | null
-  onSaved: () => void
-}
-
-function parseZoneConfig(raw: string): ZoneRaceFields {
+const parseZoneConfig = (raw: string): ZoneRaceFields => {
   try {
     const c = JSON.parse(raw || '{}') as Record<string, unknown>
     return {
@@ -34,7 +33,7 @@ function parseZoneConfig(raw: string): ZoneRaceFields {
   }
 }
 
-function parseMilestoneConfig(raw: string): MilestoneFields {
+const parseMilestoneConfig = (raw: string): MilestoneFields => {
   try {
     const c = JSON.parse(raw || '{}') as Record<string, unknown>
     return {
@@ -49,7 +48,7 @@ function parseMilestoneConfig(raw: string): MilestoneFields {
   }
 }
 
-function parseReward(raw: string): RewardFields {
+const parseReward = (raw: string): RewardFields => {
   try {
     const r = JSON.parse(raw || '{}') as Record<string, unknown>
     return {
@@ -63,11 +62,11 @@ function parseReward(raw: string): RewardFields {
   }
 }
 
-function serializeConfig(
+const serializeConfig = (
   type: EventDefinition['type'],
   zone: ZoneRaceFields,
   ms: MilestoneFields,
-): string {
+): string => {
   if (type === 'zone_race') {
     return JSON.stringify({
       map: zone.map,
@@ -88,7 +87,7 @@ function serializeConfig(
   return JSON.stringify(cfg)
 }
 
-function serializeReward(reward: RewardFields): string {
+const serializeReward = (reward: RewardFields): string => {
   const r: Record<string, unknown> = {}
   if (reward.currency > 0) r.currency = reward.currency
   if (reward.items.length > 0) r.items = reward.items
@@ -106,30 +105,30 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const { t } = useTranslation()
   const isEdit = editing !== null
 
-  const [name, setName] = useState('')
-  const [type, setType] = useState<EventDefinition['type']>('milestone')
-  const [zone, setZone] = useState<ZoneRaceFields>(
+  const [name, setName] = React.useState('')
+  const [type, setType] = React.useState<EventDefinition['type']>('milestone')
+  const [zone, setZone] = React.useState<ZoneRaceFields>(
     { map: '', x: 0, y: 0, z: 0, radius: 500, participants: [] },
   )
-  const [players, setPlayers] = useState<Player[]>([])
-  const [participantPickKey, setParticipantPickKey] = useState(0)
-  const [milestone, setMilestone] = useState<MilestoneFields>(
+  const [players, setPlayers] = React.useState<Player[]>([])
+  const [participantPickKey, setParticipantPickKey] = React.useState(0)
+  const [milestone, setMilestone] = React.useState<MilestoneFields>(
     { signal: 'level', threshold: 50, tagName: '', awardPast: false },
   )
-  const [reward, setReward] = useState<RewardFields>({ currency: 0, items: [], xpRewards: [] })
-  const [maps, setMaps] = useState<string[]>([])
-  const [templates, setTemplates] = useState<{ id: string, name: string }[]>([])
-  const [templateQuery, setTemplateQuery] = useState('')
-  const [selectedTemplate, setSelectedTemplate] = useState('')
-  const [itemQty, setItemQty] = useState(1)
-  const [itemQuality, setItemQuality] = useState(0)
-  const [xpType, setXpType] = useState<XPType>('specialization')
-  const [xpSpecTrack, setXpSpecTrack] = useState<string>(XP_TRACKS[0])
-  const [xpAmount, setXpAmount] = useState(0)
-  const [announceTemplate, setAnnounceTemplate] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [reward, setReward] = React.useState<RewardFields>({ currency: 0, items: [], xpRewards: [] })
+  const [maps, setMaps] = React.useState<string[]>([])
+  const [templates, setTemplates] = React.useState<{ id: string, name: string }[]>([])
+  const [templateQuery, setTemplateQuery] = React.useState('')
+  const [selectedTemplate, setSelectedTemplate] = React.useState('')
+  const [itemQty, setItemQty] = React.useState(1)
+  const [itemQuality, setItemQuality] = React.useState(0)
+  const [xpType, setXpType] = React.useState<XPType>('specialization')
+  const [xpSpecTrack, setXpSpecTrack] = React.useState<string>(XP_TRACKS[0])
+  const [xpAmount, setXpAmount] = React.useState(0)
+  const [announceTemplate, setAnnounceTemplate] = React.useState('')
+  const [saving, setSaving] = React.useState(false)
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isOpen) return
     Promise.resolve().then(() => {
       if (editing) {
@@ -168,7 +167,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     api.players.list().then(setPlayers).catch(() => {})
   }, [isOpen, editing])
 
-  const filteredTemplates = useMemo(() => {
+  const filteredTemplates = React.useMemo(() => {
     if (!templateQuery) return []
     const q = templateQuery.toLowerCase()
     return templates
@@ -176,7 +175,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       .slice(0, 100)
   }, [templates, templateQuery])
 
-  const nameMap = useMemo(
+  const nameMap = React.useMemo(
     () => new Map(templates.map((tpl) => [tpl.id, tpl.name])),
     [templates],
   )
@@ -269,13 +268,13 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       .finally(() => setSaving(false))
   }
 
-  const lbl = 'text-xs text-muted mb-1 block'
+  const fieldLabelClass = 'text-xs text-muted mb-1 block'
   const rowCard = 'flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius)] text-xs bg-surface border border-border'
 
   return (
     <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
       <Modal.Container size="cover" scroll="outside">
-        <Modal.Dialog className="max-h-[90vh] flex flex-col">
+        <Modal.Dialog className="p-10 max-h-[90vh] flex flex-col">
           <Modal.CloseTrigger />
           <Modal.Header>
             <Modal.Heading className="text-accent">
@@ -285,11 +284,11 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           <Modal.Body className="flex flex-col gap-4 overflow-y-auto flex-1 min-h-0">
 
             {/* Basic Info */}
-            <Panel>
+            <FormSection>
               <SectionLabel>{t('events.editor.basics')}</SectionLabel>
               <div className="flex gap-4 mt-2">
                 <div className="flex-1">
-                  <span className={lbl}>{t('events.editor.name')}</span>
+                  <span className={fieldLabelClass}>{t('events.editor.name')}</span>
                   <FieldInput
                     value={name}
                     onChange={setName}
@@ -298,7 +297,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                   />
                 </div>
                 <div className="w-44 shrink-0">
-                  <span className={lbl}>{t('events.editor.type')}</span>
+                  <span className={fieldLabelClass}>{t('events.editor.type')}</span>
                   <FieldSelect
                     value={type}
                     onChange={handleTypeChange}
@@ -308,15 +307,15 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                   />
                 </div>
               </div>
-            </Panel>
+            </FormSection>
 
             {/* Zone Race Config */}
             {type === 'zone_race' && (
-              <Panel>
+              <FormSection>
                 <SectionLabel>{t('events.editor.zoneConfig')}</SectionLabel>
                 <div className="flex flex-col gap-3 mt-2">
                   <div>
-                    <span className={lbl}>{t('events.editor.zoneMap')}</span>
+                    <span className={fieldLabelClass}>{t('events.editor.zoneMap')}</span>
                     <Select
                       selectedKey={zone.map || null}
                       onSelectionChange={(k) => setZone((z) => ({ ...z, map: String(k) }))}
@@ -347,7 +346,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                   <div className="grid grid-cols-4 gap-3">
                     {(['x', 'y', 'z'] as const).map((axis) => (
                       <div key={axis}>
-                        <span className={lbl}>{axis.toUpperCase()}</span>
+                        <span className={fieldLabelClass}>{axis.toUpperCase()}</span>
                         <NumberInput
                           value={zone[axis]}
                           onChange={(v) => setZone((z) => ({ ...z, [axis]: v }))}
@@ -356,7 +355,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                       </div>
                     ))}
                     <div>
-                      <span className={lbl}>{t('events.editor.radius')}</span>
+                      <span className={fieldLabelClass}>{t('events.editor.radius')}</span>
                       <NumberInput
                         value={zone.radius}
                         onChange={(v) => setZone((z) => ({ ...z, radius: v }))}
@@ -366,7 +365,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                     </div>
                   </div>
                   <div>
-                    <span className={lbl}>{t('events.editor.participants')}</span>
+                    <span className={fieldLabelClass}>{t('events.editor.participants')}</span>
                     <div className="flex flex-col gap-1.5">
                       {availablePlayers.length > 0 && (
                         <Select
@@ -426,16 +425,16 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                     </div>
                   </div>
                 </div>
-              </Panel>
+              </FormSection>
             )}
 
             {/* Milestone Config */}
             {type === 'milestone' && (
-              <Panel>
+              <FormSection>
                 <SectionLabel>{t('events.editor.milestoneConfig')}</SectionLabel>
                 <div className="flex flex-col gap-3 mt-2">
                   <div>
-                    <span className={lbl}>{t('events.editor.signal')}</span>
+                    <span className={fieldLabelClass}>{t('events.editor.signal')}</span>
                     <Select
                       selectedKey={milestone.signal}
                       onSelectionChange={(k) => setMilestone((m) => ({
@@ -469,7 +468,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                   </div>
                   {milestone.signal === 'level' && (
                     <div>
-                      <span className={lbl}>{t('events.editor.levelThreshold')}</span>
+                      <span className={fieldLabelClass}>{t('events.editor.levelThreshold')}</span>
                       <NumberInput
                         value={milestone.threshold}
                         onChange={(v) => setMilestone((m) => ({ ...m, threshold: v }))}
@@ -481,7 +480,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                   )}
                   {milestone.signal === 'achievement_tag' && (
                     <div>
-                      <span className={lbl}>{t('events.editor.tagName')}</span>
+                      <span className={fieldLabelClass}>{t('events.editor.tagName')}</span>
                       <FieldInput
                         value={milestone.tagName}
                         onChange={(v) => setMilestone((m) => ({ ...m, tagName: v }))}
@@ -501,17 +500,17 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                     <span className="text-xs text-muted">{t('events.editor.awardPastHint')}</span>
                   </div>
                 </div>
-              </Panel>
+              </FormSection>
             )}
 
             {/* Reward */}
-            <Panel>
+            <FormSection>
               <SectionLabel>
                 {`${t('events.editor.rewardLabel')} (${t('common.optional')})`}
               </SectionLabel>
               <div className="flex flex-col gap-3 mt-2">
                 <div>
-                  <span className={lbl}>{t('events.editor.currency')}</span>
+                  <span className={fieldLabelClass}>{t('events.editor.currency')}</span>
                   <NumberInput
                     value={reward.currency}
                     onChange={(v) => setReward((r) => ({ ...r, currency: v }))}
@@ -524,7 +523,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
 
                 {/* Item picker */}
                 <div>
-                  <span className={lbl}>{t('events.editor.items')}</span>
+                  <span className={fieldLabelClass}>{t('events.editor.items')}</span>
                   <div className="flex items-end gap-2">
                     <TextField className="flex-1 min-w-0" aria-label={t('players.inventory.columns.template')}>
                       <div className="relative w-full">
@@ -640,10 +639,10 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
 
                 {/* XP rewards */}
                 <div>
-                  <span className={lbl}>{t('events.editor.xpRewards')}</span>
+                  <span className={fieldLabelClass}>{t('events.editor.xpRewards')}</span>
                   <div className="flex items-end gap-2">
                     <div className="w-48 shrink-0">
-                      <span className={lbl}>{t('events.editor.xpType')}</span>
+                      <span className={fieldLabelClass}>{t('events.editor.xpType')}</span>
                       <FieldSelect
                         value={xpType}
                         onChange={(v) => setXpType(v as XPType)}
@@ -653,7 +652,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                     </div>
                     {xpType === 'specialization' && (
                       <div className="w-44 shrink-0">
-                        <span className={lbl}>{t('events.editor.xpTrack')}</span>
+                        <span className={fieldLabelClass}>{t('events.editor.xpTrack')}</span>
                         <FieldSelect
                           value={xpSpecTrack}
                           onChange={setXpSpecTrack}
@@ -663,7 +662,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                       </div>
                     )}
                     <div className="flex-1">
-                      <span className={lbl}>{t('events.editor.xpAmount')}</span>
+                      <span className={fieldLabelClass}>{t('events.editor.xpAmount')}</span>
                       <NumberInput
                         value={xpAmount}
                         onChange={setXpAmount}
@@ -710,13 +709,13 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                   )}
                 </div>
               </div>
-            </Panel>
+            </FormSection>
 
             {/* Announcement */}
-            <Panel>
+            <FormSection>
               <SectionLabel>{t('events.editor.announceLabel')}</SectionLabel>
               <div className="mt-2">
-                <span className={lbl}>{t('events.editor.announceTemplate')}</span>
+                <span className={fieldLabelClass}>{t('events.editor.announceTemplate')}</span>
                 <FieldInput
                   value={announceTemplate}
                   onChange={setAnnounceTemplate}
@@ -729,7 +728,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                   {t('events.editor.channelDefault')}
                 </p>
               </div>
-            </Panel>
+            </FormSection>
 
           </Modal.Body>
           <Modal.Footer className="flex items-center gap-2">

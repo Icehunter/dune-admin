@@ -1,35 +1,22 @@
-import type React from 'react'
-import { useState, useMemo } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AreaChart } from '@heroui-pro/react'
-import type { StatSnapshot } from '../../../api/client'
 import { SectionLabel } from '../../../dune-ui'
+import type { SolarisChartProps, SolarisPoint } from './types'
 
-interface SolarisChartProps {
-  data: StatSnapshot[]
-}
-
-interface SolarisPoint {
-  time: string
-  balance: number
-  cum_earned: number
-  cum_spent: number
-  [key: string]: string | number
-}
-
-function fmtSolaris(n: number): string {
+const fmtSolaris = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
 }
 
-function fmtTime(iso: string): string {
+const fmtTime = (iso: string): string => {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 export const SolarisChart: React.FC<SolarisChartProps> = ({ data }) => {
   const { t } = useTranslation()
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hidden, setHidden] = React.useState<Set<string>>(new Set())
 
   const LINES = [
     { key: 'balance', label: t('players.detail.solarisBalance'), color: 'var(--accent)' },
@@ -46,7 +33,7 @@ export const SolarisChart: React.FC<SolarisChartProps> = ({ data }) => {
     })
   }
 
-  const points = useMemo<SolarisPoint[]>(() => {
+  const points = React.useMemo<SolarisPoint[]>(() => {
     const snaps = data.filter((s) => s.solaris_balance != null)
     if (snaps.length === 0) return []
     let cumEarned = 0

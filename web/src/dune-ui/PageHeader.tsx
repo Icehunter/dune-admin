@@ -1,21 +1,7 @@
-import type React from 'react'
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import { Button, Spinner } from '@heroui/react'
 import { Icon } from './Icon'
-
-type PageHeaderProps = {
-  title: ReactNode
-  /** Optional descriptive subtitle below the title. */
-  subtitle?: ReactNode
-  /** When provided, a refresh button is rendered in the action slot. */
-  onRefresh?: () => void
-  /** Shows a spinner in the refresh button while true. */
-  loading?: boolean
-  /** Seconds until next auto-refresh — shown as a dim countdown beside "Refresh". */
-  countdown?: number
-  /** Additional action buttons / controls rendered on the right. */
-  children?: ReactNode
-}
+import type { PageHeaderProps } from './types'
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, onRefresh, loading, countdown, children }) => {
   return (

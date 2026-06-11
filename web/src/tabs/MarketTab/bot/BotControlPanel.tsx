@@ -1,5 +1,4 @@
-import type React from 'react'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import * as React from 'react'
 import { Button, Modal, Spinner, Switch } from '@heroui/react'
 import { Segment } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
@@ -9,27 +8,23 @@ import { Icon } from '../../../dune-ui'
 import { BotStatusCard } from './BotStatusCard'
 import { BotActions } from './BotActions'
 import { BotLogViewer } from './BotLogViewer'
-import { BotConfigEditor, type ConfigEditorHandle } from './BotConfigEditor'
+import { BotConfigEditor } from './BotConfigEditor'
 import { DisabledItemsManager } from './DisabledItemsManager'
-import { BotServerConfig, type BotServerConfigHandle } from './BotServerConfig'
-
-type BotControlPanelProps = {
-  open: boolean
-  onClose: () => void
-}
+import { BotServerConfig } from './BotServerConfig'
+import type { BotControlPanelProps, ConfigEditorHandle, ConfigFooterProps, BotServerConfigHandle, ServerConfigFooterProps } from './types'
 
 export const BotControlPanel: React.FC<BotControlPanelProps> = ({ open, onClose }: BotControlPanelProps) => {
   const { t } = useTranslation()
-  const [status, setStatus] = useState<BotStatus | null>(null)
-  const [config, setConfig] = useState<BotConfig | null>(null)
-  const [statusLoading, setStatusLoading] = useState(false)
-  const [configLoading, setConfigLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('config')
-  const editorRef = useRef<ConfigEditorHandle>(null)
-  const serverConfigRef = useRef<BotServerConfigHandle>(null)
+  const [status, setStatus] = React.useState<BotStatus | null>(null)
+  const [config, setConfig] = React.useState<BotConfig | null>(null)
+  const [statusLoading, setStatusLoading] = React.useState(false)
+  const [configLoading, setConfigLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState('config')
+  const editorRef = React.useRef<ConfigEditorHandle>(null)
+  const serverConfigRef = React.useRef<BotServerConfigHandle>(null)
 
-  const loadStatus = useCallback(() => {
+  const loadStatus = React.useCallback(() => {
     Promise.resolve()
       .then(() => setStatusLoading(true))
       .then(() => api.marketBot.status())
@@ -41,7 +36,7 @@ export const BotControlPanel: React.FC<BotControlPanelProps> = ({ open, onClose 
       .finally(() => setStatusLoading(false))
   }, [])
 
-  const loadConfig = useCallback(() => {
+  const loadConfig = React.useCallback(() => {
     Promise.resolve()
       .then(() => setConfigLoading(true))
       .then(() => api.marketBot.config())
@@ -50,7 +45,7 @@ export const BotControlPanel: React.FC<BotControlPanelProps> = ({ open, onClose 
       .finally(() => setConfigLoading(false))
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (open) {
       loadStatus()
       loadConfig()
@@ -60,7 +55,7 @@ export const BotControlPanel: React.FC<BotControlPanelProps> = ({ open, onClose 
   return (
     <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && onClose()}>
       <Modal.Container size="cover" scroll="outside">
-        <Modal.Dialog className="h-[92vh] flex flex-col dialog-surface-alt">
+        <Modal.Dialog className="p-10 h-[92vh] flex flex-col dialog-surface-alt">
           <Modal.CloseTrigger />
           <Modal.Header>
             <Modal.Heading>{t('market.bot.panelTitle')}</Modal.Heading>
@@ -159,17 +154,11 @@ export const BotControlPanel: React.FC<BotControlPanelProps> = ({ open, onClose 
   )
 }
 
-interface ConfigFooterProps {
-  editorRef: React.RefObject<ConfigEditorHandle | null>
-  initialEnabled: boolean
-  onReload: () => void
-}
-
-function ConfigFooter({ editorRef, initialEnabled, onReload }: ConfigFooterProps) {
+const ConfigFooter: React.FC<ConfigFooterProps> = ({ editorRef, initialEnabled, onReload }: ConfigFooterProps) => {
   const { t } = useTranslation()
-  const [saving, setSaving] = useState(false)
-  const [reloading, setReloading] = useState(false)
-  const [enabled, setEnabledLocal] = useState(initialEnabled)
+  const [saving, setSaving] = React.useState(false)
+  const [reloading, setReloading] = React.useState(false)
+  const [enabled, setEnabledLocal] = React.useState(initialEnabled)
 
   return (
     <div className="shrink-0 flex items-center gap-3 px-4 py-3">
@@ -217,9 +206,9 @@ function ConfigFooter({ editorRef, initialEnabled, onReload }: ConfigFooterProps
   )
 }
 
-function ServerConfigFooter({ configRef }: { configRef: React.RefObject<BotServerConfigHandle | null> }) {
+const ServerConfigFooter: React.FC<ServerConfigFooterProps> = ({ configRef }: ServerConfigFooterProps) => {
   const { t } = useTranslation()
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving] = React.useState(false)
 
   return (
     <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3">

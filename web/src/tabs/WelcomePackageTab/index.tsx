@@ -1,18 +1,13 @@
-import type React from 'react'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import * as React from 'react'
 import { toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
 import type { WelcomePackage, WelcomePackageConfig, WelcomeGrantRecord } from '../../api/client'
 import { SideNav } from '../../dune-ui'
-import type { WelcomeSection, WelcomeConfigDiff } from './types'
+import type { WelcomeSection, WelcomeConfigDiff, WelcomePackageTabProps } from './types'
 import { ConfigView } from './views/ConfigView'
 import { PackagesView } from './views/PackagesView'
 import { GrantsView } from './views/GrantsView'
-
-type WelcomePackageTabProps
-  = | { showSubnav?: false, section?: WelcomeSection, onSectionChange?: never }
-    | { showSubnav: true, section?: WelcomeSection, onSectionChange: (s: WelcomeSection) => void }
 
 export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav, section = 'config', onSectionChange }: WelcomePackageTabProps) => {
   const { t } = useTranslation()
@@ -23,27 +18,27 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
     { key: 'grants', label: t('welcome.sections.grants') },
   ]
 
-  const [grants, setGrants] = useState<WelcomeGrantRecord[]>([])
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [running, setRunning] = useState(false)
+  const [grants, setGrants] = React.useState<WelcomeGrantRecord[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
+  const [running, setRunning] = React.useState(false)
 
-  const [enabled, setEnabled] = useState(false)
-  const [scanSecs, setScanSecs] = useState(30)
-  const [packages, setPackages] = useState<WelcomePackage[]>([])
-  const [activeVersions, setActiveVersions] = useState<string[]>([])
-  const [welcomeMessageEnabled, setWelcomeMessageEnabled] = useState(false)
-  const [welcomeMessage, setWelcomeMessage] = useState('')
-  const [welcomeWhisperSourcePlayer, setWelcomeWhisperSourcePlayer] = useState('')
-  const [motdEnabled, setMotdEnabled] = useState(false)
-  const [motdMessage, setMotdMessage] = useState('')
-  const [motdSourcePlayer, setMotdSourcePlayer] = useState('')
-  const [templates, setTemplates] = useState<{ id: string, name: string }[]>([])
+  const [enabled, setEnabled] = React.useState(false)
+  const [scanSecs, setScanSecs] = React.useState(30)
+  const [packages, setPackages] = React.useState<WelcomePackage[]>([])
+  const [activeVersions, setActiveVersions] = React.useState<string[]>([])
+  const [welcomeMessageEnabled, setWelcomeMessageEnabled] = React.useState(false)
+  const [welcomeMessage, setWelcomeMessage] = React.useState('')
+  const [welcomeWhisperSourcePlayer, setWelcomeWhisperSourcePlayer] = React.useState('')
+  const [motdEnabled, setMotdEnabled] = React.useState(false)
+  const [motdMessage, setMotdMessage] = React.useState('')
+  const [motdSourcePlayer, setMotdSourcePlayer] = React.useState('')
+  const [templates, setTemplates] = React.useState<{ id: string, name: string }[]>([])
 
   // Snapshot of what's persisted on the server; null until first load completes.
-  const [savedConfig, setSavedConfig] = useState<WelcomePackageConfig | null>(null)
+  const [savedConfig, setSavedConfig] = React.useState<WelcomePackageConfig | null>(null)
 
-  const applyConfig = useCallback((c: WelcomePackageConfig) => {
+  const applyConfig = React.useCallback((c: WelcomePackageConfig) => {
     setEnabled(c.enabled)
     setScanSecs(c.scan_interval_secs)
     setPackages(c.packages ?? [])
@@ -59,7 +54,7 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
     setMotdSourcePlayer(c.motd_source_player ?? '')
   }, [])
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.welcomePackage.config())
@@ -76,11 +71,11 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
       .finally(() => setLoading(false))
   }, [t, applyConfig])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
-  useEffect(() => {
+  React.useEffect(() => {
     api.players.templates().then(setTemplates).catch(() => {})
   }, [])
 
@@ -152,7 +147,7 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
     }
   }
 
-  const configDiff = useMemo((): WelcomeConfigDiff => {
+  const configDiff = React.useMemo((): WelcomeConfigDiff => {
     if (!savedConfig) {
       return { packageAdded: 0, packageRemoved: 0, packageUpdated: 0, settingsChanged: false, isDirty: false }
     }

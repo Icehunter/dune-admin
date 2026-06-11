@@ -1,5 +1,4 @@
-import type React from 'react'
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import * as React from 'react'
 import { Button, Chip, Header, Input, ListBox, Modal, SearchField, Select, Separator, Spinner, toast } from '@heroui/react'
 import type { Selection } from '@heroui/react'
 import type { DataGridColumn } from '@heroui-pro/react'
@@ -8,28 +7,17 @@ import { useTranslation } from 'react-i18next'
 import { Icon, NumberInput, ActionBar } from '../../../dune-ui'
 import { api } from '../../../api/client'
 import type { GivePack, GivePackItem } from '../../../api/client'
+import type { ManagePacksModalProps, PackDiff, KeyedItem, KeyedPack } from './types'
 
-interface ManagePacksModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onSaved: (packs: GivePack[]) => void
-  templates: { id: string, name: string }[]
-}
-
-type PackDiff = { added: number, updated: number, removed: number, isDirty: boolean }
-
-type KeyedItem = GivePackItem & { _key: string }
-type KeyedPack = Omit<GivePack, 'items'> & { items: KeyedItem[] }
-
-function stripKey({ template, qty, quality }: KeyedItem): GivePackItem {
+const stripKey = ({ template, qty, quality }: KeyedItem): GivePackItem => {
   return { template, qty, quality }
 }
 
-function stripPackKeys(pack: KeyedPack): GivePack {
+const stripPackKeys = (pack: KeyedPack): GivePack => {
   return { ...pack, items: pack.items.map(stripKey) }
 }
 
-function DiffStatus({ diff }: { diff: PackDiff }) {
+const DiffStatus: React.FC<{ diff: PackDiff }> = ({ diff }) => {
   const parts: { key: string, text: string, cls: string }[] = []
   if (diff.added > 0) parts.push({ key: 'added', text: `${diff.added} added`, cls: 'text-success' })
   if (diff.updated > 0) parts.push({ key: 'updated', text: `${diff.updated} updated`, cls: 'text-warning' })
@@ -54,27 +42,27 @@ export const ManagePacksModal: React.FC<ManagePacksModalProps> = ({
   templates,
 }) => {
   const { t } = useTranslation()
-  const [packs, setPacks] = useState<KeyedPack[]>([])
-  const [savedPacks, setSavedPacks] = useState<GivePack[]>([])
-  const [selectedID, setSelectedID] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set())
+  const [packs, setPacks] = React.useState<KeyedPack[]>([])
+  const [savedPacks, setSavedPacks] = React.useState<GivePack[]>([])
+  const [selectedID, setSelectedID] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
+  const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
 
-  const [formID, setFormID] = useState('')
-  const [formName, setFormName] = useState('')
-  const [formCategory, setFormCategory] = useState('')
-  const [formTier, setFormTier] = useState(1)
+  const [formID, setFormID] = React.useState('')
+  const [formName, setFormName] = React.useState('')
+  const [formCategory, setFormCategory] = React.useState('')
+  const [formTier, setFormTier] = React.useState(1)
 
-  const [addQuery, setAddQuery] = useState('')
-  const [addSelected, setAddSelected] = useState('')
-  const [addQty, setAddQty] = useState(1)
-  const [addQuality, setAddQuality] = useState(0)
+  const [addQuery, setAddQuery] = React.useState('')
+  const [addSelected, setAddSelected] = React.useState('')
+  const [addQty, setAddQty] = React.useState(1)
+  const [addQuality, setAddQuality] = React.useState(0)
 
-  const keyCounter = useRef(0)
+  const keyCounter = React.useRef(0)
   const nextKey = () => String(keyCounter.current++)
 
-  const loadPacks = useCallback(() => {
+  const loadPacks = React.useCallback(() => {
     setLoading(true)
     api.givePacks.config()
       .then((cfg) => {
@@ -91,17 +79,17 @@ export const ManagePacksModal: React.FC<ManagePacksModalProps> = ({
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isOpen) return
     void Promise.resolve().then(loadPacks)
   }, [isOpen, loadPacks])
 
-  const packsRef = useRef(packs)
-  useEffect(() => {
+  const packsRef = React.useRef(packs)
+  React.useEffect(() => {
     packsRef.current = packs
   }, [packs])
 
-  useEffect(() => {
+  React.useEffect(() => {
     const pack = packsRef.current.find((p) => p.id === selectedID)
     if (pack) {
       setFormID(pack.id)
@@ -119,14 +107,14 @@ export const ManagePacksModal: React.FC<ManagePacksModalProps> = ({
     }
   }, [selectedID])
 
-  const nameMap = useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
+  const nameMap = React.useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
 
-  const sortedPacks = useMemo(
+  const sortedPacks = React.useMemo(
     () => [...packs].sort((a, b) => a.category.localeCompare(b.category) || a.tier - b.tier),
     [packs],
   )
 
-  const groupedPacks = useMemo(() => {
+  const groupedPacks = React.useMemo(() => {
     const groups: Record<string, KeyedPack[]> = {}
     for (const p of sortedPacks) {
       if (!groups[p.category]) groups[p.category] = []
@@ -135,7 +123,7 @@ export const ManagePacksModal: React.FC<ManagePacksModalProps> = ({
     return Object.entries(groups)
   }, [sortedPacks])
 
-  const packDiff = useMemo((): PackDiff => {
+  const packDiff = React.useMemo((): PackDiff => {
     const savedIds = new Set(savedPacks.map((p) => p.id))
     const currentIds = new Set(packs.map((p) => p.id))
     const savedMap = new Map(savedPacks.map((p) => [p.id, p]))
@@ -155,7 +143,7 @@ export const ManagePacksModal: React.FC<ManagePacksModalProps> = ({
     setPacks(packs.map((p) => (p.id === selectedID ? { ...p, items: next } : p)))
   }
 
-  const addFiltered = useMemo(() => {
+  const addFiltered = React.useMemo(() => {
     if (!addQuery) return []
     const q = addQuery.toLowerCase()
     return templates
@@ -326,7 +314,7 @@ export const ManagePacksModal: React.FC<ManagePacksModalProps> = ({
   return (
     <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen onOpenChange={(v) => { if (!v) onClose() }}>
       <Modal.Container size="cover" scroll="outside">
-        <Modal.Dialog>
+        <Modal.Dialog className="p-10 dialog-surface-alt">
           <Modal.CloseTrigger />
           <Modal.Header>
             <Modal.Heading className="text-accent">{t('players.givePacks.title')}</Modal.Heading>

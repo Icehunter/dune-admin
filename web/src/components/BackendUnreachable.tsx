@@ -1,13 +1,14 @@
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@heroui/react'
 import { Icon, Panel } from '../dune-ui'
 import { currentBackendBase } from '../api/client'
+import type { BackendUnreachableProps } from './types'
 
 // BackendUnreachable is shown when the SPA loaded but could never reach the
 // dune-admin backend API (#165) — instead of an empty, non-working dashboard.
 // It surfaces the backend target it's trying and how to fix a connection issue.
-export const BackendUnreachable: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
+export const BackendUnreachable: React.FC<BackendUnreachableProps> = ({ onRetry }) => {
   const { t } = useTranslation()
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-6">

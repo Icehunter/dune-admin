@@ -1,25 +1,19 @@
-import type React from 'react'
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { Button, toast } from '@heroui/react'
 import type { Selection } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { Icon as IconifyIcon } from '@iconify/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
-import type { Player, InventoryItem } from '../../../api/client'
+import type { InventoryItem } from '../../../api/client'
 import { ActionBar, DataTable, Icon, LoadingState, SectionLabel, type Column } from '../../../dune-ui'
-
-type ItemKey = 'template' | 'stack' | 'quality' | 'durability' | 'actions'
-
-interface InventoryViewProps {
-  player: Player
-}
+import type { InventoryViewProps, ItemKey } from './types'
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
   const { t } = useTranslation()
-  const [items, setItems] = useState<InventoryItem[]>([])
-  const [loading, setLoading] = useState(false)
-  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set())
+  const [items, setItems] = React.useState<InventoryItem[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
 
   const ITEM_COLUMNS: Column<ItemKey>[] = [
     { key: 'template', label: t('players.inventory.columns.template'), isRowHeader: true },
@@ -29,7 +23,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
     { key: 'actions', label: ' ', sortable: false },
   ]
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve()
       .then(() => {
         setItems([])

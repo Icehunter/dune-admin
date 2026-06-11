@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, SearchField } from '@heroui/react'
 import { Icon, Panel, SectionLabel } from '../../../dune-ui'
@@ -6,15 +6,16 @@ import { LIVE_TYPES, CATEGORY_GROUPS, CAT_COLOR, TYPE_LABELS, ICON_POS, HEATMAP_
 import { filterKey, heatmapFilterKey } from '../utils'
 import { SpriteIcon } from './SpriteIcon'
 import type { FilterPanelProps } from '../types'
+import type { TypeRowProps, CategorySectionProps } from './types'
 
-export function FilterPanel({
+export const FilterPanel: React.FC<FilterPanelProps> = ({
   filter, onToggle, onClear, spawns, mapKey, heatmapMode, onHeatmapToggle,
-}: FilterPanelProps) {
+}) => {
   const { t } = useTranslation()
-  const [search, setSearch] = useState('')
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [search, setSearch] = React.useState('')
+  const [expanded, setExpanded] = React.useState<Record<string, boolean>>({})
 
-  const typesByCategory = useMemo(() => {
+  const typesByCategory = React.useMemo(() => {
     const map: Record<string, Map<string, { label: string, count: number }>> = {}
     spawns.forEach((s) => {
       const cat = s.category
@@ -33,8 +34,7 @@ export function FilterPanel({
     bases: t('liveMap.filterBases'),
   }
 
-  type TypeRowProps = { typeKey: string, label: string, count: number, category: string }
-  function TypeRow({ typeKey, label, count, category }: TypeRowProps) {
+  const TypeRow: React.FC<TypeRowProps> = ({ typeKey, label, count, category }) => {
     const isOn = filter[typeKey] ?? false
     return (
       <Checkbox
@@ -53,8 +53,7 @@ export function FilterPanel({
     )
   }
 
-  type CategorySectionProps = { group: (typeof CATEGORY_GROUPS)[number] }
-  function CategorySection({ group }: CategorySectionProps) {
+  const CategorySection: React.FC<CategorySectionProps> = ({ group }) => {
     const items = typesByCategory[group.id]
     if (!items?.size) return null
 
@@ -109,7 +108,7 @@ export function FilterPanel({
   }
 
   return (
-    <div className="flex flex-col w-[270px] shrink-0 min-h-0 overflow-hidden rounded-[var(--radius)] border border-border bg-background">
+    <div className="flex flex-col w-[294px] shrink-0 min-h-0 overflow-hidden rounded-[var(--radius)] border border-border bg-background">
       <div className="px-2 pt-2 pb-1 shrink-0">
         <SearchField
           aria-label={t('liveMap.filter')}

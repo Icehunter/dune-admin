@@ -1,5 +1,4 @@
-import type React from 'react'
-import { useState, useEffect, useCallback } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { Button, Input, Select, ListBox, Spinner, toast, TextField } from '@heroui/react'
@@ -9,7 +8,7 @@ import { NumberInput, PageHeader, SectionDivider, Icon } from '../../dune-ui'
 import { ScheduledRestartsCard } from '../../components/ScheduledRestartsCard'
 import { useStatus } from '../../hooks/useStatus'
 
-import { ACTIONS, INIT_WARN_MS, type ActionDef, type DetailedStatus } from './types'
+import { ACTIONS, INIT_WARN_MS, type ActionDef, type DetailedStatus, type BattlegroupTabProps } from './types'
 import { ServersTable } from './ServersTable'
 import {
   HealthCard, HealthChips, BgVmCard, ComponentHealthCard, GameReadyCard, WebInterfacesCard,
@@ -20,39 +19,35 @@ import { RestoreModal } from './modals/RestoreModal'
 
 const POLL_MS = 30_000
 
-interface BattlegroupTabProps {
-  isActive?: boolean
-}
-
 export const BattlegroupTab: React.FC<BattlegroupTabProps> = ({ isActive = false }) => {
   const { t } = useTranslation()
   const { status: connStatus } = useStatus()
-  const [status, setStatus] = useState<DetailedStatus | null>(null)
-  const [statusLoading, setStatusLoading] = useState(false)
+  const [status, setStatus] = React.useState<DetailedStatus | null>(null)
+  const [statusLoading, setStatusLoading] = React.useState(false)
 
   // Command lifecycle
-  const [runningCmd, setRunningCmd] = useState<string | null>(null)
-  const [cmdOutput, setCmdOutput] = useState<string | null>(null)
-  const [cmdDone, setCmdDone] = useState(false)
-  const [confirmCmd, setConfirmCmd] = useState<ActionDef | null>(null)
-  const [startedAt, setStartedAt] = useState<number | null>(null)
-  const [lastBackupFile, setLastBackupFile] = useState<string | null>(null)
+  const [runningCmd, setRunningCmd] = React.useState<string | null>(null)
+  const [cmdOutput, setCmdOutput] = React.useState<string | null>(null)
+  const [cmdDone, setCmdDone] = React.useState(false)
+  const [confirmCmd, setConfirmCmd] = React.useState<ActionDef | null>(null)
+  const [startedAt, setStartedAt] = React.useState<number | null>(null)
+  const [lastBackupFile, setLastBackupFile] = React.useState<string | null>(null)
 
   // Broadcasts
-  const [broadcastTitle, setBroadcastTitle] = useState('')
-  const [broadcastBody, setBroadcastBody] = useState('')
-  const [broadcastDuration, setBroadcastDuration] = useState(30)
-  const [broadcastBusy, setBroadcastBusy] = useState(false)
-  const [shutdownType, setShutdownType] = useState('Restart')
-  const [shutdownDelay, setShutdownDelay] = useState(10)
-  const [shutdownBusy, setShutdownBusy] = useState(false)
+  const [broadcastTitle, setBroadcastTitle] = React.useState('')
+  const [broadcastBody, setBroadcastBody] = React.useState('')
+  const [broadcastDuration, setBroadcastDuration] = React.useState(30)
+  const [broadcastBusy, setBroadcastBusy] = React.useState(false)
+  const [shutdownType, setShutdownType] = React.useState('Restart')
+  const [shutdownDelay, setShutdownDelay] = React.useState(10)
+  const [shutdownBusy, setShutdownBusy] = React.useState(false)
 
   // Restore modal
-  const [showRestore, setShowRestore] = useState(false)
-  const [backupFiles, setBackupFiles] = useState<BackupFile[]>([])
-  const [backupFilesLoading, setBackupFilesLoading] = useState(false)
+  const [showRestore, setShowRestore] = React.useState(false)
+  const [backupFiles, setBackupFiles] = React.useState<BackupFile[]>([])
+  const [backupFilesLoading, setBackupFilesLoading] = React.useState(false)
 
-  const fetchStatus = useCallback(() => {
+  const fetchStatus = React.useCallback(() => {
     Promise.resolve()
       .then(() => setStatusLoading(true))
       .then(() => api.battlegroup.status() as Promise<unknown>)
@@ -61,7 +56,7 @@ export const BattlegroupTab: React.FC<BattlegroupTabProps> = ({ isActive = false
       .finally(() => setStatusLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchStatus()
   }, [fetchStatus])
 
@@ -69,8 +64,8 @@ export const BattlegroupTab: React.FC<BattlegroupTabProps> = ({ isActive = false
 
   // isInitializing tracks whether we're inside the post-start warning window.
   // We use a boolean state rather than computing from Date.now() in render (impure).
-  const [isInitializing, setIsInitializing] = useState(false)
-  useEffect(() => {
+  const [isInitializing, setIsInitializing] = React.useState(false)
+  React.useEffect(() => {
     if (startedAt === null) {
       const t = setTimeout(() => setIsInitializing(false), 0)
       return () => clearTimeout(t)
@@ -207,7 +202,7 @@ export const BattlegroupTab: React.FC<BattlegroupTabProps> = ({ isActive = false
         <div className="flex flex-wrap gap-3 shrink-0">
 
           {/* Generic broadcast */}
-          <div className="dune-lift flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-4">
+          <div className="dune-lift flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-8">
             <div className="text-xs font-semibold uppercase tracking-widest text-accent">{t('battlegroup.genericMessage')}</div>
             <TextField aria-label={t('battlegroup.titlePlaceholder')}>
               <Input placeholder={t('battlegroup.titlePlaceholder')} value={broadcastTitle} onChange={(e) => setBroadcastTitle(e.target.value)} />
@@ -258,7 +253,7 @@ export const BattlegroupTab: React.FC<BattlegroupTabProps> = ({ isActive = false
           </div>
 
           {/* Shutdown broadcast */}
-          <div className="dune-lift flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-4">
+          <div className="dune-lift flex flex-col gap-2 flex-1 min-w-64 rounded-[var(--radius)] border border-border bg-surface p-8">
             <div className="text-xs font-semibold uppercase tracking-widest text-accent">{t('battlegroup.shutdownBroadcast')}</div>
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted shrink-0">{t('battlegroup.shutdownType')}</label>

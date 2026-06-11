@@ -1,19 +1,11 @@
+import * as React from 'react'
 import { Button, ListBox, Select, Tooltip } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
-import type { ServerSetting } from '../../../api/client'
 import { FieldInput, NumberInput, Icon } from '../../../dune-ui'
 import { SOURCE_FILE, LAYER_STYLE, USER_SOURCES } from '../constants'
 import { sourceLabel, trimFloat } from '../utils'
-
-interface SettingRowProps {
-  item: ServerSetting
-  pending: string | undefined
-  onChange: (value: string) => void
-  onDelete: () => Promise<void>
-  // True when the active control plane is AMP and this is a curated, AMP-managed
-  // setting (written through the AMP API rather than the INI files).
-  ampManaged?: boolean
-}
+import type { SettingRowProps } from './types'
+import type { ServerSetting } from '../../../api/client'
 
 export const SettingRow: React.FC<SettingRowProps> = ({
   item, pending, onChange, onDelete, ampManaged,

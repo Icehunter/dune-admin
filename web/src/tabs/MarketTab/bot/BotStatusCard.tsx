@@ -1,9 +1,9 @@
-import type React from 'react'
+import * as React from 'react'
 import { Chip } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
-import type { BotStatus } from '../../../api/client'
+import type { BotStatusCardProps, StatProps } from './types'
 
-function fmt(ts: string | null | undefined): string {
+const fmt = (ts: string | null | undefined): string => {
   if (!ts) return '—'
   try {
     return new Date(ts).toLocaleTimeString()
@@ -11,10 +11,6 @@ function fmt(ts: string | null | undefined): string {
   catch {
     return ts
   }
-}
-
-interface BotStatusCardProps {
-  status: BotStatus
 }
 
 export const BotStatusCard: React.FC<BotStatusCardProps> = ({ status }) => {
@@ -57,18 +53,9 @@ export const BotStatusCard: React.FC<BotStatusCardProps> = ({ status }) => {
   )
 }
 
-function Sep() {
-  return <div className="w-px h-8 bg-border mx-3 shrink-0" />
-}
+const Sep: React.FC = () => <div className="w-px h-8 bg-border mx-3 shrink-0" />
 
-interface StatProps {
-  label: string
-  first?: boolean
-  danger?: boolean
-  children: React.ReactNode
-}
-
-function Stat({ label, danger, children }: StatProps) {
+const Stat: React.FC<StatProps> = ({ label, danger, children }) => {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">{label}</span>

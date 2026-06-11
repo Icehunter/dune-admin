@@ -1,16 +1,9 @@
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Modal, Spinner } from '@heroui/react'
 import { api } from '../../../api/client'
 import { Icon } from '../../../dune-ui'
-
-type CommandOutputModalProps = {
-  runningCmd: string | null
-  cmdOutput: string | null
-  cmdDone: boolean
-  lastBackupFile: string | null
-  onClose: () => void
-}
+import type { CommandOutputModalProps } from './types'
 
 export const CommandOutputModal: React.FC<CommandOutputModalProps> = ({
   runningCmd, cmdOutput, cmdDone, lastBackupFile, onClose,
@@ -19,7 +12,7 @@ export const CommandOutputModal: React.FC<CommandOutputModalProps> = ({
   return (
     <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={runningCmd !== null} onOpenChange={(v) => { if (!v && cmdDone) onClose() }}>
       <Modal.Container>
-        <Modal.Dialog>
+        <Modal.Dialog className="p-10">
           <Modal.Header><Modal.Heading>{runningCmd ? t(`battlegroup.actions.${runningCmd}` as never) : ''}</Modal.Heading></Modal.Header>
           <Modal.Body>
             {!cmdDone

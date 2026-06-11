@@ -1,15 +1,15 @@
-import type React from 'react'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import * as React from 'react'
 import { Button, Spinner } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
 import type { MarketItem } from '../../api/client'
 import { Icon, LoadingState, PageHeader } from '../../dune-ui'
 import { MarketSidebar } from './MarketSidebar'
-import { MarketSearch, type MarketFilters } from './MarketSearch'
+import { MarketSearch } from './MarketSearch'
+import type { MarketFilters, MarketView } from './types'
 import { MarketTable } from './MarketTable'
 import { MarketGrid } from './MarketGrid'
-import { ViewToggle, type MarketView } from './ViewToggle'
+import { ViewToggle } from './ViewToggle'
 import { ItemDetail } from './ItemDetail'
 import { BotControlPanel } from './bot/BotControlPanel'
 
@@ -17,19 +17,19 @@ const DEFAULT_FILTERS: MarketFilters = { search: '', category: '', owner: '' }
 
 export const MarketTab: React.FC = () => {
   const { t } = useTranslation()
-  const [items, setItems] = useState<MarketItem[]>([])
-  const [categories, setCategories] = useState<string[]>([])
-  const categoriesRef = useRef<string[]>([])
-  const [loading, setLoading] = useState(false)
-  const [filters, setFilters] = useState<MarketFilters>(DEFAULT_FILTERS)
-  const [selected, setSelected] = useState<MarketItem | null>(null)
-  const [view, setView] = useState<MarketView>('table')
-  const [botOpen, setBotOpen] = useState(false)
+  const [items, setItems] = React.useState<MarketItem[]>([])
+  const [categories, setCategories] = React.useState<string[]>([])
+  const categoriesRef = React.useRef<string[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [filters, setFilters] = React.useState<MarketFilters>(DEFAULT_FILTERS)
+  const [selected, setSelected] = React.useState<MarketItem | null>(null)
+  const [view, setView] = React.useState<MarketView>('table')
+  const [botOpen, setBotOpen] = React.useState(false)
   // Show Bot Control whenever the bot is configured (embedded or remote),
   // even if currently disabled/not running.
-  const [botConfigured, setBotConfigured] = useState(false)
+  const [botConfigured, setBotConfigured] = React.useState(false)
 
-  useEffect(() => {
+  React.useEffect(() => {
     api.marketBot
       .status()
       // configured field from newer backends; fall back to mode check for older ones.
@@ -38,7 +38,7 @@ export const MarketTab: React.FC = () => {
       .catch(() => setBotConfigured(false))
   }, [])
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() =>
@@ -64,7 +64,7 @@ export const MarketTab: React.FC = () => {
       .finally(() => setLoading(false))
   }, [filters])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 

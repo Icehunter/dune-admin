@@ -1,15 +1,9 @@
-import type React from 'react'
+import * as React from 'react'
 import { ToggleButtonGroup, ToggleButton } from '@heroui/react'
 import { Icon } from '../../dune-ui'
+import type { ViewToggleProps } from './types'
 
-export type MarketView = 'grid' | 'table'
-
-type ViewToggleProps = {
-  view: MarketView
-  onChange: (v: MarketView) => void
-}
-
-export const ViewToggle: React.FC<ViewToggleProps> = ({ view, onChange }: ViewToggleProps) => {
+export const ViewToggle: React.FC<ViewToggleProps> = ({ view, onChange }) => {
   return (
     <ToggleButtonGroup
       selectionMode="single"

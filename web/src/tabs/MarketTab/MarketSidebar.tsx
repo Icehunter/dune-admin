@@ -1,24 +1,11 @@
-import type React from 'react'
-import { useMemo, useState } from 'react'
+import * as React from 'react'
 import { Button, SearchField } from '@heroui/react'
 import { FileTree } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../../dune-ui'
+import type { MarketSidebarProps, Node } from './types'
 
-type MarketSidebarProps = {
-  categories: string[]
-  selected: string
-  onSelect: (cat: string) => void
-}
-
-type Node = {
-  label: string
-  path: string // full path used for filtering — also the FileTree item key
-  displayPath: string // path used as tree key (items/ stripped)
-  children: Node[]
-}
-
-function buildTree(categories: string[]): { items: Node[], schematics: Node[] } {
+const buildTree = (categories: string[]): { items: Node[], schematics: Node[] } => {
   const itemRoot: Node[] = []
   const schematicRoot: Node[] = []
 
@@ -53,14 +40,13 @@ function buildTree(categories: string[]): { items: Node[], schematics: Node[] } 
   return { items: itemRoot, schematics: schematicRoot }
 }
 
-function formatLabel(label: string): string {
-  return label
+const formatLabel = (label: string): string =>
+  label
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/[-_]/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
-}
 
-function collectAncestorPaths(categories: string[], selected: string): Set<string> {
+const collectAncestorPaths = (categories: string[], selected: string): Set<string> => {
   const ancestors = new Set<string>()
   for (const cat of categories) {
     if (cat === selected || cat.startsWith(selected + '/') || selected.startsWith(cat + '/')) {
@@ -77,17 +63,15 @@ function collectAncestorPaths(categories: string[], selected: string): Set<strin
 
 // Recursively map a Node tree into nested FileTree.Item elements. The item key
 // (`id`) is the full filter path so selection maps straight back onto onSelect.
-function renderNode(node: Node) {
-  return (
-    <FileTree.Item key={node.displayPath} id={node.path} textValue={node.label} title={formatLabel(node.label)}>
-      {node.children.map((child) => renderNode(child))}
-    </FileTree.Item>
-  )
-}
+const renderNode = (node: Node) => (
+  <FileTree.Item key={node.displayPath} id={node.path} textValue={node.label} title={formatLabel(node.label)}>
+    {node.children.map((child) => renderNode(child))}
+  </FileTree.Item>
+)
 
 // Prune a tree to nodes whose label (or a descendant's label) matches the query.
 // A matching branch keeps all of its descendants so the user can drill in.
-function filterNodes(nodes: Node[], q: string): Node[] {
+const filterNodes = (nodes: Node[], q: string): Node[] => {
   const out: Node[] = []
   for (const node of nodes) {
     const selfMatch = formatLabel(node.label).toLowerCase().includes(q) || node.label.toLowerCase().includes(q)
@@ -101,23 +85,22 @@ function filterNodes(nodes: Node[], q: string): Node[] {
   return out
 }
 
-function flattenKeys(nodes: Node[]): string[] {
-  return nodes.flatMap((n) => [n.path, ...flattenKeys(n.children)])
-}
+const flattenKeys = (nodes: Node[]): string[] =>
+  nodes.flatMap((n) => [n.path, ...flattenKeys(n.children)])
 
 export const MarketSidebar: React.FC<MarketSidebarProps> = ({ categories, selected, onSelect }: MarketSidebarProps) => {
   const { t } = useTranslation()
-  const { items: allItems, schematics: allSchematics } = useMemo(() => buildTree(categories), [categories])
-  const [collapsed, setCollapsed] = useState(false)
-  const [search, setSearch] = useState('')
+  const { items: allItems, schematics: allSchematics } = React.useMemo(() => buildTree(categories), [categories])
+  const [collapsed, setCollapsed] = React.useState(false)
+  const [search, setSearch] = React.useState('')
 
   const q = search.trim().toLowerCase()
-  const items = useMemo(() => (q ? filterNodes(allItems, q) : allItems), [allItems, q])
-  const schematics = useMemo(() => (q ? filterNodes(allSchematics, q) : allSchematics), [allSchematics, q])
+  const items = React.useMemo(() => (q ? filterNodes(allItems, q) : allItems), [allItems, q])
+  const schematics = React.useMemo(() => (q ? filterNodes(allSchematics, q) : allSchematics), [allSchematics, q])
 
   // While searching, expand every surviving branch so matches are visible.
   // Otherwise: open top-level nodes plus the ancestors of the selected node.
-  const expandedProps = useMemo(() => {
+  const expandedProps = React.useMemo(() => {
     if (q) {
       return { expandedKeys: [...flattenKeys(items), ...flattenKeys(schematics)] }
     }

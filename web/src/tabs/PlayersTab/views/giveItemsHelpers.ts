@@ -8,10 +8,10 @@
  * When the same template appears multiple times in `staged`, we remove one
  * staged row per entry in `given` — i.e. given acts as a consume-count.
  */
-export function retainSkippedStaged<T extends { template: string }>(
+export const retainSkippedStaged = <T extends { template: string }>(
   staged: T[],
   given: string[],
-): T[] {
+): T[] => {
   // Build a mutable removal count keyed by template.
   const removeCount = new Map<string, number>()
   for (const tpl of given) {

@@ -1,5 +1,4 @@
-import type React from 'react'
-import { memo, useState, useEffect, useRef, type ReactNode } from 'react'
+import * as React from 'react'
 import { Show, SignInButton, UserButton, useAuth } from '@clerk/react'
 import { Button, Chip, Modal, Spinner, Toast, toast } from '@heroui/react'
 import { AppLayout, Navbar, Sidebar } from '@heroui-pro/react'
@@ -29,6 +28,7 @@ import { EventsTab } from './tabs/EventsTab'
 import { Icon } from './dune-ui'
 import { api } from './api/client'
 import type { UpdateCheckResult } from './api/client'
+import type { TabId, DbSection, WelcomeSection, AppCoreProps, TabPaneProps, ConnectionBadgeProps } from './types'
 
 const TAB_IDS = [
   'battlegroup',
@@ -47,16 +47,12 @@ const TAB_IDS = [
   'welcome',
   'events',
 ] as const
-type TabId = (typeof TAB_IDS)[number]
 const DEFAULT_TAB: TabId = 'battlegroup'
 
-function currentTabFromPath(pathname: string): TabId {
+const currentTabFromPath = (pathname: string): TabId => {
   const seg = pathname.replace(/^\//, '').split('/')[0]
   return (TAB_IDS as readonly string[]).includes(seg) ? (seg as TabId) : DEFAULT_TAB
 }
-
-type DbSection = 'backups' | 'tables' | 'describe' | 'sample' | 'search' | 'sql'
-type WelcomeSection = 'config' | 'packages' | 'grants'
 
 // Lucide icon per top-level tab, shown in the collapsible sidebar rail.
 const TAB_ICONS: Record<TabId, string> = {
@@ -79,39 +75,25 @@ const TAB_ICONS: Record<TabId, string> = {
 
 // Memoized at module level so identity is stable — prevents all inactive tabs from
 // re-rendering whenever AppCore re-renders (e.g. router location change, useStatus poll).
-const MBattlegroupTab = memo(BattlegroupTab)
-const MLiveMapTab = memo(LiveMapTab)
-const MPlayersTab = memo(PlayersTab)
-const MDatabaseTab = memo(DatabaseTab)
-const MLogsTab = memo(LogsTab)
-const MBlueprintsTab = memo(BlueprintsTab)
-const MBasesTab = memo(BasesTab)
-const MGuildsTab = memo(GuildsTab)
-const MLandsraadTab = memo(LandsraadTab)
-const MStorageTab = memo(StorageTab)
-const MServerSettingsTab = memo(ServerSettingsTab)
-const MDirectorTab = memo(DirectorTab)
-const MMarketTab = memo(MarketTab)
-const MWelcomePackageTab = memo(WelcomePackageTab)
-const MEventsTab = memo(EventsTab)
+const BattlegroupTabMemo = React.memo(BattlegroupTab)
+const LiveMapTabMemo = React.memo(LiveMapTab)
+const PlayersTabMemo = React.memo(PlayersTab)
+const DatabaseTabMemo = React.memo(DatabaseTab)
+const LogsTabMemo = React.memo(LogsTab)
+const BlueprintsTabMemo = React.memo(BlueprintsTab)
+const BasesTabMemo = React.memo(BasesTab)
+const GuildsTabMemo = React.memo(GuildsTab)
+const LandsraadTabMemo = React.memo(LandsraadTab)
+const StorageTabMemo = React.memo(StorageTab)
+const ServerSettingsTabMemo = React.memo(ServerSettingsTab)
+const DirectorTabMemo = React.memo(DirectorTab)
+const MarketTabMemo = React.memo(MarketTab)
+const WelcomePackageTabMemo = React.memo(WelcomePackageTab)
+const EventsTabMemo = React.memo(EventsTab)
 
 const hasClerk = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
-interface AppCoreProps {
-  isSignedIn: boolean
-}
-
-interface TabPaneProps {
-  active: boolean
-  children: ReactNode
-}
-
-interface ConnectionBadgeProps {
-  label: string
-  connected: boolean
-}
-
-function AppWithAuth() {
+const AppWithAuth: React.FC = () => {
   const { isSignedIn } = useAuth()
   return <AppCore isSignedIn={!!isSignedIn} />
 }
@@ -125,7 +107,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   const location = useLocation()
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
-  const [reconnecting, setReconnecting] = useState(false)
+  const [reconnecting, setReconnecting] = React.useState(false)
 
   const DB_SECTIONS: { key: DbSection, label: string, icon: string }[] = [
     { key: 'backups', label: t('database.sections.backups'), icon: 'archive' },
@@ -195,17 +177,17 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     },
   ]
 
-  const [dbSection, setDbSection] = useState<DbSection>('backups')
-  const [welcomeSection, setWelcomeSection] = useState<WelcomeSection>('config')
-  const [showBackendConfig, setShowBackendConfig] = useState(false)
-  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null)
-  const [showUpdateModal, setShowUpdateModal] = useState(false)
-  const [updateChecking, setUpdateChecking] = useState(false)
-  const [updateApplying, setUpdateApplying] = useState(false)
-  const [formSaving, setFormSaving] = useState(false)
-  const formSaveRef = useRef<(() => Promise<void>) | null>(null)
+  const [dbSection, setDbSection] = React.useState<DbSection>('backups')
+  const [welcomeSection, setWelcomeSection] = React.useState<WelcomeSection>('config')
+  const [showBackendConfig, setShowBackendConfig] = React.useState(false)
+  const [updateInfo, setUpdateInfo] = React.useState<UpdateCheckResult | null>(null)
+  const [showUpdateModal, setShowUpdateModal] = React.useState(false)
+  const [updateChecking, setUpdateChecking] = React.useState(false)
+  const [updateApplying, setUpdateApplying] = React.useState(false)
+  const [formSaving, setFormSaving] = React.useState(false)
+  const formSaveRef = React.useRef<(() => Promise<void>) | null>(null)
 
-  useEffect(() => {
+  React.useEffect(() => {
     const seg = location.pathname.replace(/^\//, '').split('/')[0]
     if (!seg || !(TAB_IDS as readonly string[]).includes(seg)) {
       navigate(`/${DEFAULT_TAB}`, { replace: true })
@@ -218,8 +200,8 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   // Tracks which tabs have been visited at least once — they get mounted and stay
   // mounted (TabPane keeps them hidden), preserving in-tab state and the isActive
   // auto-refresh contract. Unvisited tabs never mount, avoiding the startup query storm.
-  const [mounted, setMounted] = useState<Set<TabId>>(() => new Set<TabId>([currentTab]))
-  useEffect(() => {
+  const [mounted, setMounted] = React.useState<Set<TabId>>(() => new Set<TabId>([currentTab]))
+  React.useEffect(() => {
     setMounted((prev) => { // eslint-disable-line react-hooks/set-state-in-effect
       if (prev.has(currentTab)) return prev
       const next = new Set(prev)
@@ -228,10 +210,29 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     })
   }, [currentTab])
 
-  // Check for a newer release via the backend (it knows this build's version and
-  // returns the release-notes URL) — drives the clickable navbar update widget (#129).
-  useEffect(() => {
-    api.update.check().then(setUpdateInfo).catch(() => {})
+  // Check for a newer release via the backend — cached in localStorage for 1 hour
+  // to avoid hammering GitHub's unauthenticated API rate limit during dev HMR cycles.
+  React.useEffect(() => {
+    const CACHE_KEY = 'dune_update_cache'
+    const TTL_MS = 60 * 60 * 1000
+    try {
+      const cached = localStorage.getItem(CACHE_KEY)
+      if (cached) {
+        const { ts, data } = JSON.parse(cached)
+        if (Date.now() - ts < TTL_MS) {
+          Promise.resolve().then(() => setUpdateInfo(data))
+          return
+        }
+      }
+    }
+    catch { /* ignore corrupt cache */ }
+    api.update.check().then((data) => {
+      setUpdateInfo(data)
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }))
+      }
+      catch { /* ignore */ }
+    }).catch(() => {})
   }, [])
 
   const checkUpdate = async () => {
@@ -270,7 +271,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     }
   }
 
-  const renderTab = (id: TabId, node: ReactNode) => (
+  const renderTab = (id: TabId, node: React.ReactNode) => (
     <TabPane active={currentTab === id}>
       {mounted.has(id) ? node : null}
     </TabPane>
@@ -479,21 +480,21 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
 
   const tabContent = (
     <main className="flex-1 flex flex-col overflow-hidden min-h-0">
-      {renderTab('battlegroup', <MBattlegroupTab isActive={currentTab === 'battlegroup'} />)}
-      {renderTab('players', <MPlayersTab isActive={currentTab === 'players'} />)}
-      {renderTab('database', <MDatabaseTab section={dbSection} />)}
-      {renderTab('logs', <MLogsTab control={status?.control} />)}
-      {renderTab('blueprints', <MBlueprintsTab isSignedIn={isSignedIn} />)}
-      {renderTab('bases', <MBasesTab isSignedIn={isSignedIn} />)}
-      {renderTab('guilds', <MGuildsTab isSignedIn={isSignedIn} />)}
-      {renderTab('landsraad', <MLandsraadTab />)}
-      {renderTab('storage', <MStorageTab />)}
-      {renderTab('livemap', <MLiveMapTab isActive={currentTab === 'livemap'} />)}
-      {renderTab('server', <MServerSettingsTab />)}
-      {renderTab('director', <MDirectorTab />)}
-      {renderTab('market', <MMarketTab />)}
-      {renderTab('welcome', <MWelcomePackageTab section={welcomeSection} />)}
-      {renderTab('events', <MEventsTab />)}
+      {renderTab('battlegroup', <BattlegroupTabMemo isActive={currentTab === 'battlegroup'} />)}
+      {renderTab('players', <PlayersTabMemo isActive={currentTab === 'players'} />)}
+      {renderTab('database', <DatabaseTabMemo section={dbSection} />)}
+      {renderTab('logs', <LogsTabMemo control={status?.control} />)}
+      {renderTab('blueprints', <BlueprintsTabMemo isSignedIn={isSignedIn} />)}
+      {renderTab('bases', <BasesTabMemo isSignedIn={isSignedIn} />)}
+      {renderTab('guilds', <GuildsTabMemo isSignedIn={isSignedIn} />)}
+      {renderTab('landsraad', <LandsraadTabMemo />)}
+      {renderTab('storage', <StorageTabMemo />)}
+      {renderTab('livemap', <LiveMapTabMemo isActive={currentTab === 'livemap'} />)}
+      {renderTab('server', <ServerSettingsTabMemo />)}
+      {renderTab('director', <DirectorTabMemo />)}
+      {renderTab('market', <MarketTabMemo />)}
+      {renderTab('welcome', <WelcomePackageTabMemo section={welcomeSection} />)}
+      {renderTab('events', <EventsTabMemo />)}
     </main>
   )
 
@@ -521,7 +522,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
       {/* Settings modal — structure mirrors BotControlPanel */}
       <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={showBackendConfig} onOpenChange={(v) => !v && setShowBackendConfig(false)}>
         <Modal.Container size="cover" scroll="outside">
-          <Modal.Dialog className="h-[92vh] flex flex-col">
+          <Modal.Dialog className="p-10 h-[92vh] flex flex-col dialog-surface-alt">
             <Modal.CloseTrigger />
             <Modal.Header>
               <div className="flex items-baseline gap-6 flex-wrap">
@@ -636,7 +637,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
           Reuses the backend update check for the release-notes link + Continue/Cancel. */}
       <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={showUpdateModal} onOpenChange={(v) => !v && setShowUpdateModal(false)}>
         <Modal.Container size="sm">
-          <Modal.Dialog>
+          <Modal.Dialog className="p-10">
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading className="text-accent">{t('app.updateAvailable')}</Modal.Heading>
@@ -687,7 +688,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   )
 }
 
-function TabPane({ active, children }: TabPaneProps) {
+const TabPane: React.FC<TabPaneProps> = ({ active, children }) => {
   return (
     <div className={`flex-1 min-h-0 ${active ? 'flex flex-col dune-tab-active' : 'hidden'}`}>
       {children}
@@ -695,7 +696,7 @@ function TabPane({ active, children }: TabPaneProps) {
   )
 }
 
-function ConnectionBadge({ label, connected }: ConnectionBadgeProps) {
+const ConnectionBadge: React.FC<ConnectionBadgeProps> = ({ label, connected }) => {
   return (
     <div className="flex items-center gap-1.5 text-xs">
       <div className={`w-2 h-2 rounded-full ${connected ? 'bg-success' : 'bg-muted/40'}`} />

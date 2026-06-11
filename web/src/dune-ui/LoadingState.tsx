@@ -1,13 +1,6 @@
-import type React from 'react'
+import * as React from 'react'
 import { Spinner } from '@heroui/react'
-
-type LoadingStateProps = {
-  /** Vertical padding size. Defaults to 'lg' (py-12). */
-  size?: 'sm' | 'md' | 'lg'
-  /** Fill available height with flex-1 (use inside a flex column). */
-  fill?: boolean
-  className?: string
-}
+import type { LoadingStateProps } from './types'
 
 const PAD: Record<NonNullable<LoadingStateProps['size']>, string> = {
   sm: 'py-4',

@@ -1,13 +1,9 @@
-import { useState } from 'react'
+import * as React from 'react'
 import { Button, Disclosure } from '@heroui/react'
-import type { KeystoneRow } from '../../../../../api/client'
+import type { KeystonesToggleProps } from './types'
 
-interface KeystonesToggleProps {
-  keystones: KeystoneRow[]
-}
-
-export function KeystonesToggle({ keystones }: KeystonesToggleProps) {
-  const [open, setOpen] = useState(false)
+export const KeystonesToggle: React.FC<KeystonesToggleProps> = ({ keystones }) => {
+  const [open, setOpen] = React.useState(false)
   return (
     <Disclosure className="mt-0.5" isExpanded={open} onExpandedChange={setOpen}>
       <Disclosure.Heading>

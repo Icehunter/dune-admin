@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom, useSetAtom } from 'jotai'
 import { Button, Chip, CloseButton, SearchField } from '@heroui/react'
@@ -6,13 +6,11 @@ import { EmptyState } from '@heroui-pro/react'
 import { Icon as IconifyIcon } from '@iconify/react'
 import { SectionLabel } from '../../../../../dune-ui'
 import { api } from '../../../../../api/client'
-import type { Player } from '../../../../../api/client'
 import { busyAtom, contractCatalogAtom, contractCatalogLoadedAtom, contractCatalogErrorAtom, nodesLoadedAtom } from '../store'
 import { useRun } from '../hooks/useActions'
+import type { ContractsSectionProps } from './types'
 
-interface ContractsSectionProps { player: Player }
-
-export function ContractsSection({ player }: ContractsSectionProps) {
+export const ContractsSection: React.FC<ContractsSectionProps> = ({ player }) => {
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const [contractCatalog, setContractCatalog] = useAtom(contractCatalogAtom(player.id))
@@ -21,10 +19,10 @@ export function ContractsSection({ player }: ContractsSectionProps) {
   const setNodesLoaded = useSetAtom(nodesLoadedAtom(player.id))
   const run = useRun(player.id)
 
-  const [contractSearch, setContractSearch] = useState('')
-  const [selectedContracts, setSelectedContracts] = useState<string[]>([])
+  const [contractSearch, setContractSearch] = React.useState('')
+  const [selectedContracts, setSelectedContracts] = React.useState<string[]>([])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (contractCatalogLoaded) return
     api.contracts.list()
       .then((c) => {

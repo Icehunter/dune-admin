@@ -1,24 +1,24 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import * as React from 'react'
 
 /**
  * Polls `fn` every `intervalMs` while `active` is true.
  * Returns `countdown` (seconds until next auto-refresh) and a `refresh`
  * function for manual triggers — calling it fires `fn` and resets the timer.
  */
-export function useAutoRefresh(
+export const useAutoRefresh = (
   fn: () => void,
   intervalMs: number,
   active: boolean,
-): { countdown: number, refresh: () => void } {
-  const fnRef = useRef(fn)
-  useEffect(() => {
+): { countdown: number, refresh: () => void } => {
+  const fnRef = React.useRef(fn)
+  React.useEffect(() => {
     fnRef.current = fn
   })
 
   const secsTotal = Math.round(intervalMs / 1000)
-  const [countdown, setCountdown] = useState(secsTotal)
+  const [countdown, setCountdown] = React.useState(secsTotal)
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!active) {
       Promise.resolve().then(() => setCountdown(secsTotal))
       return
@@ -41,7 +41,7 @@ export function useAutoRefresh(
     }
   }, [active, intervalMs, secsTotal])
 
-  const refresh = useCallback(() => {
+  const refresh = React.useCallback(() => {
     fnRef.current()
     setCountdown(secsTotal)
   }, [secsTotal])

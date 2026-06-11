@@ -1,33 +1,21 @@
-import type React from 'react'
-import { useEffect, useState } from 'react'
+import * as React from 'react'
 import { ListBox, SearchField, Select, Button } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../../dune-ui'
+import type { MarketFilters, MarketSearchProps } from './types'
 
-export type MarketFilters = {
-  search: string
-  category: string
-  owner: '' | 'bot' | 'player'
-}
-
-type MarketSearchProps = {
-  filters: MarketFilters
-  onChange: (f: MarketFilters) => void
-  onReset: () => void
-}
-
-export const MarketSearch: React.FC<MarketSearchProps> = ({ filters, onChange, onReset }: MarketSearchProps) => {
+export const MarketSearch: React.FC<MarketSearchProps> = ({ filters, onChange, onReset }) => {
   const { t } = useTranslation()
-  const [searchDraft, setSearchDraft] = useState(filters.search)
+  const [searchDraft, setSearchDraft] = React.useState(filters.search)
 
   // Sync draft when filters are reset externally.
-  useEffect(() => {
+  React.useEffect(() => {
     const t = setTimeout(() => setSearchDraft(filters.search), 0)
     return () => clearTimeout(t)
   }, [filters.search])
 
   // Debounce: commit search text 350ms after the user stops typing.
-  useEffect(() => {
+  React.useEffect(() => {
     const t = setTimeout(() => {
       if (searchDraft !== filters.search) {
         onChange({ ...filters, search: searchDraft })

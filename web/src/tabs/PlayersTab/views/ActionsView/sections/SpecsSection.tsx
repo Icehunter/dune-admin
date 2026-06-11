@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
 import { Button, Spinner } from '@heroui/react'
@@ -7,24 +7,23 @@ import { DataTable, Icon, SectionLabel } from '../../../../../dune-ui'
 import { KeystonesToggle } from '../components/KeystonesToggle'
 import { XP_TRACKS } from '../../../types'
 import { api } from '../../../../../api/client'
-import type { Player, SpecTrack, KeystoneRow } from '../../../../../api/client'
+import type { SpecTrack, KeystoneRow } from '../../../../../api/client'
 import { busyAtom } from '../store'
 import { useRun, useGate } from '../hooks/useActions'
+import type { SpecsSectionProps } from './types'
 
-interface SpecsSectionProps { player: Player }
-
-export function SpecsSection({ player }: SpecsSectionProps) {
+export const SpecsSection: React.FC<SpecsSectionProps> = ({ player }) => {
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const run = useRun(player.id)
   const gate = useGate(player.id)
 
-  const [playerSpecs, setPlayerSpecs] = useState<SpecTrack[]>([])
-  const [playerKeystones, setPlayerKeystones] = useState<KeystoneRow[]>([])
-  const [specsLoaded, setSpecsLoaded] = useState(false)
-  const [specsLoading, setSpecsLoading] = useState(false)
+  const [playerSpecs, setPlayerSpecs] = React.useState<SpecTrack[]>([])
+  const [playerKeystones, setPlayerKeystones] = React.useState<KeystoneRow[]>([])
+  const [specsLoaded, setSpecsLoaded] = React.useState(false)
+  const [specsLoading, setSpecsLoading] = React.useState(false)
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve().then(() => {
       setSpecsLoaded(false)
       setPlayerSpecs([])
@@ -32,7 +31,7 @@ export function SpecsSection({ player }: SpecsSectionProps) {
     })
   }, [player.id])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (specsLoaded) return
     Promise.resolve()
       .then(() => setSpecsLoading(true))

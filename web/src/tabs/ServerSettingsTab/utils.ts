@@ -1,7 +1,7 @@
 import type { ServerSetting, RawSection } from '../../api/client'
 import { CATEGORY_ORDER, SOURCE_FILE, LAYER_STYLE } from './constants'
 
-function groupByCategory(items: ServerSetting[]) {
+const groupByCategory = (items: ServerSetting[]) => {
   const map = new Map<string, ServerSetting[]>()
   for (const item of items) {
     const arr = map.get(item.category) ?? []
@@ -18,19 +18,19 @@ function groupByCategory(items: ServerSetting[]) {
   return ordered
 }
 
-function sourceLabel(s: string) {
+const sourceLabel = (s: string) => {
   const file = SOURCE_FILE[s]
   const style = LAYER_STYLE[s]
   if (!file || !style) return null
   return { text: file, cls: style.cls }
 }
 
-function shortSection(section: string) {
+const shortSection = (section: string) => {
   const dot = section.lastIndexOf('.')
   return dot >= 0 ? section.slice(dot + 1) : section
 }
 
-function matchesSetting(item: ServerSetting, q: string): boolean {
+const matchesSetting = (item: ServerSetting, q: string): boolean => {
   if (!q) return true
   return (
     item.label.toLowerCase().includes(q)
@@ -41,7 +41,7 @@ function matchesSetting(item: ServerSetting, q: string): boolean {
   )
 }
 
-function matchesRawSection(sections: RawSection[], q: string): boolean {
+const matchesRawSection = (sections: RawSection[], q: string): boolean => {
   if (!q) return true
   if (shortSection(sections[0].section).toLowerCase().includes(q)) return true
   return sections.some((sec) =>
@@ -51,17 +51,17 @@ function matchesRawSection(sections: RawSection[], q: string): boolean {
   )
 }
 
-function linesToText(lines: RawSection['lines']) {
+const linesToText = (lines: RawSection['lines']) => {
   return lines.map((l) => `${l.prefix}${l.key}=${l.value}`).join('\n')
 }
 
-function trimFloat(v: string): string {
+const trimFloat = (v: string): string => {
   if (!v.includes('.')) return v
   const n = parseFloat(v)
   return isNaN(n) ? v : n.toString()
 }
 
-function groupLinesByKey(lines: RawSection['lines']) {
+const groupLinesByKey = (lines: RawSection['lines']) => {
   const grouped: { key: string, lines: typeof lines }[] = []
   const seen = new Map<string, number>()
   for (const line of lines) {

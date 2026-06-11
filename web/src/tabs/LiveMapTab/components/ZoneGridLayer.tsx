@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useRef } from 'react'
+import * as React from 'react'
 import { useMap } from 'react-leaflet'
 import { DD_COLS, DD_ROWS } from '../constants'
 import { worldToLatLng } from '../utils'
 import type { ZoneGridLayerProps } from '../types'
 
-export function ZoneGridLayer({ effCfg }: ZoneGridLayerProps) {
+export const ZoneGridLayer: React.FC<ZoneGridLayerProps> = ({ effCfg }) => {
   const map = useMap()
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
 
-  const draw = useCallback(() => {
+  const draw = React.useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const mapSize = map.getSize()
@@ -65,7 +65,7 @@ export function ZoneGridLayer({ effCfg }: ZoneGridLayerProps) {
     }
   }, [map, effCfg])
 
-  useEffect(() => {
+  React.useEffect(() => {
     const container = map.getContainer()
     const canvas = document.createElement('canvas')
     canvas.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:497'
@@ -77,7 +77,7 @@ export function ZoneGridLayer({ effCfg }: ZoneGridLayerProps) {
     }
   }, [map])
 
-  useEffect(() => {
+  React.useEffect(() => {
     map.on('move zoom moveend zoomend viewreset resize', draw)
     draw()
     return () => {

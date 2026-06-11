@@ -1,5 +1,4 @@
-import type React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Spinner, toast } from '@heroui/react'
 import { AreaChart, BarChart, Segment } from '@heroui-pro/react'
@@ -7,13 +6,11 @@ import { api } from '../../../api/client'
 import type { FactionStat, FactionTrends, ServerSummary } from '../../../api/client'
 import { DataTable, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
 import type { Column } from '../../../dune-ui'
+import type { FactionCol, StatProps } from './types'
 
-function Sep() {
-  return <div className="w-px h-8 bg-border mx-3 shrink-0" />
-}
+const Sep: React.FC = () => <div className="w-px h-8 bg-border mx-3 shrink-0" />
 
-interface StatProps { label: string, children: React.ReactNode }
-function Stat({ label, children }: StatProps) {
+const Stat: React.FC<StatProps> = ({ label, children }) => {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">{label}</span>
@@ -40,22 +37,20 @@ const factionColor = (faction: string, i: number) =>
 // the Y-axis gutter — e.g. 10,000,000 → "10M". Tooltip shows the full number.
 const compactNum = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
 
-function fmtDate(d: string): string {
+const fmtDate = (d: string): string => {
   return new Date(d + 'T12:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-function fmtPlaytime(secs: number): string {
+const fmtPlaytime = (secs: number): string => {
   const h = Math.floor(secs / 3600)
   const m = Math.floor((secs % 3600) / 60)
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
-type FactionCol = 'faction' | 'players' | 'avg_level' | 'solaris' | 'scrip' | 'econ_pct'
-
 const econPct = (f: FactionStat, totalSolaris: number): number =>
   totalSolaris > 0 ? f.solaris / totalSolaris * 100 : 0
 
-function renderFactionCell(f: FactionStat, key: FactionCol, totalSolaris: number): React.ReactNode {
+const renderFactionCell = (f: FactionStat, key: FactionCol, totalSolaris: number): React.ReactNode => {
   switch (key) {
     case 'faction': return f.faction
     case 'players': return <span className="tabular-nums">{f.players.toLocaleString()}</span>
@@ -66,7 +61,7 @@ function renderFactionCell(f: FactionStat, key: FactionCol, totalSolaris: number
   }
 }
 
-function factionSortValue(f: FactionStat, key: FactionCol, totalSolaris: number): string | number {
+const factionSortValue = (f: FactionStat, key: FactionCol, totalSolaris: number): string | number => {
   return key === 'faction' ? f.faction : key === 'econ_pct' ? econPct(f, totalSolaris) : f[key]
 }
 
@@ -75,14 +70,14 @@ function factionSortValue(f: FactionStat, key: FactionCol, totalSolaris: number)
 // 1:1 detail view is unchanged — picking a player replaces this.
 export const ServerDashboard: React.FC = () => {
   const { t } = useTranslation()
-  const [summary, setSummary] = useState<ServerSummary | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [trends, setTrends] = useState<FactionTrends | null>(null)
-  const [metric, setMetric] = useState<'solaris' | 'level'>('solaris')
+  const [summary, setSummary] = React.useState<ServerSummary | null>(null)
+  const [loading, setLoading] = React.useState(false)
+  const [trends, setTrends] = React.useState<FactionTrends | null>(null)
+  const [metric, setMetric] = React.useState<'solaris' | 'level'>('solaris')
 
   // Mirror PlayersTab.loadPlayers: defer setLoading into a microtask so it is
   // not a synchronous setState inside the effect (react-hooks/set-state-in-effect).
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.players.summary())
@@ -91,20 +86,20 @@ export const ServerDashboard: React.FC = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
   // Faction-growth trends; re-fetched when the metric toggles. Deferred setState
   // (same pattern as load) to satisfy react-hooks/set-state-in-effect.
-  const loadTrends = useCallback(() => {
+  const loadTrends = React.useCallback(() => {
     Promise.resolve()
       .then(() => api.players.factionTrends(metric))
       .then(setTrends)
       .catch(() => {})
   }, [metric])
 
-  useEffect(() => {
+  React.useEffect(() => {
     loadTrends()
   }, [loadTrends])
 

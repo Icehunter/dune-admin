@@ -1,23 +1,17 @@
-import type React from 'react'
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { Button, Chip, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { Icon as IconifyIcon } from '@iconify/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
-import type { Player, VehicleRow } from '../../../api/client'
+import type { VehicleRow } from '../../../api/client'
 import { DataTable, Icon, LoadingState, SectionLabel, type Column } from '../../../dune-ui'
-
-type VehicleKey = 'class' | 'location' | 'chassis' | 'name' | 'type' | 'actions'
-
-interface VehiclesViewProps {
-  player: Player
-}
+import type { VehicleKey, VehiclesViewProps } from './types'
 
 export const VehiclesView: React.FC<VehiclesViewProps> = ({ player }) => {
   const { t } = useTranslation()
-  const [vehicles, setVehicles] = useState<VehicleRow[]>([])
-  const [loading, setLoading] = useState(false)
+  const [vehicles, setVehicles] = React.useState<VehicleRow[]>([])
+  const [loading, setLoading] = React.useState(false)
 
   const VEHICLE_COLUMNS: Column<VehicleKey>[] = [
     { key: 'class', label: t('players.vehicles.columns.class'), isRowHeader: true },
@@ -28,7 +22,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({ player }) => {
     { key: 'actions', label: ' ', sortable: false },
   ]
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve()
       .then(() => {
         setVehicles([])
@@ -108,7 +102,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({ player }) => {
         renderCell={(v, key) => {
           switch (key) {
             case 'class': return <span className="font-semibold">{v.class}</span>
-            case 'location': return <span className="text-muted">{v.map || 'â'}</span>
+            case 'location': return <span className="text-muted">{v.map || '—'}</span>
             case 'chassis':
               return (
                 <span className={v.chassis_durability < 0.3 ? 'text-danger' : 'text-muted'}>
@@ -116,7 +110,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({ player }) => {
                   %
                 </span>
               )
-            case 'name': return <span className="text-muted">{v.vehicle_name || 'â'}</span>
+            case 'name': return <span className="text-muted">{v.vehicle_name || '—'}</span>
             case 'type':
               return (
                 <div className="flex gap-1">

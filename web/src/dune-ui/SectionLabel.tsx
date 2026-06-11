@@ -1,9 +1,6 @@
-import type React from 'react'
-import type { ReactNode } from 'react'
+import * as React from 'react'
 
-interface SectionLabelProps {
-  children: ReactNode
-}
+import type { SectionLabelProps } from './types'
 
 /**
  * Small uppercase amber label — sub-section heading inside a Panel.

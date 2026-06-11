@@ -1,21 +1,13 @@
-import type React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
 import { Button, Chip, Input, ListBox, SearchField, Select, Separator, Spinner } from '@heroui/react'
 import type { Selection } from '@heroui/react'
 import type { DataGridColumn } from '@heroui-pro/react'
 import { DataGrid } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { ActionBar, Icon, NumberInput, PageHeader } from '../../../dune-ui'
-import type { WelcomeSharedProps, WelcomePackageItem } from '../types'
 import type { WelcomePackage } from '../../../api/client'
 import { DiffStatus } from '../components/DiffStatus'
-
-type PackagesViewProps = Pick<
-  WelcomeSharedProps,
-  'packages' | 'setPackages' | 'activeVersions' | 'templates' | 'save' | 'saving' | 'load' | 'loading' | 'configDiff'
->
-
-type KeyedItem = WelcomePackageItem & { _key: string }
+import type { PackagesViewProps, KeyedItem } from './types'
 
 export const PackagesView: React.FC<PackagesViewProps> = ({
   packages,
@@ -30,32 +22,32 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const [selected, setSelected] = useState(() => packages[0]?.version ?? '')
-  const [newName, setNewName] = useState('')
-  const [addQuery, setAddQuery] = useState('')
-  const [addSelected, setAddSelected] = useState('')
-  const [addQty, setAddQty] = useState(1)
-  const [addQuality, setAddQuality] = useState(0)
-  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set())
+  const [selected, setSelected] = React.useState(() => packages[0]?.version ?? '')
+  const [newName, setNewName] = React.useState('')
+  const [addQuery, setAddQuery] = React.useState('')
+  const [addSelected, setAddSelected] = React.useState('')
+  const [addQty, setAddQty] = React.useState(1)
+  const [addQuality, setAddQuality] = React.useState(0)
+  const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
 
-  const keyCounter = useRef(0)
+  const keyCounter = React.useRef(0)
   const nextKey = () => String(keyCounter.current++)
 
   // Clear selection when selected package changes
-  useEffect(() => {
+  React.useEffect(() => {
     void Promise.resolve().then(() => setSelectedKeys(new Set()))
   }, [selected])
 
-  const nameMap = useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
+  const nameMap = React.useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
 
   // Derive keyed items from the selected package (index-based keys, cleared on any removal)
-  const keyedItems = useMemo(() => {
+  const keyedItems = React.useMemo(() => {
     const pkg = packages.find((p) => p.version === selected)
     return (pkg?.items ?? []).map((it, i) => ({ ...it, _key: String(i) }))
   }, [packages, selected])
 
   const setItems = (next: KeyedItem[]) => {
-    const stripped: WelcomePackageItem[] = next.map(({ template, qty, quality }) => ({ template, qty, quality }))
+    const stripped = next.map(({ template, qty, quality }) => ({ template, qty, quality }))
     setPackages(packages.map((p) => (p.version === selected ? { ...p, items: stripped } : p)))
   }
 
@@ -64,11 +56,11 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
     setSelectedKeys(new Set())
   }
 
-  const setItem = (key: string, patch: Partial<WelcomePackageItem>) => {
+  const setItem = (key: string, patch: Partial<KeyedItem>) => {
     setItems(keyedItems.map((it) => (it._key === key ? { ...it, ...patch } : it)))
   }
 
-  const addFiltered = useMemo(() => {
+  const addFiltered = React.useMemo(() => {
     if (!addQuery) return []
     const q = addQuery.toLowerCase()
     return templates

@@ -1,47 +1,27 @@
-import { useState, useEffect, useMemo } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Button, Modal, SearchField, Spinner, TextField, toast,
 } from '@heroui/react'
 import { api } from '../../../api/client'
 import { Icon, LoadingState, NumberInput } from '../../../dune-ui'
-
-type Container = {
-  id: number
-  name: string
-  class: string
-  map: string
-  item_count: number
-  item_templates: string[]
-  item_names: string[]
-  owner_name: string
-}
-
-export interface AddItemsModalProps {
-  container: Container
-  open: boolean
-  onClose: () => void
-  onSuccess: () => void
-  onRefresh: () => void
-}
+import type { AddItemsModalProps, AddResult } from './types'
 
 export const AddItemsModal: React.FC<AddItemsModalProps> = ({
   container, open, onClose, onSuccess, onRefresh,
 }) => {
   const { t } = useTranslation()
-  const [templates, setTemplates] = useState<{ id: string, name: string }[]>([])
-  const [loading, setLoading] = useState(false)
-  const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState('')
-  const [qty, setQty] = useState(1)
-  const [quality, setQuality] = useState(0)
-  const [staged, setStaged] = useState<{ template: string, qty: number, quality: number }[]>([])
-  const [submitting, setSubmitting] = useState(false)
-  type AddResult = { given: string[], skipped: { template: string, reason: string }[] } | null
-  const [result, setResult] = useState<AddResult>(null)
+  const [templates, setTemplates] = React.useState<{ id: string, name: string }[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [query, setQuery] = React.useState('')
+  const [selected, setSelected] = React.useState('')
+  const [qty, setQty] = React.useState(1)
+  const [quality, setQuality] = React.useState(0)
+  const [staged, setStaged] = React.useState<{ template: string, qty: number, quality: number }[]>([])
+  const [submitting, setSubmitting] = React.useState(false)
+  const [result, setResult] = React.useState<AddResult>(null)
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!open) return
     Promise.resolve()
       .then(() => {
@@ -59,7 +39,7 @@ export const AddItemsModal: React.FC<AddItemsModalProps> = ({
       .finally(() => setLoading(false))
   }, [open])
 
-  const filtered = useMemo(() => {
+  const filtered = React.useMemo(() => {
     if (!query) return []
     const q = query.toLowerCase()
     return templates
@@ -113,7 +93,7 @@ export const AddItemsModal: React.FC<AddItemsModalProps> = ({
   return (
     <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && onClose()}>
       <Modal.Container size="cover" scroll="outside">
-        <Modal.Dialog>
+        <Modal.Dialog className="p-10">
           <Modal.CloseTrigger />
           <Modal.Header>
             <Modal.Heading className="text-accent">

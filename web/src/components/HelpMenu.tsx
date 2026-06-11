@@ -1,4 +1,4 @@
-import type React from 'react'
+import * as React from 'react'
 import { Dropdown, Button, toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../dune-ui'
@@ -7,7 +7,7 @@ import type { Status } from '../api/client'
 
 const REPO = 'https://github.com/Icehunter/dune-admin'
 
-function buildDiagnostics(status?: Status | null): string {
+const buildDiagnostics = (status?: Status | null): string => {
   return [
     `- dune-admin version: ${status?.version ?? 'unknown'}`,
     `- commit: ${status?.commit ?? 'unknown'}`,

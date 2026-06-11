@@ -1,28 +1,9 @@
-import type React from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import { Button, Input, ListBox, Spinner, Switch, TextArea } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { ConfirmDialog, Icon, NumberInput, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
-import type { WelcomeSharedProps } from '../types'
 import { DiffStatus } from '../components/DiffStatus'
-
-type ConfigViewProps = Pick<
-  WelcomeSharedProps,
-  | 'enabled' | 'setEnabled'
-  | 'scanSecs' | 'setScanSecs'
-  | 'packages'
-  | 'activeVersions' | 'setActiveVersions'
-  | 'welcomeMessageEnabled' | 'setWelcomeMessageEnabled'
-  | 'welcomeMessage' | 'setWelcomeMessage'
-  | 'welcomeWhisperSourcePlayer' | 'setWelcomeWhisperSourcePlayer'
-  | 'motdEnabled' | 'setMotdEnabled'
-  | 'motdMessage' | 'setMotdMessage'
-  | 'motdSourcePlayer' | 'setMotdSourcePlayer'
-  | 'save' | 'saving'
-  | 'runNow' | 'running'
-  | 'load' | 'loading'
-  | 'configDiff'
->
+import type { ConfigViewProps } from './types'
 
 export const ConfigView: React.FC<ConfigViewProps> = ({
   enabled, setEnabled,
@@ -41,7 +22,7 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
   configDiff,
 }) => {
   const { t } = useTranslation()
-  const [confirmRun, setConfirmRun] = useState(false)
+  const [confirmRun, setConfirmRun] = React.useState(false)
 
   return (
     <div className="flex flex-col h-full min-h-0 gap-3">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
 import { Button, Chip, Separator, Spinner } from '@heroui/react'
@@ -8,15 +8,12 @@ import type { Key } from 'react-aria-components'
 import { DataTable, Icon, SectionLabel } from '../../../../../dune-ui'
 import { DebouncedSearchField } from '../components/DebouncedSearchField'
 import { api } from '../../../../../api/client'
-import type { Player, JourneyNode } from '../../../../../api/client'
+import type { JourneyNode } from '../../../../../api/client'
 import { busyAtom, nodesAtom, nodesLoadedAtom } from '../store'
 import { useRun, useGate } from '../hooks/useActions'
+import type { FilterTab, JourneySectionProps } from './types'
 
-type FilterTab = 'all' | 'done' | 'revealed' | 'reward'
-
-interface JourneySectionProps { player: Player }
-
-export function JourneySection({ player }: JourneySectionProps) {
+export const JourneySection: React.FC<JourneySectionProps> = ({ player }) => {
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const [nodes, setNodes] = useAtom(nodesAtom(player.id))
@@ -24,12 +21,12 @@ export function JourneySection({ player }: JourneySectionProps) {
   const run = useRun(player.id)
   const gate = useGate(player.id)
 
-  const [nodesLoading, setNodesLoading] = useState(false)
-  const [nodeSearch, setNodeSearch] = useState('')
-  const [filterTab, setFilterTab] = useState<FilterTab>('all')
-  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set())
+  const [nodesLoading, setNodesLoading] = React.useState(false)
+  const [nodeSearch, setNodeSearch] = React.useState('')
+  const [filterTab, setFilterTab] = React.useState<FilterTab>('all')
+  const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (nodesLoaded) return
     Promise.resolve()
       .then(() => setNodesLoading(true))
@@ -42,11 +39,11 @@ export function JourneySection({ player }: JourneySectionProps) {
       .finally(() => setNodesLoading(false))
   }, [nodesLoaded, player.account_id, setNodes, setNodesLoaded])
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve().then(() => setSelectedKeys(new Set()))
   }, [filterTab, nodeSearch])
 
-  const filteredNodes = useMemo(() => {
+  const filteredNodes = React.useMemo(() => {
     let result = nodes
     if (filterTab === 'done') result = result.filter((n) => n.is_complete)
     else if (filterTab === 'revealed') result = result.filter((n) => n.is_revealed)
@@ -62,17 +59,17 @@ export function JourneySection({ player }: JourneySectionProps) {
     ? filteredNodes.length
     : (selectedKeys as Set<string>).size
 
-  const selectedNodes = useMemo(() => {
+  const selectedNodes = React.useMemo(() => {
     if (selectedKeys === 'all') return filteredNodes
     const keys = selectedKeys as Set<string>
     return filteredNodes.filter((n) => keys.has(n.node_id))
   }, [selectedKeys, filteredNodes])
 
-  const incompleteSelected = useMemo(
+  const incompleteSelected = React.useMemo(
     () => selectedNodes.filter((n) => !n.is_complete),
     [selectedNodes],
   )
-  const completeSelected = useMemo(
+  const completeSelected = React.useMemo(
     () => selectedNodes.filter((n) => n.is_complete),
     [selectedNodes],
   )

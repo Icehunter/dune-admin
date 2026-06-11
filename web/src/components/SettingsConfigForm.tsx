@@ -526,7 +526,12 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
           <input type="text" autoComplete="username" aria-hidden="true" tabIndex={-1} readOnly className="sr-only" />
           <Panel>
             <SectionLabel>{t('settings.sections.discordBot')}</SectionLabel>
-            <p className="text-xs text-muted -mt-1">{t('settings.discord.hint')}</p>
+            <div className="flex flex-col gap-1 -mt-1">
+              <p className="text-sm text-muted">{t('settings.discord.hint')}</p>
+              <p className="text-sm text-muted">{t('settings.discord.setupStep1')}</p>
+              <p className="text-sm text-muted">{t('settings.discord.setupStep2')}</p>
+              <p className="text-sm text-muted">{t('settings.discord.setupStep3')}</p>
+            </div>
             <G2>
               <div className="sm:col-span-2">
                 <CB
@@ -546,7 +551,10 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
 
           <Panel>
             <SectionLabel>{t('settings.sections.discordRoles')}</SectionLabel>
-            <p className="text-xs text-muted -mt-1">{t('settings.discord.rolesHint')}</p>
+            <div className="flex flex-col gap-1 -mt-1">
+              <p className="text-xs text-muted">{t('settings.discord.rolesHint')}</p>
+              <p className="text-sm text-muted">{t('settings.discord.rolesRefreshNote')}</p>
+            </div>
             <G2>
               <RolePicker
                 label={t('settings.discord.rolesViewer')}

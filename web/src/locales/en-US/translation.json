@@ -1296,12 +1296,15 @@
       "discord": "Discord"
     },
     "discord": {
-      "hint": "Create a bot at discord.com/developers/applications, enable the bot, copy the token, and invite it to your guild with the applications.commands scope.",
+      "hint": "Follow these steps to create and connect your Discord bot:",
+      "setupStep1": "1. discord.com/developers/applications → New Application → Bot tab → Enable Bot → copy the token.",
+      "setupStep2": "2. OAuth2 → URL Generator → Scopes: bot + applications.commands → Bot Permissions: Send Messages → copy the URL and open it to invite the bot.",
+      "setupStep3": "3. Enable Developer Mode (Discord Settings → Advanced → Developer Mode) to unlock Copy ID by right-clicking servers and channels.",
       "enabled": "Enable Discord bot",
       "token": "Bot token",
       "tokenHint": "Masked after save — paste a new value to rotate",
       "guildId": "Guild ID",
-      "guildIdHint": "Right-click your server icon → Copy Server ID",
+      "guildIdHint": "Right-click your server icon → Copy Server ID (requires Developer Mode)",
       "rolesHint": "Comma-separated role IDs. Higher tiers include all lower-tier commands.",
       "rolesViewer": "Viewer role IDs",
       "rolesViewerHint": "/status, /lookup",
@@ -1310,9 +1313,10 @@
       "rolesAdmin": "Admin role IDs",
       "rolesAdminHint": "All commands",
       "announceChannel": "Announce channel ID",
-      "announceChannelHint": "Channel for bot announcements (rewards, events)",
+      "announceChannelHint": "Right-click the channel → Copy Channel ID (requires Developer Mode)",
       "addRole": "Add role…",
-      "rolesNotLoaded": "Connect the bot to browse roles by name"
+      "rolesNotLoaded": "Connect the bot to browse roles by name",
+      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update."
     }
   },
   "storage": {

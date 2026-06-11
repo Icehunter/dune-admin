@@ -227,7 +227,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, on
                         className="max-h-[180px]"
                         columns={VEHICLE_COLUMNS}
                         rows={vehicles}
-                        rowId={(v) => String(v.id)}
+                        rowId={(v) => `${v.id}-${v.is_backup ? 'b' : 'a'}`}
                         initialSort={{ column: 'class', direction: 'ascending' }}
                         sortValue={(v, k) => {
                           if (k === 'class') return v.class

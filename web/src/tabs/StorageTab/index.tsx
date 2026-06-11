@@ -104,7 +104,7 @@ export const StorageTab: React.FC = () => {
     setItems((prev) => prev.filter((i) => !deletedIds.has(i.id)))
     if (selected) {
       setContainers((prev) => prev.map((c) =>
-        c.id === selected.id ? { ...c, item_count: c.item_count - deletedIds.size } : c,
+        c.id === selected.id ? { ...c, item_count: Math.max(0, c.item_count - deletedIds.size) } : c,
       ))
     }
     setSelectedKeys(new Set())
@@ -274,7 +274,6 @@ export const StorageTab: React.FC = () => {
                             <ActionBar.Prefix>
                               <span className="text-sm text-muted">
                                 {selectionCount}
-                                {' selected'}
                               </span>
                             </ActionBar.Prefix>
                             <ActionBar.Content>

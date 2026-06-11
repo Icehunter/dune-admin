@@ -8,7 +8,7 @@ import { CATEGORY_ICONS, CATEGORY_LABELS, USER_SOURCES } from '../constants'
 import type { CategorySectionProps, CategoryButtonProps, CategoryPanelProps } from './types'
 
 const CategoryButton: React.FC<CategoryButtonProps> = ({
-  cat, catItems, isOpen, fullWidth, onToggle,
+  cat, catItems, isOpen, onToggle,
 }) => {
   const { t } = useTranslation()
   const overrideCount = catItems.filter((i) =>
@@ -18,7 +18,7 @@ const CategoryButton: React.FC<CategoryButtonProps> = ({
   return (
     <button
       onClick={() => onToggle(cat)}
-      className={`flex items-center gap-2 rounded border px-3 py-2.5 text-left transition-colors ${fullWidth ? 'w-full' : 'w-full'} ${
+      className={`flex items-center gap-2 rounded border px-3 py-2.5 text-left transition-colors w-full ${
         isOpen
           ? 'bg-accent/15 border-accent/60 text-foreground'
           : 'bg-surface border-border/60 hover:bg-surface-secondary hover:border-border text-foreground/90'
@@ -104,7 +104,7 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
           {categories.map(([cat, catItems]) => (
             <div key={cat}>
               <div className="mb-1">
-                <CategoryButton cat={cat} catItems={catItems} isOpen onToggle={onToggle} fullWidth />
+                <CategoryButton cat={cat} catItems={catItems} isOpen onToggle={onToggle} />
               </div>
               <CategoryPanel
                 cat={cat}
@@ -138,7 +138,6 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
             cat={expandedEntry[0]}
             catItems={expandedEntry[1]}
             isOpen
-            fullWidth
             onToggle={onToggle}
           />
           <CategoryPanel
@@ -162,7 +161,6 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
               cat={cat}
               catItems={catItems}
               isOpen={false}
-              fullWidth={false}
               onToggle={onToggle}
             />
           ))}

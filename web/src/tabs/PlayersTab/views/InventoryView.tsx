@@ -180,7 +180,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
         <ActionBar.Prefix>
           <span className="text-sm text-muted">
             {selectionCount}
-            {' selected'}
           </span>
         </ActionBar.Prefix>
         <ActionBar.Content>

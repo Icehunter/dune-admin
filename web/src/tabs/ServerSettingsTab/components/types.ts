@@ -17,7 +17,6 @@ export interface CategoryButtonProps {
   cat: string
   catItems: ServerSetting[]
   isOpen: boolean
-  fullWidth: boolean
   onToggle: (cat: string) => void
 }
 

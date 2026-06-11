@@ -364,7 +364,11 @@
     "create": "Create",
     "edit": "Edit",
     "delete": "Delete",
-    "optional": "optional"
+    "clear": "Clear",
+    "optional": "optional",
+    "deleteSelected": "Delete selected",
+    "clearSelection": "Clear selection",
+    "noItems": "No items yet."
   },
   "database": {
     "columnColumn": "Column",
@@ -674,7 +678,8 @@
     "server": "Server Settings",
     "storage": "Storage",
     "welcome": "Welcome Kits",
-    "events": "Live Events"
+    "events": "Live Events",
+    "menu": "Navigation"
   },
   "players": {
     "actions": {
@@ -831,7 +836,17 @@
           "reward": "Reward"
         },
         "complete": "Complete",
+        "bulkActionsLabel": "Journey bulk actions",
+        "bulkComplete": "Complete",
+        "bulkRedo": "Re-do",
+        "bulkReset": "Reset",
+        "clearSelection": "Clear selection",
+        "selected": "{{count}} selected",
+        "filterAll": "All",
+        "filterDone": "Done",
         "filterPlaceholder": "Filter nodes...",
+        "filterRevealed": "Revealed",
+        "filterReward": "Reward",
         "journeyLabel": "Journey nodes",
         "noMatching": "No matching nodes",
         "noNodes": "No journey nodes found",
@@ -1085,6 +1100,8 @@
       },
       "deleteOnlineWarning": "Player is online — deleting items may cause inventory desyncs. Continue?",
       "itemDeleted": "Item deleted",
+      "itemsDeleted": "Deleted {{count}} item(s)",
+      "deleteSelected": "Delete selected",
       "itemsLabel": "Items",
       "noItemsFound": "No items found",
       "repair": "Repair",
@@ -1323,6 +1340,7 @@
     "containersTitle_other": "Containers ({{count}})",
     "containerTitle": "Container #{{id}}",
     "itemRemoved": "Item removed",
+    "itemsRemoved": "Removed {{count}} item(s)",
     "ownerLabel": "Owner: {{name}}",
     "remove": "Remove",
     "searchLabel": "Search containers",

@@ -42,7 +42,8 @@ const EMPTY: AppConfig = {
 // default" (effectively true). If the API returns null for these, coerce to
 // true so the checkbox reflects the real server default rather than silently
 // inheriting EMPTY's false and overwriting the default-on value on save.
-const pointerBoolFields = new Set<keyof AppConfig>(['amp_use_container', 'market_bot_enabled', 'discord_bot_enabled'])
+// discord_bot_enabled is intentionally excluded: nil means default-off, not default-on.
+const pointerBoolFields = new Set<keyof AppConfig>(['amp_use_container', 'market_bot_enabled'])
 
 function mergeConfig(fetched: Record<string, unknown>): AppConfig {
   const result: AppConfig = { ...EMPTY }

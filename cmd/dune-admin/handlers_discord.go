@@ -152,9 +152,10 @@ func memberTier(member discordMember, cfg discordConfig) discordTier {
 
 // authorizeDiscord returns true when the invoking member is permitted to run
 // a command with the given required tier. The guild ID must match, and the
-// member must hold a role at or above the required tier, or be the guild owner.
-// This check is the real security boundary and runs on every invocation,
-// independent of Discord's default_member_permissions (which only hides UI).
+// member must hold a role at or above the required tier, or have the
+// ADMINISTRATOR permission bit (IsAdministrator). This check is the real
+// security boundary and runs on every invocation, independent of Discord's
+// default_member_permissions (which only hides UI).
 func authorizeDiscord(guildID string, member discordMember, required discordTier, cfg discordConfig) bool {
 	if guildID != cfg.GuildID {
 		return false

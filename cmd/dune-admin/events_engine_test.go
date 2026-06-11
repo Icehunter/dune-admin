@@ -101,8 +101,8 @@ func TestEvaluateZoneRace_WinnerInsideSphere(t *testing.T) {
 
 	// participant 101 is online and inside the sphere; 102 is outside
 	positions := map[int64]playerPosition{
-		101: {X: 1, Y: 1, Z: 1},
-		102: {X: 100, Y: 100, Z: 100},
+		101: {Map: "DuneMap_P", X: 1, Y: 1, Z: 1},
+		102: {Map: "DuneMap_P", X: 100, Y: 100, Z: 100},
 	}
 	players := []eventPlayer{
 		{AccountID: 101, ControllerID: 201, ActorID: 301, Name: "Alice"},
@@ -213,6 +213,63 @@ func TestEvaluateZoneRace_FetchError(t *testing.T) {
 	_, err := evaluateZoneRace(context.Background(), deps, def)
 	if err == nil {
 		t.Fatal("want error from fetch, got nil")
+	}
+}
+
+func TestEvaluateZoneRace_WrongMap_NoOutcome(t *testing.T) {
+	t.Parallel()
+	store := openMemEventStore(t)
+	def := mustCreateEvent(t, store, "map_race", eventTypeZoneRace)
+
+	positions := map[int64]playerPosition{
+		101: {Map: "OtherMap_P", X: 1, Y: 1, Z: 1}, // inside sphere but wrong map
+	}
+	deps := noopDeps()
+	deps.fetchOnlinePositions = func(_ context.Context, _ []int64) (map[int64]playerPosition, error) {
+		return positions, nil
+	}
+	deps.fetchOnlinePlayers = func(_ context.Context) ([]eventPlayer, error) {
+		return []eventPlayer{{AccountID: 101, Name: "Alice"}}, nil
+	}
+
+	cfg := zoneRaceConfig{Map: "DuneMap_P", X: 0, Y: 0, Z: 0, Radius: 10, Participants: []int64{101}}
+	def.Config = mustMarshalJSON(t, cfg)
+
+	outcomes, err := evaluateZoneRace(context.Background(), deps, def)
+	if err != nil {
+		t.Fatalf("evaluateZoneRace: %v", err)
+	}
+	if len(outcomes) != 0 {
+		t.Fatalf("want 0 outcomes for wrong map, got %d", len(outcomes))
+	}
+}
+
+func TestEvaluateZoneRace_PlayerNotInPlayerList_Skipped(t *testing.T) {
+	t.Parallel()
+	store := openMemEventStore(t)
+	def := mustCreateEvent(t, store, "ghost_race", eventTypeZoneRace)
+
+	// position exists but player is not in the online player list
+	positions := map[int64]playerPosition{
+		101: {Map: "DuneMap_P", X: 1, Y: 1, Z: 1},
+	}
+	deps := noopDeps()
+	deps.fetchOnlinePositions = func(_ context.Context, _ []int64) (map[int64]playerPosition, error) {
+		return positions, nil
+	}
+	deps.fetchOnlinePlayers = func(_ context.Context) ([]eventPlayer, error) {
+		return []eventPlayer{}, nil // account 101 not present
+	}
+
+	cfg := zoneRaceConfig{Map: "DuneMap_P", X: 0, Y: 0, Z: 0, Radius: 10, Participants: []int64{101}}
+	def.Config = mustMarshalJSON(t, cfg)
+
+	outcomes, err := evaluateZoneRace(context.Background(), deps, def)
+	if err != nil {
+		t.Fatalf("evaluateZoneRace: %v", err)
+	}
+	if len(outcomes) != 0 {
+		t.Fatalf("want 0 outcomes for missing player, got %d", len(outcomes))
 	}
 }
 
@@ -471,6 +528,34 @@ func TestReconcileEvent_AwardPast_GrantsButNoAnnounce(t *testing.T) {
 	}
 	if announceCount != 0 {
 		t.Fatalf("want 0 announces even with AwardPast, got %d", announceCount)
+	}
+}
+
+func TestReconcileAllEvents_SkipsDisabled(t *testing.T) {
+	t.Parallel()
+	store := openMemEventStore(t)
+	def := mustCreateEvent(t, store, "disabled_milestone", eventTypeMilestone)
+
+	def.Enabled = false
+	if _, err := store.update(def); err != nil {
+		t.Fatalf("disable event: %v", err)
+	}
+
+	var grantCount int
+	deps := noopDeps()
+	deps.fetchOnlinePlayers = func(_ context.Context) ([]eventPlayer, error) {
+		return []eventPlayer{{AccountID: 101, Name: "Alice"}}, nil
+	}
+	deps.fetchPlayerLevel = func(_ context.Context, _ int64) (int, error) { return 99, nil }
+	deps.grantCurrency = func(_ context.Context, _, _ int64) error {
+		grantCount++
+		return nil
+	}
+
+	reconcileAllEvents(context.Background(), deps, store)
+
+	if grantCount != 0 {
+		t.Fatalf("disabled event: want 0 grants, got %d", grantCount)
 	}
 }
 

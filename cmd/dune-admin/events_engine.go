@@ -148,25 +148,39 @@ func evaluateZoneRace(ctx context.Context, deps eventDeps, def eventDefinition) 
 	}
 
 	for _, accountID := range cfg.Participants {
-		pos, online := positions[accountID]
-		if !online {
-			continue
+		if outcome := zoneRaceWinner(cfg, def, positions, playerByAccount, accountID, reward); outcome != nil {
+			return []eventOutcome{*outcome}, nil
 		}
-		if !pointInSphere(pos.X, pos.Y, pos.Z, cfg.X, cfg.Y, cfg.Z, cfg.Radius) {
-			continue
-		}
-		p := playerByAccount[accountID]
-		text := renderEventTemplate(def.AnnounceTemplate, p.Name, def.Name, "")
-		return []eventOutcome{{
-			AccountID:    accountID,
-			ControllerID: p.ControllerID,
-			ActorID:      p.ActorID,
-			PlayerName:   p.Name,
-			RewardSpec:   reward,
-			AnnounceText: text,
-		}}, nil
 	}
 	return nil, nil
+}
+
+// zoneRaceWinner returns a non-nil outcome when accountID is online, on the
+// correct map, inside the finish sphere, and present in the player list.
+func zoneRaceWinner(cfg zoneRaceConfig, def eventDefinition, positions map[int64]playerPosition, players map[int64]eventPlayer, accountID int64, reward *rewardSpec) *eventOutcome {
+	pos, online := positions[accountID]
+	if !online {
+		return nil
+	}
+	if cfg.Map != "" && pos.Map != cfg.Map {
+		return nil
+	}
+	if !pointInSphere(pos.X, pos.Y, pos.Z, cfg.X, cfg.Y, cfg.Z, cfg.Radius) {
+		return nil
+	}
+	p, found := players[accountID]
+	if !found {
+		return nil
+	}
+	text := renderEventTemplate(def.AnnounceTemplate, p.Name, def.Name, "")
+	return &eventOutcome{
+		AccountID:    accountID,
+		ControllerID: p.ControllerID,
+		ActorID:      p.ActorID,
+		PlayerName:   p.Name,
+		RewardSpec:   reward,
+		AnnounceText: text,
+	}
 }
 
 // evaluateMilestone returns outcomes for milestone events: all online players
@@ -414,7 +428,7 @@ func reconcileAllEvents(ctx context.Context, deps eventDeps, store *eventStore) 
 		return
 	}
 	for _, def := range events {
-		if def.Type == eventTypeZoneRace {
+		if def.Type == eventTypeZoneRace || !def.Enabled {
 			continue
 		}
 		if err := reconcileEvent(ctx, deps, store, def); err != nil {

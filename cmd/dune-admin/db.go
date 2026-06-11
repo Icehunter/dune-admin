@@ -1625,8 +1625,8 @@ func cmdGiveCurrencyCtx(ctx context.Context, db *pgxpool.Pool, controllerID, amo
 	return balance, nil
 }
 
-// cmdFindPlayersByName looks up player characters whose character_name matches
-// the given pattern (case-insensitive). Returns all matches; the caller is
+// cmdFindPlayersByName looks up player characters whose character_name contains
+// the given substring (case-insensitive). Returns all matches; the caller is
 // responsible for handling 0 (not found) or >1 (ambiguous) results.
 // The GM identity account is excluded, matching the cmdFetchPlayers convention.
 func cmdFindPlayersByName(ctx context.Context, db *pgxpool.Pool, name string) ([]playerInfo, error) {
@@ -1647,7 +1647,7 @@ func cmdFindPlayersByName(ctx context.Context, db *pgxpool.Pool, name string) ([
 		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
 		LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
 		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id`+factionByAccountJoin+`
-		WHERE ps.character_name ILIKE $1
+		WHERE ps.character_name ILIKE '%' || $1 || '%'
 		  AND a.class ILIKE '%PlayerCharacter%'
 		  AND a.owner_account_id <> $2
 		ORDER BY a.id`,
@@ -6572,10 +6572,9 @@ func cmdFetchPlayerTagsForAccount(ctx context.Context, pool *pgxpool.Pool, accou
 	return tags, rows.Err()
 }
 
-// cmdGiveItemCtx is the context-aware injectable form used by the events engine.
-// It delegates to the existing runGiveItem helper which uses globalDB internally.
-// The pool parameter is accepted for API uniformity but runGiveItem always uses
-// globalDB — callers must ensure globalDB is non-nil before calling.
+// cmdGiveItemCtx is the injectable form used by the events engine.
+// ctx and pool are accepted for API uniformity but are not forwarded —
+// runGiveItem always uses globalDB. Callers must ensure globalDB is non-nil.
 func cmdGiveItemCtx(_ context.Context, _ *pgxpool.Pool, actorID int64, template string, qty, quality int64) error {
 	msg := runGiveItem(actorID, template, qty, quality)
 	if m, ok := msg.(msgMutate); ok && m.err != nil {
@@ -6584,10 +6583,9 @@ func cmdGiveItemCtx(_ context.Context, _ *pgxpool.Pool, actorID int64, template 
 	return nil
 }
 
-// cmdAwardXPCtx is the context-aware injectable form used by the events engine.
-// It delegates to the existing cmdAwardXP Cmd which uses globalDB internally.
-// The pool parameter is accepted for API uniformity but the underlying Cmd always
-// uses globalDB — callers must ensure globalDB is non-nil before calling.
+// cmdAwardXPCtx is the injectable form used by the events engine.
+// ctx and pool are accepted for API uniformity but are not forwarded —
+// the underlying Cmd always uses globalDB. Callers must ensure globalDB is non-nil.
 func cmdAwardXPCtx(_ context.Context, _ *pgxpool.Pool, playerID int64, track string, amount int32) error {
 	msg := cmdAwardXP(playerID, track, amount)()
 	if m, ok := msg.(msgMutate); ok && m.err != nil {

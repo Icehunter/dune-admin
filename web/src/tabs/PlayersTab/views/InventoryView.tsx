@@ -102,7 +102,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
     )
     setItems((prev) => prev.filter((i) => !deletedIds.has(i.id)))
     setSelectedKeys(new Set())
-    toast.success(t('players.inventory.itemsDeleted', { count: deletedIds.size }))
+    if (deletedIds.size > 0) {
+      toast.success(t('players.inventory.itemsDeleted', { count: deletedIds.size }))
+    }
+    if (deletedIds.size < ids.length) {
+      toast.danger(t('common.error'))
+    }
   }
 
   if (loading) {

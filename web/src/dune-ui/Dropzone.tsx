@@ -1,23 +1,7 @@
-import type React from 'react'
-import { useState, type ReactNode } from 'react'
+import * as React from 'react'
 import { Spinner, toast } from '@heroui/react'
 import { Icon } from './Icon'
-
-type DropzoneProps = {
-  /** Comma-separated list of accepted file extensions, e.g. ".json" or ".backup,.zip". */
-  accept: string
-  /** Called with the chosen file (drag-drop or click-to-pick). */
-  onSelect: (file: File) => void
-  /** Show this file's name + size as a "selected" state inside the dropzone. */
-  file?: File | null
-  /** Override the default prompt text shown when nothing is selected. */
-  prompt?: ReactNode
-  /** Spinner overlay — drive from parent state when an upload is in flight. */
-  uploading?: boolean
-  /** Compact (less vertical padding). */
-  compact?: boolean
-  className?: string
-}
+import type { DropzoneProps } from './types'
 
 /**
  * Drag-and-drop file picker. Click to open native file dialog; drop a file
@@ -27,7 +11,7 @@ type DropzoneProps = {
 export const Dropzone: React.FC<DropzoneProps> = ({
   accept, onSelect, file, prompt, uploading, compact, className = '',
 }) => {
-  const [dragging, setDragging] = useState(false)
+  const [dragging, setDragging] = React.useState(false)
 
   const validateAndSelect = (f: File | undefined | null) => {
     if (!f) return

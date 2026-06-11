@@ -13,7 +13,6 @@ dune-admin
 
 | Requirement | Notes |
 |-------------|-------|
-| **Go 1.21+** | `brew install go` or <https://go.dev/dl/> |
 | **AMP host access** | Run dune-admin on the AMP host, or set `ssh_host` to run remotely over SSH |
 | **Sudoers grant** | dune-admin user must run `ampinstmgr`, the container runtime (`podman`, or `docker` when `amp_container_runtime: docker`), and `tee` as AMP user without prompts. The container-runtime grant covers both `exec` (logs/broker) and `restart` (applying server settings). |
 
@@ -33,14 +32,15 @@ The same runtime grant is what lets dune-admin's **Restart** action cycle the co
 (`<runtime> restart <container>`) — see [Server settings](#server-settings-gameplay-config) for why a
 real container restart is required.
 
-## Quick start (wizard)
+## Quick start
+
+Install with the one-liner from the [README](README.md#quick-install), then run the setup wizard:
 
 ```bash
-make setup
+cd /opt/dune-admin
+./dune-admin -setup
 # Select: amp
 # Fill AMP instance/container/user details
-make build   # builds frontend + dune-admin binary
-./dune-admin
 ```
 
 ## Manual config (`~/.dune-admin/config.yaml`)

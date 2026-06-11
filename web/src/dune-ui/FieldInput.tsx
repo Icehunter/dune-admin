@@ -1,15 +1,6 @@
-import type React from 'react'
+import * as React from 'react'
 import { Input } from '@heroui/react'
-
-interface FieldInputProps {
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-  type?: 'text' | 'number' | 'password' | 'email' | 'url'
-  className?: string
-  ariaLabel?: string
-  isDisabled?: boolean
-}
+import type { FieldInputProps } from './types'
 
 export const FieldInput: React.FC<FieldInputProps> = ({
   value,

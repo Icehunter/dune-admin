@@ -1,21 +1,19 @@
-import type React from 'react'
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { Button, toast } from '@heroui/react'
+import type { Selection } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
-import type { Player, InventoryItem } from '../../../api/client'
-import { DataTable, Icon, LoadingState, SectionLabel, type Column } from '../../../dune-ui'
-
-type ItemKey = 'template' | 'stack' | 'quality' | 'durability' | 'actions'
-
-interface InventoryViewProps {
-  player: Player
-}
+import type { InventoryItem } from '../../../api/client'
+import { ActionBar, DataTable, Icon, LoadingState, SectionLabel, type Column } from '../../../dune-ui'
+import type { InventoryViewProps, ItemKey } from './types'
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
   const { t } = useTranslation()
-  const [items, setItems] = useState<InventoryItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [items, setItems] = React.useState<InventoryItem[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
 
   const ITEM_COLUMNS: Column<ItemKey>[] = [
     { key: 'template', label: t('players.inventory.columns.template'), isRowHeader: true },
@@ -25,11 +23,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
     { key: 'actions', label: ' ', sortable: false },
   ]
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve()
       .then(() => {
         setItems([])
         setLoading(true)
+        setSelectedKeys(new Set())
       })
       .then(() => api.players.inventory(player.id))
       .then(setItems)
@@ -79,6 +78,38 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
     }
   }
 
+  const selectionCount = selectedKeys === 'all' ? items.length : (selectedKeys as Set<string>).size
+
+  const handleBulkDelete = async () => {
+    const ids
+      = selectedKeys === 'all'
+        ? items.map((i) => i.id)
+        : items.filter((i) => (selectedKeys as Set<string>).has(String(i.id))).map((i) => i.id)
+
+    if (ids.length === 0) return
+
+    if (player.online_status === 'Online') {
+      const ok = window.confirm(t('players.inventory.deleteOnlineWarning'))
+      if (!ok) return
+    }
+
+    const deletedIds = new Set<number>()
+    await Promise.allSettled(
+      ids.map(async (id) => {
+        await api.players.deleteItem(id)
+        deletedIds.add(id)
+      }),
+    )
+    setItems((prev) => prev.filter((i) => !deletedIds.has(i.id)))
+    setSelectedKeys(new Set())
+    if (deletedIds.size > 0) {
+      toast.success(t('players.inventory.itemsDeleted', { count: deletedIds.size }))
+    }
+    if (deletedIds.size < ids.length) {
+      toast.danger(t('common.error'))
+    }
+  }
+
   if (loading) {
     return <LoadingState size="md" />
   }
@@ -100,6 +131,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
         rows={items}
         rowId={(i) => String(i.id)}
         initialSort={{ column: 'template', direction: 'ascending' }}
+        selectionMode="multiple"
+        selectedKeys={selectedKeys}
+        onSelectionChange={setSelectedKeys}
         sortValue={(i, k) => {
           if (k === 'template') return i.name || i.template_id
           if (k === 'stack') return i.stack_size
@@ -107,7 +141,16 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
           if (k === 'durability') return typeof i.durability === 'number' ? i.durability : 0
           return ''
         }}
-        emptyState={<div className="py-8 text-center text-muted">{t('players.inventory.noItemsFound')}</div>}
+        emptyState={(
+          <EmptyState size="sm">
+            <EmptyState.Header>
+              <EmptyState.Media variant="icon">
+                <IconifyIcon icon="gravity-ui:box" className="size-5" />
+              </EmptyState.Media>
+              <EmptyState.Title>{t('players.inventory.noItemsFound')}</EmptyState.Title>
+            </EmptyState.Header>
+          </EmptyState>
+        )}
         renderCell={(i, key) => {
           switch (key) {
             case 'template':
@@ -132,12 +175,30 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
                   {i.max_durability !== 'N/A' && (
                     <Button size="sm" variant="ghost" onPress={() => handleRepair(i)}>{t('players.inventory.repair')}</Button>
                   )}
-                  <Button size="sm" variant="danger-soft" onPress={() => handleDelete(i.id)}>X</Button>
+                  <Button isIconOnly size="sm" variant="danger-soft" aria-label={t('common.delete')} onPress={() => handleDelete(i.id)}><Icon name="trash" /></Button>
                 </div>
               )
           }
         }}
       />
+      <ActionBar isOpen={selectionCount > 0}>
+        <ActionBar.Prefix>
+          <span className="text-sm text-muted">
+            {selectionCount}
+          </span>
+        </ActionBar.Prefix>
+        <ActionBar.Content>
+          <Button size="sm" variant="danger-soft" onPress={handleBulkDelete}>
+            <Icon name="trash" />
+            {t('players.inventory.deleteSelected')}
+          </Button>
+        </ActionBar.Content>
+        <ActionBar.Suffix>
+          <Button size="sm" variant="ghost" onPress={() => setSelectedKeys(new Set())}>
+            {t('common.clear')}
+          </Button>
+        </ActionBar.Suffix>
+      </ActionBar>
     </div>
   )
 }

@@ -1,29 +1,29 @@
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
 import { Button, Spinner } from '@heroui/react'
+import { NumberValue } from '@heroui-pro/react'
 import { DataTable, Icon, SectionLabel } from '../../../../../dune-ui'
 import { KeystonesToggle } from '../components/KeystonesToggle'
 import { XP_TRACKS } from '../../../types'
 import { api } from '../../../../../api/client'
-import type { Player, SpecTrack, KeystoneRow } from '../../../../../api/client'
+import type { SpecTrack, KeystoneRow } from '../../../../../api/client'
 import { busyAtom } from '../store'
 import { useRun, useGate } from '../hooks/useActions'
+import type { SpecsSectionProps } from './types'
 
-interface SpecsSectionProps { player: Player }
-
-export function SpecsSection({ player }: SpecsSectionProps) {
+export const SpecsSection: React.FC<SpecsSectionProps> = ({ player }) => {
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const run = useRun(player.id)
   const gate = useGate(player.id)
 
-  const [playerSpecs, setPlayerSpecs] = useState<SpecTrack[]>([])
-  const [playerKeystones, setPlayerKeystones] = useState<KeystoneRow[]>([])
-  const [specsLoaded, setSpecsLoaded] = useState(false)
-  const [specsLoading, setSpecsLoading] = useState(false)
+  const [playerSpecs, setPlayerSpecs] = React.useState<SpecTrack[]>([])
+  const [playerKeystones, setPlayerKeystones] = React.useState<KeystoneRow[]>([])
+  const [specsLoaded, setSpecsLoaded] = React.useState(false)
+  const [specsLoading, setSpecsLoading] = React.useState(false)
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve().then(() => {
       setSpecsLoaded(false)
       setPlayerSpecs([])
@@ -31,7 +31,7 @@ export function SpecsSection({ player }: SpecsSectionProps) {
     })
   }, [player.id])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (specsLoaded) return
     Promise.resolve()
       .then(() => setSpecsLoading(true))
@@ -123,7 +123,7 @@ export function SpecsSection({ player }: SpecsSectionProps) {
           {t('players.actions.specs.onlineWarning')}
         </div>
       )}
-      <DataTable<string, 'track' | 'xp' | 'level' | 'grant' | 'reset'>
+      <DataTable<{ id: string }, 'track' | 'xp' | 'level' | 'grant' | 'reset'>
         aria-label={t('players.actions.specs.specsLabel')}
         className="min-h-0 max-h-full"
         loading={specsLoading}
@@ -134,17 +134,18 @@ export function SpecsSection({ player }: SpecsSectionProps) {
           { key: 'grant', label: ' ', sortable: false },
           { key: 'reset', label: ' ', sortable: false },
         ]}
-        rows={XP_TRACKS}
-        rowId={(tr) => tr}
+        rows={XP_TRACKS.map((t) => ({ id: t }))}
+        rowId={(r) => r.id}
         initialSort={{ column: 'track', direction: 'ascending' }}
-        sortValue={(tr, k) => {
-          const found = playerSpecs.find((s) => s.track_type === tr)
-          if (k === 'track') return tr
+        sortValue={(r, k) => {
+          const found = playerSpecs.find((s) => s.track_type === r.id)
+          if (k === 'track') return r.id
           if (k === 'xp') return found?.xp ?? 0
           if (k === 'level') return found?.level ?? 0
           return ''
         }}
-        renderCell={(track, key) => {
+        renderCell={(r, key) => {
+          const track = r.id
           const found = playerSpecs.find((s) => s.track_type === track)
           const trackKeystones = playerKeystones.filter((k) => k.track === track)
           switch (key) {
@@ -155,7 +156,7 @@ export function SpecsSection({ player }: SpecsSectionProps) {
                   {trackKeystones.length > 0 && <KeystonesToggle keystones={trackKeystones} />}
                 </span>
               )
-            case 'xp': return <span className="font-mono text-muted">{(found?.xp ?? 0).toLocaleString()}</span>
+            case 'xp': return <NumberValue value={found?.xp ?? 0} maximumFractionDigits={0} className="font-mono text-muted" />
             case 'level': return <span className="font-mono text-muted">{found?.level ?? 0}</span>
             case 'grant':
               return (

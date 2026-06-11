@@ -1,7 +1,7 @@
-import type React from 'react'
-import { memo, useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
+import * as React from 'react'
 import { Show, SignInButton, UserButton, useAuth } from '@clerk/react'
-import { Button, Chip, Modal, Spinner, Tabs, Toast, ToggleButton, ToggleButtonGroup, toast } from '@heroui/react'
+import { Button, Chip, Modal, Spinner, Toast, toast } from '@heroui/react'
+import { AppLayout, Navbar, Sidebar } from '@heroui-pro/react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useStatus } from './hooks/useStatus'
@@ -25,9 +25,10 @@ import { DirectorTab } from './tabs/DirectorTab'
 import { MarketTab } from './tabs/MarketTab'
 import { WelcomePackageTab } from './tabs/WelcomePackageTab'
 import { EventsTab } from './tabs/EventsTab'
-import { Icon, SideNav } from './dune-ui'
+import { Icon } from './dune-ui'
 import { api } from './api/client'
 import type { UpdateCheckResult } from './api/client'
+import type { TabId, DbSection, WelcomeSection, AppCoreProps, TabPaneProps, ConnectionBadgeProps } from './types'
 
 const TAB_IDS = [
   'battlegroup',
@@ -46,53 +47,53 @@ const TAB_IDS = [
   'welcome',
   'events',
 ] as const
-type TabId = (typeof TAB_IDS)[number]
 const DEFAULT_TAB: TabId = 'battlegroup'
 
-function currentTabFromPath(pathname: string): TabId {
+const currentTabFromPath = (pathname: string): TabId => {
   const seg = pathname.replace(/^\//, '').split('/')[0]
   return (TAB_IDS as readonly string[]).includes(seg) ? (seg as TabId) : DEFAULT_TAB
 }
 
-type DbSection = 'backups' | 'tables' | 'describe' | 'sample' | 'search' | 'sql'
-type WelcomeSection = 'config' | 'packages' | 'grants'
-type LayoutMode = 'sidenav' | 'topnav'
+// Lucide icon per top-level tab, shown in the collapsible sidebar rail.
+const TAB_ICONS: Record<TabId, string> = {
+  battlegroup: 'activity',
+  logs: 'scroll-text',
+  database: 'database',
+  server: 'settings-2',
+  director: 'clapperboard',
+  players: 'users',
+  livemap: 'map',
+  storage: 'package',
+  bases: 'house',
+  guilds: 'shield',
+  landsraad: 'landmark',
+  blueprints: 'scroll',
+  market: 'store',
+  welcome: 'gift',
+  events: 'calendar-clock',
+}
 
 // Memoized at module level so identity is stable — prevents all inactive tabs from
 // re-rendering whenever AppCore re-renders (e.g. router location change, useStatus poll).
-const MBattlegroupTab = memo(BattlegroupTab)
-const MLiveMapTab = memo(LiveMapTab)
-const MPlayersTab = memo(PlayersTab)
-const MDatabaseTab = memo(DatabaseTab)
-const MLogsTab = memo(LogsTab)
-const MBlueprintsTab = memo(BlueprintsTab)
-const MBasesTab = memo(BasesTab)
-const MGuildsTab = memo(GuildsTab)
-const MLandsraadTab = memo(LandsraadTab)
-const MStorageTab = memo(StorageTab)
-const MServerSettingsTab = memo(ServerSettingsTab)
-const MDirectorTab = memo(DirectorTab)
-const MMarketTab = memo(MarketTab)
-const MWelcomePackageTab = memo(WelcomePackageTab)
-const MEventsTab = memo(EventsTab)
+const BattlegroupTabMemo = React.memo(BattlegroupTab)
+const LiveMapTabMemo = React.memo(LiveMapTab)
+const PlayersTabMemo = React.memo(PlayersTab)
+const DatabaseTabMemo = React.memo(DatabaseTab)
+const LogsTabMemo = React.memo(LogsTab)
+const BlueprintsTabMemo = React.memo(BlueprintsTab)
+const BasesTabMemo = React.memo(BasesTab)
+const GuildsTabMemo = React.memo(GuildsTab)
+const LandsraadTabMemo = React.memo(LandsraadTab)
+const StorageTabMemo = React.memo(StorageTab)
+const ServerSettingsTabMemo = React.memo(ServerSettingsTab)
+const DirectorTabMemo = React.memo(DirectorTab)
+const MarketTabMemo = React.memo(MarketTab)
+const WelcomePackageTabMemo = React.memo(WelcomePackageTab)
+const EventsTabMemo = React.memo(EventsTab)
 
 const hasClerk = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
-interface AppCoreProps {
-  isSignedIn: boolean
-}
-
-interface TabPaneProps {
-  active: boolean
-  children: ReactNode
-}
-
-interface ConnectionBadgeProps {
-  label: string
-  connected: boolean
-}
-
-function AppWithAuth() {
+const AppWithAuth: React.FC = () => {
   const { isSignedIn } = useAuth()
   return <AppCore isSignedIn={!!isSignedIn} />
 }
@@ -106,25 +107,25 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   const location = useLocation()
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
-  const [reconnecting, setReconnecting] = useState(false)
+  const [reconnecting, setReconnecting] = React.useState(false)
 
-  const DB_SECTIONS: { key: string, label: string, depth: number }[] = [
-    { key: 'db:backups', label: `╰─ ${t('database.sections.backups')}`, depth: 1 },
-    { key: 'db:tables', label: `╰─ ${t('database.sections.tables')}`, depth: 1 },
-    { key: 'db:describe', label: `╰─ ${t('database.sections.describe')}`, depth: 1 },
-    { key: 'db:sample', label: `╰─ ${t('database.sections.sample')}`, depth: 1 },
-    { key: 'db:search', label: `╰─ ${t('database.sections.search')}`, depth: 1 },
-    { key: 'db:sql', label: `╰─ ${t('database.sections.sql')}`, depth: 1 },
+  const DB_SECTIONS: { key: DbSection, label: string, icon: string }[] = [
+    { key: 'backups', label: t('database.sections.backups'), icon: 'archive' },
+    { key: 'tables', label: t('database.sections.tables'), icon: 'table' },
+    { key: 'describe', label: t('database.sections.describe'), icon: 'file-text' },
+    { key: 'sample', label: t('database.sections.sample'), icon: 'flask-conical' },
+    { key: 'search', label: t('database.sections.search'), icon: 'search' },
+    { key: 'sql', label: t('database.sections.sql'), icon: 'terminal' },
   ]
 
-  const WELCOME_SECTIONS: { key: string, label: string, depth: number }[] = [
-    { key: 'welcome:config', label: `╰─ ${t('welcome.sections.config')}`, depth: 1 },
-    { key: 'welcome:packages', label: `╰─ ${t('welcome.sections.packages')}`, depth: 1 },
-    { key: 'welcome:grants', label: `╰─ ${t('welcome.sections.grants')}`, depth: 1 },
+  const WELCOME_SECTIONS: { key: WelcomeSection, label: string, icon: string }[] = [
+    { key: 'config', label: t('welcome.sections.config'), icon: 'sliders-horizontal' },
+    { key: 'packages', label: t('welcome.sections.packages'), icon: 'package' },
+    { key: 'grants', label: t('welcome.sections.grants'), icon: 'gift' },
   ]
 
   // Re-establish backend connections (DB + control plane) without a service
-  // restart — used by the header Reconnect button when the DB shows disconnected
+  // restart — used by the navbar Reconnect button when the DB shows disconnected
   // (e.g. dune-admin came up before the database was ready).
   const handleReconnect = async () => {
     setReconnecting(true)
@@ -176,24 +177,17 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     },
   ]
 
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>(
-    () => (localStorage.getItem('dune_admin_layout') === 'topnav' ? 'topnav' : 'sidenav'),
-  )
-  const setLayout = useCallback((m: LayoutMode) => {
-    localStorage.setItem('dune_admin_layout', m)
-    setLayoutMode(m)
-  }, [])
-  const [dbSection, setDbSection] = useState<DbSection>('backups')
-  const [welcomeSection, setWelcomeSection] = useState<WelcomeSection>('config')
-  const [showBackendConfig, setShowBackendConfig] = useState(false)
-  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null)
-  const [showUpdateModal, setShowUpdateModal] = useState(false)
-  const [updateChecking, setUpdateChecking] = useState(false)
-  const [updateApplying, setUpdateApplying] = useState(false)
-  const [formSaving, setFormSaving] = useState(false)
-  const formSaveRef = useRef<(() => Promise<void>) | null>(null)
+  const [dbSection, setDbSection] = React.useState<DbSection>('backups')
+  const [welcomeSection, setWelcomeSection] = React.useState<WelcomeSection>('config')
+  const [showBackendConfig, setShowBackendConfig] = React.useState(false)
+  const [updateInfo, setUpdateInfo] = React.useState<UpdateCheckResult | null>(null)
+  const [showUpdateModal, setShowUpdateModal] = React.useState(false)
+  const [updateChecking, setUpdateChecking] = React.useState(false)
+  const [updateApplying, setUpdateApplying] = React.useState(false)
+  const [formSaving, setFormSaving] = React.useState(false)
+  const formSaveRef = React.useRef<(() => Promise<void>) | null>(null)
 
-  useEffect(() => {
+  React.useEffect(() => {
     const seg = location.pathname.replace(/^\//, '').split('/')[0]
     if (!seg || !(TAB_IDS as readonly string[]).includes(seg)) {
       navigate(`/${DEFAULT_TAB}`, { replace: true })
@@ -201,12 +195,13 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   }, [location.pathname, navigate])
 
   const currentTab = currentTabFromPath(location.pathname)
+  const pathname = location.pathname
 
   // Tracks which tabs have been visited at least once — they get mounted and stay
   // mounted (TabPane keeps them hidden), preserving in-tab state and the isActive
   // auto-refresh contract. Unvisited tabs never mount, avoiding the startup query storm.
-  const [mounted, setMounted] = useState<Set<TabId>>(() => new Set<TabId>([currentTab]))
-  useEffect(() => {
+  const [mounted, setMounted] = React.useState<Set<TabId>>(() => new Set<TabId>([currentTab]))
+  React.useEffect(() => {
     setMounted((prev) => { // eslint-disable-line react-hooks/set-state-in-effect
       if (prev.has(currentTab)) return prev
       const next = new Set(prev)
@@ -215,10 +210,29 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     })
   }, [currentTab])
 
-  // Check for a newer release via the backend (it knows this build's version and
-  // returns the release-notes URL) — drives the clickable header update widget (#129).
-  useEffect(() => {
-    api.update.check().then(setUpdateInfo).catch(() => {})
+  // Check for a newer release via the backend — cached in localStorage for 1 hour
+  // to avoid hammering GitHub's unauthenticated API rate limit during dev HMR cycles.
+  React.useEffect(() => {
+    const CACHE_KEY = 'dune_update_cache'
+    const TTL_MS = 60 * 60 * 1000
+    try {
+      const cached = localStorage.getItem(CACHE_KEY)
+      if (cached) {
+        const { ts, data } = JSON.parse(cached)
+        if (Date.now() - ts < TTL_MS) {
+          Promise.resolve().then(() => setUpdateInfo(data))
+          return
+        }
+      }
+    }
+    catch { /* ignore corrupt cache */ }
+    api.update.check().then((data) => {
+      setUpdateInfo(data)
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }))
+      }
+      catch { /* ignore */ }
+    }).catch(() => {})
   }, [])
 
   const checkUpdate = async () => {
@@ -257,7 +271,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     }
   }
 
-  const renderTab = (id: TabId, node: ReactNode) => (
+  const renderTab = (id: TabId, node: React.ReactNode) => (
     <TabPane active={currentTab === id}>
       {mounted.has(id) ? node : null}
     </TabPane>
@@ -269,28 +283,112 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     return <BackendUnreachable onRetry={() => window.location.reload()} />
   }
 
-  return (
-    // Keyed on the active language so switching language remounts the content
-    // subtree once. The module-level memo() tabs stay mounted and otherwise keep
-    // stale-language text on a language change (their props don't change), until
-    // an unrelated local state update forces them to re-render (#123).
-    <div key={i18n.language} className="h-screen flex flex-col overflow-hidden bg-background">
-      <Toast.Provider />
+  // A single top-level menu item. When the item carries sub-sections (Database,
+  // Welcome Kits) we render a Submenu so the sections expand inline under it.
+  const menuItem = (key: TabId) => {
+    const label = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === key)?.label ?? key
+    const icon = <Sidebar.MenuIcon><Icon name={TAB_ICONS[key]} /></Sidebar.MenuIcon>
 
-      {/* Header */}
-      <header
-        className="flex items-center justify-between px-6 py-3 border-b border-border bg-surface shrink-0"
-        style={{ background: 'linear-gradient(180deg, var(--surface-secondary) 0%, var(--surface) 100%)' }}
-      >
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            className="text-xl font-bold uppercase tracking-[0.2em] text-accent px-0 h-auto min-w-0 hover:opacity-80"
-            onPress={() => navigate(`/${DEFAULT_TAB}`)}
-            aria-label={t('app.goHome')}
+    if (key === 'database') {
+      return (
+        <Sidebar.MenuItem key={key} id={key} href={`/${key}`} isCurrent={currentTab === 'database'} onAction={() => navigate(`/${key}`)}>
+          {icon}
+          <Sidebar.MenuLabel>{label}</Sidebar.MenuLabel>
+          <Sidebar.MenuTrigger><Sidebar.MenuIndicator /></Sidebar.MenuTrigger>
+          <Sidebar.Submenu>
+            {DB_SECTIONS.map((s) => (
+              <Sidebar.MenuItem
+                key={s.key}
+                id={`db:${s.key}`}
+                isCurrent={currentTab === 'database' && dbSection === s.key}
+                onAction={() => {
+                  setDbSection(s.key)
+                  navigate('/database')
+                }}
+              >
+                <Sidebar.MenuIcon><Icon name={s.icon} /></Sidebar.MenuIcon>
+                <Sidebar.MenuLabel>{s.label}</Sidebar.MenuLabel>
+              </Sidebar.MenuItem>
+            ))}
+          </Sidebar.Submenu>
+        </Sidebar.MenuItem>
+      )
+    }
+
+    if (key === 'welcome') {
+      return (
+        <Sidebar.MenuItem key={key} id={key} href={`/${key}`} isCurrent={currentTab === 'welcome'} onAction={() => navigate(`/${key}`)}>
+          {icon}
+          <Sidebar.MenuLabel>{label}</Sidebar.MenuLabel>
+          <Sidebar.MenuTrigger><Sidebar.MenuIndicator /></Sidebar.MenuTrigger>
+          <Sidebar.Submenu>
+            {WELCOME_SECTIONS.map((s) => (
+              <Sidebar.MenuItem
+                key={s.key}
+                id={`welcome:${s.key}`}
+                isCurrent={currentTab === 'welcome' && welcomeSection === s.key}
+                onAction={() => {
+                  setWelcomeSection(s.key)
+                  navigate('/welcome')
+                }}
+              >
+                <Sidebar.MenuIcon><Icon name={s.icon} /></Sidebar.MenuIcon>
+                <Sidebar.MenuLabel>{s.label}</Sidebar.MenuLabel>
+              </Sidebar.MenuItem>
+            ))}
+          </Sidebar.Submenu>
+        </Sidebar.MenuItem>
+      )
+    }
+
+    return (
+      <Sidebar.MenuItem key={key} id={key} href={`/${key}`} isCurrent={pathname === `/${key}`} onAction={() => navigate(`/${key}`)}>
+        {icon}
+        <Sidebar.MenuLabel>{label}</Sidebar.MenuLabel>
+      </Sidebar.MenuItem>
+    )
+  }
+
+  const sidebar = (
+    <Sidebar>
+      <Sidebar.Header>
+        <Button
+          variant="ghost"
+          className="flex items-center gap-2 px-2 h-10 min-w-0 hover:opacity-80 w-full justify-start"
+          onPress={() => navigate(`/${DEFAULT_TAB}`)}
+          aria-label={t('app.goHome')}
+        >
+          <img
+            src="/dune-admin-logo-small.svg"
+            alt="Dune Admin"
+            className="size-6 shrink-0"
+          />
+          <span
+            data-sidebar="label"
+            className="text-sm font-bold uppercase tracking-[0.2em] text-accent overflow-hidden whitespace-nowrap"
           >
             {t('app.title')}
-          </Button>
+          </span>
+        </Button>
+      </Sidebar.Header>
+      <Sidebar.Content>
+        <Sidebar.Menu aria-label={t('nav.menu')}>
+          {NAV_GROUPS.map((group) => (
+            <Sidebar.MenuSection key={group.title}>
+              <Sidebar.MenuHeader>{group.title}</Sidebar.MenuHeader>
+              {group.items.map((item) => menuItem(item.key))}
+            </Sidebar.MenuSection>
+          ))}
+        </Sidebar.Menu>
+      </Sidebar.Content>
+    </Sidebar>
+  )
+
+  const navbar = (
+    <Navbar position="sticky" maxWidth="full">
+      <Navbar.Header>
+        <Sidebar.Trigger />
+        <div className="flex items-center gap-3">
           {status?.control && status.control !== 'none' && <span className="text-xs text-muted">{status.control}</span>}
           {status?.ssh_host && <span className="text-xs text-muted">{status.ssh_host}</span>}
           {status?.db_host && status.control !== 'kubectl' && (
@@ -308,22 +406,24 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
             </Button>
           )}
           {updateInfo?.needs_update && (
-            <button
-              type="button"
-              onClick={() => setShowUpdateModal(true)}
+            <Button
+              variant="ghost"
+              onPress={() => setShowUpdateModal(true)}
               aria-label={t('app.updateAvailable')}
-              className="cursor-pointer border-0 bg-transparent p-0"
+              className="cursor-pointer p-0 h-auto min-w-0"
             >
               <Chip size="sm" color="warning" variant="soft">
                 ↑
                 {' '}
                 {updateInfo.latest.replace(/^v/, '')}
               </Chip>
-            </button>
+            </Button>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <Navbar.Spacer />
+
+        <Navbar.Content>
           {status?.executor === 'ssh' && <ConnectionBadge label="SSH" connected={status.ssh_connected} />}
           <ConnectionBadge label="DB" connected={status?.db_connected ?? false} />
           {status && !status.db_connected && (
@@ -346,22 +446,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
           <HelpMenu status={status} />
           <ThemeSelector />
           <LanguageSelector />
-          <ToggleButtonGroup
-            selectionMode="single"
-            disallowEmptySelection
-            selectedKeys={[layoutMode]}
-            onSelectionChange={(keys) => {
-              const next = [...keys][0]
-              if (next === 'sidenav' || next === 'topnav') setLayout(next)
-            }}
-          >
-            <ToggleButton id="sidenav" isIconOnly aria-label={t('app.switchToSidenav')}>
-              <Icon name="layout-panel-left" />
-            </ToggleButton>
-            <ToggleButton id="topnav" isIconOnly aria-label={t('app.switchToTopnav')}>
-              <Icon name="layout-panel-top" />
-            </ToggleButton>
-          </ToggleButtonGroup>
+
           <Button
             size="sm"
             variant="outline"
@@ -388,313 +473,222 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
               </Show>
             </>
           )}
+        </Navbar.Content>
+      </Navbar.Header>
+    </Navbar>
+  )
+
+  const tabContent = (
+    <main className="flex-1 flex flex-col overflow-hidden min-h-0">
+      {renderTab('battlegroup', <BattlegroupTabMemo isActive={currentTab === 'battlegroup'} />)}
+      {renderTab('players', <PlayersTabMemo isActive={currentTab === 'players'} />)}
+      {renderTab('database', <DatabaseTabMemo section={dbSection} />)}
+      {renderTab('logs', <LogsTabMemo control={status?.control} />)}
+      {renderTab('blueprints', <BlueprintsTabMemo isSignedIn={isSignedIn} />)}
+      {renderTab('bases', <BasesTabMemo isSignedIn={isSignedIn} />)}
+      {renderTab('guilds', <GuildsTabMemo isSignedIn={isSignedIn} />)}
+      {renderTab('landsraad', <LandsraadTabMemo />)}
+      {renderTab('storage', <StorageTabMemo />)}
+      {renderTab('livemap', <LiveMapTabMemo isActive={currentTab === 'livemap'} />)}
+      {renderTab('server', <ServerSettingsTabMemo />)}
+      {renderTab('director', <DirectorTabMemo />)}
+      {renderTab('market', <MarketTabMemo />)}
+      {renderTab('welcome', <WelcomePackageTabMemo section={welcomeSection} />)}
+      {renderTab('events', <EventsTabMemo />)}
+    </main>
+  )
+
+  return (
+    // Keyed on the active language so switching language remounts the content
+    // subtree once. The module-level memo() tabs stay mounted and otherwise keep
+    // stale-language text on a language change (their props don't change), until
+    // an unrelated local state update forces them to re-render (#123).
+    <div key={i18n.language} className="h-screen overflow-hidden bg-background">
+      <Toast.Provider />
+
+      <AppLayout
+        sidebarCollapsible="icon"
+        sidebarVariant="inset"
+        scrollMode="content"
+        navigate={navigate}
+        navbar={navbar}
+        sidebar={sidebar}
+      >
+        <div className="h-full flex flex-col p-3 overflow-hidden min-h-0">
+          {tabContent}
         </div>
-      </header>
+      </AppLayout>
 
       {/* Settings modal — structure mirrors BotControlPanel */}
-      <Modal>
-        <Modal.Backdrop isOpen={showBackendConfig} onOpenChange={(v) => !v && setShowBackendConfig(false)}>
-          <Modal.Container size="cover" scroll="outside">
-            <Modal.Dialog className="h-[92vh] flex flex-col">
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <div className="flex items-baseline gap-6 flex-wrap">
-                  <Modal.Heading className="text-accent">{t('app.settings')}</Modal.Heading>
-                  {status && (
-                    <div className="flex items-center gap-4 text-xs text-muted">
-                      {status.version && (
-                        <span className="font-mono">
-                          v
-                          {status.version}
-                        </span>
-                      )}
-                      {status.control && status.control !== 'none' && <span>{status.control}</span>}
-                      {status.commit && status.commit !== 'unknown' && (
-                        <span className="font-mono opacity-60">{status.commit}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </Modal.Header>
-
-              {/* Body scrolls; form fills it with its own internal tab scroll */}
-              <Modal.Body className="flex flex-col overflow-y-auto flex-1 min-h-0 pr-1">
-                {showBackendConfig && (
-                  <SettingsConfigForm saveRef={formSaveRef} onSavingChange={setFormSaving} />
+      <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={showBackendConfig} onOpenChange={(v) => !v && setShowBackendConfig(false)}>
+        <Modal.Container size="cover" scroll="outside">
+          <Modal.Dialog className="p-10 h-[92vh] flex flex-col dialog-surface-alt">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <div className="flex items-baseline gap-6 flex-wrap">
+                <Modal.Heading className="text-accent">{t('app.settings')}</Modal.Heading>
+                {status && (
+                  <div className="flex items-center gap-4 text-xs text-muted">
+                    {status.version && (
+                      <span className="font-mono">
+                        v
+                        {status.version}
+                      </span>
+                    )}
+                    {status.control && status.control !== 'none' && <span>{status.control}</span>}
+                    {status.commit && status.commit !== 'unknown' && (
+                      <span className="font-mono opacity-60">{status.commit}</span>
+                    )}
+                  </div>
                 )}
-              </Modal.Body>
+              </div>
+            </Modal.Header>
 
-              <Modal.Footer className="flex items-center gap-2">
-                {/* Left: update controls — fixed positions so buttons don't shift */}
+            {/* Body scrolls; form fills it with its own internal tab scroll */}
+            <Modal.Body className="flex flex-col overflow-y-auto flex-1 min-h-0 pr-1">
+              {showBackendConfig && (
+                <SettingsConfigForm saveRef={formSaveRef} onSavingChange={setFormSaving} />
+              )}
+            </Modal.Body>
+
+            <Modal.Footer className="flex items-center gap-2">
+              {/* Left: update controls — fixed positions so buttons don't shift */}
+              <Button
+                size="sm"
+                variant="ghost"
+                onPress={checkUpdate}
+                isDisabled={updateChecking || updateApplying}
+              >
+                {updateChecking
+                  ? (
+                      <>
+                        <Spinner size="sm" color="current" />
+                        {' '}
+                        {t('common.checking')}
+                      </>
+                    )
+                  : t('app.checkUpdates')}
+              </Button>
+              {updateInfo && !updateInfo.needs_update && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  onPress={checkUpdate}
-                  isDisabled={updateChecking || updateApplying}
-                >
-                  {updateChecking
-                    ? (
-                        <>
-                          <Spinner size="sm" color="current" />
-                          {' '}
-                          {t('common.checking')}
-                        </>
-                      )
-                    : t('app.checkUpdates')}
-                </Button>
-                {updateInfo && !updateInfo.needs_update && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onPress={() => applyUpdate(true)}
-                    isDisabled={updateApplying}
-                  >
-                    {updateApplying ? <Spinner size="sm" color="current" /> : t('app.reinstall')}
-                  </Button>
-                )}
-                {updateInfo?.needs_update && (
-                  <Button size="sm" onPress={() => applyUpdate()} isDisabled={updateApplying}>
-                    {updateApplying
-                      ? <Spinner size="sm" color="current" />
-                      : (
-                          <span className="font-mono text-xs">
-                            v
-                            {updateInfo.current}
-                            {' → '}
-                            v
-                            {updateInfo.latest.replace(/^v/, '')}
-                          </span>
-                        )}
-                  </Button>
-                )}
-
-                {/* Spacer */}
-                <span className="flex-1" />
-
-                {/* Right: save + close */}
-                <span className="text-xs text-muted">{t('app.changesNote')}</span>
-                <Button
-                  size="sm"
-                  onPress={() => formSaveRef.current?.()}
-                  isDisabled={formSaving}
-                >
-                  {formSaving
-                    ? (
-                        <>
-                          <Spinner size="sm" color="current" />
-                          {' '}
-                          {t('common.saving')}
-                        </>
-                      )
-                    : (
-                        <>
-                          <Icon name="save" />
-                          {' '}
-                          {t('app.saveApply')}
-                        </>
-                      )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="tertiary"
-                  onPress={() => setShowBackendConfig(false)}
-                >
-                  {t('common.close')}
-                </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
-
-      {/* Update-available prompt — opened from the header release widget (#129).
-          Reuses the backend update check for the release-notes link + Continue/Cancel. */}
-      <Modal>
-        <Modal.Backdrop isOpen={showUpdateModal} onOpenChange={(v) => !v && setShowUpdateModal(false)}>
-          <Modal.Container size="sm">
-            <Modal.Dialog>
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <Modal.Heading className="text-accent">{t('app.updateAvailable')}</Modal.Heading>
-              </Modal.Header>
-              <Modal.Body className="flex flex-col gap-3">
-                <p className="text-sm text-muted">
-                  {t('app.updateAvailableBody', {
-                    current: updateInfo?.current ?? '',
-                    latest: updateInfo?.latest?.replace(/^v/, '') ?? '',
-                  })}
-                </p>
-                {updateInfo?.release_url && (
-                  <a
-                    href={updateInfo.release_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-sm text-accent hover:opacity-80"
-                  >
-                    <Icon name="external-link" />
-                    {' '}
-                    {t('app.viewReleaseNotes')}
-                  </a>
-                )}
-              </Modal.Body>
-              <Modal.Footer className="flex items-center justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="tertiary"
-                  onPress={() => setShowUpdateModal(false)}
-                >
-                  {t('common.cancel')}
-                </Button>
-                <Button
-                  size="sm"
-                  onPress={() => {
-                    setShowUpdateModal(false)
-                    void applyUpdate()
-                  }}
+                  onPress={() => applyUpdate(true)}
                   isDisabled={updateApplying}
                 >
-                  {updateApplying ? <Spinner size="sm" color="current" /> : t('app.updateNow')}
+                  {updateApplying ? <Spinner size="sm" color="current" /> : t('app.reinstall')}
                 </Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+              )}
+              {updateInfo?.needs_update && (
+                <Button size="sm" onPress={() => applyUpdate()} isDisabled={updateApplying}>
+                  {updateApplying
+                    ? <Spinner size="sm" color="current" />
+                    : (
+                        <span className="font-mono text-xs">
+                          v
+                          {updateInfo.current}
+                          {' → '}
+                          v
+                          {updateInfo.latest.replace(/^v/, '')}
+                        </span>
+                      )}
+                </Button>
+              )}
 
-      {/* Body: layout-conditional rendering.
-          In sidenav mode: grouped left sidebar + content.
-          In topnav mode: horizontal nav bar + full-width content.
-          All tabs stay mounted (inactive hidden) so per-tab state and isActive
-          auto-refresh behavior persist. */}
-      {(() => {
-        const databaseNode = layoutMode === 'topnav'
-          ? <MDatabaseTab section={dbSection} showSubnav onSectionChange={setDbSection} />
-          : <MDatabaseTab section={dbSection} />
+              {/* Spacer */}
+              <span className="flex-1" />
 
-        const welcomeNode = layoutMode === 'topnav'
-          ? <MWelcomePackageTab section={welcomeSection} showSubnav onSectionChange={setWelcomeSection} />
-          : <MWelcomePackageTab section={welcomeSection} />
+              {/* Right: save + close */}
+              <span className="text-xs text-muted">{t('app.changesNote')}</span>
+              <Button
+                size="sm"
+                onPress={() => formSaveRef.current?.()}
+                isDisabled={formSaving}
+              >
+                {formSaving
+                  ? (
+                      <>
+                        <Spinner size="sm" color="current" />
+                        {' '}
+                        {t('common.saving')}
+                      </>
+                    )
+                  : (
+                      <>
+                        <Icon name="save" />
+                        {' '}
+                        {t('app.saveApply')}
+                      </>
+                    )}
+              </Button>
+              <Button
+                size="sm"
+                variant="tertiary"
+                onPress={() => setShowBackendConfig(false)}
+              >
+                {t('common.close')}
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
 
-        if (layoutMode === 'sidenav') {
-          return (
-            <div className="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
-              <nav className="w-60 shrink-0 flex flex-col gap-2 overflow-y-auto">
-                {/* Operations: rendered separately so Database can expand DB sub-items inline */}
-                <SideNav
-                  width="w-full"
-                  title={NAV_GROUPS[0].title}
-                  items={[
-                    ...NAV_GROUPS[0].items.slice(0, 3),
-                    ...(currentTab === 'database' ? DB_SECTIONS : []),
-                    ...NAV_GROUPS[0].items.slice(3),
-                  ] as { key: string, label: string, depth?: number }[]}
-                  active={currentTab === 'database' ? `db:${dbSection}` : currentTab}
-                  onSelect={(k: string) => {
-                    if (k.startsWith('db:')) {
-                      setDbSection(k.slice(3) as DbSection)
-                      if (currentTab !== 'database') navigate('/database')
-                    }
-                    else {
-                      navigate(`/${k}`)
-                    }
-                  }}
-                />
-                {/* Player World: unchanged */}
-                <SideNav
-                  key={NAV_GROUPS[1].title}
-                  width="w-full"
-                  title={NAV_GROUPS[1].title}
-                  items={NAV_GROUPS[1].items}
-                  active={currentTab}
-                  onSelect={(k) => navigate(`/${k}`)}
-                />
-                {/* Economy: expand Welcome sub-items inline */}
-                <SideNav
-                  width="w-full"
-                  title={NAV_GROUPS[2].title}
-                  items={[
-                    ...NAV_GROUPS[2].items,
-                    ...(currentTab === 'welcome' ? WELCOME_SECTIONS : []),
-                  ] as { key: string, label: string, depth?: number }[]}
-                  active={currentTab === 'welcome' ? `welcome:${welcomeSection}` : currentTab}
-                  onSelect={(k: string) => {
-                    if (k.startsWith('welcome:')) {
-                      setWelcomeSection(k.slice(8) as WelcomeSection)
-                      if (currentTab !== 'welcome') navigate('/welcome')
-                    }
-                    else {
-                      navigate(`/${k}`)
-                    }
-                  }}
-                />
-              </nav>
-              <main className="flex-1 flex flex-col overflow-hidden min-h-0">
-                {renderTab('battlegroup', <MBattlegroupTab isActive={currentTab === 'battlegroup'} />)}
-                {renderTab('players', <MPlayersTab isActive={currentTab === 'players'} />)}
-                {renderTab('database', databaseNode)}
-                {renderTab('logs', <MLogsTab control={status?.control} />)}
-                {renderTab('blueprints', <MBlueprintsTab isSignedIn={isSignedIn} />)}
-                {renderTab('bases', <MBasesTab isSignedIn={isSignedIn} />)}
-                {renderTab('guilds', <MGuildsTab isSignedIn={isSignedIn} />)}
-                {renderTab('landsraad', <MLandsraadTab />)}
-                {renderTab('storage', <MStorageTab />)}
-                {renderTab('livemap', <MLiveMapTab isActive={currentTab === 'livemap'} />)}
-                {renderTab('server', <MServerSettingsTab />)}
-                {renderTab('director', <MDirectorTab />)}
-                {renderTab('market', <MMarketTab />)}
-                {renderTab('welcome', welcomeNode)}
-                {renderTab('events', <MEventsTab />)}
-              </main>
-            </div>
-          )
-        }
-
-        // topnav mode: horizontal nav bar + full-width content area
-        return (
-          <>
-            <Tabs
-              selectedKey={currentTab}
-              onSelectionChange={(k) => navigate(`/${String(k)}`)}
-              className="shrink-0 border-b border-border bg-surface"
-            >
-              <Tabs.ListContainer className="px-3 py-2 overflow-x-auto">
-                <Tabs.List aria-label={t('app.title')}>
-                  {NAV_GROUPS.flatMap((g) => g.items).map((item) => (
-                    <Tabs.Tab key={item.key} id={item.key}>
-                      {item.label}
-                      <Tabs.Indicator />
-                    </Tabs.Tab>
-                  ))}
-                </Tabs.List>
-              </Tabs.ListContainer>
-            </Tabs>
-            <div className="flex-1 flex flex-col p-3 overflow-hidden min-h-0">
-              <main className="flex-1 flex flex-col overflow-hidden min-h-0">
-                {renderTab('battlegroup', <MBattlegroupTab isActive={currentTab === 'battlegroup'} />)}
-                {renderTab('players', <MPlayersTab isActive={currentTab === 'players'} />)}
-                {renderTab('database', databaseNode)}
-                {renderTab('logs', <MLogsTab control={status?.control} />)}
-                {renderTab('blueprints', <MBlueprintsTab isSignedIn={isSignedIn} />)}
-                {renderTab('bases', <MBasesTab isSignedIn={isSignedIn} />)}
-                {renderTab('guilds', <MGuildsTab isSignedIn={isSignedIn} />)}
-                {renderTab('landsraad', <MLandsraadTab />)}
-                {renderTab('storage', <MStorageTab />)}
-                {renderTab('livemap', <MLiveMapTab isActive={currentTab === 'livemap'} />)}
-                {renderTab('server', <MServerSettingsTab />)}
-                {renderTab('director', <MDirectorTab />)}
-                {renderTab('market', <MMarketTab />)}
-                {renderTab('welcome', welcomeNode)}
-                {renderTab('events', <MEventsTab />)}
-              </main>
-            </div>
-          </>
-        )
-      })()}
+      {/* Update-available prompt — opened from the navbar release widget (#129).
+          Reuses the backend update check for the release-notes link + Continue/Cancel. */}
+      <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={showUpdateModal} onOpenChange={(v) => !v && setShowUpdateModal(false)}>
+        <Modal.Container size="sm">
+          <Modal.Dialog className="p-10">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Heading className="text-accent">{t('app.updateAvailable')}</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body className="flex flex-col gap-3">
+              <p className="text-sm text-muted">
+                {t('app.updateAvailableBody', {
+                  current: updateInfo?.current ?? '',
+                  latest: updateInfo?.latest?.replace(/^v/, '') ?? '',
+                })}
+              </p>
+              {updateInfo?.release_url && (
+                <a
+                  href={updateInfo.release_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-accent hover:opacity-80"
+                >
+                  <Icon name="external-link" />
+                  {' '}
+                  {t('app.viewReleaseNotes')}
+                </a>
+              )}
+            </Modal.Body>
+            <Modal.Footer className="flex items-center justify-end gap-2">
+              <Button
+                size="sm"
+                variant="tertiary"
+                onPress={() => setShowUpdateModal(false)}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                size="sm"
+                onPress={() => {
+                  setShowUpdateModal(false)
+                  void applyUpdate()
+                }}
+                isDisabled={updateApplying}
+              >
+                {updateApplying ? <Spinner size="sm" color="current" /> : t('app.updateNow')}
+              </Button>
+            </Modal.Footer>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </div>
   )
 }
 
-function TabPane({ active, children }: TabPaneProps) {
+const TabPane: React.FC<TabPaneProps> = ({ active, children }) => {
   return (
     <div className={`flex-1 min-h-0 ${active ? 'flex flex-col dune-tab-active' : 'hidden'}`}>
       {children}
@@ -702,7 +696,7 @@ function TabPane({ active, children }: TabPaneProps) {
   )
 }
 
-function ConnectionBadge({ label, connected }: ConnectionBadgeProps) {
+const ConnectionBadge: React.FC<ConnectionBadgeProps> = ({ label, connected }) => {
   return (
     <div className="flex items-center gap-1.5 text-xs">
       <div className={`w-2 h-2 rounded-full ${connected ? 'bg-success' : 'bg-muted/40'}`} />

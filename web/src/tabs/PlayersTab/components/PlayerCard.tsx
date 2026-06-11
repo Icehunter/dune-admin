@@ -1,12 +1,6 @@
-import type React from 'react'
-import type { Player } from '../../../api/client'
+import * as React from 'react'
 import { StatusDot } from './StatusDot'
-
-interface PlayerCardProps {
-  player: Player
-  selected: boolean
-  onSelect: (player: Player) => void
-}
+import type { PlayerCardProps } from './types'
 
 export const PlayerCard: React.FC<PlayerCardProps> = ({ player, selected, onSelect }) => {
   return (

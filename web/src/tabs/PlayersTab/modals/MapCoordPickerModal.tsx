@@ -1,10 +1,10 @@
-import type React from 'react'
-import { useState, useCallback } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Modal, Spinner } from '@heroui/react'
 import { MapContainer, ImageOverlay, useMapEvents } from 'react-leaflet'
 import { CRS, type LatLngBoundsExpression } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import type { ClickCapturerProps, MapCoordPickerModalProps } from './types'
 
 // Mirror the same image space and map config from LiveMapTab.tsx.
 const IMG_W = 1200
@@ -21,7 +21,7 @@ const HAGGA_BOUNDS = {
 // Inverse of worldToLatLng: Leaflet lat/lng → world X/Y.
 // lat = fracYup * IMG_H, lng = fracX * IMG_W
 // rawY = flipY ? 1 - fracYup : fracYup  → worldY = rawY * (maxY - minY) + minY
-function latLngToWorld(lat: number, lng: number): { x: number, y: number } {
+const latLngToWorld = (lat: number, lng: number): { x: number, y: number } => {
   const cfg = HAGGA_BOUNDS
   const fracX = lng / IMG_W
   const fracYup = lat / IMG_H
@@ -35,11 +35,7 @@ function latLngToWorld(lat: number, lng: number): { x: number, y: number } {
 // Default Z for picked coordinates — safe height above most Hagga Basin terrain.
 const DEFAULT_Z = 5000
 
-interface ClickCapturerProps {
-  onPick: (x: number, y: number, z: number) => void
-}
-
-function ClickCapturer({ onPick }: ClickCapturerProps) {
+const ClickCapturer: React.FC<ClickCapturerProps> = ({ onPick }) => {
   useMapEvents({
     click(e) {
       const { x, y } = latLngToWorld(e.latlng.lat, e.latlng.lng)
@@ -49,16 +45,11 @@ function ClickCapturer({ onPick }: ClickCapturerProps) {
   return null
 }
 
-interface MapCoordPickerModalProps {
-  onPick: (x: number, y: number, z: number) => void
-  onClose: () => void
-}
-
 export const MapCoordPickerModal: React.FC<MapCoordPickerModalProps> = ({ onPick, onClose }) => {
-  const [picked, setPicked] = useState<{ x: number, y: number, z: number } | null>(null)
-  const [mapReady, setMapReady] = useState(false)
+  const [picked, setPicked] = React.useState<{ x: number, y: number, z: number } | null>(null)
+  const [mapReady, setMapReady] = React.useState(false)
 
-  const handleClick = useCallback((x: number, y: number, z: number) => {
+  const handleClick = React.useCallback((x: number, y: number, z: number) => {
     setPicked({ x: Math.round(x), y: Math.round(y), z })
   }, [])
 
@@ -69,9 +60,9 @@ export const MapCoordPickerModal: React.FC<MapCoordPickerModalProps> = ({ onPick
   }
 
   return (
-    <Modal.Backdrop isOpen onOpenChange={(v) => { if (!v) onClose() }}>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen onOpenChange={(v) => { if (!v) onClose() }}>
       <Modal.Container size="cover" scroll="outside">
-        <Modal.Dialog style={{ height: '85vh', display: 'flex', flexDirection: 'column' }}>
+        <Modal.Dialog className="p-10" style={{ height: '85vh', display: 'flex', flexDirection: 'column' }}>
           <Modal.CloseTrigger />
           <Modal.Header>
             <Modal.Heading className="text-accent">{t('players.actions.admin.mapPickerModal.title')}</Modal.Heading>

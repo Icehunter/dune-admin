@@ -518,12 +518,13 @@ func cmdListDiscordRoles(guildID string, fetchRoles guildRolesFetchFn) ([]discor
 // handleGetDiscordRoles is the HTTP handler registered in server.go.
 // Returns the guild's role list so the settings UI can show a role picker.
 func handleGetDiscordRoles(w http.ResponseWriter, _ *http.Request) {
-	handleGetDiscordRolesInner(w, globalDiscordGuildID, func(guildID string) ([]discordRoleRow, error) {
-		if globalDiscordSession == nil {
+	sess, guildID := getDiscordState()
+	handleGetDiscordRolesInner(w, guildID, func(gID string) ([]discordRoleRow, error) {
+		if sess == nil {
 			return nil, errDiscordNotConnected
 		}
-		return cmdListDiscordRoles(guildID, func(id string) ([]*discordgo.Role, error) {
-			return globalDiscordSession.GuildRoles(id)
+		return cmdListDiscordRoles(gID, func(id string) ([]*discordgo.Role, error) {
+			return sess.GuildRoles(id)
 		})
 	})
 }

@@ -1,10 +1,11 @@
-import type React from 'react'
+import * as React from 'react'
 import { DataTable, type Column } from '../../dune-ui'
 import { useTranslation } from 'react-i18next'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import type { MarketItem } from '../../api/client'
 import { qualityLabel } from '../../utils/icons'
-
-type Key = 'display_name' | 'quality' | 'category' | 'tier' | 'rarity' | 'lowest_price' | 'total_stock' | 'bot_stock' | 'listing_count'
+import type { MarketTableKey, MarketTableProps } from './types'
 
 const RARITY_COLORS: Record<string, string> = {
   common: 'text-foreground',
@@ -16,15 +17,10 @@ const RARITY_COLORS: Record<string, string> = {
   memento: 'text-rarity-memento',
 }
 
-type MarketTableProps = {
-  items: MarketItem[]
-  onSelect: (item: MarketItem) => void
-}
-
-export const MarketTable: React.FC<MarketTableProps> = ({ items, onSelect }: MarketTableProps) => {
+export const MarketTable: React.FC<MarketTableProps> = ({ items, onSelect }) => {
   const { t } = useTranslation()
 
-  const COLUMNS: Column<Key>[] = [
+  const COLUMNS: Column<MarketTableKey>[] = [
     { key: 'display_name', label: t('market.table.item'), minWidth: 200 },
     { key: 'quality', label: t('market.table.grade'), width: 100 },
     { key: 'category', label: t('market.table.category'), minWidth: 140 },
@@ -37,7 +33,7 @@ export const MarketTable: React.FC<MarketTableProps> = ({ items, onSelect }: Mar
   ]
 
   return (
-    <DataTable<MarketItem, Key>
+    <DataTable<MarketItem, MarketTableKey>
       aria-label={t('market.table.ariaLabel')}
       className="min-h-0 max-h-full"
       columns={COLUMNS}
@@ -58,7 +54,16 @@ export const MarketTable: React.FC<MarketTableProps> = ({ items, onSelect }: Mar
         }
       }}
       onRowAction={onSelect}
-      emptyState={<div className="py-8 text-center text-muted">{t('market.table.noItemsFound')}</div>}
+      emptyState={(
+        <EmptyState size="sm">
+          <EmptyState.Header>
+            <EmptyState.Media variant="icon">
+              <IconifyIcon icon="gravity-ui:tag" className="size-5" />
+            </EmptyState.Media>
+            <EmptyState.Title>{t('market.table.noItemsFound')}</EmptyState.Title>
+          </EmptyState.Header>
+        </EmptyState>
+      )}
       renderCell={(it, key) => {
         switch (key) {
           case 'display_name':

@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeMirror from '@uiw/react-codemirror'
 import { sql as sqlLang, PostgreSQL } from '@codemirror/lang-sql'
@@ -13,14 +12,7 @@ import { duneTheme, type Section } from './constants'
 import { ResultTable } from './components/ResultTable'
 import { TableSearchInput } from './components/TableSearchInput'
 import { BackupsView } from './components/BackupsView'
-
-type TableData = { headers: string[], rows: string[][] }
-
-interface DatabaseTabProps {
-  showSubnav?: boolean
-  section?: Section
-  onSectionChange?: (s: Section) => void
-}
+import type { DatabaseTabProps, TableData } from './types'
 
 export const DatabaseTab: React.FC<DatabaseTabProps> = ({
   section = 'backups',
@@ -29,7 +21,7 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const SECTIONS = useMemo<{ key: Section, label: string }[]>(() => [
+  const SECTIONS = React.useMemo<{ key: Section, label: string }[]>(() => [
     { key: 'backups', label: t('database.sections.backups') },
     { key: 'tables', label: t('database.sections.tables') },
     { key: 'describe', label: t('database.sections.describe') },
@@ -38,17 +30,17 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
     { key: 'sql', label: t('database.sections.sql') },
   ], [t])
 
-  const [tableInput, setTableInput] = useState('')
-  const [limitInput, setLimitInput] = useState(20)
-  const [searchInput, setSearchInput] = useState('')
-  const [sqlInput, setSqlInput] = useState('')
-  const [result, setResult] = useState<TableData | null>(null)
-  const [truncated, setTruncated] = useState(false)
-  const [tableNames, setTableNames] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [tableInput, setTableInput] = React.useState('')
+  const [limitInput, setLimitInput] = React.useState(20)
+  const [searchInput, setSearchInput] = React.useState('')
+  const [sqlInput, setSqlInput] = React.useState('')
+  const [result, setResult] = React.useState<TableData | null>(null)
+  const [truncated, setTruncated] = React.useState(false)
+  const [tableNames, setTableNames] = React.useState<string[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
-  const sqlExtension = useMemo(() => sqlLang({
+  const sqlExtension = React.useMemo(() => sqlLang({
     dialect: PostgreSQL,
     upperCaseKeywords: true,
     schema: Object.fromEntries(tableNames.map((n) => [n, []])),
@@ -57,7 +49,7 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
 
   // Promise-chain form (not async) so react-hooks/set-state-in-effect does not
   // flag the useEffect that calls it — matches the BasesTab pattern.
-  const fetchTables = useCallback(() => {
+  const fetchTables = React.useCallback(() => {
     Promise.resolve()
       .then(() => {
         setLoading(true)
@@ -82,14 +74,14 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
   }, [t])
 
   // Reset results and re-fetch whenever the section changes (driven by the left nav).
-  useEffect(() => {
+  React.useEffect(() => {
     setTruncated(false) // eslint-disable-line react-hooks/set-state-in-effect
     setError(null)
     setResult(null)
     if (section === 'tables') fetchTables()
   }, [section, fetchTables])
 
-  const run = useCallback(async () => {
+  const run = React.useCallback(async () => {
     if (section === 'tables') {
       fetchTables()
       return
@@ -146,7 +138,7 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
     }
   }, [section, fetchTables, limitInput, searchInput, sqlInput, tableInput, t])
 
-  const editorKeymap = useMemo(() => [
+  const editorKeymap = React.useMemo(() => [
     Prec.highest(keymap.of([
       {
         key: 'Mod-Enter',

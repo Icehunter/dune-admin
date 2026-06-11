@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import * as React from 'react'
 import { useMap } from 'react-leaflet'
 import { ICON_POS, CAT_COLOR, SPRITE_CELL, SPRITE_URL } from '../constants'
 import { worldToLatLng, filterKey } from '../utils'
 import type { SpawnCanvasLayerProps } from '../types'
 
-export function SpawnCanvasLayer({
+export const SpawnCanvasLayer: React.FC<SpawnCanvasLayerProps> = ({
   spawns, effCfg, filter, heatmapMode,
-}: SpawnCanvasLayerProps) {
+}) => {
   const map = useMap()
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const spriteRef = useRef<HTMLImageElement | null>(null)
-  const spriteReady = useRef(false)
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
+  const spriteRef = React.useRef<HTMLImageElement | null>(null)
+  const spriteReady = React.useRef(false)
 
-  const visible = useMemo(
+  const visible = React.useMemo(
     () => spawns.filter((s) => {
       if (!(filter[filterKey(s.type)] ?? false)) return false
       if (heatmapMode && (s.category === 'resources' || s.category === 'hazards')) return false
@@ -21,7 +21,7 @@ export function SpawnCanvasLayer({
     [spawns, filter, heatmapMode],
   )
 
-  const draw = useCallback(() => {
+  const draw = React.useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const mapSize = map.getSize()
@@ -66,7 +66,7 @@ export function SpawnCanvasLayer({
     }
   }, [map, visible, effCfg])
 
-  useEffect(() => {
+  React.useEffect(() => {
     const container = map.getContainer()
     const canvas = document.createElement('canvas')
     canvas.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:499'
@@ -87,7 +87,7 @@ export function SpawnCanvasLayer({
     }
   }, [map]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
+  React.useEffect(() => {
     map.on('move zoom moveend zoomend viewreset resize', draw)
     draw()
     return () => {

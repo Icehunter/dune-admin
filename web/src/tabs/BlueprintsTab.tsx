@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Button,
@@ -13,23 +12,20 @@ import {
   Virtualizer,
   toast,
 } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { api } from '../api/client'
 import type { BlueprintRow, Player } from '../api/client'
 import { DataTable, Dropzone, Icon, PageHeader, type Column } from '../dune-ui'
-
-type Key = 'id' | 'owner_name' | 'name' | 'item_id' | 'pieces' | 'placeables' | 'actions'
-
-interface BlueprintsTabProps {
-  isSignedIn?: boolean
-}
+import type { BlueprintsTabKey, BlueprintsTabProps, ImportModalProps } from './types'
 
 export const BlueprintsTab: React.FC<BlueprintsTabProps> = ({ isSignedIn = true }) => {
   const { t } = useTranslation()
-  const [blueprints, setBlueprints] = useState<BlueprintRow[]>([])
-  const [loading, setLoading] = useState(false)
-  const [showImport, setShowImport] = useState(false)
+  const [blueprints, setBlueprints] = React.useState<BlueprintRow[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [showImport, setShowImport] = React.useState(false)
 
-  const COLUMNS: Column<Key>[] = [
+  const COLUMNS: Column<BlueprintsTabKey>[] = [
     { key: 'id', label: t('blueprints.columns.id'), width: 80 },
     { key: 'owner_name', label: t('blueprints.columns.owner'), minWidth: 140 },
     { key: 'name', label: t('blueprints.columns.name'), minWidth: 200 },
@@ -39,7 +35,7 @@ export const BlueprintsTab: React.FC<BlueprintsTabProps> = ({ isSignedIn = true 
     { key: 'actions', label: '', width: 110, sortable: false },
   ]
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.blueprints.list())
@@ -48,7 +44,7 @@ export const BlueprintsTab: React.FC<BlueprintsTabProps> = ({ isSignedIn = true 
       .finally(() => setLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
@@ -92,7 +88,7 @@ export const BlueprintsTab: React.FC<BlueprintsTabProps> = ({ isSignedIn = true 
         </Button>
       </PageHeader>
 
-      <DataTable<BlueprintRow, Key>
+      <DataTable<BlueprintRow, BlueprintsTabKey>
         aria-label={t('blueprints.ariaLabel')}
         className="min-h-0 max-h-full"
         columns={COLUMNS}
@@ -101,7 +97,16 @@ export const BlueprintsTab: React.FC<BlueprintsTabProps> = ({ isSignedIn = true 
         rowId={(b) => String(b.id)}
         initialSort={{ column: 'id', direction: 'ascending' }}
         sortValue={(b, k) => (k === 'actions' ? '' : (b as unknown as Record<string, string | number>)[k])}
-        emptyState={<div className="py-8 text-center text-muted">{t('blueprints.noBlueprintsFound')}</div>}
+        emptyState={(
+          <EmptyState size="sm">
+            <EmptyState.Header>
+              <EmptyState.Media variant="icon">
+                <IconifyIcon icon="gravity-ui:box" className="size-5" />
+              </EmptyState.Media>
+              <EmptyState.Title>{t('blueprints.noBlueprintsFound')}</EmptyState.Title>
+            </EmptyState.Header>
+          </EmptyState>
+        )}
         renderCell={(b, key) => {
           switch (key) {
             case 'id':
@@ -153,20 +158,14 @@ export const BlueprintsTab: React.FC<BlueprintsTabProps> = ({ isSignedIn = true 
   )
 }
 
-interface ImportModalProps {
-  open: boolean
-  onClose: () => void
-  onSuccess: () => void
-}
-
-function ImportModal({ open, onClose, onSuccess }: ImportModalProps) {
+const ImportModal: React.FC<ImportModalProps> = ({ open, onClose, onSuccess }) => {
   const { t } = useTranslation()
-  const [file, setFile] = useState<File | null>(null)
-  const [players, setPlayers] = useState<Player[]>([])
-  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [file, setFile] = React.useState<File | null>(null)
+  const [players, setPlayers] = React.useState<Player[]>([])
+  const [selectedPlayerId, setSelectedPlayerId] = React.useState<number | null>(null)
+  const [submitting, setSubmitting] = React.useState(false)
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!open) return
     Promise.resolve()
       .then(() => {
@@ -209,76 +208,74 @@ function ImportModal({ open, onClose, onSuccess }: ImportModalProps) {
   }
 
   return (
-    <Modal>
-      <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && onClose()}>
-        <Modal.Container>
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading className="text-accent">{t('blueprints.importModal.title')}</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body className="flex flex-col gap-4">
-              <TextField>
-                <Label>{t('blueprints.importModal.blueprintFile')}</Label>
-                <Dropzone
-                  accept=".json"
-                  file={file}
-                  onSelect={setFile}
-                  prompt={t('blueprints.importModal.dropzone')}
-                />
-              </TextField>
+    <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && onClose()}>
+      <Modal.Container>
+        <Modal.Dialog className="p-10">
+          <Modal.CloseTrigger />
+          <Modal.Header>
+            <Modal.Heading className="text-accent">{t('blueprints.importModal.title')}</Modal.Heading>
+          </Modal.Header>
+          <Modal.Body className="flex flex-col gap-4">
+            <TextField>
+              <Label>{t('blueprints.importModal.blueprintFile')}</Label>
+              <Dropzone
+                accept=".json"
+                file={file}
+                onSelect={setFile}
+                prompt={t('blueprints.importModal.dropzone')}
+              />
+            </TextField>
 
-              <TextField>
-                <Label>{t('blueprints.importModal.playerLabel')}</Label>
-                <Select
-                  aria-label={t('blueprints.importModal.playerLabel')}
-                  placeholder={t('blueprints.importModal.playerPlaceholder')}
-                  selectedKey={selectedPlayerId !== null ? String(selectedPlayerId) : null}
-                  onSelectionChange={(k) => setSelectedPlayerId(k ? Number(k) : null)}
-                  className="w-full"
-                >
-                  <Select.Trigger>
-                    <Select.Value />
-                    <Select.Indicator />
-                  </Select.Trigger>
-                  <Select.Popover className="!w-[320px] !max-w-[90vw]">
-                    <Virtualizer layout={ListLayout} layoutOptions={{ rowHeight: 36 }}>
-                      <ListBox
-                        aria-label={t('blueprints.importModal.playersLabel')}
-                        className="overflow-y-auto"
-                        style={{ height: Math.min(players.length * 36 + 8, 320) }}
-                        items={players.map((p) => ({ id: String(p.id), name: p.name, actorId: p.id }))}
-                      >
-                        {(item: { id: string, name: string, actorId: number }) => (
-                          <ListBox.Item id={item.id} textValue={item.name}>
-                            <span className="flex items-baseline gap-2">
-                              <span>{item.name}</span>
-                              <span className="text-xs text-muted font-mono">
-                                #
-                                {item.actorId}
-                              </span>
+            <TextField>
+              <Label>{t('blueprints.importModal.playerLabel')}</Label>
+              <Select
+                aria-label={t('blueprints.importModal.playerLabel')}
+                placeholder={t('blueprints.importModal.playerPlaceholder')}
+                selectedKey={selectedPlayerId !== null ? String(selectedPlayerId) : null}
+                onSelectionChange={(k) => setSelectedPlayerId(k ? Number(k) : null)}
+                className="w-full"
+              >
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover className="!w-[320px] !max-w-[90vw]">
+                  <Virtualizer layout={ListLayout} layoutOptions={{ rowHeight: 36 }}>
+                    <ListBox
+                      aria-label={t('blueprints.importModal.playersLabel')}
+                      className="overflow-y-auto"
+                      style={{ height: Math.min(players.length * 36 + 8, 320) }}
+                      items={players.map((p) => ({ id: String(p.id), name: p.name, actorId: p.id }))}
+                    >
+                      {(item: { id: string, name: string, actorId: number }) => (
+                        <ListBox.Item id={item.id} textValue={item.name}>
+                          <span className="flex items-baseline gap-2">
+                            <span>{item.name}</span>
+                            <span className="text-xs text-muted font-mono">
+                              #
+                              {item.actorId}
                             </span>
-                            <ListBox.ItemIndicator />
-                          </ListBox.Item>
-                        )}
-                      </ListBox>
-                    </Virtualizer>
-                  </Select.Popover>
-                </Select>
-              </TextField>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="tertiary" slot="close">
-                {t('common.cancel')}
-              </Button>
-              <Button onPress={handleSubmit} isDisabled={submitting || !file || !selectedPlayer}>
-                {submitting ? <Spinner size="sm" color="current" /> : <Icon name="upload" />}
-                {t('blueprints.importModal.import')}
-              </Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
+                          </span>
+                          <ListBox.ItemIndicator />
+                        </ListBox.Item>
+                      )}
+                    </ListBox>
+                  </Virtualizer>
+                </Select.Popover>
+              </Select>
+            </TextField>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="tertiary" slot="close">
+              {t('common.cancel')}
+            </Button>
+            <Button onPress={handleSubmit} isDisabled={submitting || !file || !selectedPlayer}>
+              {submitting ? <Spinner size="sm" color="current" /> : <Icon name="upload" />}
+              {t('blueprints.importModal.import')}
+            </Button>
+          </Modal.Footer>
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop>
   )
 }

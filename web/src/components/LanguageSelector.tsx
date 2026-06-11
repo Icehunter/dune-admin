@@ -1,12 +1,11 @@
-import type React from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import { Dropdown, Button } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { LANGUAGES, setLocale, LOCALE_KEY, DEFAULT_LOCALE } from '../i18n'
 
 export const LanguageSelector: React.FC = () => {
   const { t } = useTranslation()
-  const [current, setCurrent] = useState(
+  const [current, setCurrent] = React.useState(
     localStorage.getItem(LOCALE_KEY) ?? DEFAULT_LOCALE,
   )
 

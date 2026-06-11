@@ -1,5 +1,4 @@
-import type React from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import { Dropdown, Button } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../dune-ui'
@@ -7,7 +6,7 @@ import { THEMES, applyTheme, loadTheme, type ThemeId } from '../theme'
 
 export const ThemeSelector: React.FC = () => {
   const { t } = useTranslation()
-  const [current, setCurrent] = useState<ThemeId>(loadTheme)
+  const [current, setCurrent] = React.useState<ThemeId>(loadTheme)
 
   return (
     <Dropdown>

@@ -1,16 +1,11 @@
-import { useState, useRef } from 'react'
-import { Button, Spinner, Tooltip, toast } from '@heroui/react'
+import * as React from 'react'
+import { Button, Spinner, TextArea, Tooltip, toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
-import type { RawSection } from '../../../api/client'
 import { api } from '../../../api/client'
 import { Panel, SectionLabel, Icon } from '../../../dune-ui'
 import { SOURCE_FILE, LAYER_STYLE, SOURCE_PRIORITY } from '../constants'
 import { linesToText, groupLinesByKey, shortSection } from '../utils'
-
-interface RawSectionPanelProps {
-  sections: RawSection[]
-  onSaved: () => void
-}
+import type { RawSectionPanelProps } from './types'
 
 export const RawSectionPanel: React.FC<RawSectionPanelProps> = ({ sections, onSaved }) => {
   const { t } = useTranslation()
@@ -19,11 +14,11 @@ export const RawSectionPanel: React.FC<RawSectionPanelProps> = ({ sections, onSa
     ?? sections.find((s) => s.source === 'userGame')
     ?? sections.find((s) => s.source === 'userEngine')
 
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [collapsed, setCollapsed] = useState(true)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [editing, setEditing] = React.useState(false)
+  const [draft, setDraft] = React.useState('')
+  const [saving, setSaving] = React.useState(false)
+  const [collapsed, setCollapsed] = React.useState(true)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
   const toggle = () => {
     if (editing) return
@@ -146,12 +141,15 @@ export const RawSectionPanel: React.FC<RawSectionPanelProps> = ({ sections, onSa
 
       {!collapsed && (editing
         ? (
-            <textarea
+            <TextArea
               ref={textareaRef}
+              aria-label={shortSection(sectionName)}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={Math.max(4, draft.split('\n').length + 1)}
-              className="w-full bg-surface border border-border rounded px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60 resize-y"
+              fullWidth
+              className="text-xs font-mono"
+              style={{ resize: 'vertical' }}
               spellCheck={false}
               placeholder={t('server.rawPlaceholder')}
             />

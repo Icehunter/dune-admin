@@ -1,15 +1,10 @@
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { EmptyState } from '@heroui-pro/react'
 import { DataTable, Icon } from '../../dune-ui'
 import { phaseColor } from './helpers'
 import { formatUptime } from './uptime'
-import { getServerColumns, type ServerRow, type ServerSortKey } from './types'
-
-type ServersTableProps = {
-  servers: ServerRow[]
-  isInitializing: boolean
-  emptyMessage?: string
-}
+import { getServerColumns, type ServerRow, type ServerSortKey, type ServersTableProps } from './types'
 
 export const ServersTable: React.FC<ServersTableProps> = ({ servers, isInitializing, emptyMessage }) => {
   const { t } = useTranslation()
@@ -26,7 +21,13 @@ export const ServersTable: React.FC<ServersTableProps> = ({ servers, isInitializ
         if (k === 'age') return r.ageSeconds ?? 0
         return r[k] as string | number
       }}
-      emptyState={emptyMessage && <div className="py-8 text-center text-muted">{emptyMessage}</div>}
+      emptyState={emptyMessage && (
+        <EmptyState size="sm">
+          <EmptyState.Header>
+            <EmptyState.Title>{emptyMessage}</EmptyState.Title>
+          </EmptyState.Header>
+        </EmptyState>
+      )}
       renderCell={(s, key) => {
         switch (key) {
           case 'map':

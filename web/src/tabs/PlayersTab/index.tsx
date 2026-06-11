@@ -1,6 +1,6 @@
-import type React from 'react'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import * as React from 'react'
 import { Button, SearchField, Spinner, toast } from '@heroui/react'
+import { Segment } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
 import type { Player } from '../../api/client'
@@ -14,16 +14,11 @@ import { InventoryView } from './views/InventoryView'
 import { VehiclesView } from './views/VehiclesView'
 import { GiveItemsView } from './views/GiveItemsView'
 import { ActionsView } from './views/ActionsView'
-
-type DetailTab = 'overview' | 'inventory' | 'vehicles' | 'give' | 'actions'
+import type { DetailTab, PlayersTabProps } from './types'
 
 const POLL_MS = 30_000
 // Sentinel SideNav key for the server-wide dashboard landing (#130).
 const OVERVIEW_KEY = '__overview__'
-
-interface PlayersTabProps {
-  isActive?: boolean
-}
 
 export const PlayersTab: React.FC<PlayersTabProps> = ({ isActive = false }) => {
   const { t } = useTranslation()
@@ -36,13 +31,13 @@ export const PlayersTab: React.FC<PlayersTabProps> = ({ isActive = false }) => {
     { key: 'actions', label: t('players.tabs.actions') },
   ]
 
-  const [players, setPlayers] = useState<Player[]>([])
-  const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<Player | null>(null)
-  const [activeTab, setActiveTab] = useState<DetailTab>('overview')
+  const [players, setPlayers] = React.useState<Player[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [search, setSearch] = React.useState('')
+  const [selected, setSelected] = React.useState<Player | null>(null)
+  const [activeTab, setActiveTab] = React.useState<DetailTab>('overview')
 
-  const loadPlayers = useCallback(() => {
+  const loadPlayers = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.players.list())
@@ -56,13 +51,13 @@ export const PlayersTab: React.FC<PlayersTabProps> = ({ isActive = false }) => {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     loadPlayers()
   }, [loadPlayers])
 
   const { countdown, refresh } = useAutoRefresh(loadPlayers, POLL_MS, isActive)
 
-  const filtered = useMemo(() => {
+  const filtered = React.useMemo(() => {
     const q = search.toLowerCase()
     return q
       ? players.filter((p) =>
@@ -73,7 +68,7 @@ export const PlayersTab: React.FC<PlayersTabProps> = ({ isActive = false }) => {
       : players
   }, [players, search])
 
-  const navItems = useMemo(() => [
+  const navItems = React.useMemo(() => [
     {
       key: OVERVIEW_KEY,
       icon: <Icon name="layout-dashboard" />,
@@ -166,18 +161,19 @@ export const PlayersTab: React.FC<PlayersTabProps> = ({ isActive = false }) => {
                   <span className="font-semibold text-accent">{selected.name}</span>
                   <StatusDot status={selected.online_status} />
                   <span className="text-muted text-xs">{selected.online_status}</span>
-                  <div className="ml-auto flex gap-1">
+                  <Segment
+                    size="sm"
+                    className="ml-auto"
+                    selectedKey={activeTab}
+                    onSelectionChange={(key) => setActiveTab(key as DetailTab)}
+                  >
                     {DETAIL_TABS.map((tab) => (
-                      <Button
-                        key={tab.key}
-                        size="sm"
-                        variant={activeTab === tab.key ? 'secondary' : 'ghost'}
-                        onPress={() => setActiveTab(tab.key)}
-                      >
+                      <Segment.Item key={tab.key} id={tab.key}>
+                        <Segment.Separator />
                         {tab.label}
-                      </Button>
+                      </Segment.Item>
                     ))}
-                  </div>
+                  </Segment>
                 </div>
 
                 {/* Tab content — each tab owns its own scroll/height context */}

@@ -1,3 +1,5 @@
+import * as React from 'react'
+
 export type Bounds = {
   minX: number
   maxX: number

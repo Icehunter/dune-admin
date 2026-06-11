@@ -1,7 +1,8 @@
+import * as React from 'react'
 import { ICON_POS, SPRITE_URL, SPRITE_COLS, SPRITE_ROWS, SPRITE_CELL } from '../constants'
 import type { SpriteIconProps } from '../types'
 
-export function SpriteIcon({ type, size = 22 }: SpriteIconProps) {
+export const SpriteIcon: React.FC<SpriteIconProps> = ({ type, size = 22 }) => {
   const pos = ICON_POS[type]
   if (!pos) return null
   const [col, row] = pos

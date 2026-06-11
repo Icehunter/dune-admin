@@ -1,38 +1,24 @@
-import type React from 'react'
-import { useState, useMemo } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-} from 'recharts'
-import type { StatSnapshot } from '../../../api/client'
+import { AreaChart } from '@heroui-pro/react'
 import { SectionLabel } from '../../../dune-ui'
+import type { SolarisChartProps, SolarisPoint } from './types'
 
-interface SolarisChartProps {
-  data: StatSnapshot[]
-}
-
-interface SolarisPoint {
-  time: string
-  balance: number
-  cum_earned: number
-  cum_spent: number
-}
-
-function fmtSolaris(n: number): string {
+const fmtSolaris = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
 }
 
-function fmtTime(iso: string): string {
+const fmtTime = (iso: string): string => {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 export const SolarisChart: React.FC<SolarisChartProps> = ({ data }) => {
   const { t } = useTranslation()
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hidden, setHidden] = React.useState<Set<string>>(new Set())
 
-  const LINES: { key: keyof SolarisPoint, label: string, color: string }[] = [
+  const LINES = [
     { key: 'balance', label: t('players.detail.solarisBalance'), color: 'var(--accent)' },
     { key: 'cum_earned', label: t('players.detail.earned'), color: '#52c080' },
     { key: 'cum_spent', label: t('players.detail.spent'), color: '#e05252' },
@@ -47,7 +33,7 @@ export const SolarisChart: React.FC<SolarisChartProps> = ({ data }) => {
     })
   }
 
-  const points = useMemo<SolarisPoint[]>(() => {
+  const points = React.useMemo<SolarisPoint[]>(() => {
     const snaps = data.filter((s) => s.solaris_balance != null)
     if (snaps.length === 0) return []
     let cumEarned = 0
@@ -80,57 +66,55 @@ export const SolarisChart: React.FC<SolarisChartProps> = ({ data }) => {
   return (
     <div>
       <SectionLabel>{t('players.detail.solarisHistory')}</SectionLabel>
-      <div className="mt-3 h-56">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={points} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-            <XAxis
-              dataKey="time"
-              tickFormatter={fmtTime}
-              tick={{ fontSize: 11, fill: 'var(--muted)' }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              tickFormatter={fmtSolaris}
-              tick={{ fontSize: 11, fill: 'var(--muted)' }}
-              tickLine={false}
-              axisLine={false}
-              width={48}
-            />
-            <Tooltip
-              formatter={(val, name) => [fmtSolaris(val as number), String(name)]}
-              labelFormatter={(d) => fmtTime(String(d))}
-              contentStyle={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                fontSize: 12,
-              }}
-            />
-            <Legend
-              onClick={(e) => toggle(e.dataKey as string)}
-              formatter={(value, entry) => (
-                <span style={{ color: hidden.has((entry as { dataKey: string }).dataKey) ? 'var(--muted)' : undefined }}>
-                  {value}
-                </span>
-              )}
-            />
-            {visibleLines.map((l) => (
-              <Line
-                key={String(l.key)}
-                type="monotone"
-                dataKey={l.key}
-                name={l.label}
-                stroke={l.color}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-                connectNulls
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+        {LINES.map((l) => (
+          <button
+            key={l.key}
+            type="button"
+            className="flex cursor-pointer select-none items-center gap-1.5 text-xs"
+            style={{ opacity: hidden.has(l.key) ? 0.4 : 1 }}
+            onClick={() => toggle(l.key)}
+          >
+            <span className="size-2 shrink-0 rounded-full" style={{ background: l.color }} />
+            <span className="text-muted">{l.label}</span>
+          </button>
+        ))}
       </div>
+      <AreaChart data={points} height={200} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+        <defs>
+          {LINES.map((l) => (
+            <linearGradient key={l.key} id={`solaris-${l.key}`} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={l.color} stopOpacity={0.2} />
+              <stop offset="100%" stopColor={l.color} stopOpacity={0.02} />
+            </linearGradient>
+          ))}
+        </defs>
+        <AreaChart.Grid vertical={false} />
+        <AreaChart.XAxis dataKey="time" tickFormatter={fmtTime} tickMargin={8} />
+        <AreaChart.YAxis tickFormatter={fmtSolaris} width={52} />
+        {visibleLines.map((l) => (
+          <AreaChart.Area
+            key={l.key}
+            type="monotone"
+            dataKey={l.key}
+            name={l.label}
+            stroke={l.color}
+            strokeWidth={2}
+            dot={false}
+            connectNulls
+            fill={`url(#solaris-${l.key})`}
+          />
+        ))}
+        <AreaChart.Tooltip
+          content={(
+            <AreaChart.TooltipContent
+              indicator="line"
+              labelFormatter={(d) => fmtTime(String(d))}
+              valueFormatter={(v) => fmtSolaris(Number(v))}
+            />
+          )}
+        />
+      </AreaChart>
     </div>
   )
 }

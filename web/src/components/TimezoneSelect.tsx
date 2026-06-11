@@ -1,11 +1,11 @@
-import type React from 'react'
-import { useState, useMemo } from 'react'
+import * as React from 'react'
 import { SearchField } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
+import type { TimezoneSelectProps } from './types'
 
 // IANA timezone names from the browser when available (Chrome 99+/modern), with
 // a small fallback for older runtimes. Computed once at module load.
-function tzList(): string[] {
+const tzList = (): string[] => {
   const fn = (Intl as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf
   try {
     if (typeof fn === 'function') return fn('timeZone')
@@ -23,26 +23,22 @@ const MAX_VISIBLE = 60
 
 // When closed, displayValue is derived from value prop — no local state needed.
 // When open, query drives the filter and the SearchField input.
-export const TimezoneSelect: React.FC<{
-  value: string
-  onChange: (v: string) => void
-  className?: string
-}> = ({ value, onChange, className }) => {
+export const TimezoneSelect: React.FC<TimezoneSelectProps> = ({ value, onChange, className }) => {
   const { t } = useTranslation()
   const hostLabel = t('common.tzHostLocal')
 
-  const allOptions = useMemo(
+  const allOptions = React.useMemo(
     () => [{ key: '', label: hostLabel }, ...ZONES.map((z) => ({ key: z, label: z }))],
     [hostLabel],
   )
 
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
+  const [query, setQuery] = React.useState('')
+  const [open, setOpen] = React.useState(false)
 
   // While closed, show the settled value; while open, show what the user is typing.
   const displayValue = open ? query : (value === '' ? hostLabel : value)
 
-  const filtered = useMemo(() => {
+  const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return allOptions.slice(0, MAX_VISIBLE)
     return allOptions.filter(({ label }) => label.toLowerCase().includes(q)).slice(0, MAX_VISIBLE)

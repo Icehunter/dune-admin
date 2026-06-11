@@ -1,14 +1,6 @@
-import type React from 'react'
+import * as React from 'react'
 import { Select, ListBox } from '@heroui/react'
-
-interface FieldSelectProps {
-  value: string
-  onChange: (v: string) => void
-  options: string[]
-  className?: string
-  ariaLabel?: string
-  isDisabled?: boolean
-}
+import type { FieldSelectProps } from './types'
 
 // FieldSelect wraps HeroUI Select + ListBox for small, fixed option sets.
 // For large lists (e.g. 400 IANA timezones), keep native <select> for type-to-search.

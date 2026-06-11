@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Select, ListBox, Spinner, toast } from '@heroui/react'
 import { MapContainer, ImageOverlay, CircleMarker, Marker, Tooltip } from 'react-leaflet'
@@ -28,43 +27,43 @@ import type { LiveMapTabProps, SpawnEntry, SpawnFile, CalibPoint, MapCfg, Bounds
 
 export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
   const { t } = useTranslation()
-  const [mapKey, setMapKey] = useState<string>('HaggaBasin')
-  const [markers, setMarkers] = useState<MapMarker[]>([])
-  const [loading, setLoading] = useState(false)
-  const [unsupported, setUnsupported] = useState(false)
-  const [updatedLabel, setUpdatedLabel] = useState<string>('')
-  const [calibrating, setCalibrating] = useState(false)
-  const [calibPoints, setCalibPoints] = useState<CalibPoint[]>([])
-  const [calibOverride, setCalibOverride] = useState<Record<string, Bounds>>(() => loadCalib())
+  const [mapKey, setMapKey] = React.useState<string>('HaggaBasin')
+  const [markers, setMarkers] = React.useState<MapMarker[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [unsupported, setUnsupported] = React.useState(false)
+  const [updatedLabel, setUpdatedLabel] = React.useState<string>('')
+  const [calibrating, setCalibrating] = React.useState(false)
+  const [calibPoints, setCalibPoints] = React.useState<CalibPoint[]>([])
+  const [calibOverride, setCalibOverride] = React.useState<Record<string, Bounds>>(() => loadCalib())
 
-  const [spawns, setSpawns] = useState<SpawnEntry[]>([])
-  const loadedSpawnKey = useRef<string>('')
-  const isDragging = useRef(false)
+  const [spawns, setSpawns] = React.useState<SpawnEntry[]>([])
+  const loadedSpawnKey = React.useRef<string>('')
+  const isDragging = React.useRef(false)
 
-  const [filter, setFilter] = useState<Record<string, boolean>>(loadFilter)
-  const [selectedFlsId, setSelectedFlsId] = useState<string>('')
-  const [dragConfirm, setDragConfirm] = useState<{
+  const [filter, setFilter] = React.useState<Record<string, boolean>>(loadFilter)
+  const [selectedFlsId, setSelectedFlsId] = React.useState<string>('')
+  const [dragConfirm, setDragConfirm] = React.useState<{
     flsId: string
     name: string
     x: number
     y: number
   } | null>(null)
 
-  const [heatmapMode, setHeatmapMode] = useState(false)
-  const fitBoundsRef = useRef<(() => void) | null>(null)
-  const [teleportMode, setTeleportMode] = useState(false)
-  const [teleportDest, setTeleportDest] = useState<{ x: number, y: number } | null>(null)
-  const [teleportFlsId, setTeleportFlsId] = useState<string>('')
-  const [allPlayers, setAllPlayers] = useState<Player[]>([])
-  const [teleporting, setTeleporting] = useState(false)
+  const [heatmapMode, setHeatmapMode] = React.useState(false)
+  const fitBoundsRef = React.useRef<(() => void) | null>(null)
+  const [teleportMode, setTeleportMode] = React.useState(false)
+  const [teleportDest, setTeleportDest] = React.useState<{ x: number, y: number } | null>(null)
+  const [teleportFlsId, setTeleportFlsId] = React.useState<string>('')
+  const [allPlayers, setAllPlayers] = React.useState<Player[]>([])
+  const [teleporting, setTeleporting] = React.useState(false)
 
   const baseCfg = MAPS.find((m) => m.key === mapKey) ?? MAPS[0]
-  const effCfg: MapCfg = useMemo(
+  const effCfg: MapCfg = React.useMemo(
     () => ({ ...baseCfg, ...(calibOverride[mapKey] ?? {}) }),
     [baseCfg, calibOverride, mapKey],
   )
 
-  const load = useCallback((key: string) => {
+  const load = React.useCallback((key: string) => {
     if (isDragging.current) return
     const cfg = MAPS.find((m) => m.key === key)
     if (!cfg?.hasLiveData) {
@@ -94,8 +93,8 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
       .finally(() => { if (!isDragging.current) setLoading(false) })
   }, [t])
 
-  const loadCurrent = useCallback(() => load(mapKey), [load, mapKey])
-  useEffect(() => {
+  const loadCurrent = React.useCallback(() => load(mapKey), [load, mapKey])
+  React.useEffect(() => {
     if (isActive) {
       const id = setTimeout(loadCurrent, 0)
       return () => clearTimeout(id)
@@ -103,7 +102,7 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
   }, [isActive, loadCurrent])
   const { countdown, refresh } = useAutoRefresh(loadCurrent, POLL_MS, isActive)
 
-  useEffect(() => {
+  React.useEffect(() => {
     const cfg = MAPS.find((m) => m.key === mapKey)
     if (!cfg?.spawnFile || loadedSpawnKey.current === mapKey) return
     loadedSpawnKey.current = mapKey
@@ -113,7 +112,7 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
       .catch(() => setSpawns([]))
   }, [mapKey])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (teleportMode && allPlayers.length === 0) {
       api.players.list().then(setAllPlayers).catch(() => {})
     }
@@ -122,7 +121,7 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
   const playerCount = markers.filter((m) => m.type === 'player').length
   const vehicleCount = markers.filter((m) => m.type === 'vehicle').length
   const baseCount = markers.filter((m) => m.type === 'base').length
-  const orderedLive = useMemo(
+  const orderedLive = React.useMemo(
     () => [...markers]
       .sort((a, b) => (a.type === 'player' ? 1 : 0) - (b.type === 'player' ? 1 : 0))
       .map((m) => {
@@ -148,7 +147,7 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
     [markers, effCfg],
   )
 
-  const handleMapClick = useCallback((lat: number, lng: number) => {
+  const handleMapClick = React.useCallback((lat: number, lng: number) => {
     if (calibrating) {
       const player = markers.find((m) => m.type === 'player')
       if (!player) {
@@ -178,7 +177,7 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
     }
   }, [calibrating, teleportMode, markers, mapKey, effCfg, t])
 
-  const clearCalib = useCallback(() => {
+  const clearCalib = React.useCallback(() => {
     setCalibPoints([])
     setCalibOverride((c) => {
       const merged = { ...c }
@@ -191,14 +190,14 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
     })
   }, [mapKey])
 
-  const solvedStr = useMemo(() => {
+  const solvedStr = React.useMemo(() => {
     const b = calibOverride[mapKey]
     return b
       ? `minX: ${Math.round(b.minX)}, maxX: ${Math.round(b.maxX)}, minY: ${Math.round(b.minY)}, maxY: ${Math.round(b.maxY)}, flipY: ${!!b.flipY}`
       : ''
   }, [calibOverride, mapKey])
 
-  const doTeleport = useCallback(async () => {
+  const doTeleport = React.useCallback(async () => {
     if (!teleportDest || !teleportFlsId) return
     setTeleporting(true)
     try {
@@ -214,7 +213,7 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
     }
   }, [teleportDest, teleportFlsId, t])
 
-  const toggleFilter = useCallback((key: string, currentVisual: boolean) => {
+  const toggleFilter = React.useCallback((key: string, currentVisual: boolean) => {
     setFilter((f) => {
       const next = { ...f, [key]: !currentVisual }
       saveFilter(next)
@@ -222,7 +221,7 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
     })
   }, [])
 
-  const clearFilters = useCallback(() => {
+  const clearFilters = React.useCallback(() => {
     setFilter((f) => {
       const next: Record<string, boolean> = {}
       Object.keys(f).forEach((k) => {
@@ -410,7 +409,7 @@ export const LiveMapTab: React.FC<LiveMapTabProps> = ({ isActive = true }) => {
         </div>
       )}
 
-      <div className="flex flex-1 min-h-0 gap-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 gap-2 overflow-hidden">
         <FilterPanel
           filter={filter}
           onToggle={toggleFilter}

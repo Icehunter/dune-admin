@@ -1,24 +1,22 @@
-import type React from 'react'
-import { useState, useEffect, useCallback } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Chip, Switch, toast } from '@heroui/react'
+import { Button, Chip, Link, Switch, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
 import { api } from '../../api/client'
 import type { EventDefinition, EventClaimRecord } from '../../api/client'
 import { DataTable, Icon, PageHeader, Panel, SectionLabel, type Column } from '../../dune-ui'
 import { EventEditorModal } from './modals/EventEditorModal'
-
-type ListKey = 'name' | 'type' | 'enabled' | 'version' | 'actions'
-type ClaimKey = 'account_id' | 'version' | 'status' | 'attempts' | 'claimed_at' | 'last_error'
+import type { ListKey, ClaimKey } from './types'
 
 export const EventsTab: React.FC = () => {
   const { t } = useTranslation()
-  const [events, setEvents] = useState<EventDefinition[]>([])
-  const [loading, setLoading] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<EventDefinition | null>(null)
-  const [claims, setClaims] = useState<EventClaimRecord[]>([])
-  const [claimsLoading, setClaimsLoading] = useState(false)
-  const [editorOpen, setEditorOpen] = useState(false)
-  const [editingEvent, setEditingEvent] = useState<EventDefinition | null>(null)
+  const [events, setEvents] = React.useState<EventDefinition[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [selectedEvent, setSelectedEvent] = React.useState<EventDefinition | null>(null)
+  const [claims, setClaims] = React.useState<EventClaimRecord[]>([])
+  const [claimsLoading, setClaimsLoading] = React.useState(false)
+  const [editorOpen, setEditorOpen] = React.useState(false)
+  const [editingEvent, setEditingEvent] = React.useState<EventDefinition | null>(null)
 
   const LIST_COLUMNS: Column<ListKey>[] = [
     { key: 'name', label: t('events.columns.name'), minWidth: 200 },
@@ -37,7 +35,7 @@ export const EventsTab: React.FC = () => {
     { key: 'last_error', label: t('events.claims.lastError'), minWidth: 200 },
   ]
 
-  const loadEvents = useCallback(() => {
+  const loadEvents = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.events.list())
@@ -48,7 +46,7 @@ export const EventsTab: React.FC = () => {
       .finally(() => setLoading(false))
   }, [t])
 
-  const loadStatus = useCallback(
+  const loadStatus = React.useCallback(
     (ev: EventDefinition) => {
       setSelectedEvent(ev)
       setClaimsLoading(true)
@@ -63,7 +61,7 @@ export const EventsTab: React.FC = () => {
     [t],
   )
 
-  useEffect(() => {
+  React.useEffect(() => {
     loadEvents()
   }, [loadEvents])
 
@@ -143,18 +141,23 @@ export const EventsTab: React.FC = () => {
           if (k === 'actions' || k === 'version') return ''
           return (e as unknown as Record<string, string | number>)[k] ?? ''
         }}
-        emptyState={<div className="py-8 text-center text-muted">{t('events.noEvents')}</div>}
+        emptyState={(
+          <EmptyState size="sm">
+            <EmptyState.Header>
+              <EmptyState.Title>{t('events.noEvents')}</EmptyState.Title>
+            </EmptyState.Header>
+          </EmptyState>
+        )}
         renderCell={(ev, key) => {
           switch (key) {
             case 'name':
               return (
-                <button
-                  className="text-left text-accent hover:underline"
-                  onClick={() => loadStatus(ev)}
-                  type="button"
+                <Link
+                  className="text-left text-accent"
+                  onPress={() => loadStatus(ev)}
                 >
                   {ev.name}
-                </button>
+                </Link>
               )
             case 'type':
               return (
@@ -215,7 +218,13 @@ export const EventsTab: React.FC = () => {
             rowId={(c) => `${c.event_id}-${c.version}-${c.account_id}`}
             initialSort={{ column: 'claimed_at', direction: 'descending' }}
             sortValue={(c, k) => (c as unknown as Record<string, string | number>)[k] ?? ''}
-            emptyState={<div className="py-4 text-center text-muted text-xs">{t('events.status.noClaims')}</div>}
+            emptyState={(
+              <EmptyState size="sm">
+                <EmptyState.Header>
+                  <EmptyState.Title>{t('events.status.noClaims')}</EmptyState.Title>
+                </EmptyState.Header>
+              </EmptyState>
+            )}
             renderCell={(c, key) => {
               switch (key) {
                 case 'account_id':

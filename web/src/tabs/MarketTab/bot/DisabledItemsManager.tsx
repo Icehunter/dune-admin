@@ -1,26 +1,18 @@
-import type React from 'react'
-import { useState, useEffect, useMemo } from 'react'
+import * as React from 'react'
 import { Button, SearchField, Spinner, toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
-import type { BotConfig, CatalogItem } from '../../../api/client'
+import type { CatalogItem } from '../../../api/client'
 import { DataTable, type Column, Icon } from '../../../dune-ui'
-
-type DisabledItemsManagerProps = {
-  config: BotConfig
-  onSaved: (cfg: BotConfig) => void
-}
-
-type DisabledRow = { template_id: string, display_name: string }
-type RowKey = 'name' | 'template_id' | 'actions'
+import type { DisabledItemsManagerProps, DisabledRow, RowKey } from './types'
 
 export const DisabledItemsManager: React.FC<DisabledItemsManagerProps> = (
   { config, onSaved }: DisabledItemsManagerProps,
 ) => {
   const { t } = useTranslation()
-  const [catalog, setCatalog] = useState<CatalogItem[]>([])
-  const [search, setSearch] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [catalog, setCatalog] = React.useState<CatalogItem[]>([])
+  const [search, setSearch] = React.useState('')
+  const [saving, setSaving] = React.useState(false)
 
   const COLUMNS: Column<RowKey>[] = [
     { key: 'name', label: t('market.bot.disabledItems.columns.name') },
@@ -28,13 +20,13 @@ export const DisabledItemsManager: React.FC<DisabledItemsManagerProps> = (
     { key: 'actions', label: ' ', sortable: false },
   ]
 
-  useEffect(() => {
+  React.useEffect(() => {
     api.market.catalog().then(setCatalog).catch(() => {})
   }, [])
 
-  const safeItems = useMemo(() => config.disabled_items ?? [], [config.disabled_items])
+  const safeItems = React.useMemo(() => config.disabled_items ?? [], [config.disabled_items])
 
-  const results = useMemo(() => {
+  const results = React.useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return []
     return catalog
@@ -45,7 +37,7 @@ export const DisabledItemsManager: React.FC<DisabledItemsManagerProps> = (
       .slice(0, 8)
   }, [search, catalog, safeItems])
 
-  const disabledRows: DisabledRow[] = useMemo(() =>
+  const disabledRows: DisabledRow[] = React.useMemo(() =>
     safeItems.map((tmpl) => ({
       template_id: tmpl,
       display_name: catalog.find((c) => c.template_id === tmpl)?.display_name ?? tmpl,

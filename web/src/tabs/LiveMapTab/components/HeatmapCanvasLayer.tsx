@@ -1,22 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import * as React from 'react'
 import { useMap } from 'react-leaflet'
 import { HEATMAP_BOUNDS, HEATMAP_PREFIX, HEATMAP_TYPES } from '../constants'
 import { worldToLatLng, heatmapFilterKey, mapUrl } from '../utils'
 import type { HeatmapCanvasLayerProps } from '../types'
 
-export function HeatmapCanvasLayer({
+export const HeatmapCanvasLayer: React.FC<HeatmapCanvasLayerProps> = ({
   mapKey, effCfg, filter,
-}: HeatmapCanvasLayerProps) {
+}) => {
   const map = useMap()
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const imageCache = useRef(new Map<string, HTMLImageElement | null>())
-  const pendingRef = useRef(new Set<string>())
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
+  const imageCache = React.useRef(new Map<string, HTMLImageElement | null>())
+  const pendingRef = React.useRef(new Set<string>())
 
   const bounds = HEATMAP_BOUNDS[mapKey]
   const prefix = HEATMAP_PREFIX[mapKey]
-  const types = useMemo(() => HEATMAP_TYPES[mapKey] ?? [], [mapKey])
+  const types = React.useMemo(() => HEATMAP_TYPES[mapKey] ?? [], [mapKey])
 
-  const draw = useCallback(() => {
+  const draw = React.useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !bounds) return
     const mapSize = map.getSize()
@@ -42,7 +42,7 @@ export function HeatmapCanvasLayer({
     ctx.globalAlpha = 1
   }, [map, bounds, effCfg, filter, types])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!prefix) return
     for (const type of types) {
       if (!(filter[heatmapFilterKey(type)] ?? false)) continue
@@ -62,7 +62,7 @@ export function HeatmapCanvasLayer({
     }
   }, [filter, types, prefix, draw])
 
-  useEffect(() => {
+  React.useEffect(() => {
     const container = map.getContainer()
     const canvas = document.createElement('canvas')
     canvas.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:498'
@@ -74,7 +74,7 @@ export function HeatmapCanvasLayer({
     }
   }, [map])
 
-  useEffect(() => {
+  React.useEffect(() => {
     map.on('move zoom moveend zoomend viewreset resize', draw)
     draw()
     return () => {

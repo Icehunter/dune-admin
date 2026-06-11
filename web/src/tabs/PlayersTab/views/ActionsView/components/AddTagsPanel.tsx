@@ -1,41 +1,30 @@
-import { memo, useMemo, useState } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchField } from '@heroui/react'
 import { useAtom } from 'jotai'
-import { loadable } from 'jotai/utils'
-import { gameplayTagsAtom } from '../../../../../data/store'
+import { gameplayTagsSyncAtom } from '../../../../../data/store'
 import { useDebounce } from '../hooks/useDebounce'
+import type { AddTagsPanelProps } from './types'
 
-interface AddTagsPanelProps {
-  tags: string[]
-  pendingTags: string[]
-  onAdd: (tag: string) => void
-}
-
-export const AddTagsPanel = memo(function AddTagsPanel({
-  tags,
-  pendingTags,
-  onAdd,
-}: AddTagsPanelProps) {
+export const AddTagsPanel: React.FC<AddTagsPanelProps> = React.memo(({ tags, pendingTags, onAdd }) => {
   const { t } = useTranslation()
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = React.useState('')
   const debouncedQuery = useDebounce(query)
-  const [tagsState] = useAtom(loadable(gameplayTagsAtom))
+  const [allTags] = useAtom(gameplayTagsSyncAtom)
 
-  const matches = useMemo(() => {
+  const matches = React.useMemo(() => {
     if (!debouncedQuery) return []
-    const allTags = tagsState.state === 'hasData' ? tagsState.data : []
     const tagsSet = new Set(tags)
     const pendingSet = new Set(pendingTags)
     const q = debouncedQuery.toLowerCase()
-    return allTags
+    return (allTags ?? [])
       .filter((t) => !tagsSet.has(t) && !pendingSet.has(t) && t.toLowerCase().includes(q))
       .slice(0, 100)
-  }, [debouncedQuery, tags, pendingTags, tagsState])
+  }, [debouncedQuery, tags, pendingTags, allTags])
 
   return (
     <div className="relative">
-      <SearchField value={query} onChange={setQuery} variant="secondary">
+      <SearchField value={query} onChange={setQuery} variant="secondary" aria-label={t('players.actions.tags.searchPlaceholder')}>
         <SearchField.Group>
           <SearchField.SearchIcon />
           <SearchField.Input placeholder={t('players.actions.tags.searchPlaceholder')} />

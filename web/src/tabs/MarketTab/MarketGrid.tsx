@@ -1,7 +1,9 @@
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import type { MarketItem } from '../../api/client'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { iconUrl, categoryColor, qualityLabel } from '../../utils/icons'
+import type { MarketGridProps } from './types'
 
 const RARITY_BORDER: Record<string, string> = {
   common: 'border-border',
@@ -23,16 +25,22 @@ const RARITY_TEXT: Record<string, string> = {
   memento: 'text-rarity-memento',
 }
 
-type MarketGridProps = {
-  items: MarketItem[]
-  onSelect: (item: MarketItem) => void
-}
-
 export const MarketGrid: React.FC<MarketGridProps> = ({ items, onSelect }: MarketGridProps) => {
   const { t } = useTranslation()
 
   if (items.length === 0) {
-    return <div className="flex-1 py-8 text-center text-muted">{t('market.table.noItemsFound')}</div>
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <EmptyState size="md">
+          <EmptyState.Header>
+            <EmptyState.Media variant="icon">
+              <IconifyIcon icon="gravity-ui:tag" className="size-5" />
+            </EmptyState.Media>
+            <EmptyState.Title>{t('market.table.noItemsFound')}</EmptyState.Title>
+          </EmptyState.Header>
+        </EmptyState>
+      </div>
+    )
   }
 
   return (

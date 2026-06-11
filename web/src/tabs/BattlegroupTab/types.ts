@@ -1,6 +1,12 @@
 import type { TFunction } from 'i18next'
 import type { Column } from '../../dune-ui'
 
+export type ServersTableProps = {
+  servers: ServerRow[]
+  isInitializing: boolean
+  emptyMessage?: string
+}
+
 export type ServerSortKey = 'map' | 'phase' | 'players' | 'queue' | 'ready' | 'dimension' | 'partition' | 'age'
 
 export type ServerRow = {
@@ -58,3 +64,9 @@ export const ACTIONS: ActionDef[] = [
 ]
 
 export const INIT_WARN_MS = 3 * 60 * 1000
+
+export interface BattlegroupTabProps {
+  isActive?: boolean
+}
+
+export type ChipColor = 'default' | 'success' | 'warning' | 'danger'

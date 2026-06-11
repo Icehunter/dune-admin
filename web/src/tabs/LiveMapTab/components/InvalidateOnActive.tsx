@@ -1,11 +1,11 @@
-import { useEffect } from 'react'
+import * as React from 'react'
 import { useMap } from 'react-leaflet'
 import { IMAGE_BOUNDS } from '../constants'
 import type { InvalidateOnActiveProps } from '../types'
 
-export function InvalidateOnActive({ active }: InvalidateOnActiveProps) {
+export const InvalidateOnActive: React.FC<InvalidateOnActiveProps> = ({ active }) => {
   const map = useMap()
-  useEffect(() => {
+  React.useEffect(() => {
     if (active) {
       const id = setTimeout(() => {
         map.invalidateSize()

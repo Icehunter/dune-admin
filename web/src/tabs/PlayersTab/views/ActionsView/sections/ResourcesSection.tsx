@@ -1,37 +1,33 @@
-import { useState, useEffect, type Key } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
-import { loadable } from 'jotai/utils'
 import { Button, ListBox, ListLayout, Select, Virtualizer } from '@heroui/react'
 import { NumberInput, Panel, SectionLabel } from '../../../../../dune-ui'
-import { skillModulesAtom } from '../../../../../data/store'
+import { skillModulesSyncAtom } from '../../../../../data/store'
 import { api } from '../../../../../api/client'
 import { FACTIONS } from '../../../types'
-import type { Player } from '../../../../../api/client'
 import { busyAtom, charXPCurrentAtom } from '../store'
 import { useRun } from '../hooks/useActions'
+import type { ResourcesSectionProps } from './types'
 
-interface ResourcesSectionProps { player: Player }
-
-export function ResourcesSection({ player }: ResourcesSectionProps) {
+export const ResourcesSection: React.FC<ResourcesSectionProps> = ({ player }) => {
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const [charXPCurrent, setCharXPCurrent] = useAtom(charXPCurrentAtom(player.id))
   const run = useRun(player.id)
-  const [modulesState] = useAtom(loadable(skillModulesAtom))
-  const allSkillModules = modulesState.state === 'hasData' ? modulesState.data : []
+  const [allSkillModules] = useAtom(skillModulesSyncAtom)
 
-  const [currency, setCurrency] = useState(100)
-  const [scrip, setScrip] = useState(100)
-  const [intel, setIntel] = useState(100)
-  const [charXP, setCharXP] = useState(1000)
-  const [factionId, setFactionId] = useState(player.faction_id > 0 ? player.faction_id : 1)
-  const [repDelta, setRepDelta] = useState(100)
-  const [skillPointsAmount, setSkillPointsAmount] = useState(10)
-  const [skillModule, setSkillModule] = useState('')
-  const [skillModuleLevel, setSkillModuleLevel] = useState(1)
+  const [currency, setCurrency] = React.useState(100)
+  const [scrip, setScrip] = React.useState(100)
+  const [intel, setIntel] = React.useState(100)
+  const [charXP, setCharXP] = React.useState(1000)
+  const [factionId, setFactionId] = React.useState(player.faction_id > 0 ? player.faction_id : 1)
+  const [repDelta, setRepDelta] = React.useState(100)
+  const [skillPointsAmount, setSkillPointsAmount] = React.useState(10)
+  const [skillModule, setSkillModule] = React.useState('')
+  const [skillModuleLevel, setSkillModuleLevel] = React.useState(1)
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve().then(() => setFactionId(player.faction_id > 0 ? player.faction_id : 1))
   }, [player.faction_id])
 
@@ -77,7 +73,7 @@ export function ResourcesSection({ player }: ResourcesSectionProps) {
       `Set ${skillModule} level ${skillModuleLevel} for ${player.name}`,
     )
 
-  const handleFactionSelect = (k: Key | null) => setFactionId(Number(k))
+  const handleFactionSelect = (k: React.Key | null) => setFactionId(Number(k))
 
   const handleGiveFactionRep = () =>
     run(
@@ -206,7 +202,7 @@ export function ResourcesSection({ player }: ResourcesSectionProps) {
         <SectionLabel>{t('players.actions.resources.factionReputation')}</SectionLabel>
         <div className="flex items-center gap-2 py-3 border-b border-border/40">
           <div className="w-36 shrink-0 text-sm text-muted">{t('players.actions.resources.faction')}</div>
-          <Select selectedKey={String(factionId)} onSelectionChange={handleFactionSelect} className="w-40">
+          <Select selectedKey={String(factionId)} onSelectionChange={handleFactionSelect} className="w-40" aria-label={t('players.actions.resources.faction')}>
             <Select.Trigger>
               <Select.Value />
               <Select.Indicator />

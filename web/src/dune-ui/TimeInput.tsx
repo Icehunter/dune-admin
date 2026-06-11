@@ -1,16 +1,9 @@
-import type React from 'react'
+import * as React from 'react'
 import { Time } from '@internationalized/date'
 import { TimeField, ToggleButton, ToggleButtonGroup } from '@heroui/react'
+import type { TimeInputProps } from './types'
 
-interface TimeInputProps {
-  value: string // "HH:MM" in 24h
-  onChange: (v: string) => void
-  ariaLabel?: string
-  className?: string
-  isDisabled?: boolean
-}
-
-function parseHHMM(s: string): Time | null {
+const parseHHMM = (s: string): Time | null => {
   const parts = s.split(':')
   const h = Number(parts[0])
   const m = Number(parts[1])
@@ -18,7 +11,7 @@ function parseHHMM(s: string): Time | null {
   return new Time(h, m)
 }
 
-function toHHMM(t: Time): string {
+const toHHMM = (t: Time): string => {
   return `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`
 }
 

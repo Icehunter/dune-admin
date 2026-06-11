@@ -1,10 +1,21 @@
-import type React from 'react'
-import { useState, useEffect, type MutableRefObject } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Select, ListBox, Spinner, Switch, Tabs, toast } from '@heroui/react'
+import { Button, CloseButton, Input, Select, ListBox, Spinner, Switch, toast } from '@heroui/react'
+import { Segment } from '@heroui-pro/react'
 import { api, MASKED } from '../api/client'
 import type { AppConfig } from '../api/client'
 import { NumberInput, Panel, SectionLabel } from '../dune-ui'
+import type {
+  FieldProps,
+  TextInputProps,
+  CheckboxFieldProps,
+  GridRowProps,
+  DiscordRole,
+  RolePickerProps,
+  SettingsConfigFormProps,
+} from './types'
+
+const FieldLabelContext = React.createContext('')
 
 // ── defaults (all empty — never show fake values) ─────────────────────────────
 
@@ -45,7 +56,7 @@ const EMPTY: AppConfig = {
 // discord_bot_enabled is intentionally excluded: nil means default-off, not default-on.
 const pointerBoolFields = new Set<keyof AppConfig>(['amp_use_container', 'market_bot_enabled'])
 
-function mergeConfig(fetched: Record<string, unknown>): AppConfig {
+const mergeConfig = (fetched: Record<string, unknown>): AppConfig => {
   const result: AppConfig = { ...EMPTY }
   for (const key of Object.keys(fetched) as (keyof AppConfig)[]) {
     const v = fetched[key]
@@ -66,39 +77,29 @@ function mergeConfig(fetched: Record<string, unknown>): AppConfig {
 
 // ── field primitives matching BotConfigEditor ─────────────────────────────────
 
-interface FieldProps {
-  label: string
-  hint?: string
-  children: React.ReactNode
-}
-
-function F({ label, hint, children }: FieldProps) {
+const FieldRow: React.FC<FieldProps> = ({ label, hint, children }) => {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs text-muted font-medium">
-        {label}
-        {hint && (
-          <span className="opacity-60 font-normal">
-            {' '}
-            (
-            {hint}
-            )
-          </span>
-        )}
-      </label>
-      {children}
-    </div>
+    <FieldLabelContext.Provider value={label}>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-muted font-medium">
+          {label}
+          {hint && (
+            <span className="opacity-60 font-normal">
+              {' '}
+              (
+              {hint}
+              )
+            </span>
+          )}
+        </span>
+        {children}
+      </div>
+    </FieldLabelContext.Provider>
   )
 }
 
-interface TextInputProps {
-  value: string | number
-  onChange: (v: string) => void
-  placeholder?: string
-  type?: string
-}
-
-function TI({ value, onChange, placeholder, type = 'text' }: TextInputProps) {
+const TextInput: React.FC<TextInputProps> = ({ value, onChange, placeholder, type = 'text', autoComplete }) => {
+  const fieldLabel = React.useContext(FieldLabelContext)
   return (
     <Input
       className="font-mono"
@@ -106,19 +107,13 @@ function TI({ value, onChange, placeholder, type = 'text' }: TextInputProps) {
       value={String(value)}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      aria-label={placeholder ?? 'value'}
+      aria-label={fieldLabel || placeholder || 'value'}
+      autoComplete={autoComplete ?? (type === 'password' ? 'new-password' : 'off')}
     />
   )
 }
 
-interface CheckboxFieldProps {
-  label: string
-  checked: boolean
-  onChange: (v: boolean) => void
-  hint?: string
-}
-
-function CB({ label, checked, onChange, hint }: CheckboxFieldProps) {
+const CheckboxField: React.FC<CheckboxFieldProps> = ({ label, checked, onChange, hint }) => {
   return (
     <div className="flex flex-col gap-1">
       {hint && <p className="text-xs text-muted">{hint}</p>}
@@ -132,29 +127,15 @@ function CB({ label, checked, onChange, hint }: CheckboxFieldProps) {
   )
 }
 
-interface GridRowProps {
-  children: React.ReactNode
-}
-
-function G2({ children }: GridRowProps) {
+const TwoColumnGrid: React.FC<GridRowProps> = ({ children }) => {
   return <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">{children}</div>
 }
 
 // ── RolePicker ────────────────────────────────────────────────────────────────
 
-interface DiscordRole { id: string, name: string }
-
-interface RolePickerProps {
-  value: string
-  onChange: (v: string) => void
-  roles: DiscordRole[]
-  label: string
-  hint?: string
-}
-
-function RolePicker({ value, onChange, roles, label, hint }: RolePickerProps) {
+const RolePicker: React.FC<RolePickerProps> = ({ value, onChange, roles, label, hint }) => {
   const { t } = useTranslation()
-  const [pickKey, setPickKey] = useState(0)
+  const [pickKey, setPickKey] = React.useState(0)
 
   const selectedIds = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []
   const nameOf = (id: string) => roles.find((r) => r.id === id)?.name ?? id
@@ -170,7 +151,7 @@ function RolePicker({ value, onChange, roles, label, hint }: RolePickerProps) {
   const removeRole = (id: string) => onChange(selectedIds.filter((s) => s !== id).join(','))
 
   return (
-    <F label={label} hint={hint}>
+    <FieldRow label={label} hint={hint}>
       <div className="flex flex-col gap-1.5">
         {available.length > 0
           ? (
@@ -206,40 +187,35 @@ function RolePicker({ value, onChange, roles, label, hint }: RolePickerProps) {
             {selectedIds.map((id) => (
               <span key={id} className="inline-flex items-center gap-1 rounded-full bg-accent/15 text-accent px-2 py-0.5 text-xs font-medium">
                 {nameOf(id)}
-                <button type="button" onClick={() => removeRole(id)} className="leading-none opacity-60 hover:opacity-100">×</button>
+                <CloseButton aria-label={`Remove ${nameOf(id)}`} className="size-4 opacity-60 hover:opacity-100" onPress={() => removeRole(id)} />
               </span>
             ))}
           </div>
         )}
       </div>
-    </F>
+    </FieldRow>
   )
 }
 
 // ── main component ────────────────────────────────────────────────────────────
 
-interface SettingsConfigFormProps {
-  saveRef?: MutableRefObject<(() => Promise<void>) | null>
-  onSavingChange?: (saving: boolean) => void
-}
-
 export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef, onSavingChange }) => {
   const { t } = useTranslation()
-  const [cfg, setCfg] = useState<AppConfig>(EMPTY)
-  const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState('connection')
-  const [backendUrl, setBackendUrl] = useState(() => localStorage.getItem('dune_admin_backend') || '')
+  const [cfg, setCfg] = React.useState<AppConfig>(EMPTY)
+  const [loading, setLoading] = React.useState(true)
+  const [tab, setTab] = React.useState('connection')
+  const [backendUrl, setBackendUrl] = React.useState(() => localStorage.getItem('dune_admin_backend') || '')
 
-  const [discordRoles, setDiscordRoles] = useState<DiscordRole[]>([])
+  const [discordRoles, setDiscordRoles] = React.useState<DiscordRole[]>([])
 
-  useEffect(() => {
+  React.useEffect(() => {
     api.config.get()
       .then((c) => setCfg(mergeConfig(c as Record<string, unknown>)))
       .catch((e) => toast.danger(t('settings.loadFailed', { message: e instanceof Error ? e.message : String(e) })))
       .finally(() => setLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     api.discord.roles().then(setDiscordRoles).catch(() => setDiscordRoles([]))
   }, [])
 
@@ -273,7 +249,7 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
   // Expose save to the parent footer button only after config has loaded.
   // Clear the ref on unmount so a stale closure from a previous modal open
   // cannot fire after the form has been removed from the tree.
-  useEffect(() => {
+  React.useEffect(() => {
     if (saveRef && !loading) {
       saveRef.current = save
       return () => {
@@ -296,49 +272,42 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
   const isLocal = cfg.control === 'local'
   const isAmp = cfg.control === 'amp'
 
+  const TABS = [
+    { id: 'connection', label: t('settings.tabs.connection') },
+    { id: 'control', label: t('settings.tabs.control') },
+    { id: 'broker', label: t('settings.tabs.broker') },
+    { id: 'discord', label: t('settings.tabs.discord') },
+    { id: 'advanced', label: t('settings.tabs.advanced') },
+  ]
+
   return (
-    // Outer flex col: tabs + single save bar below
-    <div className="flex flex-col flex-1 min-h-0 gap-0">
-      <Tabs
+    <form className="flex flex-col flex-1 min-h-0 gap-3" onSubmit={(e) => e.preventDefault()} autoComplete="off">
+      {/* sr-only (not display:none) — Chrome's credential heuristic skips display:none elements */}
+      <input type="text" autoComplete="username" aria-hidden="true" tabIndex={-1} readOnly className="sr-only" />
+      <Segment
         selectedKey={tab}
         onSelectionChange={(k) => setTab(String(k))}
-        className="flex flex-col flex-1 min-h-0"
+        size="sm"
+        className="shrink-0 w-fit ml-auto"
       >
-        {/* Tab bar — never scrolls */}
-        <Tabs.ListContainer className="shrink-0">
-          <Tabs.List aria-label="Config sections" className="gap-1">
-            <Tabs.Tab id="connection">
-              {t('settings.tabs.connection')}
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="control">
-              {t('settings.tabs.control')}
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="broker">
-              {t('settings.tabs.broker')}
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="discord">
-              {t('settings.tabs.discord')}
-              <Tabs.Indicator />
-            </Tabs.Tab>
-            <Tabs.Tab id="advanced">
-              {t('settings.tabs.advanced')}
-              <Tabs.Indicator />
-            </Tabs.Tab>
-          </Tabs.List>
-        </Tabs.ListContainer>
+        {TABS.map(({ id, label }) => (
+          <Segment.Item key={id} id={id}>
+            <Segment.Separator />
+            {label}
+          </Segment.Item>
+        ))}
+      </Segment>
 
-        {/* ── Connection ─────────────────────────────────────────────────── */}
-        <Tabs.Panel id="connection" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+      {/* ── Connection ─────────────────────────────────────────────────── */}
+      {tab === 'connection' && (
+        <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
             <SectionLabel>{t('settings.sections.database')}</SectionLabel>
-            <G2>
-              <F label={t('settings.db.host')} hint={t('settings.db.hostHint')}>
-                <TI value={cfg.db_host} onChange={set('db_host')} placeholder="127.0.0.1" />
-              </F>
-              <F label={t('settings.db.port')}>
+            <TwoColumnGrid>
+              <FieldRow label={t('settings.db.host')} hint={t('settings.db.hostHint')}>
+                <TextInput value={cfg.db_host} onChange={set('db_host')} placeholder="127.0.0.1" />
+              </FieldRow>
+              <FieldRow label={t('settings.db.port')}>
                 <NumberInput
                   ariaLabel={t('settings.db.port')}
                   value={Number(cfg.db_port) || 0}
@@ -346,47 +315,51 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
                   showButtons={false}
                   className="w-full"
                 />
-              </F>
-              <F label={t('settings.db.user')}>
-                <TI value={cfg.db_user} onChange={set('db_user')} placeholder="dune" />
-              </F>
-              <F label={t('settings.db.password')} hint={t('settings.db.passwordHint')}>
-                <TI value={cfg.db_pass} onChange={set('db_pass')} type="password" placeholder={MASKED} />
-              </F>
-              <F label={t('settings.db.name')}>
-                <TI value={cfg.db_name} onChange={set('db_name')} placeholder="dune" />
-              </F>
-              <F label={t('settings.db.schema')}>
-                <TI value={cfg.db_schema} onChange={set('db_schema')} placeholder="dune" />
-              </F>
-            </G2>
+              </FieldRow>
+              <FieldRow label={t('settings.db.user')}>
+                <TextInput value={cfg.db_user} onChange={set('db_user')} placeholder="dune" />
+              </FieldRow>
+              <FieldRow label={t('settings.db.password')} hint={t('settings.db.passwordHint')}>
+                <TextInput value={cfg.db_pass} onChange={set('db_pass')} type="password" placeholder={MASKED} />
+              </FieldRow>
+              <FieldRow label={t('settings.db.name')}>
+                <TextInput value={cfg.db_name} onChange={set('db_name')} placeholder="dune" />
+              </FieldRow>
+              <FieldRow label={t('settings.db.schema')}>
+                <TextInput value={cfg.db_schema} onChange={set('db_schema')} placeholder="dune" />
+              </FieldRow>
+            </TwoColumnGrid>
           </Panel>
 
           <Panel>
             <SectionLabel>{t('settings.sections.ssh')}</SectionLabel>
-            <G2>
-              <F label={t('settings.ssh.hostPort')} hint={t('settings.ssh.hostPortHint')}>
-                <TI value={cfg.ssh_host} onChange={set('ssh_host')} placeholder="192.168.0.72:22" />
-              </F>
-              <F label={t('settings.ssh.user')}>
-                <TI value={cfg.ssh_user} onChange={set('ssh_user')} placeholder="dune" />
-              </F>
-              <F label={t('settings.ssh.privateKey')} hint={t('settings.ssh.privateKeyHint')}>
-                <TI value={cfg.ssh_key} onChange={set('ssh_key')} placeholder="~/.ssh/id_ed25519" />
-              </F>
-            </G2>
+            <TwoColumnGrid>
+              <FieldRow label={t('settings.ssh.hostPort')} hint={t('settings.ssh.hostPortHint')}>
+                <TextInput value={cfg.ssh_host} onChange={set('ssh_host')} placeholder="192.168.0.72:22" />
+              </FieldRow>
+              <FieldRow label={t('settings.ssh.user')}>
+                <TextInput value={cfg.ssh_user} onChange={set('ssh_user')} placeholder="dune" />
+              </FieldRow>
+              <FieldRow label={t('settings.ssh.privateKey')} hint={t('settings.ssh.privateKeyHint')}>
+                <TextInput value={cfg.ssh_key} onChange={set('ssh_key')} placeholder="~/.ssh/id_ed25519" />
+              </FieldRow>
+            </TwoColumnGrid>
           </Panel>
-        </Tabs.Panel>
+        </div>
+      )}
 
-        {/* ── Control ────────────────────────────────────────────────────── */}
-        <Tabs.Panel id="control" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+      {/* ── Control ────────────────────────────────────────────────────── */}
+      {tab === 'control' && (
+        <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
             <SectionLabel>{t('settings.sections.controlPlane')}</SectionLabel>
-            <div className="mt-1 flex flex-col gap-1">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted font-medium">{t('settings.control.modeHint')}</span>
               <Select
                 selectedKey={cfg.control || 'local'}
                 onSelectionChange={(k) => setCfg((prev) => ({ ...prev, control: String(k) }))}
                 className="w-64"
+                aria-label={t('settings.sections.controlPlane')}
               >
                 <Select.Trigger>
                   <Select.Value />
@@ -413,66 +386,65 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
                   </ListBox>
                 </Select.Popover>
               </Select>
-              <p className="text-xs text-muted">{t('settings.control.modeHint')}</p>
             </div>
           </Panel>
 
           {isKubectl && (
             <Panel>
               <SectionLabel>{t('settings.sections.kubernetes')}</SectionLabel>
-              <G2>
-                <F label={t('settings.k8s.namespace')} hint={t('settings.k8s.namespaceHint')}>
-                  <TI value={cfg.control_namespace} onChange={set('control_namespace')} placeholder="my-namespace" />
-                </F>
-              </G2>
+              <TwoColumnGrid>
+                <FieldRow label={t('settings.k8s.namespace')} hint={t('settings.k8s.namespaceHint')}>
+                  <TextInput value={cfg.control_namespace} onChange={set('control_namespace')} placeholder="my-namespace" />
+                </FieldRow>
+              </TwoColumnGrid>
             </Panel>
           )}
 
           {isDocker && (
             <Panel>
               <SectionLabel>{t('settings.sections.dockerContainers')}</SectionLabel>
-              <G2>
-                <F label={t('settings.docker.gameServer')}><TI value={cfg.docker_gameserver} onChange={set('docker_gameserver')} placeholder="dune-gameserver" /></F>
-                <F label={t('settings.docker.brokerGame')}><TI value={cfg.docker_broker_game} onChange={set('docker_broker_game')} placeholder="dune-mq-game" /></F>
-                <F label={t('settings.docker.brokerAdmin')}><TI value={cfg.docker_broker_admin} onChange={set('docker_broker_admin')} placeholder="dune-mq-admin" /></F>
-                <F label={t('settings.docker.database')}><TI value={cfg.docker_db} onChange={set('docker_db')} placeholder="dune-postgres" /></F>
-              </G2>
+              <TwoColumnGrid>
+                <FieldRow label={t('settings.docker.gameServer')}><TextInput value={cfg.docker_gameserver} onChange={set('docker_gameserver')} placeholder="dune-gameserver" /></FieldRow>
+                <FieldRow label={t('settings.docker.brokerGame')}><TextInput value={cfg.docker_broker_game} onChange={set('docker_broker_game')} placeholder="dune-mq-game" /></FieldRow>
+                <FieldRow label={t('settings.docker.brokerAdmin')}><TextInput value={cfg.docker_broker_admin} onChange={set('docker_broker_admin')} placeholder="dune-mq-admin" /></FieldRow>
+                <FieldRow label={t('settings.docker.database')}><TextInput value={cfg.docker_db} onChange={set('docker_db')} placeholder="dune-postgres" /></FieldRow>
+              </TwoColumnGrid>
             </Panel>
           )}
 
           {isLocal && (
             <Panel>
               <SectionLabel>{t('settings.sections.serverCommands')}</SectionLabel>
-              <G2>
-                <F label={t('settings.cmd.start')}><TI value={cfg.cmd_start} onChange={set('cmd_start')} placeholder="service dune start" /></F>
-                <F label={t('settings.cmd.stop')}><TI value={cfg.cmd_stop} onChange={set('cmd_stop')} placeholder="service dune stop" /></F>
-                <F label={t('settings.cmd.restart')}><TI value={cfg.cmd_restart} onChange={set('cmd_restart')} placeholder="service dune restart" /></F>
-                <F label={t('settings.cmd.status')}><TI value={cfg.cmd_status} onChange={set('cmd_status')} placeholder="service dune status" /></F>
-              </G2>
+              <TwoColumnGrid>
+                <FieldRow label={t('settings.cmd.start')}><TextInput value={cfg.cmd_start} onChange={set('cmd_start')} placeholder="service dune start" /></FieldRow>
+                <FieldRow label={t('settings.cmd.stop')}><TextInput value={cfg.cmd_stop} onChange={set('cmd_stop')} placeholder="service dune stop" /></FieldRow>
+                <FieldRow label={t('settings.cmd.restart')}><TextInput value={cfg.cmd_restart} onChange={set('cmd_restart')} placeholder="service dune restart" /></FieldRow>
+                <FieldRow label={t('settings.cmd.status')}><TextInput value={cfg.cmd_status} onChange={set('cmd_status')} placeholder="service dune status" /></FieldRow>
+              </TwoColumnGrid>
             </Panel>
           )}
 
           {isAmp && (
             <Panel>
               <SectionLabel>{t('settings.sections.amp')}</SectionLabel>
-              <G2>
-                <F label={t('settings.amp.instanceName')}><TI value={cfg.amp_instance} onChange={set('amp_instance')} placeholder="DuneAwakening01" /></F>
-                <F label={t('settings.amp.containerName')} hint={t('settings.amp.containerNameHint')}><TI value={cfg.amp_container} onChange={set('amp_container')} placeholder="AMP_DuneAwakening01" /></F>
-                <F label={t('settings.amp.user')}><TI value={cfg.amp_user} onChange={set('amp_user')} placeholder="amp" /></F>
-                <F label={t('settings.amp.logPath')}><TI value={cfg.amp_log_path} onChange={set('amp_log_path')} placeholder="/logs" /></F>
-                <F label={t('settings.amp.dataRoot')}><TI value={cfg.amp_data_root} onChange={set('amp_data_root')} placeholder="/AMP/duneawakening" /></F>
-                <CB
+              <TwoColumnGrid>
+                <FieldRow label={t('settings.amp.instanceName')}><TextInput value={cfg.amp_instance} onChange={set('amp_instance')} placeholder="DuneAwakening01" /></FieldRow>
+                <FieldRow label={t('settings.amp.containerName')} hint={t('settings.amp.containerNameHint')}><TextInput value={cfg.amp_container} onChange={set('amp_container')} placeholder="AMP_DuneAwakening01" /></FieldRow>
+                <FieldRow label={t('settings.amp.user')}><TextInput value={cfg.amp_user} onChange={set('amp_user')} placeholder="amp" /></FieldRow>
+                <FieldRow label={t('settings.amp.logPath')}><TextInput value={cfg.amp_log_path} onChange={set('amp_log_path')} placeholder="/logs" /></FieldRow>
+                <FieldRow label={t('settings.amp.dataRoot')}><TextInput value={cfg.amp_data_root} onChange={set('amp_data_root')} placeholder="/AMP/duneawakening" /></FieldRow>
+                <CheckboxField
                   label={t('settings.amp.useContainer')}
                   checked={cfg.amp_use_container}
                   onChange={setBool('amp_use_container')}
                   hint={t('settings.amp.useContainerHint')}
                 />
-              </G2>
+              </TwoColumnGrid>
               <p className="text-xs text-muted mt-3">{t('settings.amp.apiHint')}</p>
-              <G2>
-                <F label={t('settings.amp.apiUser')}><TI value={cfg.amp_api_user} onChange={set('amp_api_user')} placeholder="admin" /></F>
-                <F label={t('settings.amp.apiPassword')}><TI value={cfg.amp_api_pass} onChange={set('amp_api_pass')} type="password" placeholder={MASKED} /></F>
-                <F label={t('settings.amp.apiPort')} hint="default 8081">
+              <TwoColumnGrid>
+                <FieldRow label={t('settings.amp.apiUser')}><TextInput value={cfg.amp_api_user} onChange={set('amp_api_user')} placeholder="admin" /></FieldRow>
+                <FieldRow label={t('settings.amp.apiPassword')}><TextInput value={cfg.amp_api_pass} onChange={set('amp_api_pass')} type="password" placeholder={MASKED} /></FieldRow>
+                <FieldRow label={t('settings.amp.apiPort')} hint="default 8081">
                   <NumberInput
                     ariaLabel={t('settings.amp.apiPort')}
                     value={Number(cfg.amp_api_port) || 0}
@@ -480,65 +452,78 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
                     showButtons={false}
                     className="w-full"
                   />
-                </F>
-              </G2>
+                </FieldRow>
+              </TwoColumnGrid>
             </Panel>
           )}
 
           {!isKubectl && !isDocker && !isLocal && !isAmp && (
             <p className="text-xs text-muted pt-2">{t('settings.control.selectMode')}</p>
           )}
-        </Tabs.Panel>
+        </div>
+      )}
 
-        {/* ── Broker ─────────────────────────────────────────────────────── */}
-        <Tabs.Panel id="broker" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+      {/* ── Broker ─────────────────────────────────────────────────────── */}
+      {tab === 'broker' && (
+        <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
             <SectionLabel>{t('settings.sections.rabbitmq')}</SectionLabel>
             <p className="text-xs text-muted -mt-1">{t('settings.broker.optionalHint')}</p>
-            <G2>
-              <F label={t('settings.broker.gameAddr')}><TI value={cfg.broker_game_addr} onChange={set('broker_game_addr')} placeholder="10.x.x.x:5672" /></F>
-              <F label={t('settings.broker.adminAddr')}><TI value={cfg.broker_admin_addr} onChange={set('broker_admin_addr')} placeholder="10.x.x.x:5672" /></F>
-              <F label={t('settings.broker.user')}><TI value={cfg.broker_user} onChange={set('broker_user')} placeholder="dune_cap" /></F>
-              <F label={t('settings.broker.password')}><TI value={cfg.broker_pass} onChange={set('broker_pass')} type="password" placeholder={MASKED} /></F>
-              <F label={t('settings.broker.jwtSecret')} hint={t('settings.broker.jwtSecretHint')}>
-                <TI value={cfg.broker_jwt_secret} onChange={set('broker_jwt_secret')} type="password" placeholder={MASKED} />
-              </F>
-              <F label={t('settings.broker.execPrefix')} hint={t('settings.broker.execPrefixHint')}>
-                <TI value={cfg.broker_exec_prefix} onChange={set('broker_exec_prefix')} placeholder="podman exec <container>" />
-              </F>
+            <TwoColumnGrid>
+              <FieldRow label={t('settings.broker.gameAddr')}><TextInput value={cfg.broker_game_addr} onChange={set('broker_game_addr')} placeholder="10.x.x.x:5672" /></FieldRow>
+              <FieldRow label={t('settings.broker.adminAddr')}><TextInput value={cfg.broker_admin_addr} onChange={set('broker_admin_addr')} placeholder="10.x.x.x:5672" /></FieldRow>
+              <FieldRow label={t('settings.broker.user')}><TextInput value={cfg.broker_user} onChange={set('broker_user')} placeholder="dune_cap" /></FieldRow>
+              <FieldRow label={t('settings.broker.password')}><TextInput value={cfg.broker_pass} onChange={set('broker_pass')} type="password" placeholder={MASKED} /></FieldRow>
+              <FieldRow label={t('settings.broker.jwtSecret')} hint={t('settings.broker.jwtSecretHint')}>
+                <TextInput value={cfg.broker_jwt_secret} onChange={set('broker_jwt_secret')} type="password" placeholder={MASKED} />
+              </FieldRow>
+              <FieldRow label={t('settings.broker.execPrefix')} hint={t('settings.broker.execPrefixHint')}>
+                <TextInput value={cfg.broker_exec_prefix} onChange={set('broker_exec_prefix')} placeholder="podman exec <container>" />
+              </FieldRow>
               <div className="sm:col-span-2">
-                <CB label={t('settings.broker.useTls')} checked={cfg.broker_tls} onChange={setBool('broker_tls')} />
+                <CheckboxField label={t('settings.broker.useTls')} checked={cfg.broker_tls} onChange={setBool('broker_tls')} />
               </div>
-            </G2>
+            </TwoColumnGrid>
           </Panel>
-        </Tabs.Panel>
+        </div>
+      )}
 
-        {/* ── Discord ────────────────────────────────────────────────────── */}
-        <Tabs.Panel id="discord" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+      {/* ── Discord ────────────────────────────────────────────────────── */}
+      {tab === 'discord' && (
+        <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+          <input type="text" autoComplete="username" aria-hidden="true" tabIndex={-1} readOnly className="sr-only" />
           <Panel>
             <SectionLabel>{t('settings.sections.discordBot')}</SectionLabel>
-            <p className="text-xs text-muted -mt-1">{t('settings.discord.hint')}</p>
-            <G2>
+            <div className="flex flex-col gap-1 -mt-1">
+              <p className="text-sm text-muted">{t('settings.discord.hint')}</p>
+              <p className="text-sm text-muted">{t('settings.discord.setupStep1')}</p>
+              <p className="text-sm text-muted">{t('settings.discord.setupStep2')}</p>
+              <p className="text-sm text-muted">{t('settings.discord.setupStep3')}</p>
+            </div>
+            <TwoColumnGrid>
               <div className="sm:col-span-2">
-                <CB
+                <CheckboxField
                   label={t('settings.discord.enabled')}
                   checked={cfg.discord_bot_enabled}
                   onChange={setBool('discord_bot_enabled')}
                 />
               </div>
-              <F label={t('settings.discord.token')} hint={t('settings.discord.tokenHint')}>
-                <TI value={cfg.discord_bot_token} onChange={set('discord_bot_token')} type="password" placeholder={MASKED} />
-              </F>
-              <F label={t('settings.discord.guildId')} hint={t('settings.discord.guildIdHint')}>
-                <TI value={cfg.discord_guild_id} onChange={set('discord_guild_id')} placeholder="123456789012345678" />
-              </F>
-            </G2>
+              <FieldRow label={t('settings.discord.token')} hint={t('settings.discord.tokenHint')}>
+                <TextInput value={cfg.discord_bot_token} onChange={set('discord_bot_token')} type="password" placeholder={MASKED} />
+              </FieldRow>
+              <FieldRow label={t('settings.discord.guildId')} hint={t('settings.discord.guildIdHint')}>
+                <TextInput value={cfg.discord_guild_id} onChange={set('discord_guild_id')} placeholder="123456789012345678" />
+              </FieldRow>
+            </TwoColumnGrid>
           </Panel>
 
           <Panel>
             <SectionLabel>{t('settings.sections.discordRoles')}</SectionLabel>
-            <p className="text-xs text-muted -mt-1">{t('settings.discord.rolesHint')}</p>
-            <G2>
+            <div className="flex flex-col gap-1 -mt-1">
+              <p className="text-xs text-muted">{t('settings.discord.rolesHint')}</p>
+              <p className="text-sm text-muted">{t('settings.discord.rolesRefreshNote')}</p>
+            </div>
+            <TwoColumnGrid>
               <RolePicker
                 label={t('settings.discord.rolesViewer')}
                 hint={t('settings.discord.rolesViewerHint')}
@@ -560,22 +545,24 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
                 onChange={set('discord_roles_admin')}
                 roles={discordRoles}
               />
-              <F label={t('settings.discord.announceChannel')} hint={t('settings.discord.announceChannelHint')}>
-                <TI value={cfg.discord_announce_channel_id} onChange={set('discord_announce_channel_id')} placeholder="444444444444444444" />
-              </F>
-            </G2>
+              <FieldRow label={t('settings.discord.announceChannel')} hint={t('settings.discord.announceChannelHint')}>
+                <TextInput value={cfg.discord_announce_channel_id} onChange={set('discord_announce_channel_id')} placeholder="444444444444444444" />
+              </FieldRow>
+            </TwoColumnGrid>
           </Panel>
-        </Tabs.Panel>
+        </div>
+      )}
 
-        {/* ── Advanced ───────────────────────────────────────────────────── */}
-        <Tabs.Panel id="advanced" className="pt-4 overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
+      {/* ── Advanced ───────────────────────────────────────────────────── */}
+      {tab === 'advanced' && (
+        <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
           <Panel>
             <SectionLabel>{t('settings.sections.server')}</SectionLabel>
-            <G2>
-              <F label={t('settings.adv.listenAddr')} hint={t('settings.adv.listenAddrHint')}>
-                <TI value={cfg.listen_addr} onChange={set('listen_addr')} placeholder=":8080" />
-              </F>
-              <F label={t('settings.adv.scripCurrency')}>
+            <TwoColumnGrid>
+              <FieldRow label={t('settings.adv.listenAddr')} hint={t('settings.adv.listenAddrHint')}>
+                <TextInput value={cfg.listen_addr} onChange={set('listen_addr')} placeholder=":8080" />
+              </FieldRow>
+              <FieldRow label={t('settings.adv.scripCurrency')}>
                 <NumberInput
                   ariaLabel={t('settings.adv.scripCurrency')}
                   value={Number(cfg.scrip_currency) || 0}
@@ -583,26 +570,26 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
                   showButtons={false}
                   className="w-full"
                 />
-              </F>
-              <F label={t('settings.adv.directorUrl')} hint={t('settings.adv.directorUrlHint')}>
-                <TI value={cfg.director_url} onChange={set('director_url')} placeholder="http://127.0.0.1:11717" />
-              </F>
-            </G2>
+              </FieldRow>
+              <FieldRow label={t('settings.adv.directorUrl')} hint={t('settings.adv.directorUrlHint')}>
+                <TextInput value={cfg.director_url} onChange={set('director_url')} placeholder="http://127.0.0.1:11717" />
+              </FieldRow>
+            </TwoColumnGrid>
           </Panel>
 
           <Panel>
             <SectionLabel>{t('settings.sections.paths')}</SectionLabel>
-            <G2>
-              <F label={t('settings.adv.backupDir')}>
-                <TI value={cfg.backup_dir} onChange={set('backup_dir')} placeholder="/path/to/backups" />
-              </F>
-              <F label={t('settings.adv.serverIniDir')} hint={t('settings.adv.serverIniDirHint')}>
-                <TI value={cfg.server_ini_dir} onChange={set('server_ini_dir')} placeholder="/path/to/server/state" />
-              </F>
-              <F label={t('settings.adv.defaultIniDir')} hint={t('settings.adv.defaultIniDirHint')}>
-                <TI value={cfg.default_ini_dir} onChange={set('default_ini_dir')} placeholder="/path/to/game/Config" />
-              </F>
-            </G2>
+            <TwoColumnGrid>
+              <FieldRow label={t('settings.adv.backupDir')}>
+                <TextInput value={cfg.backup_dir} onChange={set('backup_dir')} placeholder="/path/to/backups" />
+              </FieldRow>
+              <FieldRow label={t('settings.adv.serverIniDir')} hint={t('settings.adv.serverIniDirHint')}>
+                <TextInput value={cfg.server_ini_dir} onChange={set('server_ini_dir')} placeholder="/path/to/server/state" />
+              </FieldRow>
+              <FieldRow label={t('settings.adv.defaultIniDir')} hint={t('settings.adv.defaultIniDirHint')}>
+                <TextInput value={cfg.default_ini_dir} onChange={set('default_ini_dir')} placeholder="/path/to/game/Config" />
+              </FieldRow>
+            </TwoColumnGrid>
           </Panel>
 
           <Panel>
@@ -610,9 +597,9 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
             <p className="text-xs text-muted -mt-1">
               {t('settings.adv.backendUrlHint')}
             </p>
-            <G2>
-              <F label={t('settings.adv.url')} hint={t('settings.adv.urlHint')}>
-                <TI
+            <TwoColumnGrid>
+              <FieldRow label={t('settings.adv.url')} hint={t('settings.adv.urlHint')}>
+                <TextInput
                   value={backendUrl}
                   onChange={(v) => {
                     setBackendUrl(v)
@@ -620,8 +607,8 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
                   }}
                   placeholder="http://host:port"
                 />
-              </F>
-            </G2>
+              </FieldRow>
+            </TwoColumnGrid>
             <div className="flex gap-2 mt-1">
               <Button size="sm" onPress={() => window.location.reload()}>{t('settings.adv.applyReload')}</Button>
               <Button
@@ -637,9 +624,8 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
               </Button>
             </div>
           </Panel>
-        </Tabs.Panel>
-      </Tabs>
-
-    </div>
+        </div>
+      )}
+    </form>
   )
 }

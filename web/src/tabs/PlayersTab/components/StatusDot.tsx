@@ -1,8 +1,5 @@
-import type React from 'react'
-
-interface StatusDotProps {
-  status: string
-}
+import * as React from 'react'
+import type { StatusDotProps } from './types'
 
 export const StatusDot: React.FC<StatusDotProps> = ({ status }) => {
   const cls

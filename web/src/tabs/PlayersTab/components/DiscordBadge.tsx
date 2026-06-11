@@ -1,12 +1,6 @@
-import type React from 'react'
+import * as React from 'react'
 
-interface DiscordBadgeProps {
-  /** Discord user ID — renders nothing when falsy */
-  discordUserId?: string
-  size?: number
-  /** SVG fill color. Defaults to Discord blurple. */
-  color?: string
-}
+import type { DiscordBadgeProps } from './types'
 
 // Simplified Discord mark. Scaled to a 24×24 viewBox.
 const DISCORD_PATH

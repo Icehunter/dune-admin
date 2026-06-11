@@ -1,26 +1,16 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Button, Chip, SearchField, Spinner, toast,
 } from '@heroui/react'
+import type { Selection } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { api } from '../../api/client'
 import type { InventoryItem } from '../../api/client'
-import { DataTable, Icon, LoadingState, PageHeader, SideNav, type Column } from '../../dune-ui'
+import { ActionBar, DataTable, Icon, LoadingState, PageHeader, SideNav, type Column } from '../../dune-ui'
 import { AddItemsModal } from './components/AddItemsModal'
-
-type ItemKey = 'id' | 'template' | 'stack_size' | 'quality' | 'durability' | 'actions'
-
-type Container = {
-  id: number
-  name: string
-  class: string
-  map: string
-  item_count: number
-  item_templates: string[]
-  item_names: string[]
-  owner_name: string
-}
+import type { Container, ItemKey } from './types'
 
 const TYPE_LABELS: Record<string, string> = {
   SpiceSilo_Placeable: 'Small Storage Container',
@@ -29,7 +19,7 @@ const TYPE_LABELS: Record<string, string> = {
   MediumStorageContainer_Placeable: 'Medium Storage Container',
 }
 
-function shortClass(cls: string): string {
+const shortClass = (cls: string): string => {
   return TYPE_LABELS[cls] ?? cls.replace(/_Placeable$/, '')
 }
 
@@ -42,18 +32,19 @@ export const StorageTab: React.FC = () => {
     { key: 'stack_size', label: t('storage.columns.stack'), width: 100 },
     { key: 'quality', label: t('storage.columns.quality'), width: 100 },
     { key: 'durability', label: t('storage.columns.durability'), width: 130 },
-    { key: 'actions', label: '', width: 120, sortable: false },
+    { key: 'actions', label: '', width: 52, sortable: false },
   ]
 
-  const [containers, setContainers] = useState<Container[]>([])
-  const [loading, setLoading] = useState(false)
-  const [selected, setSelected] = useState<Container | null>(null)
-  const [items, setItems] = useState<InventoryItem[]>([])
-  const [itemsLoading, setItemsLoading] = useState(false)
-  const [showAdd, setShowAdd] = useState(false)
-  const [search, setSearch] = useState('')
+  const [containers, setContainers] = React.useState<Container[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [selected, setSelected] = React.useState<Container | null>(null)
+  const [items, setItems] = React.useState<InventoryItem[]>([])
+  const [itemsLoading, setItemsLoading] = React.useState(false)
+  const [showAdd, setShowAdd] = React.useState(false)
+  const [search, setSearch] = React.useState('')
+  const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.storage.list())
@@ -62,12 +53,13 @@ export const StorageTab: React.FC = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
   const selectContainer = async (c: Container) => {
     setSelected(c)
+    setSelectedKeys(new Set())
     setItemsLoading(true)
     try {
       setItems(await api.storage.items(c.id))
@@ -94,7 +86,32 @@ export const StorageTab: React.FC = () => {
     }
   }
 
-  const filtered = useMemo(() => {
+  const selectionCount = selectedKeys === 'all' ? items.length : (selectedKeys as Set<string>).size
+
+  const handleBulkDelete = async () => {
+    const ids
+      = selectedKeys === 'all'
+        ? items.map((i) => i.id)
+        : items.filter((i) => (selectedKeys as Set<string>).has(String(i.id))).map((i) => i.id)
+    if (ids.length === 0) return
+    const deletedIds = new Set<number>()
+    await Promise.allSettled(
+      ids.map(async (id) => {
+        await api.players.deleteItem(id)
+        deletedIds.add(id)
+      }),
+    )
+    setItems((prev) => prev.filter((i) => !deletedIds.has(i.id)))
+    if (selected) {
+      setContainers((prev) => prev.map((c) =>
+        c.id === selected.id ? { ...c, item_count: Math.max(0, c.item_count - deletedIds.size) } : c,
+      ))
+    }
+    setSelectedKeys(new Set())
+    toast.success(t('storage.itemsRemoved', { count: deletedIds.size }))
+  }
+
+  const filtered = React.useMemo(() => {
     if (!search) return containers
     const q = search.toLowerCase()
     return containers.filter((c) =>
@@ -108,7 +125,7 @@ export const StorageTab: React.FC = () => {
     )
   }, [containers, search])
 
-  const navItems = useMemo(() => filtered.map((c) => ({
+  const navItems = React.useMemo(() => filtered.map((c) => ({
     key: String(c.id),
     label: c.name || `#${c.id}`,
     sublabel: [
@@ -142,7 +159,7 @@ export const StorageTab: React.FC = () => {
               {loading ? <Spinner size="sm" color="current" /> : <Icon name="refresh-cw" />}
             </Button>
           )}
-          width="w-60"
+          width="w-[276px]"
         >
           <SearchField
             aria-label={t('storage.searchLabel')}
@@ -199,48 +216,79 @@ export const StorageTab: React.FC = () => {
                         <LoadingState />
                       )
                     : (
-                        <DataTable<InventoryItem, ItemKey>
-                          aria-label={t('storage.ariaLabel')}
-                          className="min-h-0 max-h-full"
-                          columns={ITEM_COLUMNS}
-                          rows={items}
-                          rowId={(i) => String(i.id)}
-                          initialSort={{ column: 'id', direction: 'ascending' }}
-                          sortValue={(i, k) => {
-                            if (k === 'template') return i.name || i.template_id
-                            if (k === 'actions') return ''
-                            return (i as unknown as Record<string, string | number>)[k]
-                          }}
-                          emptyState={<div className="py-8 text-center text-muted">{t('storage.containerEmpty')}</div>}
-                          renderCell={(i, key) => {
-                            switch (key) {
-                              case 'id': return <span className="font-mono text-muted">{i.id}</span>
-                              case 'template':
-                                return (
-                                  <span className="inline-flex flex-col">
-                                    <span>{i.name || i.template_id}</span>
-                                    {i.name && <span className="text-xs font-mono text-muted">{i.template_id}</span>}
-                                  </span>
-                                )
-                              case 'stack_size': return <span>{i.stack_size}</span>
-                              case 'quality': return <span>{i.quality}</span>
-                              case 'durability': return <span className="text-muted">{i.durability}</span>
-                              case 'actions':
-                                return (
-                                  <Button
-                                    size="sm"
-                                    variant="danger-soft"
-                                    className="w-full"
-                                    onPress={() => handleDeleteItem(i.id)}
-                                  >
-                                    <Icon name="x" />
-                                    {' '}
-                                    {t('storage.remove')}
-                                  </Button>
-                                )
-                            }
-                          }}
-                        />
+                        <>
+                          <DataTable<InventoryItem, ItemKey>
+                            aria-label={t('storage.ariaLabel')}
+                            className="min-h-0 max-h-full"
+                            columns={ITEM_COLUMNS}
+                            rows={items}
+                            rowId={(i) => String(i.id)}
+                            selectionMode="multiple"
+                            selectedKeys={selectedKeys}
+                            onSelectionChange={setSelectedKeys}
+                            initialSort={{ column: 'id', direction: 'ascending' }}
+                            sortValue={(i, k) => {
+                              if (k === 'template') return i.name || i.template_id
+                              if (k === 'actions') return ''
+                              return (i as unknown as Record<string, string | number>)[k]
+                            }}
+                            emptyState={(
+                              <EmptyState size="sm">
+                                <EmptyState.Header>
+                                  <EmptyState.Media variant="icon">
+                                    <IconifyIcon icon="gravity-ui:box" className="size-5" />
+                                  </EmptyState.Media>
+                                  <EmptyState.Title>{t('storage.containerEmpty')}</EmptyState.Title>
+                                </EmptyState.Header>
+                              </EmptyState>
+                            )}
+                            renderCell={(i, key) => {
+                              switch (key) {
+                                case 'id': return <span className="font-mono text-muted">{i.id}</span>
+                                case 'template':
+                                  return (
+                                    <span className="inline-flex flex-col">
+                                      <span>{i.name || i.template_id}</span>
+                                      {i.name && <span className="text-xs font-mono text-muted">{i.template_id}</span>}
+                                    </span>
+                                  )
+                                case 'stack_size': return <span>{i.stack_size}</span>
+                                case 'quality': return <span>{i.quality}</span>
+                                case 'durability': return <span className="text-muted">{i.durability}</span>
+                                case 'actions':
+                                  return (
+                                    <Button
+                                      isIconOnly
+                                      size="sm"
+                                      variant="danger-soft"
+                                      aria-label={t('storage.remove')}
+                                      onPress={() => handleDeleteItem(i.id)}
+                                    >
+                                      <Icon name="trash" />
+                                    </Button>
+                                  )
+                              }
+                            }}
+                          />
+                          <ActionBar isOpen={selectionCount > 0}>
+                            <ActionBar.Prefix>
+                              <span className="text-sm text-muted">
+                                {selectionCount}
+                              </span>
+                            </ActionBar.Prefix>
+                            <ActionBar.Content>
+                              <Button size="sm" variant="danger-soft" onPress={handleBulkDelete}>
+                                <Icon name="trash" />
+                                {t('players.inventory.deleteSelected')}
+                              </Button>
+                            </ActionBar.Content>
+                            <ActionBar.Suffix>
+                              <Button size="sm" variant="ghost" onPress={() => setSelectedKeys(new Set())}>
+                                {t('common.clear')}
+                              </Button>
+                            </ActionBar.Suffix>
+                          </ActionBar>
+                        </>
                       )}
                 </>
               )}

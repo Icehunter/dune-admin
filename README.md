@@ -29,7 +29,7 @@ curl -fsSL https://raw.githubusercontent.com/Icehunter/dune-admin/main/scripts/i
   | bash
 ```
 
-The script installs the build toolchain (Go 1.26, Node 22 LTS, pnpm 10.28, build-essential), clones the source, builds the binary and SPA, and installs them into `/opt/dune-admin/`. It refuses to overwrite a running service and leaves `.prev` backups for one-step rollback. See `--help` for flags (`--branch`, `--install-dir`, `--service-user`, `--patches-dir`, `--no-patches`).
+The script detects your OS and architecture, downloads the matching binary from the latest GitHub release, and installs it into `/opt/dune-admin/`. No build toolchain required — the release binary already embeds the frontend SPA. It refuses to overwrite a running service and leaves a `.prev` backup for one-step rollback. See `--help` for flags (`--version`, `--install-dir`, `--service-user`).
 
 When the script finishes it prints the next manual steps: run the setup wizard, apply the sudoers entry it generates, drop a systemd unit, and start the service.
 

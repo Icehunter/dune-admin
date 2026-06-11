@@ -1,19 +1,11 @@
+import * as React from 'react'
 import { Button, ListBox, Select, Tooltip } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
-import type { ServerSetting } from '../../../api/client'
-import { NumberInput, Icon } from '../../../dune-ui'
+import { FieldInput, NumberInput, Icon } from '../../../dune-ui'
 import { SOURCE_FILE, LAYER_STYLE, USER_SOURCES } from '../constants'
 import { sourceLabel, trimFloat } from '../utils'
-
-interface SettingRowProps {
-  item: ServerSetting
-  pending: string | undefined
-  onChange: (value: string) => void
-  onDelete: () => Promise<void>
-  // True when the active control plane is AMP and this is a curated, AMP-managed
-  // setting (written through the AMP API rather than the INI files).
-  ampManaged?: boolean
-}
+import type { SettingRowProps } from './types'
+import type { ServerSetting } from '../../../api/client'
 
 export const SettingRow: React.FC<SettingRowProps> = ({
   item, pending, onChange, onDelete, ampManaged,
@@ -69,7 +61,7 @@ export const SettingRow: React.FC<SettingRowProps> = ({
       <div className="flex items-center gap-1.5 shrink-0">
         {item.type === 'bool'
           ? (
-              <Select selectedKey={display} onSelectionChange={(k) => onChange(String(k))} className="w-32">
+              <Select selectedKey={display} onSelectionChange={(k) => onChange(String(k))} className="w-32" aria-label={item.label}>
                 <Select.Trigger className="h-7 text-xs">
                   <Select.Value />
                   <Select.Indicator />
@@ -90,11 +82,11 @@ export const SettingRow: React.FC<SettingRowProps> = ({
             )
           : item.type === 'string'
             ? (
-                <input
-                  type="text"
+                <FieldInput
+                  ariaLabel={item.label}
                   value={display}
-                  onChange={(e) => onChange(e.target.value)}
-                  className="w-40 bg-surface border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:border-accent/60"
+                  onChange={onChange}
+                  className="w-40 font-mono"
                 />
               )
             : (

@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Spinner, Switch, ToggleButton, ToggleButtonGroup, toast } from '@heroui/react'
 import { api } from '../api/client'
@@ -14,13 +13,13 @@ const DOW = [0, 1, 2, 3, 4, 5, 6] // Sun..Sat
 // Health page (#149); lives on the Battlegroup tab until that lands.
 export const ScheduledRestartsCard: React.FC = () => {
   const { t, i18n } = useTranslation()
-  const [data, setData] = useState<ScheduledRestarts | null>(null)
-  const [enabled, setEnabled] = useState(false)
-  const [timezone, setTimezone] = useState('')
-  const [warn, setWarn] = useState(10)
-  const [rules, setRules] = useState<RestartRule[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [data, setData] = React.useState<ScheduledRestarts | null>(null)
+  const [enabled, setEnabled] = React.useState(false)
+  const [timezone, setTimezone] = React.useState('')
+  const [warn, setWarn] = React.useState(10)
+  const [rules, setRules] = React.useState<RestartRule[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [saving, setSaving] = React.useState(false)
 
   const apply = (d: ScheduledRestarts) => {
     setData(d)
@@ -30,7 +29,7 @@ export const ScheduledRestartsCard: React.FC = () => {
     setRules(d.rules ?? [])
   }
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.scheduledRestarts.get())
@@ -40,7 +39,7 @@ export const ScheduledRestartsCard: React.FC = () => {
       .finally(() => setLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
@@ -119,7 +118,7 @@ export const ScheduledRestartsCard: React.FC = () => {
                   </ToggleButtonGroup>
                   <TimeInput value={rule.time} onChange={(v) => setRuleTime(i, v)} ariaLabel="time" />
                   <Button size="sm" variant="ghost" isIconOnly aria-label={t('restarts.removeRule')} onPress={() => removeRule(i)}>
-                    <Icon name="x" />
+                    <Icon name="trash" />
                   </Button>
                 </div>
               ))}

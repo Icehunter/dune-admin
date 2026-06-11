@@ -1,34 +1,28 @@
-import type React from 'react'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import * as React from 'react'
 import { Button, Switch } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { getWsBase, api } from '../../../api/client'
 import { Icon } from '../../../dune-ui'
+import type { BotLogViewerProps, ConnState } from './types'
 
-type BotLogViewerProps = {
-  active?: boolean
-}
-
-type ConnState = 'idle' | 'connecting' | 'connected' | 'error'
-
-export const BotLogViewer: React.FC<BotLogViewerProps> = ({ active = false }: BotLogViewerProps) => {
+export const BotLogViewer: React.FC<BotLogViewerProps> = ({ active = false }) => {
   const { t } = useTranslation()
-  const [connState, setConnState] = useState<ConnState>('idle')
-  const [error, setError] = useState<string | null>(null)
-  const [lines, setLines] = useState<string[]>([])
-  const [autoScroll, setAutoScroll] = useState(true)
-  const wsRef = useRef<WebSocket | null>(null)
-  const bufRef = useRef<string[]>([])
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const containerRef = useRef<HTMLPreElement | null>(null)
+  const [connState, setConnState] = React.useState<ConnState>('idle')
+  const [error, setError] = React.useState<string | null>(null)
+  const [lines, setLines] = React.useState<string[]>([])
+  const [autoScroll, setAutoScroll] = React.useState(true)
+  const wsRef = React.useRef<WebSocket | null>(null)
+  const bufRef = React.useRef<string[]>([])
+  const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
+  const containerRef = React.useRef<HTMLPreElement | null>(null)
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (autoScroll && containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }, [lines, autoScroll])
 
-  const startFlush = useCallback(() => {
+  const startFlush = React.useCallback(() => {
     if (timerRef.current) return
     timerRef.current = setInterval(() => {
       if (bufRef.current.length > 0) {
@@ -41,14 +35,14 @@ export const BotLogViewer: React.FC<BotLogViewerProps> = ({ active = false }: Bo
     }, 200)
   }, [])
 
-  const stopFlush = useCallback(() => {
+  const stopFlush = React.useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
     }
   }, [])
 
-  const connect = useCallback(() => {
+  const connect = React.useCallback(() => {
     if (wsRef.current) {
       wsRef.current.close()
       wsRef.current = null
@@ -104,7 +98,7 @@ export const BotLogViewer: React.FC<BotLogViewerProps> = ({ active = false }: Bo
       })
   }, [startFlush, stopFlush, t])
 
-  const disconnect = useCallback(() => {
+  const disconnect = React.useCallback(() => {
     if (wsRef.current) {
       wsRef.current.close(1000)
       wsRef.current = null
@@ -116,13 +110,13 @@ export const BotLogViewer: React.FC<BotLogViewerProps> = ({ active = false }: Bo
     })
   }, [stopFlush])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (active) void connect()
     else disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
 
-  useEffect(() => () => {
+  React.useEffect(() => () => {
     disconnect()
   }, [disconnect])
 

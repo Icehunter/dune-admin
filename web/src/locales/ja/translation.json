@@ -1312,7 +1312,11 @@
       "announceChannel": "アナウンスチャンネル ID",
       "announceChannelHint": "ボットのアナウンス用チャンネル（報酬、イベント）",
       "addRole": "ロールを追加…",
-      "rolesNotLoaded": "ボットを接続してロール名で検索"
+      "rolesNotLoaded": "ボットを接続してロール名で検索",
+      "setupStep1": "1. discord.com/developers/applications → New Application → Bot tab → Enable Bot → copy the token.",
+      "setupStep2": "2. OAuth2 → URL Generator → Scopes: bot + applications.commands → Bot Permissions: Send Messages → copy the URL and open it to invite the bot.",
+      "setupStep3": "3. Enable Developer Mode (Discord Settings → Advanced → Developer Mode) to unlock Copy ID by right-clicking servers and channels.",
+      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update."
     }
   },
   "storage": {

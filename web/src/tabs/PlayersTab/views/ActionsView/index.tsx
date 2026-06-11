@@ -1,14 +1,13 @@
-import type React from 'react'
-import { useState, useEffect, useRef } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tabs, toast } from '@heroui/react'
+import { toast } from '@heroui/react'
+import { Segment } from '@heroui-pro/react'
 import { useAtom, useSetAtom } from 'jotai'
 import { ConfirmDialog, Panel } from '../../../../dune-ui'
 import { ManageLocationsModal } from '../../modals/ManageLocationsModal'
 import { MapCoordPickerModal } from '../../modals/MapCoordPickerModal'
 import { ACTION_SECTIONS, type ActionSection } from '../../types'
 import { api } from '../../../../api/client'
-import type { Player } from '../../../../api/client'
 import {
   playerAtom, partitionsAtom, allPlayersAtom, charXPCurrentAtom, confirmAtom,
 } from './store'
@@ -21,14 +20,11 @@ import { AdminSection } from './sections/AdminSection'
 import { TagsSection } from './sections/TagsSection'
 import { HistorySection } from './sections/HistorySection'
 import { ExperimentalSection } from './sections/ExperimentalSection'
-
-interface ActionsViewProps {
-  player: Player
-}
+import type { ActionsViewProps } from './types'
 
 export const ActionsView: React.FC<ActionsViewProps> = ({ player }) => {
   const { t } = useTranslation()
-  const [section, setSection] = useState<ActionSection>('resources')
+  const [section, setSection] = React.useState<ActionSection>('resources')
 
   const setPlayerAtom = useSetAtom(playerAtom(player.id))
   const setPartitions = useSetAtom(partitionsAtom(player.id))
@@ -36,21 +32,21 @@ export const ActionsView: React.FC<ActionsViewProps> = ({ player }) => {
   const setCharXPCurrent = useSetAtom(charXPCurrentAtom(player.id))
   const [confirmPending, setConfirmPending] = useAtom(confirmAtom(player.id))
 
-  const [showManageLocations, setShowManageLocations] = useState(false)
-  const [showTeleportPicker, setShowTeleportPicker] = useState(false)
-  const [showSpawnPicker, setShowSpawnPicker] = useState(false)
-  const teleportPickerCb = useRef<(x: number, y: number, z: number) => void>(undefined)
-  const spawnPickerCb = useRef<(x: number, y: number, z: number) => void>(undefined)
+  const [showManageLocations, setShowManageLocations] = React.useState(false)
+  const [showTeleportPicker, setShowTeleportPicker] = React.useState(false)
+  const [showSpawnPicker, setShowSpawnPicker] = React.useState(false)
+  const teleportPickerCb = React.useRef<(x: number, y: number, z: number) => void>(undefined)
+  const spawnPickerCb = React.useRef<(x: number, y: number, z: number) => void>(undefined)
 
-  useEffect(() => {
+  React.useEffect(() => {
     setPlayerAtom(player)
   }, [player, setPlayerAtom])
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve().then(() => setSection('resources'))
   }, [player.id])
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve()
       .then(() => Promise.all([
         api.locations.list(),
@@ -68,23 +64,23 @@ export const ActionsView: React.FC<ActionsViewProps> = ({ player }) => {
   return (
     <>
       <div className="flex flex-row h-full min-h-0 gap-3">
-        <Panel className="shrink-0 p-0 overflow-hidden">
-          <Tabs
+        <Panel className="shrink-0 p-2 overflow-hidden">
+          {/* Vertical section nav. The Segment base style is a horizontal inline
+              row; flex-col + stretch stacks the items full-width to match the
+              previous vertical Tabs layout. */}
+          <Segment
             orientation="vertical"
+            aria-label="Actions sections"
             selectedKey={section}
             onSelectionChange={(k) => setSection(k as ActionSection)}
+            className="flex flex-col items-stretch w-44"
           >
-            <Tabs.ListContainer>
-              <Tabs.List aria-label="Actions sections">
-                {ACTION_SECTIONS.map((s) => (
-                  <Tabs.Tab key={s.key} id={s.key}>
-                    {t(s.label as never)}
-                    <Tabs.Indicator />
-                  </Tabs.Tab>
-                ))}
-              </Tabs.List>
-            </Tabs.ListContainer>
-          </Tabs>
+            {ACTION_SECTIONS.map((s) => (
+              <Segment.Item key={s.key} id={s.key} className="justify-start">
+                {t(s.label as never)}
+              </Segment.Item>
+            ))}
+          </Segment>
         </Panel>
 
         <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">

@@ -4,18 +4,30 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/bwmarrin/discordgo"
 )
 
-// globalDiscordSession is the active Discord gateway session. Set once by
-// startEmbeddedDiscordBotIfEnabled and never reassigned. Nil when the bot is
-// disabled or the token is missing.
-var globalDiscordSession *discordgo.Session
+var discordMu sync.RWMutex
 
-// globalDiscordGuildID is the guild ID from config, set alongside the session.
-// Used by handleGetDiscordRoles so it doesn't need to read the config directly.
+// globalDiscordSession and globalDiscordGuildID are set by the bot goroutine
+// and read by HTTP handlers; access must go through getDiscordState / setDiscordState.
+var globalDiscordSession *discordgo.Session
 var globalDiscordGuildID string
+
+func getDiscordState() (*discordgo.Session, string) {
+	discordMu.RLock()
+	defer discordMu.RUnlock()
+	return globalDiscordSession, globalDiscordGuildID
+}
+
+func setDiscordState(s *discordgo.Session, guildID string) {
+	discordMu.Lock()
+	defer discordMu.Unlock()
+	globalDiscordSession = s
+	globalDiscordGuildID = guildID
+}
 
 // discordBotEnabled returns the effective bot-enabled flag.
 // Missing yaml key → default off (Discord is opt-in unlike the market bot).
@@ -26,10 +38,10 @@ func discordBotEnabled(cfg appConfig) bool {
 	return *cfg.DiscordBotEnabled
 }
 
-// startEmbeddedDiscordBotIfEnabled opens a Discord gateway session, registers
-// guild-scoped slash commands, and attaches the interaction handler. Returns a
-// cancel func that cleanly closes the session, or nil when the bot is disabled
-// or token/guild are not configured.
+// startEmbeddedDiscordBotIfEnabled starts the Discord bot in the background
+// and returns a cancel func that cleanly closes the session on shutdown.
+// Returns nil when the bot is disabled or token/guild are not configured.
+// The gateway connection is established asynchronously so startup is not blocked.
 //
 // Mirrors startEmbeddedMarketBotIfEnabled (main.go) — outbound gateway WS,
 // so no public ingress is needed; works behind NAT.
@@ -46,10 +58,18 @@ func startEmbeddedDiscordBotIfEnabled(cfg appConfig) context.CancelFunc {
 		return nil
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	go discordConnect(ctx, cfg)
+	return cancel
+}
+
+// discordConnect opens the Discord gateway, runs post-open setup, then blocks
+// until ctx is cancelled. Runs in its own goroutine so startup is non-blocking.
+func discordConnect(ctx context.Context, cfg appConfig) {
 	dg, err := discordgo.New("Bot " + cfg.DiscordBotToken)
 	if err != nil {
 		fmt.Printf("discord: failed to create session: %v\n", err)
-		return nil
+		return
 	}
 
 	// Interactions (slash commands) are delivered over the gateway socket, so
@@ -68,14 +88,16 @@ func startEmbeddedDiscordBotIfEnabled(cfg appConfig) context.CancelFunc {
 
 	if err := dg.Open(); err != nil {
 		fmt.Printf("discord: failed to open gateway connection: %v\n", err)
-		return nil
+		return
+	}
+
+	if ctx.Err() != nil {
+		_ = dg.Close()
+		return
 	}
 
 	discordPostOpen(dg, cfg, dcfg)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go discordShutdownWatcher(ctx, dg)
-	return cancel
+	discordShutdownWatcher(ctx, dg)
 }
 
 // discordPostOpen runs non-fatal setup after the Discord gateway is open:
@@ -91,8 +113,7 @@ func discordPostOpen(dg *discordgo.Session, cfg appConfig, dcfg discordConfig) {
 		}
 	}
 
-	globalDiscordSession = dg
-	globalDiscordGuildID = cfg.DiscordGuildID
+	setDiscordState(dg, cfg.DiscordGuildID)
 	log.Printf("discord: bot connected (guild %s)", cfg.DiscordGuildID)
 
 	if dcfg.AnnounceChannelID != "" {
@@ -108,7 +129,7 @@ func discordShutdownWatcher(ctx context.Context, dg *discordgo.Session) {
 	if err := dg.Close(); err != nil {
 		log.Printf("discord: session close error: %v", err)
 	}
-	globalDiscordSession = nil
+	setDiscordState(nil, "")
 	log.Println("discord: bot disconnected")
 }
 
@@ -282,10 +303,11 @@ func postDiscordAnnouncement(channelID, message string) error {
 	if channelID == "" {
 		return nil
 	}
-	if globalDiscordSession == nil {
+	sess, _ := getDiscordState()
+	if sess == nil {
 		return fmt.Errorf("discord session not active")
 	}
-	_, err := globalDiscordSession.ChannelMessageSend(channelID, message)
+	_, err := sess.ChannelMessageSend(channelID, message)
 	return err
 }
 

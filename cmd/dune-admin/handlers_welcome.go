@@ -141,14 +141,10 @@ func seedWelcomeConfigFromYAML() error {
 	return nil
 }
 
-// validateActivePackages returns an error if any active package has invalid items,
-// or if no active packages are selected. Only called when enabled=true.
+// validateActivePackages validates items inside any active packages.
+// Empty active-package list is allowed (scanner just grants nothing).
 func validateActivePackages(rt welcomePackageRuntime) error {
-	activePkgs := rt.activePackages()
-	if len(activePkgs) == 0 {
-		return fmt.Errorf("select an active package version before enabling")
-	}
-	for _, pkg := range activePkgs {
+	for _, pkg := range rt.activePackages() {
 		if err := validateWelcomeItems(pkg.Items); err != nil {
 			return fmt.Errorf("package %q: %w", pkg.Version, err)
 		}

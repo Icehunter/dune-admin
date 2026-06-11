@@ -1,27 +1,26 @@
-import { useState } from 'react'
-import type { KeystoneRow } from '../../../../../api/client'
+import * as React from 'react'
+import { Button, Disclosure } from '@heroui/react'
+import type { KeystonesToggleProps } from './types'
 
-interface KeystonesToggleProps {
-  keystones: KeystoneRow[]
-}
-
-export function KeystonesToggle({ keystones }: KeystonesToggleProps) {
-  const [open, setOpen] = useState(false)
+export const KeystonesToggle: React.FC<KeystonesToggleProps> = ({ keystones }) => {
+  const [open, setOpen] = React.useState(false)
   return (
-    <div className="mt-0.5">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="text-xs text-muted/70 hover:text-muted flex items-center gap-0.5"
-      >
-        <span>{open ? '▾' : '▸'}</span>
-        {keystones.length}
-        {' '}
-        keystone
-        {keystones.length !== 1 ? 's' : ''}
-      </button>
-      {open && (
-        <div className="flex flex-col gap-0.5 mt-0.5">
+    <Disclosure className="mt-0.5" isExpanded={open} onExpandedChange={setOpen}>
+      <Disclosure.Heading>
+        <Button
+          slot="trigger"
+          variant="ghost"
+          className="text-xs text-muted/70 hover:text-muted flex items-center gap-0.5 px-0 h-auto min-w-0"
+        >
+          <Disclosure.Indicator />
+          {keystones.length}
+          {' '}
+          keystone
+          {keystones.length !== 1 ? 's' : ''}
+        </Button>
+      </Disclosure.Heading>
+      <Disclosure.Content>
+        <Disclosure.Body className="flex flex-col gap-0.5 mt-0.5">
           {keystones.map((k) => (
             <span key={k.id} className="text-xs font-mono text-muted">
               ↳
@@ -35,8 +34,8 @@ export function KeystonesToggle({ keystones }: KeystonesToggleProps) {
               )}
             </span>
           ))}
-        </div>
-      )}
-    </div>
+        </Disclosure.Body>
+      </Disclosure.Content>
+    </Disclosure>
   )
 }

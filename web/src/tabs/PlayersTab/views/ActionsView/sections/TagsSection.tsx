@@ -1,29 +1,29 @@
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
 import { Button } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { DataTable, Icon, LoadingState, SectionLabel } from '../../../../../dune-ui'
 import { DebouncedSearchField } from '../components/DebouncedSearchField'
 import { AddTagsPanel } from '../components/AddTagsPanel'
 import { api } from '../../../../../api/client'
-import type { Player } from '../../../../../api/client'
 import { busyAtom } from '../store'
 import { useRun } from '../hooks/useActions'
+import type { TagsSectionProps } from './types'
 
-interface TagsSectionProps { player: Player }
-
-export function TagsSection({ player }: TagsSectionProps) {
+export const TagsSection: React.FC<TagsSectionProps> = ({ player }) => {
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const run = useRun(player.id)
 
-  const [tags, setTags] = useState<string[]>([])
-  const [tagsLoaded, setTagsLoaded] = useState(false)
-  const [tagsLoading, setTagsLoading] = useState(false)
-  const [pendingTags, setPendingTags] = useState<string[]>([])
-  const [filterQuery, setFilterQuery] = useState('')
+  const [tags, setTags] = React.useState<string[]>([])
+  const [tagsLoaded, setTagsLoaded] = React.useState(false)
+  const [tagsLoading, setTagsLoading] = React.useState(false)
+  const [pendingTags, setPendingTags] = React.useState<string[]>([])
+  const [filterQuery, setFilterQuery] = React.useState('')
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve().then(() => {
       setTagsLoaded(false)
       setTags([])
@@ -31,7 +31,7 @@ export function TagsSection({ player }: TagsSectionProps) {
     })
   }, [player.id])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (tagsLoaded) return
     Promise.resolve()
       .then(() => setTagsLoading(true))
@@ -120,7 +120,7 @@ export function TagsSection({ player }: TagsSectionProps) {
                   onSearch={setFilterQuery}
                 />
               </div>
-              <DataTable<string, 'tag' | 'actions'>
+              <DataTable<{ id: string }, 'tag' | 'actions'>
                 aria-label={t('players.actions.tags.activeTagsLabel')}
                 className="min-h-0 max-h-full"
                 columns={[
@@ -131,23 +131,28 @@ export function TagsSection({ player }: TagsSectionProps) {
                   },
                   { key: 'actions', label: ' ', sortable: false, width: 60 },
                 ]}
-                rows={filteredActiveTags}
-                rowId={(tag) => tag}
+                rows={filteredActiveTags.map((tag) => ({ id: tag }))}
+                rowId={(r) => r.id}
                 initialSort={{ column: 'tag', direction: 'ascending' }}
-                sortValue={(tag) => tag}
+                sortValue={(r) => r.id}
                 emptyState={(
-                  <div className="py-8 text-center text-muted">
-                    {t('players.actions.tags.noTags')}
-                  </div>
+                  <EmptyState size="sm">
+                    <EmptyState.Header>
+                      <EmptyState.Media variant="icon">
+                        <IconifyIcon icon="gravity-ui:magnifier" className="size-5" />
+                      </EmptyState.Media>
+                      <EmptyState.Title>{t('players.actions.tags.noTags')}</EmptyState.Title>
+                    </EmptyState.Header>
+                  </EmptyState>
                 )}
-                renderCell={(tag, key) => {
-                  if (key === 'tag') return <span className="font-mono">{tag}</span>
+                renderCell={(r, key) => {
+                  if (key === 'tag') return <span className="font-mono">{r.id}</span>
                   return (
                     <Button
                       size="sm"
                       variant="danger-soft"
-                      aria-label={`Remove ${tag}`}
-                      onPress={() => handleRemoveTag(tag)}
+                      aria-label={`Remove ${r.id}`}
+                      onPress={() => handleRemoveTag(r.id)}
                     >
                       <Icon name="x" className="size-3" />
                     </Button>

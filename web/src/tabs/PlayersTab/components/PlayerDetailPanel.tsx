@@ -1,38 +1,29 @@
-import type React from 'react'
-import { useEffect, useState } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
-import type { Player, PlayerStats, SessionRecord, StatSnapshot } from '../../../api/client'
+import type { PlayerStats, SessionRecord, StatSnapshot } from '../../../api/client'
 import { Avatar } from '@heroui/react'
 import { Icon, LoadingState, Panel, SectionLabel } from '../../../dune-ui'
 import { DiscordBadge } from './DiscordBadge'
 import { SolarisChart } from './SolarisChart'
 import { SessionChart } from './SessionChart'
 import { XPChart } from './XPChart'
+import type { PlayerDetailPanelProps, StatRowProps } from './types'
 
-interface PlayerDetailPanelProps {
-  player: Player
-}
-
-function fmtSolaris(n: number): string {
+const fmtSolaris = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
 }
 
-function fmtDuration(s: number): string {
+const fmtDuration = (s: number): string => {
   if (s <= 0) return '—'
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
-interface StatRowProps {
-  label: string
-  value: string | number
-}
-
-function StatRow({ label, value }: StatRowProps) {
+const StatRow: React.FC<StatRowProps> = ({ label, value }) => {
   return (
     <div className="flex items-center justify-between py-1 border-b border-border/30 last:border-0">
       <span className="text-sm text-muted">{label}</span>
@@ -43,12 +34,12 @@ function StatRow({ label, value }: StatRowProps) {
 
 export const PlayerDetailPanel: React.FC<PlayerDetailPanelProps> = ({ player }) => {
   const { t } = useTranslation()
-  const [stats, setStats] = useState<PlayerStats | null>(null)
-  const [sessions, setSessions] = useState<SessionRecord[]>([])
-  const [snapshots, setSnapshots] = useState<StatSnapshot[]>([])
-  const [loading, setLoading] = useState(false)
+  const [stats, setStats] = React.useState<PlayerStats | null>(null)
+  const [sessions, setSessions] = React.useState<SessionRecord[]>([])
+  const [snapshots, setSnapshots] = React.useState<StatSnapshot[]>([])
+  const [loading, setLoading] = React.useState(false)
 
-  useEffect(() => {
+  React.useEffect(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => Promise.all([

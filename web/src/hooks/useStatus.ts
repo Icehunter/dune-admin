@@ -1,22 +1,15 @@
-import { useState, useEffect } from 'react'
+import * as React from 'react'
 import { api } from '../api/client'
 import type { Status } from '../api/client'
+import type { ConnState, StatusResult } from './types'
 
-// ConnState distinguishes the initial load from a hard "never reached the
-// backend" failure, so the UI can show a setup screen on real connection
-// failure without flickering during the first poll.
-export type ConnState = 'loading' | 'connected' | 'error'
+export type { ConnState, StatusResult }
 
-export interface StatusResult {
-  status: Status | null
-  state: ConnState
-}
+export const useStatus = (): StatusResult => {
+  const [status, setStatus] = React.useState<Status | null>(null)
+  const [state, setState] = React.useState<ConnState>('loading')
 
-export function useStatus(): StatusResult {
-  const [status, setStatus] = useState<Status | null>(null)
-  const [state, setState] = useState<ConnState>('loading')
-
-  useEffect(() => {
+  React.useEffect(() => {
     let everConnected = false
     const poll = async () => {
       try {

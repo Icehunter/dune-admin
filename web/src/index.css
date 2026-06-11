@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@heroui/styles";
+@import "@heroui-pro/react/css";
 
 /* unicode-range restricts Duneway to the Latin/Cyrillic blocks it actually covers.
    Symbols, arrows, dingbats (U+2000+) fall through to the system font immediately,
@@ -81,7 +82,7 @@
   /* Base — surfaces use the DARKER half of the palette */
   --background: #0d0b07; /* page */
   --foreground: #e8dcc8;
-  --muted: #8a7a60;
+  --muted: #c0a872; /* spice default — amber warm enough to read over the panel glow; other themes override via theme.ts */
 
   /* Surfaces (darker) */
   --surface: #1a1610; /* cards, tables, modal body */
@@ -91,6 +92,10 @@
   --overlay: #1a1610; /* modal body */
   --overlay-foreground: #e8dcc8;
 
+  /* Pro Segment navigation — match surface so the pill sits on a dark base */
+  --segment: var(--surface); /* #1a1610 */
+  --segment-foreground: var(--foreground);
+
   --default: #1a1610;
   --default-foreground: #e8dcc8;
 
@@ -99,6 +104,61 @@
   --accent-foreground: #0d0b07;
   --focus: #f0a830;
   --link: #f0a830;
+
+  /* Secondary accent — every house is DUAL-toned: a counterpoint hue that
+     appears in trim sweeps, plate echoes, and ornaments alongside --accent.
+     Spice = amber/cyan, Atreides = green/gold, Harkonnen = red/steel,
+     Fremen = blue/moonlight. Theme presets override this with --accent. */
+  --accent-secondary: #3aa7d9;
+
+  /* ── HUD geometry — angular clip shapes shared by panels/buttons/fields.
+     Panels are chamfered plates: large top-left / bottom-right chamfers with
+     small opposing ones — industrial, and gentle enough that edge-hugging
+     content survives. min() guards keep cuts proportional on small elements.
+     The 1px border comes from layering: the element paints the trim gradient,
+     ::before sits at inset:1px and re-applies the SAME polygon — coordinates
+     resolve against the smaller box, so the rim follows every edge with no
+     calc-rounding seams (the source of the stray-pixel artifact). */
+  /* Fixed-px cuts — % guards resolve against width for x and height for y,
+     which skews the chamfer angle off 45° on wide-short panels (every panel
+     ended up with a different angle). Panels are never small enough to need
+     the guard; popovers/buttons/fields use their own smaller clips.
+     Shape: 20px chamfers on top-left/bottom-right; the top-right and
+     bottom-left edges carry the demo's stepped ledge (10px recess with a
+     45° step set 48px in from the corner). Content padding of 16px clears
+     the 10px steps. */
+  --hud-clip-panel: polygon(
+    20px 0,
+    calc(100% - 48px) 0,
+    calc(100% - 34px) 10px,
+    100% 10px,
+    100% calc(100% - 20px),
+    calc(100% - 20px) 100%,
+    48px 100%,
+    34px calc(100% - 10px),
+    0 calc(100% - 10px),
+    0 20px
+  );
+  /* Buttons and fields share one cut size: form rows mix the two side by
+     side, and mismatched or oversized cuts (10px on a 38px-tall control)
+     made flush-aligned edges read as misaligned. */
+  --hud-clip-btn: polygon(
+    min(8px, 28%) 0,
+    100% 0,
+    100% calc(100% - min(8px, 28%)),
+    calc(100% - min(8px, 28%)) 100%,
+    0 100%,
+    0 min(8px, 28%)
+  );
+  --hud-clip-field: var(--hud-clip-btn);
+
+  /* Dual-tone hairlines along the straight edge runs of plates — the corner
+     SVG artwork frames the corners; these carry the line between them. */
+  --hud-edge-lines:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 50%, transparent), color-mix(in srgb, var(--accent-secondary) 50%, transparent)) 50% 0 / max(0px, calc(100% - 142px)) 1px no-repeat,
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-secondary) 40%, transparent), color-mix(in srgb, var(--accent) 40%, transparent)) 50% 100% / max(0px, calc(100% - 142px)) 1px no-repeat,
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 45%, transparent), color-mix(in srgb, var(--accent-secondary) 38%, transparent)) 0 50% / 1px max(0px, calc(100% - 142px)) no-repeat,
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-secondary) 38%, transparent), color-mix(in srgb, var(--accent) 45%, transparent)) 100% 50% / 1px max(0px, calc(100% - 142px)) no-repeat;
 
   /* Form fields — recessed bg + BRIGHTER border for emphasis */
   --field-background: #0d0b07;
@@ -155,6 +215,81 @@
   --color-border: var(--border);
   --color-danger: var(--danger);
   --color-success: var(--success);
+
+  /* Per-house structural styling. applyTheme() sets data-theme on <html>;
+     the corner-art and backdrop-pattern hooks below carry the SHAPES per
+     house (colours come from the token overrides above). Defaults = spice:
+     copper machinery corners with marching amber/cyan ants, circuit traces
+     with pulsing nodes, and a rotating dashed arc fragment.
+     NOTE: do not write the literal property names inside comments here —
+     generator scripts match on them. */
+  --hud-corner-art:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.85%27%20stroke-width%3D%272%27%20d%3D%27M8%2094%20L8%2030%20L30%208%20L102%208%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.42%27%20stroke-width%3D%271.3%27%20d%3D%27M18%2084%20L18%2034%20L34%2018%20L92%2018%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.68%27%20stroke-width%3D%271.4%27%20d%3D%27M20%2074%20L40%2054%20L62%2054%20L78%2038%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.48%27%20d%3D%27M16%20102%20L48%20102%20L62%20118%27/%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2736%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2752%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20begin%3D%270.5s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2768%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20begin%3D%271s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Cpath%20stroke%3D%27%233aa7d9%27%20stroke-opacity%3D%27.38%27%20stroke-width%3D%271.2%27%20stroke-dasharray%3D%278%2012%27%20d%3D%27M22%2090%20Q38%2072%2054%2090%20Q70%20108%2084%2090%27%3E%3Canimate%20attributeName%3D%27stroke-dashoffset%27%20values%3D%270;-40%27%20dur%3D%273.2s%27%20repeatCount%3D%27indefinite%27/%3E%3C/path%3E%3C/g%3E%3C/svg%3E") 0 0 / 96px 96px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(90%2075%2075)%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.85%27%20stroke-width%3D%272%27%20d%3D%27M8%2094%20L8%2030%20L30%208%20L102%208%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.42%27%20stroke-width%3D%271.3%27%20d%3D%27M18%2084%20L18%2034%20L34%2018%20L92%2018%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.68%27%20stroke-width%3D%271.4%27%20d%3D%27M20%2074%20L40%2054%20L62%2054%20L78%2038%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.48%27%20d%3D%27M16%20102%20L48%20102%20L62%20118%27/%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2736%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2752%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20begin%3D%270.5s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2768%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20begin%3D%271s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Cpath%20stroke%3D%27%233aa7d9%27%20stroke-opacity%3D%27.38%27%20stroke-width%3D%271.2%27%20stroke-dasharray%3D%278%2012%27%20d%3D%27M22%2090%20Q38%2072%2054%2090%20Q70%20108%2084%2090%27%3E%3Canimate%20attributeName%3D%27stroke-dashoffset%27%20values%3D%270;-40%27%20dur%3D%273.2s%27%20repeatCount%3D%27indefinite%27/%3E%3C/path%3E%3C/g%3E%3C/svg%3E") 100% 0 / 96px 96px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(180%2075%2075)%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.85%27%20stroke-width%3D%272%27%20d%3D%27M8%2094%20L8%2030%20L30%208%20L102%208%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.42%27%20stroke-width%3D%271.3%27%20d%3D%27M18%2084%20L18%2034%20L34%2018%20L92%2018%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.68%27%20stroke-width%3D%271.4%27%20d%3D%27M20%2074%20L40%2054%20L62%2054%20L78%2038%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.48%27%20d%3D%27M16%20102%20L48%20102%20L62%20118%27/%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2736%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2752%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20begin%3D%270.5s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2768%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20begin%3D%271s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Cpath%20stroke%3D%27%233aa7d9%27%20stroke-opacity%3D%27.38%27%20stroke-width%3D%271.2%27%20stroke-dasharray%3D%278%2012%27%20d%3D%27M22%2090%20Q38%2072%2054%2090%20Q70%20108%2084%2090%27%3E%3Canimate%20attributeName%3D%27stroke-dashoffset%27%20values%3D%270;-40%27%20dur%3D%273.2s%27%20repeatCount%3D%27indefinite%27/%3E%3C/path%3E%3C/g%3E%3C/svg%3E") 100% 100% / 96px 96px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(270%2075%2075)%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.85%27%20stroke-width%3D%272%27%20d%3D%27M8%2094%20L8%2030%20L30%208%20L102%208%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.42%27%20stroke-width%3D%271.3%27%20d%3D%27M18%2084%20L18%2034%20L34%2018%20L92%2018%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.68%27%20stroke-width%3D%271.4%27%20d%3D%27M20%2074%20L40%2054%20L62%2054%20L78%2038%27/%3E%3Cpath%20stroke%3D%27%23cf8b35%27%20stroke-opacity%3D%27.48%27%20d%3D%27M16%20102%20L48%20102%20L62%20118%27/%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2736%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2752%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20begin%3D%270.5s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23f0a830%27%20fill-opacity%3D%27.65%27%20cx%3D%2768%27%20cy%3D%2728%27%20r%3D%273%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.32;.88;.32%27%20dur%3D%272.6s%27%20begin%3D%271s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Cpath%20stroke%3D%27%233aa7d9%27%20stroke-opacity%3D%27.38%27%20stroke-width%3D%271.2%27%20stroke-dasharray%3D%278%2012%27%20d%3D%27M22%2090%20Q38%2072%2054%2090%20Q70%20108%2084%2090%27%3E%3Canimate%20attributeName%3D%27stroke-dashoffset%27%20values%3D%270;-40%27%20dur%3D%273.2s%27%20repeatCount%3D%27indefinite%27/%3E%3C/path%3E%3C/g%3E%3C/svg%3E") 0 100% / 96px 96px no-repeat;
+  /* Copper sheen + fine brushed-metal striations on the plate surface. */
+  --hud-material:
+    radial-gradient(circle at 12% 24%, rgba(255, 171, 82, 0.16), transparent 30%),
+    radial-gradient(circle at 82% 72%, rgba(90, 42, 8, 0.5), transparent 40%),
+    linear-gradient(115deg, rgba(255, 230, 164, 0.07), transparent 18%, rgba(0, 0, 0, 0.16) 52%, rgba(255, 180, 80, 0.07)),
+    repeating-linear-gradient(106deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 9px);
+  --hud-backdrop-pattern: repeating-linear-gradient(115deg, transparent 0 18px, color-mix(in srgb, var(--accent) 3%, transparent) 18px 19px, transparent 19px 38px);
+  /* Spice — offset under-plates: warm amber low-right, cool cyan up-left. */
+  --hud-plate-echo: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 10%, transparent));
+}
+
+/* Atreides — carved stone: frame seams in house green with gold inlay lines,
+   a slow-pulsing chip set into the rock. Calm, monumental. */
+.dark[data-theme="atreides"] {
+  --hud-corner-art:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%2333b572%27%20stroke-opacity%3D%27.8%27%20stroke-width%3D%272%27%20d%3D%27M8%2092%20L8%2034%20L34%208%20L92%208%27/%3E%3Cpath%20stroke%3D%27%2333b572%27%20stroke-opacity%3D%27.35%27%20stroke-width%3D%271.2%27%20d%3D%27M16%2082%20L16%2038%20L38%2016%20L80%2016%27/%3E%3Cpath%20stroke%3D%27%23d9a43b%27%20stroke-opacity%3D%27.65%27%20stroke-width%3D%271.6%27%20d%3D%27M14%2070%20L34%2052%20L52%2056%20L65%2044%20L82%2050%27/%3E%3Cpath%20stroke%3D%27%23d9a43b%27%20stroke-opacity%3D%27.28%27%20stroke-width%3D%271%27%20d%3D%27M22%2088%20L42%2068%20L58%2072%27/%3E%3Ccircle%20fill%3D%27%23d9a43b%27%20fill-opacity%3D%27.7%27%20cx%3D%2757%27%20cy%3D%2769%27%20r%3D%274%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.3;.85;.3%27%20dur%3D%273.8s%27%20repeatCount%3D%27indefinite%27/%3E%3Canimate%20attributeName%3D%27r%27%20values%3D%273.5;4.5;3.5%27%20dur%3D%273.8s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23d9a43b%27%20fill-opacity%3D%27.6%27%20cx%3D%2744%27%20cy%3D%2729%27%20r%3D%272.4%27/%3E%3Cpath%20stroke%3D%27%23fff8e0%27%20stroke-opacity%3D%270%27%20stroke-width%3D%271%27%20d%3D%27M42%2027%20L46%2031%27%3E%3Canimate%20attributeName%3D%27stroke-opacity%27%20values%3D%270;.35;0%27%20dur%3D%275s%27%20begin%3D%271.2s%27%20repeatCount%3D%27indefinite%27/%3E%3C/path%3E%3C/g%3E%3C/svg%3E") 0 0 / 96px 96px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(90%2075%2075)%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%2333b572%27%20stroke-opacity%3D%27.8%27%20stroke-width%3D%272%27%20d%3D%27M8%2092%20L8%2034%20L34%208%20L92%208%27/%3E%3Cpath%20stroke%3D%27%2333b572%27%20stroke-opacity%3D%27.35%27%20stroke-width%3D%271.2%27%20d%3D%27M16%2082%20L16%2038%20L38%2016%20L80%2016%27/%3E%3Cpath%20stroke%3D%27%23d9a43b%27%20stroke-opacity%3D%27.65%27%20stroke-width%3D%271.6%27%20d%3D%27M14%2070%20L34%2052%20L52%2056%20L65%2044%20L82%2050%27/%3E%3Cpath%20stroke%3D%27%23d9a43b%27%20stroke-opacity%3D%27.28%27%20stroke-width%3D%271%27%20d%3D%27M22%2088%20L42%2068%20L58%2072%27/%3E%3Ccircle%20fill%3D%27%23d9a43b%27%20fill-opacity%3D%27.7%27%20cx%3D%2757%27%20cy%3D%2769%27%20r%3D%274%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.3;.85;.3%27%20dur%3D%273.8s%27%20repeatCount%3D%27indefinite%27/%3E%3Canimate%20attributeName%3D%27r%27%20values%3D%273.5;4.5;3.5%27%20dur%3D%273.8s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23d9a43b%27%20fill-opacity%3D%27.6%27%20cx%3D%2744%27%20cy%3D%2729%27%20r%3D%272.4%27/%3E%3Cpath%20stroke%3D%27%23fff8e0%27%20stroke-opacity%3D%270%27%20stroke-width%3D%271%27%20d%3D%27M42%2027%20L46%2031%27%3E%3Canimate%20attributeName%3D%27stroke-opacity%27%20values%3D%270;.35;0%27%20dur%3D%275s%27%20begin%3D%271.2s%27%20repeatCount%3D%27indefinite%27/%3E%3C/path%3E%3C/g%3E%3C/svg%3E") 100% 0 / 96px 96px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(180%2075%2075)%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%2333b572%27%20stroke-opacity%3D%27.8%27%20stroke-width%3D%272%27%20d%3D%27M8%2092%20L8%2034%20L34%208%20L92%208%27/%3E%3Cpath%20stroke%3D%27%2333b572%27%20stroke-opacity%3D%27.35%27%20stroke-width%3D%271.2%27%20d%3D%27M16%2082%20L16%2038%20L38%2016%20L80%2016%27/%3E%3Cpath%20stroke%3D%27%23d9a43b%27%20stroke-opacity%3D%27.65%27%20stroke-width%3D%271.6%27%20d%3D%27M14%2070%20L34%2052%20L52%2056%20L65%2044%20L82%2050%27/%3E%3Cpath%20stroke%3D%27%23d9a43b%27%20stroke-opacity%3D%27.28%27%20stroke-width%3D%271%27%20d%3D%27M22%2088%20L42%2068%20L58%2072%27/%3E%3Ccircle%20fill%3D%27%23d9a43b%27%20fill-opacity%3D%27.7%27%20cx%3D%2757%27%20cy%3D%2769%27%20r%3D%274%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.3;.85;.3%27%20dur%3D%273.8s%27%20repeatCount%3D%27indefinite%27/%3E%3Canimate%20attributeName%3D%27r%27%20values%3D%273.5;4.5;3.5%27%20dur%3D%273.8s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23d9a43b%27%20fill-opacity%3D%27.6%27%20cx%3D%2744%27%20cy%3D%2729%27%20r%3D%272.4%27/%3E%3Cpath%20stroke%3D%27%23fff8e0%27%20stroke-opacity%3D%270%27%20stroke-width%3D%271%27%20d%3D%27M42%2027%20L46%2031%27%3E%3Canimate%20attributeName%3D%27stroke-opacity%27%20values%3D%270;.35;0%27%20dur%3D%275s%27%20begin%3D%271.2s%27%20repeatCount%3D%27indefinite%27/%3E%3C/path%3E%3C/g%3E%3C/svg%3E") 100% 100% / 96px 96px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(270%2075%2075)%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%2333b572%27%20stroke-opacity%3D%27.8%27%20stroke-width%3D%272%27%20d%3D%27M8%2092%20L8%2034%20L34%208%20L92%208%27/%3E%3Cpath%20stroke%3D%27%2333b572%27%20stroke-opacity%3D%27.35%27%20stroke-width%3D%271.2%27%20d%3D%27M16%2082%20L16%2038%20L38%2016%20L80%2016%27/%3E%3Cpath%20stroke%3D%27%23d9a43b%27%20stroke-opacity%3D%27.65%27%20stroke-width%3D%271.6%27%20d%3D%27M14%2070%20L34%2052%20L52%2056%20L65%2044%20L82%2050%27/%3E%3Cpath%20stroke%3D%27%23d9a43b%27%20stroke-opacity%3D%27.28%27%20stroke-width%3D%271%27%20d%3D%27M22%2088%20L42%2068%20L58%2072%27/%3E%3Ccircle%20fill%3D%27%23d9a43b%27%20fill-opacity%3D%27.7%27%20cx%3D%2757%27%20cy%3D%2769%27%20r%3D%274%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.3;.85;.3%27%20dur%3D%273.8s%27%20repeatCount%3D%27indefinite%27/%3E%3Canimate%20attributeName%3D%27r%27%20values%3D%273.5;4.5;3.5%27%20dur%3D%273.8s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20fill%3D%27%23d9a43b%27%20fill-opacity%3D%27.6%27%20cx%3D%2744%27%20cy%3D%2729%27%20r%3D%272.4%27/%3E%3Cpath%20stroke%3D%27%23fff8e0%27%20stroke-opacity%3D%270%27%20stroke-width%3D%271%27%20d%3D%27M42%2027%20L46%2031%27%3E%3Canimate%20attributeName%3D%27stroke-opacity%27%20values%3D%270;.35;0%27%20dur%3D%275s%27%20begin%3D%271.2s%27%20repeatCount%3D%27indefinite%27/%3E%3C/path%3E%3C/g%3E%3C/svg%3E") 0 100% / 96px 96px no-repeat;
+  /* Stone: faint strata striations and chisel shadow. */
+  --hud-material:
+    repeating-linear-gradient(14deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 11px),
+    repeating-linear-gradient(103deg, rgba(0, 0, 0, 0.1) 0 2px, transparent 2px 26px);
+  --hud-backdrop-pattern: repeating-linear-gradient(90deg, transparent 0 30px, color-mix(in srgb, var(--accent) 3%, transparent) 30px 31px, transparent 31px 60px);
+  /* Atreides — delicate twin plate, green with a gold underline. */
+  --hud-plate-echo: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 10%, transparent));
+}
+
+/* Harkonnen — black shiny metal: heavy red frame braces, steel inner rail,
+   pulsing vent slits and a glinting weld seam. */
+.dark[data-theme="harkonnen"] {
+  --hud-corner-art:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.85%27%20stroke-width%3D%272%27%20d%3D%27M8%2092%20L8%2028%20L28%208%20L98%208%27/%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.7%27%20stroke-width%3D%271.5%27%20d%3D%27M8%2084%20L26%2066%20L26%208%27/%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.4%27%20stroke-width%3D%271%27%20d%3D%27M14%2084%20L32%2066%20L32%208%27/%3E%3Cpath%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.28%27%20stroke-width%3D%271%27%20d%3D%27M18%2088%20L18%2034%20L34%2018%20L90%2018%27/%3E%3Cpath%20stroke%3D%27none%27%20fill%3D%27%23232830%27%20fill-opacity%3D%27.6%27%20d%3D%27M8%2056%20L8%2028%20L28%208%20L56%208%20L48%2016%20L20%2016%20L16%2020%20L16%2048%20Z%27/%3E%3Crect%20x%3D%2736%27%20y%3D%2722%27%20width%3D%277%27%20height%3D%2722%27%20fill%3D%27%23cf2b2b%27%20fill-opacity%3D%27.55%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.25;.75;.25%27%20dur%3D%272.4s%27%20repeatCount%3D%27indefinite%27/%3E%3C/rect%3E%3Crect%20x%3D%2746%27%20y%3D%2722%27%20width%3D%275%27%20height%3D%2716%27%20fill%3D%27%239aa3ad%27%20fill-opacity%3D%27.28%27/%3E%3Cline%20x1%3D%2714%27%20y1%3D%2742%27%20x2%3D%2742%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.18%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3Cline%20x1%3D%2714%27%20y1%3D%2756%27%20x2%3D%2756%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.12%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20begin%3D%270.8s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3Cline%20x1%3D%2714%27%20y1%3D%2770%27%20x2%3D%2770%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.08%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20begin%3D%271.6s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3C/g%3E%3C/svg%3E") 0 0 / 96px 96px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(90%2075%2075)%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.85%27%20stroke-width%3D%272%27%20d%3D%27M8%2092%20L8%2028%20L28%208%20L98%208%27/%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.7%27%20stroke-width%3D%271.5%27%20d%3D%27M8%2084%20L26%2066%20L26%208%27/%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.4%27%20stroke-width%3D%271%27%20d%3D%27M14%2084%20L32%2066%20L32%208%27/%3E%3Cpath%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.28%27%20stroke-width%3D%271%27%20d%3D%27M18%2088%20L18%2034%20L34%2018%20L90%2018%27/%3E%3Cpath%20stroke%3D%27none%27%20fill%3D%27%23232830%27%20fill-opacity%3D%27.6%27%20d%3D%27M8%2056%20L8%2028%20L28%208%20L56%208%20L48%2016%20L20%2016%20L16%2020%20L16%2048%20Z%27/%3E%3Crect%20x%3D%2736%27%20y%3D%2722%27%20width%3D%277%27%20height%3D%2722%27%20fill%3D%27%23cf2b2b%27%20fill-opacity%3D%27.55%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.25;.75;.25%27%20dur%3D%272.4s%27%20repeatCount%3D%27indefinite%27/%3E%3C/rect%3E%3Crect%20x%3D%2746%27%20y%3D%2722%27%20width%3D%275%27%20height%3D%2716%27%20fill%3D%27%239aa3ad%27%20fill-opacity%3D%27.28%27/%3E%3Cline%20x1%3D%2714%27%20y1%3D%2742%27%20x2%3D%2742%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.18%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3Cline%20x1%3D%2714%27%20y1%3D%2756%27%20x2%3D%2756%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.12%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20begin%3D%270.8s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3Cline%20x1%3D%2714%27%20y1%3D%2770%27%20x2%3D%2770%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.08%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20begin%3D%271.6s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3C/g%3E%3C/svg%3E") 100% 0 / 96px 96px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(180%2075%2075)%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.85%27%20stroke-width%3D%272%27%20d%3D%27M8%2092%20L8%2028%20L28%208%20L98%208%27/%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.7%27%20stroke-width%3D%271.5%27%20d%3D%27M8%2084%20L26%2066%20L26%208%27/%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.4%27%20stroke-width%3D%271%27%20d%3D%27M14%2084%20L32%2066%20L32%208%27/%3E%3Cpath%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.28%27%20stroke-width%3D%271%27%20d%3D%27M18%2088%20L18%2034%20L34%2018%20L90%2018%27/%3E%3Cpath%20stroke%3D%27none%27%20fill%3D%27%23232830%27%20fill-opacity%3D%27.6%27%20d%3D%27M8%2056%20L8%2028%20L28%208%20L56%208%20L48%2016%20L20%2016%20L16%2020%20L16%2048%20Z%27/%3E%3Crect%20x%3D%2736%27%20y%3D%2722%27%20width%3D%277%27%20height%3D%2722%27%20fill%3D%27%23cf2b2b%27%20fill-opacity%3D%27.55%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.25;.75;.25%27%20dur%3D%272.4s%27%20repeatCount%3D%27indefinite%27/%3E%3C/rect%3E%3Crect%20x%3D%2746%27%20y%3D%2722%27%20width%3D%275%27%20height%3D%2716%27%20fill%3D%27%239aa3ad%27%20fill-opacity%3D%27.28%27/%3E%3Cline%20x1%3D%2714%27%20y1%3D%2742%27%20x2%3D%2742%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.18%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3Cline%20x1%3D%2714%27%20y1%3D%2756%27%20x2%3D%2756%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.12%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20begin%3D%270.8s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3Cline%20x1%3D%2714%27%20y1%3D%2770%27%20x2%3D%2770%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.08%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20begin%3D%271.6s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3C/g%3E%3C/svg%3E") 100% 100% / 96px 96px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(270%2075%2075)%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.85%27%20stroke-width%3D%272%27%20d%3D%27M8%2092%20L8%2028%20L28%208%20L98%208%27/%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.7%27%20stroke-width%3D%271.5%27%20d%3D%27M8%2084%20L26%2066%20L26%208%27/%3E%3Cpath%20stroke%3D%27%23cf2b2b%27%20stroke-opacity%3D%27.4%27%20stroke-width%3D%271%27%20d%3D%27M14%2084%20L32%2066%20L32%208%27/%3E%3Cpath%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.28%27%20stroke-width%3D%271%27%20d%3D%27M18%2088%20L18%2034%20L34%2018%20L90%2018%27/%3E%3Cpath%20stroke%3D%27none%27%20fill%3D%27%23232830%27%20fill-opacity%3D%27.6%27%20d%3D%27M8%2056%20L8%2028%20L28%208%20L56%208%20L48%2016%20L20%2016%20L16%2020%20L16%2048%20Z%27/%3E%3Crect%20x%3D%2736%27%20y%3D%2722%27%20width%3D%277%27%20height%3D%2722%27%20fill%3D%27%23cf2b2b%27%20fill-opacity%3D%27.55%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.25;.75;.25%27%20dur%3D%272.4s%27%20repeatCount%3D%27indefinite%27/%3E%3C/rect%3E%3Crect%20x%3D%2746%27%20y%3D%2722%27%20width%3D%275%27%20height%3D%2716%27%20fill%3D%27%239aa3ad%27%20fill-opacity%3D%27.28%27/%3E%3Cline%20x1%3D%2714%27%20y1%3D%2742%27%20x2%3D%2742%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.18%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3Cline%20x1%3D%2714%27%20y1%3D%2756%27%20x2%3D%2756%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.12%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20begin%3D%270.8s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3Cline%20x1%3D%2714%27%20y1%3D%2770%27%20x2%3D%2770%27%20y2%3D%2714%27%20stroke%3D%27%239aa3ad%27%20stroke-opacity%3D%27.08%27%20stroke-width%3D%271%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;6%206;0%200%27%20dur%3D%274s%27%20begin%3D%271.6s%27%20repeatCount%3D%27indefinite%27/%3E%3C/line%3E%3C/g%3E%3C/svg%3E") 0 100% / 96px 96px no-repeat;
+  /* Glossy black: hard specular streak and top sheen. */
+  --hud-material:
+    linear-gradient(112deg, transparent 0 18%, rgba(255, 255, 255, 0.045) 45%, rgba(255, 255, 255, 0.012) 62%, transparent 82%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 22%);
+  --hud-backdrop-pattern: repeating-linear-gradient(0deg, transparent 0 20px, color-mix(in srgb, var(--accent) 4%, transparent) 20px 22px, transparent 22px 42px);
+  /* Harkonnen — massive red under-slab with a steel echo up-left. */
+  --hud-plate-echo: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 10%, transparent));
+}
+
+/* Fremen — mini solar systems: orbital rings (outer ring slowly rotating,
+   dashed), a pulsing sun and pale moons at every corner. */
+.dark[data-theme="fremen"] {
+  /* Circular house language: the plate silhouette is rounded (matching the
+     17px arc of the corner frame strokes) instead of the angular chamfer —
+     a square surface corner behind a round frame read as broken. */
+  --hud-clip-panel: inset(0 round 17px);
+  --hud-corner-art:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%234ea3e8%27%20stroke-opacity%3D%27.75%27%20stroke-width%3D%272.1%27%20d%3D%27M2%20150%20L2%2038%20A36%2036%200%200%201%2038%202%20L150%202%27/%3E%3Ccircle%20stroke%3D%27%239ff4ff%27%20stroke-opacity%3D%27.25%27%20stroke-dasharray%3D%273%206%27%20cx%3D%2727%27%20cy%3D%2727%27%20r%3D%2715%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%270%2027%2027%27%20to%3D%27360%2027%2027%27%20dur%3D%2722s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20cx%3D%2727%27%20cy%3D%2727%27%20r%3D%272.8%27%20fill%3D%27%23bdd400%27%20fill-opacity%3D%27.75%27%20stroke%3D%27none%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.4;.9;.4%27%20dur%3D%273s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Cg%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%270%2027%2027%27%20to%3D%27360%2027%2027%27%20dur%3D%2711s%27%20repeatCount%3D%27indefinite%27/%3E%3Ccircle%20cx%3D%2738%27%20cy%3D%2727%27%20r%3D%271.8%27%20fill%3D%27%239ff4ff%27%20fill-opacity%3D%27.6%27%20stroke%3D%27none%27/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 0 0 / 72px 72px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(90%2075%2075)%27%3E%3Cg%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%234ea3e8%27%20stroke-opacity%3D%27.75%27%20stroke-width%3D%272.1%27%20d%3D%27M2%20150%20L2%2038%20A36%2036%200%200%201%2038%202%20L150%202%27/%3E%3Ccircle%20stroke%3D%27%239ff4ff%27%20stroke-opacity%3D%27.25%27%20stroke-dasharray%3D%273%206%27%20cx%3D%2727%27%20cy%3D%2727%27%20r%3D%2715%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%270%2027%2027%27%20to%3D%27360%2027%2027%27%20dur%3D%2722s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20cx%3D%2727%27%20cy%3D%2727%27%20r%3D%272.8%27%20fill%3D%27%23bdd400%27%20fill-opacity%3D%27.75%27%20stroke%3D%27none%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.4;.9;.4%27%20dur%3D%273s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Cg%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%270%2027%2027%27%20to%3D%27360%2027%2027%27%20dur%3D%2711s%27%20repeatCount%3D%27indefinite%27/%3E%3Ccircle%20cx%3D%2738%27%20cy%3D%2727%27%20r%3D%271.8%27%20fill%3D%27%239ff4ff%27%20fill-opacity%3D%27.6%27%20stroke%3D%27none%27/%3E%3C/g%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 100% 0 / 72px 72px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(180%2075%2075)%27%3E%3Cg%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%234ea3e8%27%20stroke-opacity%3D%27.75%27%20stroke-width%3D%272.1%27%20d%3D%27M2%20150%20L2%2038%20A36%2036%200%200%201%2038%202%20L150%202%27/%3E%3Ccircle%20stroke%3D%27%239ff4ff%27%20stroke-opacity%3D%27.25%27%20stroke-dasharray%3D%273%206%27%20cx%3D%2727%27%20cy%3D%2727%27%20r%3D%2715%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%270%2027%2027%27%20to%3D%27360%2027%2027%27%20dur%3D%2722s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20cx%3D%2727%27%20cy%3D%2727%27%20r%3D%272.8%27%20fill%3D%27%23bdd400%27%20fill-opacity%3D%27.75%27%20stroke%3D%27none%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.4;.9;.4%27%20dur%3D%273s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Cg%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%270%2027%2027%27%20to%3D%27360%2027%2027%27%20dur%3D%2711s%27%20repeatCount%3D%27indefinite%27/%3E%3Ccircle%20cx%3D%2738%27%20cy%3D%2727%27%20r%3D%271.8%27%20fill%3D%27%239ff4ff%27%20fill-opacity%3D%27.6%27%20stroke%3D%27none%27/%3E%3C/g%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 100% 100% / 72px 72px no-repeat,
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20150%20150%27%3E%3Cg%20transform%3D%27rotate(270%2075%2075)%27%3E%3Cg%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20stroke%3D%27%234ea3e8%27%20stroke-opacity%3D%27.75%27%20stroke-width%3D%272.1%27%20d%3D%27M2%20150%20L2%2038%20A36%2036%200%200%201%2038%202%20L150%202%27/%3E%3Ccircle%20stroke%3D%27%239ff4ff%27%20stroke-opacity%3D%27.25%27%20stroke-dasharray%3D%273%206%27%20cx%3D%2727%27%20cy%3D%2727%27%20r%3D%2715%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%270%2027%2027%27%20to%3D%27360%2027%2027%27%20dur%3D%2722s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Ccircle%20cx%3D%2727%27%20cy%3D%2727%27%20r%3D%272.8%27%20fill%3D%27%23bdd400%27%20fill-opacity%3D%27.75%27%20stroke%3D%27none%27%3E%3Canimate%20attributeName%3D%27fill-opacity%27%20values%3D%27.4;.9;.4%27%20dur%3D%273s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Cg%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%270%2027%2027%27%20to%3D%27360%2027%2027%27%20dur%3D%2711s%27%20repeatCount%3D%27indefinite%27/%3E%3Ccircle%20cx%3D%2738%27%20cy%3D%2727%27%20r%3D%271.8%27%20fill%3D%27%239ff4ff%27%20fill-opacity%3D%27.6%27%20stroke%3D%27none%27/%3E%3C/g%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 0 100% / 72px 72px no-repeat;
+  /* Faint distant orbital rings on the surface itself. */
+  --hud-material: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%270%200%20300%20300%27%3E%3Cg%20fill%3D%27none%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27translate%27%20values%3D%270%200;14%20-8;-10%209;0%200%27%20dur%3D%2746s%27%20repeatCount%3D%27indefinite%27/%3E%3Ccircle%20stroke%3D%27%234ea3e8%27%20stroke-opacity%3D%27.07%27%20stroke-width%3D%271.5%27%20cx%3D%27150%27%20cy%3D%27150%27%20r%3D%2748%27/%3E%3Ccircle%20stroke%3D%27%234ea3e8%27%20stroke-opacity%3D%27.05%27%20stroke-width%3D%271.5%27%20cx%3D%27150%27%20cy%3D%27150%27%20r%3D%2782%27/%3E%3Ccircle%20stroke%3D%27%239ff4ff%27%20stroke-opacity%3D%27.05%27%20stroke-dasharray%3D%278%2011%27%20cx%3D%27150%27%20cy%3D%27150%27%20r%3D%2764%27%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%270%20150%20150%27%20to%3D%27-360%20150%20150%27%20dur%3D%2780s%27%20repeatCount%3D%27indefinite%27/%3E%3C/circle%3E%3Cg%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%270%20150%20150%27%20to%3D%27360%20150%20150%27%20dur%3D%2735s%27%20repeatCount%3D%27indefinite%27/%3E%3Ccircle%20cx%3D%27198%27%20cy%3D%27150%27%20r%3D%273.5%27%20fill%3D%27%239ff4ff%27%20fill-opacity%3D%27.25%27/%3E%3C/g%3E%3Cg%3E%3CanimateTransform%20attributeName%3D%27transform%27%20type%3D%27rotate%27%20from%3D%27150%20150%20150%27%20to%3D%27510%20150%20150%27%20dur%3D%2770s%27%20repeatCount%3D%27indefinite%27/%3E%3Ccircle%20cx%3D%27232%27%20cy%3D%27150%27%20r%3D%272.5%27%20fill%3D%27%234ea3e8%27%20fill-opacity%3D%27.22%27/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") right -40px top -50px / 240px 240px no-repeat;
+  --hud-backdrop-pattern: repeating-linear-gradient(75deg, transparent 0 24px, color-mix(in srgb, var(--accent) 3%, transparent) 24px 25px, transparent 25px 48px);
+  /* Fremen — wind-shifted plates, blue with a moonlight crest up-left. */
+  --hud-plate-echo: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 10%, transparent));
 }
 
 /* ── Tailwind v4 utility surface ─────────────────────────────────────────────
@@ -240,8 +375,8 @@ body,
 [role="rowheader"],
 [role="gridcell"] {
   padding: 0.375rem 0.75rem !important; /* py-1.5 px-3 */
-  font-size: 0.75rem; /* text-xs */
-  line-height: 1.25rem;
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.375rem;
 }
 
 /* Column headers — sit on the body bg with a hairline divider below.
@@ -252,11 +387,18 @@ body,
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
   border-top: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 1;
+}
+
+/* Row dividers — hairline amber like the in-game tables, instead of relying
+   on zebra contrast alone. */
+[role="rowheader"],
+[role="gridcell"] {
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 /* Base cells = darkest (page bg); even rows get the lighter zebra stripe. */
@@ -269,11 +411,20 @@ body,
   background: var(--surface) !important;
 }
 
-/* Accent left stripe on row hover — inset shadow avoids layout shift. */
+/* Row hover: tinted background on all cells + accent stripe on the very first
+   cell (which may be the injected checkbox cell when selectionMode="multiple"). */
 [role="row"]:hover > [role="rowheader"],
-[role="row"]:hover > [role="gridcell"]:first-of-type {
+[role="row"]:hover > [role="gridcell"] {
+  background: color-mix(in srgb, var(--accent) 7%, var(--background)) !important;
+}
+[role="row"]:nth-child(even):hover > [role="rowheader"],
+[role="row"]:nth-child(even):hover > [role="gridcell"] {
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface)) !important;
+}
+[role="row"]:hover > *:first-child {
   box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
 }
+
 
 /* ── Tabs.Panel — HeroUI's default panel bg is too amber for our theme.
    Force the page background so the content area reads dark, not brown.   */
@@ -294,6 +445,60 @@ body,
 .alert-dialog__backdrop,
 .modal__backdrop {
   z-index: 9999;
+  overflow: hidden;
+}
+
+/* ── Living backdrop — instead of the striped "diagonal frame", the house
+   corner ornaments anchor the screen corners over dual-tone colour washes,
+   breathing slowly. The SVG-internal animations (orbit spin, rivet pulse)
+   keep running inside the artwork itself. */
+.alert-dialog__backdrop::after,
+.modal__backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 10% 90%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 32rem),
+    radial-gradient(circle at 90% 10%, color-mix(in srgb, var(--accent-secondary) 9%, transparent), transparent 30rem);
+  animation: hud-backdrop-breathe 9s ease-in-out infinite;
+}
+
+@keyframes hud-backdrop-breathe {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Dialog corner ornaments breathe gently while a modal is up. */
+.modal__container [role="dialog"]::after,
+.alert-dialog__dialog::after {
+  animation: hud-ornament-breathe 5s ease-in-out infinite;
+}
+
+@keyframes hud-ornament-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-dialog__backdrop::after,
+  .modal__backdrop::after,
+  .modal__container [role="dialog"]::after,
+  .alert-dialog__dialog::after {
+    animation: none;
+  }
 }
 
 /* ── Top tabs — uppercase white labels, amber pill when selected.
@@ -321,6 +526,263 @@ body,
   color: var(--accent-foreground) !important;
 }
 
+/* ── HUD panel chrome ────────────────────────────────────────────────────────
+   Dune Awakening-style angular panels: the element itself paints the dual-tone
+   accent gradient (this becomes the border), ::before paints the actual panel
+   surface clipped 1px smaller, ::after lays a faint blueprint grid on top of
+   the surface. isolation:isolate keeps the z-index:-1 pseudos above the
+   element's own background but below all content. box-shadow dies under
+   clip-path, so depth/glow use drop-shadow filters (which follow the clip). */
+.widget,
+.dune-lift,
+.action-bar__wrapper,
+.modal__container [role="dialog"],
+.alert-dialog__dialog {
+  /* The element itself is UNCLIPPED — the plate polygon lives on ::before
+     only, so the ::after ornament layer can draw across and beyond the
+     silhouette edges (corner artwork overhanging the chamfers). background
+     must stay none: HeroUI's .widget otherwise paints an opaque rectangle
+     behind the polygon. */
+  position: relative;
+  isolation: isolate;
+  border: none !important;
+  border-radius: 0 !important;
+  background: none !important;
+  /* --hud-plate-echo: hard-edged offset copies of the rendered silhouette —
+     read as under-plates hanging past the chamfers. Per-house colours. */
+  filter: var(--hud-plate-echo)
+    drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 7%, transparent));
+}
+
+.widget::before,
+.dune-lift::before,
+.action-bar__wrapper::before,
+.modal__container [role="dialog"]::before,
+.alert-dialog__dialog::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  clip-path: var(--hud-clip-panel);
+  /* Edge hairlines live here (clipped to panel shape) so ::after can stay
+     fully unclipped for corner artwork that intentionally crosses the chamfers. */
+  background:
+    radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 16rem),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent-secondary) 14%, transparent), transparent 14rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--focus) 4%, transparent), transparent 28%),
+    var(--hud-material),
+    var(--hud-edge-lines),
+    repeating-linear-gradient(90deg, transparent 0 28px, color-mix(in srgb, var(--accent) 2%, transparent) 28px 29px, transparent 29px 58px),
+    linear-gradient(170deg, var(--surface-secondary) 0%, var(--background) 62%);
+}
+
+/* Per-house corner ornaments. UNCLIPPED so artwork crosses the plate
+   silhouette into the chamfer zones — stepping frames, metallic fills,
+   arcs, and circuit traces are all designed to overhang the cut corners. */
+.widget::after,
+.dune-lift::after,
+.action-bar__wrapper::after,
+.modal__container [role="dialog"]::after,
+.alert-dialog__dialog::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--hud-corner-art);
+}
+
+/* Spice corner artwork OVERLAYS content — bold circuit traces are designed
+   to read on top of panel content; pointer-events stay off. */
+.dark[data-theme="spice"] .widget::after,
+.dark[data-theme="spice"] .dune-lift::after,
+.dark[data-theme="spice"] .modal__container [role="dialog"]::after,
+.dark[data-theme="spice"] .alert-dialog__dialog::after {
+  z-index: 1;
+}
+
+/* Modals float above everything — slightly stronger glow than in-flow panels. */
+.modal__container [role="dialog"],
+.alert-dialog__dialog {
+  filter: var(--hud-plate-echo)
+    drop-shadow(0 12px 32px rgba(0, 0, 0, 0.6))
+    drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 12%, transparent));
+}
+
+/* ActionBar pill — lighter surface so it pops against the page. It's a
+   ~48px-tall pill, so the full panel silhouette (20px chamfers + steps) eats
+   into its content: use the small field cut instead (on the pseudos too —
+   mismatched clips leave 1px artifacts at the corners) and give the content
+   room to clear the angles. */
+.action-bar__wrapper,
+.action-bar__wrapper::before,
+.action-bar__wrapper::after {
+  clip-path: var(--hud-clip-field);
+}
+
+.action-bar__wrapper {
+  padding: 0.5rem 1.5rem !important;
+  gap: 0.75rem;
+  /* The pill keeps the classic clipped-trim construction: it's too small
+     for the corner artwork, so it gets its own element-level trim ring. */
+  clip-path: var(--hud-clip-field);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--focus) 55%, transparent),
+    color-mix(in srgb, var(--accent) 32%, transparent) 40%,
+    color-mix(in srgb, var(--accent-secondary) 50%, transparent) 70%,
+    color-mix(in srgb, var(--focus) 38%, transparent)
+  ) !important;
+}
+
+.action-bar__wrapper::before {
+  inset: 1px;
+  background: var(--surface-secondary);
+}
+
+/* The 120px corner artwork is panel-scale — on the ~48px ActionBar pill it
+   would swallow the whole control. */
+.action-bar__wrapper::after {
+  background: none;
+}
+
+/* ── Content drop — panel content sits above the corner artwork; a hard
+   dark drop + soft halo keeps labels readable over ornament strokes. */
+.widget__content,
+.dune-lift,
+.modal__container [role="dialog"],
+.alert-dialog__dialog {
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.95),
+    0 0 8px rgba(0, 0, 0, 0.7);
+}
+
+/* ── HUD popover-lite ───────────────────────────────────────────────────────
+   Dropdowns, select/autocomplete menus, and non-modal dialogs: same material
+   language but with small field-size corner cuts and a plain border, so
+   list items hugging the edges never get clipped by a big chamfer. */
+.popover__dialog,
+.select__popover,
+.autocomplete__popover,
+[role="dialog"]:not(.modal__container [role="dialog"], .alert-dialog__dialog) {
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)) !important;
+  border-radius: 0 !important;
+  clip-path: var(--hud-clip-field);
+  background: linear-gradient(170deg, var(--surface-secondary) 0%, var(--surface) 100%) !important;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+}
+
+/* ── Panel (dune-ui) uses Widget internally; allow content to grow naturally
+   without clipping (Widget defaults to overflow:hidden for chart use cases). */
+.dune-panel,
+.dune-panel .widget__content {
+  overflow: visible;
+}
+
+
+/* HeroUI gives .widget__content its own raised --surface box (bg, radius,
+   shadow, 6px margins). Inside HUD plates that reads as a second flat panel
+   floating in the plate — and made <Panel> sections look different from the
+   .dune-lift card recipe (p-4 directly on the plate surface). Flatten it so
+   every plated container shows one surface. */
+.widget__content {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* KPIGroup inside a Widget: suppress its own card treatment so Widget.Content
+   provides the single surface (avoids double border + double background). */
+.widget .kpi-group {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+/* ── FileTree: hide the selection checkbox — we want sidebar-style highlight
+   navigation, not a multi-select checklist. */
+.file-tree__checkbox {
+  display: none;
+}
+
+/* FileTree items share the sidebar nav's angular box language. The tree
+   guide-lines (.file-tree__guide-line) are left alone — the tints are
+   translucent so the lines stay visible through a highlighted row. */
+.file-tree__item {
+  clip-path: var(--hud-clip-field);
+  border: 1px solid transparent;
+  border-radius: 0 !important;
+}
+
+.file-tree__item:hover,
+.file-tree__item[data-hovered="true"] {
+  background: color-mix(in srgb, var(--accent) 8%, transparent) !important;
+}
+
+/* Selected item: same boxed amber highlight as the sidebar nav current item. */
+.file-tree__item[data-selected=true] {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 6%, transparent)) !important;
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.file-tree__item[data-selected=true] .file-tree__label {
+  color: var(--focus) !important;
+  font-weight: 500;
+}
+
+/* FileTree sm size also uses text-xs; bump to match other nav elements. */
+.file-tree__item--sm {
+  font-size: var(--text-sm, 0.875rem) !important;
+}
+
+
+/* ── Segment: sm variant uses text-xs (12px) which is too small with Duneway;
+   bump to match md (text-sm / 14px) for readability. */
+.segment__item--sm {
+  font-size: var(--text-sm, 0.875rem) !important;
+  line-height: var(--text-sm--line-height, 1.25rem) !important;
+}
+
+/* ── Sidebar inset + AppLayout: AppLayout renders .app-layout__body instead of
+   .sidebar__main, so the built-in card rule never fires. Replicate it here and
+   use --radius (sharp) instead of rounded-2xl (default).
+
+   Body background is --background (darkest) so panels float as elevated surfaces.
+   The header (navbar) area is --surface (lighter) for visual separation.        */
+.sidebar__provider:has(.sidebar--inset) .app-layout__body {
+  background-color: var(--background);
+  box-shadow: var(--surface-shadow, none);
+  margin: 0.5rem 0.5rem 0.5rem 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  min-height: calc(100svh - 1rem);
+  transition: margin var(--sidebar-duration, 200ms) var(--sidebar-ease, ease);
+}
+
+/* Navbar/header area: slightly lighter than the content body so it reads as
+   a distinct surface from the dark panel background beneath.                  */
+.app-layout__header,
+.app-layout__header .navbar {
+  background-color: var(--surface) !important;
+}
+
+.sidebar__provider[data-state="collapsed"]:has(.sidebar--inset) .app-layout__body {
+  margin-left: 0.5rem;
+}
+
+/* ── Navbar.Item current state — amber accent instead of default foreground.
+   HeroUI Pro's navbar active indicator uses data-current="true"; we need to
+   also clear any focus-ring color that can appear blue on click.             */
+.navbar__item[data-current="true"] {
+  color: var(--accent) !important;
+}
+
 /* ── Listbox option hover / focus / selected — used by every Select,
    Autocomplete, and standalone ListBox in the app. HeroUI doesn't give
    these a visible hover state by default in our dark theme.              */
@@ -331,9 +793,12 @@ body,
   background-color: var(--surface-hover) !important;
   color: var(--foreground);
 }
+/* Selected option — amber left rule fading out to the right, the game's
+   selected-row treatment (and demo(3)'s .select-option.active). */
 [role="option"][data-selected="true"],
 [role="option"][aria-selected="true"] {
-  background-color: var(--accent-soft-bg) !important;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%) !important;
+  box-shadow: inset 2px 0 0 var(--accent);
   color: var(--accent);
 }
 
@@ -360,12 +825,10 @@ body,
   background: transparent;
 }
 
-/* ── HeroUI modal dialog — gradient body matches the panel language.  */
-[role="dialog"] {
-  background: linear-gradient(170deg, var(--surface-secondary) 0%, var(--background) 100%) !important;
-}
-.dialog-surface-alt[role="dialog"] {
-  background: var(--surface-alt) !important;
+/* ── Dialog surface-alt variant — flat alt surface instead of the gradient.
+   The HUD chrome paints the surface on ::before, so the override lands there. */
+.dialog-surface-alt[role="dialog"]::before {
+  background: var(--surface-alt);
 }
 
 /* ── Pre / monospace output blocks ─────────────────────────────────────── */
@@ -374,16 +837,162 @@ pre,
   border-radius: var(--radius) !important;
 }
 
-/* ── Surface lift — deep shadow stack ───────────────────────────────────
-   Adds perceived depth to card/panel surfaces: top-edge rim using the
-   theme accent-soft-border, a gradient that darkens toward the bottom,
-   and a stacked drop-shadow. Use alongside bg-surface* + border-border.  */
-.dune-lift {
-  background: linear-gradient(170deg, var(--surface-secondary) 0%, var(--background) 100%) !important;
-  border-top-color: var(--accent-soft-border) !important;
+/* ── Surface lift — now an alias for the HUD panel chrome (see the panel
+   block above); kept as a class so existing markup keeps working. */
+
+/* ── HUD interactive elements ────────────────────────────────────────────────
+   Buttons/chips get the larger corner cut, form fields a subtler one. Variant
+   backgrounds and borders are HeroUI's own (so danger stays red etc.) — the
+   clip squares them into the HUD language. Borders can't follow the diagonal
+   cut, leaving a small unlined notch, same as the reference demo's inputs;
+   at this scale it reads as intentional. Hover glow uses drop-shadow because
+   box-shadow is removed by clip-path. */
+.button,
+.chip {
+  clip-path: var(--hud-clip-btn);
+  border-radius: 0 !important;
+}
+
+.button {
+  transition:
+    filter 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+/* Hover = lit edge: border snaps to the bright --focus amber (the game's
+   selection language) with a faint inset fill; inset shadows survive the
+   clip-path where outer box-shadows don't. */
+/* Inset ring instead of border-color: ghost/soft variants have border-width
+   0, so a border tint never shows on them — the 1px inset ring lights every
+   variant. The ring follows the button's own color family (--hud-ring):
+   theme focus by default (right for ghost/outline/no-bg buttons), a lit
+   version of the variant color for colored fills, so danger buttons glow
+   red — not theme amber. [data-disabled] covers React Aria's disabled state
+   on top of the native :disabled. */
+.button {
+  --hud-ring: var(--focus);
+}
+
+.button--danger,
+.button--danger-soft {
+  --hud-ring: color-mix(in srgb, var(--danger) 60%, #ffffff);
+}
+
+.button:hover:not(:disabled):not([data-disabled="true"]) {
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.35),
-    0 4px 10px rgba(0, 0, 0, 0.25);
+    inset 0 0 0 1px color-mix(in srgb, var(--hud-ring) 80%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--hud-ring) 12%, transparent);
+  filter: brightness(1.12)
+    drop-shadow(0 0 10px color-mix(in srgb, var(--hud-ring) 25%, transparent));
+}
+
+/* Solid fills barely register a 12% brightness bump — shift the fill toward
+   a lit tone of its own color so the hover reads unmistakably. */
+.button--primary:hover:not(:disabled):not([data-disabled="true"]) {
+  background-color: color-mix(in srgb, var(--focus) 55%, var(--accent)) !important;
+}
+
+.button--danger:hover:not(:disabled):not([data-disabled="true"]) {
+  background-color: color-mix(in srgb, #ffffff 18%, var(--danger)) !important;
+}
+
+.input,
+.textarea,
+.select__trigger {
+  clip-path: var(--hud-clip-field);
+  border-radius: 0 !important;
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--field-border));
+  /* Machined fill — faint accent→secondary sweep over the recessed field bg
+     (demo(3) .hud-input) so fields read as cut metal, not flat black. */
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 8%, transparent),
+    transparent 38%,
+    color-mix(in srgb, var(--accent-secondary) 7%, transparent)
+  );
+}
+
+.input:focus,
+.input:focus-within,
+.textarea:focus,
+.select__trigger:focus,
+.select__trigger[data-focused="true"] {
+  box-shadow: inset 0 0 14px color-mix(in srgb, var(--focus) 14%, transparent);
+}
+
+/* Selected-tab pill follows the same angular cut as buttons. */
+.tabs__indicator {
+  clip-path: var(--hud-clip-btn);
+  border-radius: 0 !important;
+}
+
+/* ── Sidebar nav — current item gets the boxed amber highlight; sub-nav
+   items (nested one wrapper deeper than .sidebar__menu-section) keep the
+   tint but drop the bright boxed edge, so an expanded group (Database →
+   Backups) doesn't stack two glowing boxes.                              */
+.sidebar__menu-item {
+  clip-path: var(--hud-clip-field);
+  border: 1px solid transparent;
+  border-radius: 0 !important;
+}
+
+.sidebar__menu-item[data-hovered="true"],
+.sidebar__menu-item:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent) !important;
+}
+
+.sidebar__menu-item[data-current="true"] {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 6%, transparent)) !important;
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--focus) !important;
+}
+
+/* Sub-nav items: hide HeroUI's indent-rail guide (a repeating-gradient strip
+   on ::before) — it reads as a stray light line beside the highlight. Sub
+   items otherwise share the exact same boxed hover/current treatment as the
+   top-level items; their label margin keeps the visual indent.            */
+.sidebar__menu-section > div .sidebar__menu-item::before {
+  display: none;
+}
+
+/* The sub-item content element paints its own opaque --surface box with a
+   16px left margin — over our item-level tint that leaves a bright exposed
+   strip at the left of the highlight. Let the item paint the row.         */
+.sidebar__menu-item .sidebar__menu-item-content {
+  background: transparent !important;
+}
+
+/* ── HUD page backdrop — faint dual-tone blueprint grid + corner washes on
+   the main content frame. Panels and tables are transparent (see the
+   bg-null rules above), so the grid reads through the whole workspace. */
+.sidebar__provider:has(.sidebar--inset) .app-layout__body {
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
+  background-image:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 28rem),
+    radial-gradient(circle at 96% 100%, color-mix(in srgb, var(--accent-secondary) 8%, transparent), transparent 26rem),
+    var(--hud-backdrop-pattern);
+}
+
+/* Main content area — breathing room so plate ornaments and glows never
+   touch the frame edges or each other at the container boundary. */
+.app-layout__main {
+  padding: 10px 12px;
+}
+
+/* Navbar — dual-tone hairline along the bottom edge ties the header into
+   the panel border language. */
+.app-layout__header .navbar {
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 60%, transparent),
+      transparent 35%,
+      transparent 65%,
+      color-mix(in srgb, var(--accent-secondary) 60%, transparent)
+    )
+    1;
 }
 
 /* Clerk modal backdrop — Clerk injects this via inline style so the

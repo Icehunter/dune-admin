@@ -1,48 +1,41 @@
-import { useState, type Key, type ReactNode } from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
-import { loadable } from 'jotai/utils'
-import { Button, Input, ListBox, SearchField, Select, toast } from '@heroui/react'
+import { Button, Checkbox, Input, ListBox, SearchField, Select, TextArea, toast } from '@heroui/react'
 import { Panel, SectionLabel } from '../../../../../dune-ui'
-import { vehiclesAtom } from '../../../../../data/store'
+import { vehiclesSyncAtom } from '../../../../../data/store'
 import { api } from '../../../../../api/client'
-import type { Player } from '../../../../../api/client'
 import { busyAtom, partitionsAtom, allPlayersAtom } from '../store'
 import { useRun, useGate } from '../hooks/useActions'
+import type { AdminSectionProps } from './types'
 
-interface AdminSectionProps {
-  player: Player
-  onManageLocations: () => void
-  onTeleportPicker: (cb: (x: number, y: number, z: number) => void) => void
-  onSpawnPicker: (cb: (x: number, y: number, z: number) => void) => void
-}
-
-export function AdminSection({ player, onManageLocations, onTeleportPicker, onSpawnPicker }: AdminSectionProps) {
+export const AdminSection: React.FC<AdminSectionProps> = ({
+  player, onManageLocations, onTeleportPicker, onSpawnPicker,
+}) => {
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const [partitions] = useAtom(partitionsAtom(player.id))
   const [allPlayers] = useAtom(allPlayersAtom(player.id))
   const run = useRun(player.id)
   const gate = useGate(player.id)
-  const [vehiclesState] = useAtom(loadable(vehiclesAtom))
-  const allVehicles = vehiclesState.state === 'hasData' ? vehiclesState.data : []
+  const [allVehicles] = useAtom(vehiclesSyncAtom)
 
-  const [selectedPartition, setSelectedPartition] = useState('')
-  const [teleportX, setTeleportX] = useState('')
-  const [teleportY, setTeleportY] = useState('')
-  const [teleportZ, setTeleportZ] = useState('')
-  const [selectedTeleportTarget, setSelectedTeleportTarget] = useState<number | null>(null)
-  const [targetSearch, setTargetSearch] = useState('')
-  const [targetDropdownOpen, setTargetDropdownOpen] = useState(false)
-  const [whisperText, setWhisperText] = useState('')
-  const [whisperSenderName, setWhisperSenderName] = useState('GM')
-  const [spawnVehicleId, setSpawnVehicleId] = useState('')
-  const [spawnVehicleTemplate, setSpawnVehicleTemplate] = useState('')
-  const [spawnVehiclePartition, setSpawnVehiclePartition] = useState('')
-  const [spawnVehiclePersistent, setSpawnVehiclePersistent] = useState(true)
-  const [spawnX, setSpawnX] = useState('')
-  const [spawnY, setSpawnY] = useState('')
-  const [spawnZ, setSpawnZ] = useState('')
+  const [selectedPartition, setSelectedPartition] = React.useState('')
+  const [teleportX, setTeleportX] = React.useState('')
+  const [teleportY, setTeleportY] = React.useState('')
+  const [teleportZ, setTeleportZ] = React.useState('')
+  const [selectedTeleportTarget, setSelectedTeleportTarget] = React.useState<number | null>(null)
+  const [targetSearch, setTargetSearch] = React.useState('')
+  const [targetDropdownOpen, setTargetDropdownOpen] = React.useState(false)
+  const [whisperText, setWhisperText] = React.useState('')
+  const [whisperSenderName, setWhisperSenderName] = React.useState('GM')
+  const [spawnVehicleId, setSpawnVehicleId] = React.useState('')
+  const [spawnVehicleTemplate, setSpawnVehicleTemplate] = React.useState('')
+  const [spawnVehiclePartition, setSpawnVehiclePartition] = React.useState('')
+  const [spawnVehiclePersistent, setSpawnVehiclePersistent] = React.useState(true)
+  const [spawnX, setSpawnX] = React.useState('')
+  const [spawnY, setSpawnY] = React.useState('')
+  const [spawnZ, setSpawnZ] = React.useState('')
 
   const handleKick = () =>
     run(() => api.players.kick(player.fls_id), `Kick command sent for ${player.name}`)
@@ -164,14 +157,14 @@ export function AdminSection({ player, onManageLocations, onTeleportPicker, onSp
       t('players.actions.admin.whisperSent', { player: player.name }),
     ).then(() => setWhisperText(''))
 
-  const handleVehicleSelect = (k: Key | null) => {
+  const handleVehicleSelect = (k: React.Key | null) => {
     const id = k ? String(k) : ''
     setSpawnVehicleId(id)
     const v = allVehicles.find((x) => x.id === id)
     setSpawnVehicleTemplate(v?.templates[0] ?? '')
   }
 
-  const handleSpawnPartitionSelect = (k: Key | null) => {
+  const handleSpawnPartitionSelect = (k: React.Key | null) => {
     setSpawnVehiclePartition(k ? String(k) : '')
     const p = partitions.find((x) => x.name === String(k))
     if (p) {
@@ -222,7 +215,7 @@ export function AdminSection({ player, onManageLocations, onTeleportPicker, onSp
 
   const actionRow = (
     label: string,
-    inputs: ReactNode,
+    inputs: React.ReactNode,
     btnLabel: string,
     onAction: () => void,
     danger = false,
@@ -416,6 +409,7 @@ export function AdminSection({ player, onManageLocations, onTeleportPicker, onSp
               onChange={handleTargetSearch}
               onFocus={() => setTargetDropdownOpen(true)}
               className="w-full"
+              aria-label={t('players.actions.admin.pickTarget')}
             >
               <SearchField.Group>
                 <SearchField.SearchIcon />
@@ -449,7 +443,7 @@ export function AdminSection({ player, onManageLocations, onTeleportPicker, onSp
                       <span className="font-medium">{p.name}</span>
                       <span className="text-muted">
                         {p.map || '—'}
-                        {' \u00b7 '}
+                        {' · '}
                         {p.online_status}
                       </span>
                     </button>
@@ -480,22 +474,24 @@ export function AdminSection({ player, onManageLocations, onTeleportPicker, onSp
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted shrink-0">{t('players.actions.admin.whisperFrom')}</span>
-            <input
-              type="text"
+            <Input
+              aria-label={t('players.actions.admin.whisperFrom')}
               value={whisperSenderName}
               onChange={(e) => setWhisperSenderName(e.target.value)}
               placeholder="GM"
               maxLength={32}
-              className="w-32 bg-surface border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:border-accent/60"
+              className="w-32"
             />
           </div>
-          <textarea
+          <TextArea
+            aria-label={t('players.actions.admin.whisper')}
             value={whisperText}
             onChange={(e) => setWhisperText(e.target.value)}
-            placeholder={`Message to ${player.name}\u2026`}
+            placeholder={`Message to ${player.name}…`}
             rows={2}
             maxLength={500}
-            className="w-full bg-surface border border-border rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:border-accent/60 resize-y"
+            fullWidth
+            style={{ resize: 'vertical' }}
           />
           <div className="flex items-center justify-end gap-2">
             <span className="text-xs text-muted">
@@ -615,10 +611,9 @@ export function AdminSection({ player, onManageLocations, onTeleportPicker, onSp
             >
               {t('players.actions.admin.pickOnMap')}
             </Button>
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <input type="checkbox" checked={spawnVehiclePersistent} onChange={(e) => setSpawnVehiclePersistent(e.target.checked)} />
+            <Checkbox isSelected={spawnVehiclePersistent} onChange={setSpawnVehiclePersistent}>
               <span className="text-xs">{t('players.actions.admin.persistent')}</span>
-            </label>
+            </Checkbox>
             <Button
               size="sm"
               variant="ghost"

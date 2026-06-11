@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
-import type React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Chip, Modal, Spinner, toast } from '@heroui/react'
+import { Button, Chip, Input, Modal, Spinner, TextArea, toast } from '@heroui/react'
+import { EmptyState } from '@heroui-pro/react'
+import { Icon as IconifyIcon } from '@iconify/react'
 import { api } from '../api/client'
 import type { GuildSummary, GuildDetail } from '../api/client'
 import { DataTable, Icon, PageHeader, SectionLabel, type Column } from '../dune-ui'
-
-type Key = 'name' | 'faction' | 'members' | 'description' | 'actions'
+import type { GuildsTabKey, GuildsTabProps } from './types'
 
 // Faction names are the stable dune.factions enum (Atreides/Harkonnen/None/
 // Smuggler), so colour-coding by name is safe. Unknown/None → default.
@@ -20,23 +20,19 @@ const FACTION_COLOR: Record<string, 'accent' | 'danger' | 'warning' | 'default'>
 const ROLE_ADMIN = 100
 const ROLE_MEMBER = 50
 
-interface GuildsTabProps {
-  isSignedIn?: boolean
-}
-
 export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
   const { t } = useTranslation()
-  const [guilds, setGuilds] = useState<GuildSummary[]>([])
-  const [loading, setLoading] = useState(false)
-  const [detail, setDetail] = useState<GuildDetail | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [editName, setEditName] = useState('')
-  const [editDesc, setEditDesc] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [roleBusy, setRoleBusy] = useState(false)
+  const [guilds, setGuilds] = React.useState<GuildSummary[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [detail, setDetail] = React.useState<GuildDetail | null>(null)
+  const [detailLoading, setDetailLoading] = React.useState(false)
+  const [open, setOpen] = React.useState(false)
+  const [editName, setEditName] = React.useState('')
+  const [editDesc, setEditDesc] = React.useState('')
+  const [saving, setSaving] = React.useState(false)
+  const [roleBusy, setRoleBusy] = React.useState(false)
 
-  const load = useCallback(() => {
+  const load = React.useCallback(() => {
     Promise.resolve()
       .then(() => setLoading(true))
       .then(() => api.guilds.list())
@@ -46,7 +42,7 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
       .finally(() => setLoading(false))
   }, [t])
 
-  useEffect(() => {
+  React.useEffect(() => {
     load()
   }, [load])
 
@@ -98,15 +94,13 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
   const roleLabel = (id: number) =>
     id === ROLE_ADMIN ? t('guilds.roleAdmin') : id === ROLE_MEMBER ? t('guilds.roleMember') : t('guilds.roleN', { id })
 
-  const COLUMNS: Column<Key>[] = [
+  const COLUMNS: Column<GuildsTabKey>[] = [
     { key: 'name', label: t('guilds.columns.name'), minWidth: 200 },
     { key: 'faction', label: t('guilds.columns.faction'), width: 150 },
     { key: 'members', label: t('guilds.columns.members'), width: 110 },
     { key: 'description', label: t('guilds.columns.description'), minWidth: 240 },
     { key: 'actions', label: '', width: 120, sortable: false },
   ]
-
-  const inputCls = 'w-full bg-surface text-foreground border border-border rounded px-2 py-1 text-sm'
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
@@ -124,7 +118,7 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
         </Button>
       </PageHeader>
 
-      <DataTable<GuildSummary, Key>
+      <DataTable<GuildSummary, GuildsTabKey>
         aria-label={t('guilds.title', { count: guilds.length })}
         className="min-h-0 max-h-full"
         columns={COLUMNS}
@@ -141,7 +135,16 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
             default: return ''
           }
         }}
-        emptyState={<div className="py-8 text-center text-muted">{t('guilds.empty')}</div>}
+        emptyState={(
+          <EmptyState size="sm">
+            <EmptyState.Header>
+              <EmptyState.Media variant="icon">
+                <IconifyIcon icon="gravity-ui:persons" className="size-5" />
+              </EmptyState.Media>
+              <EmptyState.Title>{t('guilds.empty')}</EmptyState.Title>
+            </EmptyState.Header>
+          </EmptyState>
+        )}
         renderCell={(g, key) => {
           switch (key) {
             case 'name':
@@ -170,115 +173,127 @@ export const GuildsTab: React.FC<GuildsTabProps> = ({ isSignedIn = true }) => {
         }}
       />
 
-      <Modal>
-        <Modal.Backdrop isOpen={open} onOpenChange={(v) => !v && setOpen(false)}>
-          <Modal.Container size="lg" scroll="outside">
-            <Modal.Dialog className="max-h-[85vh] flex flex-col">
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <div className="flex items-baseline gap-3 flex-wrap">
-                  <Modal.Heading className="text-accent">{detail?.name || t('guilds.title', { count: 0 })}</Modal.Heading>
-                  {detail && (
-                    <Chip size="sm" variant="soft" color={FACTION_COLOR[detail.faction_name] ?? 'default'}>
-                      {detail.faction_name || '—'}
-                    </Chip>
-                  )}
+      <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && setOpen(false)}>
+        <Modal.Container size="lg" scroll="outside">
+          <Modal.Dialog className="p-10 max-h-[85vh] flex flex-col">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <Modal.Heading className="text-accent">{detail?.name || t('guilds.title', { count: 0 })}</Modal.Heading>
+                {detail && (
+                  <Chip size="sm" variant="soft" color={FACTION_COLOR[detail.faction_name] ?? 'default'}>
+                    {detail.faction_name || '—'}
+                  </Chip>
+                )}
+              </div>
+            </Modal.Header>
+            <Modal.Body className="flex flex-col gap-4 overflow-y-auto">
+              {detailLoading && (
+                <div className="flex items-center justify-center py-8 gap-2 text-muted">
+                  <Spinner size="sm" color="current" />
                 </div>
-              </Modal.Header>
-              <Modal.Body className="flex flex-col gap-4 overflow-y-auto">
-                {detailLoading && (
-                  <div className="flex items-center justify-center py-8 gap-2 text-muted">
-                    <Spinner size="sm" color="current" />
-                  </div>
-                )}
-                {!detailLoading && detail && (
-                  <>
-                    {isSignedIn
-                      ? (
-                          <div className="flex flex-col gap-3">
-                            <SectionLabel>{t('guilds.editGuild')}</SectionLabel>
-                            <div>
-                              <label className="text-xs text-muted">{t('guilds.nameLabel')}</label>
-                              <input
-                                className={inputCls}
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs text-muted">{t('guilds.descLabel')}</label>
-                              <textarea
-                                className={inputCls}
-                                rows={2}
-                                value={editDesc}
-                                onChange={(e) => setEditDesc(e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <Button size="sm" onPress={save} isDisabled={saving || editName.trim() === ''}>
-                                {saving ? <Spinner size="sm" color="current" /> : t('guilds.save')}
-                              </Button>
-                            </div>
+              )}
+              {!detailLoading && detail && (
+                <>
+                  {isSignedIn
+                    ? (
+                        <div className="flex flex-col gap-3">
+                          <SectionLabel>{t('guilds.editGuild')}</SectionLabel>
+                          <div>
+                            <label className="text-xs text-muted">{t('guilds.nameLabel')}</label>
+                            <Input
+                              aria-label={t('guilds.nameLabel')}
+                              className="w-full"
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                            />
                           </div>
+                          <div>
+                            <label className="text-xs text-muted">{t('guilds.descLabel')}</label>
+                            <TextArea
+                              aria-label={t('guilds.descLabel')}
+                              fullWidth
+                              rows={2}
+                              value={editDesc}
+                              onChange={(e) => setEditDesc(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Button size="sm" onPress={save} isDisabled={saving || editName.trim() === ''}>
+                              {saving ? <Spinner size="sm" color="current" /> : t('guilds.save')}
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    : detail.description && <p className="text-sm text-muted">{detail.description}</p>}
+
+                  <div>
+                    <SectionLabel>{t('guilds.members')}</SectionLabel>
+                    {detail.members.length === 0
+                      ? (
+                          <EmptyState size="sm">
+                            <EmptyState.Header>
+                              <EmptyState.Title>{t('guilds.noMembers')}</EmptyState.Title>
+                            </EmptyState.Header>
+                          </EmptyState>
                         )
-                      : detail.description && <p className="text-sm text-muted">{detail.description}</p>}
+                      : (
+                          <div className="mt-1">
+                            {detail.members.map((m) => (
+                              <div
+                                key={m.player_id}
+                                className="flex items-center justify-between py-1.5 border-b border-border/40 text-sm gap-2"
+                              >
+                                <span className="text-foreground flex-1 truncate">{m.character_name}</span>
+                                <Chip size="sm" variant="soft" color={m.role_id === ROLE_ADMIN ? 'accent' : 'default'}>
+                                  {roleLabel(m.role_id)}
+                                </Chip>
+                                {isSignedIn && m.role_id !== ROLE_ADMIN && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    isDisabled={roleBusy}
+                                    onPress={() => makeAdmin(m.player_id)}
+                                  >
+                                    {t('guilds.makeAdmin')}
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                  </div>
 
-                    <div>
-                      <SectionLabel>{t('guilds.members')}</SectionLabel>
-                      {detail.members.length === 0
-                        ? <div className="text-xs text-muted py-1">{t('guilds.noMembers')}</div>
-                        : (
-                            <div className="mt-1">
-                              {detail.members.map((m) => (
-                                <div
-                                  key={m.player_id}
-                                  className="flex items-center justify-between py-1.5 border-b border-border/40 text-sm gap-2"
-                                >
-                                  <span className="text-foreground flex-1 truncate">{m.character_name}</span>
-                                  <Chip size="sm" variant="soft" color={m.role_id === ROLE_ADMIN ? 'accent' : 'default'}>
-                                    {roleLabel(m.role_id)}
-                                  </Chip>
-                                  {isSignedIn && m.role_id !== ROLE_ADMIN && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      isDisabled={roleBusy}
-                                      onPress={() => makeAdmin(m.player_id)}
-                                    >
-                                      {t('guilds.makeAdmin')}
-                                    </Button>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                    </div>
-
-                    <div>
-                      <SectionLabel>{t('guilds.invites')}</SectionLabel>
-                      {detail.invites.length === 0
-                        ? <div className="text-xs text-muted py-1">{t('guilds.noInvites')}</div>
-                        : (
-                            <div className="mt-1">
-                              {detail.invites.map((iv) => (
-                                <div
-                                  key={iv.invite_id}
-                                  className="flex items-center justify-between py-1.5 border-b border-border/40 text-sm"
-                                >
-                                  <span className="text-foreground">{iv.character_name}</span>
-                                  <span className="text-xs text-muted">{t('guilds.invitedBy', { name: iv.sender_name })}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                    </div>
-                  </>
-                )}
-              </Modal.Body>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
+                  <div>
+                    <SectionLabel>{t('guilds.invites')}</SectionLabel>
+                    {detail.invites.length === 0
+                      ? (
+                          <EmptyState size="sm">
+                            <EmptyState.Header>
+                              <EmptyState.Title>{t('guilds.noInvites')}</EmptyState.Title>
+                            </EmptyState.Header>
+                          </EmptyState>
+                        )
+                      : (
+                          <div className="mt-1">
+                            {detail.invites.map((iv) => (
+                              <div
+                                key={iv.invite_id}
+                                className="flex items-center justify-between py-1.5 border-b border-border/40 text-sm"
+                              >
+                                <span className="text-foreground">{iv.character_name}</span>
+                                <span className="text-xs text-muted">{t('guilds.invitedBy', { name: iv.sender_name })}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                  </div>
+                </>
+              )}
+            </Modal.Body>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </div>
   )
 }

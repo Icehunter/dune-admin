@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Chip, Tooltip } from '@heroui/react'
 import type { BattlepassTier, BattlepassTierCounts } from '../../api/client'
 import { Icon } from '../../dune-ui'
+import { RewardIcon } from './RewardIcons'
 
 const CATEGORY_ORDER = ['level', 'story', 'side_quest', 'faction', 'exploration', 'achievement']
 
@@ -241,7 +242,7 @@ export const TrackView: React.FC<TrackViewProps> = ({ tiers, counts, playerCount
                                 : 'border-border bg-surface text-muted'
                           }`}
                         >
-                          <Icon name={CATEGORY_ICONS[tier.category] ?? 'circle'} />
+                          <RewardIcon tier={tier} className="w-7 h-7" />
                         </div>
                         <div
                           className="text-xs font-medium text-center leading-tight line-clamp-2 px-1"

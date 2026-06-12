@@ -1600,8 +1600,10 @@
     },
     "progress": {
       "title": "玩家进度",
-      "hint": "在上方搜索玩家以查看其战令领取记录。",
-      "noClaims": "账户 {{account}} 没有战令领取记录。"
+      "hint": "Select a player from the list to see their battlepass claims.",
+      "noClaims": "账户 {{account}} 没有战令领取记录。",
+      "searchPlaceholder": "Search players…",
+      "selectPlayer": "Select a player"
     },
     "claims": {
       "tier": "阶位",

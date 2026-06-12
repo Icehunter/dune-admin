@@ -1600,8 +1600,10 @@
     },
     "progress": {
       "title": "プレイヤー進捗",
-      "hint": "上でプレイヤーを検索して、バトルパスのクレームを確認してください。",
-      "noClaims": "アカウント {{account}} のバトルパスクレームはありません。"
+      "hint": "Select a player from the list to see their battlepass claims.",
+      "noClaims": "アカウント {{account}} のバトルパスクレームはありません。",
+      "searchPlaceholder": "Search players…",
+      "selectPlayer": "Select a player"
     },
     "claims": {
       "tier": "ティア",

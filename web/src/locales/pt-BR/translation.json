@@ -1623,8 +1623,10 @@
     },
     "progress": {
       "title": "Progresso do Jogador",
-      "hint": "Pesquise um jogador acima para ver seus claims do Battlepass.",
-      "noClaims": "Nenhum claim de Battlepass para a conta {{account}}."
+      "hint": "Select a player from the list to see their battlepass claims.",
+      "noClaims": "Nenhum claim de Battlepass para a conta {{account}}.",
+      "searchPlaceholder": "Search players…",
+      "selectPlayer": "Select a player"
     },
     "claims": {
       "tier": "Nível",

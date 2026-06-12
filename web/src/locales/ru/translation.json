@@ -1646,8 +1646,10 @@
     },
     "progress": {
       "title": "Прогресс игрока",
-      "hint": "Найдите игрока выше, чтобы посмотреть его заявки Battlepass.",
-      "noClaims": "Нет заявок Battlepass для аккаунта {{account}}."
+      "hint": "Select a player from the list to see their battlepass claims.",
+      "noClaims": "Нет заявок Battlepass для аккаунта {{account}}.",
+      "searchPlaceholder": "Search players…",
+      "selectPlayer": "Select a player"
     },
     "claims": {
       "tier": "Уровень",

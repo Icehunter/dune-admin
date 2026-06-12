@@ -1600,8 +1600,10 @@
     },
     "progress": {
       "title": "Oyuncu İlerlemesi",
-      "hint": "Battlepass taleplerini görmek için yukarıda bir oyuncu arayın.",
-      "noClaims": "{{account}} hesabı için Battlepass talebi yok."
+      "hint": "Select a player from the list to see their battlepass claims.",
+      "noClaims": "{{account}} hesabı için Battlepass talebi yok.",
+      "searchPlaceholder": "Search players…",
+      "selectPlayer": "Select a player"
     },
     "claims": {
       "tier": "Kademe",

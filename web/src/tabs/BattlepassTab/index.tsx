@@ -4,16 +4,15 @@ import { Button, Chip, Separator, Switch, toast } from '@heroui/react'
 import type { Selection } from '@heroui/react'
 import { EmptyState, Segment } from '@heroui-pro/react'
 import { api } from '../../api/client'
-import type { BattlepassClaim, BattlepassPendingRow, BattlepassTier, BattlepassTierCounts, Player } from '../../api/client'
+import type { BattlepassPendingRow, BattlepassTier, BattlepassTierCounts } from '../../api/client'
 import { ActionBar, ConfirmDialog, DataTable, FieldSelect, Icon, NumberInput, PageHeader, Panel, SectionLabel, type Column } from '../../dune-ui'
-import { PlayerSearchField } from '../../components/PlayerSearchField'
 import { TierEditorModal } from './modals/TierEditorModal'
 import { TrackView } from './TrackView'
+import { ProgressView } from './views/ProgressView'
 
 type Section = 'pending' | 'progress' | 'catalog' | 'track'
 type TierKey = 'label' | 'category' | 'requirement' | 'intel' | 'rewards' | 'earned' | 'granted' | 'enabled' | 'actions'
 type PendingKey = 'account_id' | 'name' | 'online' | 'pending_intel' | 'actions'
-type ClaimKey = 'tier_key' | 'status' | 'intel' | 'earned_at' | 'granted_at' | 'last_error'
 
 const CATEGORY_ALL = 'all'
 const CATEGORY_ORDER = ['level', 'story', 'side_quest', 'faction', 'exploration', 'achievement']
@@ -39,10 +38,6 @@ export const BattlepassTab: React.FC = () => {
   const [pending, setPending] = React.useState<BattlepassPendingRow[]>([])
   const [pendingLoading, setPendingLoading] = React.useState(false)
   const [granting, setGranting] = React.useState<number | null>(null)
-  const [progressAccount, setProgressAccount] = React.useState<number | null>(null)
-  const [progressName, setProgressName] = React.useState('')
-  const [claims, setClaims] = React.useState<BattlepassClaim[]>([])
-  const [claimsLoading, setClaimsLoading] = React.useState(false)
   const [reseedOpen, setReseedOpen] = React.useState(false)
   const [grantTarget, setGrantTarget] = React.useState<BattlepassPendingRow | null>(null)
   const [editorTier, setEditorTier] = React.useState<BattlepassTier | null>(null)
@@ -80,25 +75,9 @@ export const BattlepassTab: React.FC = () => {
     loadPending()
   }, [loadTiers, loadPending])
 
-  const loadProgress = React.useCallback(
-    (accountId: number) => {
-      setProgressAccount(accountId)
-      setClaimsLoading(true)
-      api.battlepass
-        .progress(accountId)
-        .then((p) => setClaims(p.claims))
-        .catch((e: unknown) => {
-          toast.danger(t('battlepass.failedToLoad', { message: e instanceof Error ? e.message : String(e) }))
-        })
-        .finally(() => setClaimsLoading(false))
-    },
-    [t],
-  )
-
   const refresh = () => {
     loadTiers()
     loadPending()
-    if (progressAccount != null) loadProgress(progressAccount)
   }
 
   const handleGrant = (row: BattlepassPendingRow) => {
@@ -109,7 +88,6 @@ export const BattlepassTab: React.FC = () => {
       .then((r) => {
         toast.success(t('battlepass.grantSuccess', { intel: r.granted_intel, tiers: r.tiers }))
         loadPending()
-        if (progressAccount === row.account_id) loadProgress(row.account_id)
       })
       .catch((e: unknown) => {
         toast.danger(t('battlepass.grantFailed', { message: e instanceof Error ? e.message : String(e) }))
@@ -178,20 +156,6 @@ export const BattlepassTab: React.FC = () => {
     }
   }
 
-  const statusLabel = (status: BattlepassClaim['status']): string => {
-    switch (status) {
-      case 'baseline': return t('battlepass.status.baseline')
-      case 'earned': return t('battlepass.status.earned')
-      case 'granted': return t('battlepass.status.granted')
-    }
-  }
-
-  const claimStatusColor = (status: BattlepassClaim['status']): 'success' | 'warning' | 'default' => {
-    if (status === 'granted') return 'success'
-    if (status === 'earned') return 'warning'
-    return 'default'
-  }
-
   const requirementText = (tier: BattlepassTier): string =>
     tier.signal === 'level' ? t('battlepass.requirementLevel', { level: tier.threshold }) : tier.signal_key
 
@@ -223,15 +187,6 @@ export const BattlepassTab: React.FC = () => {
     { key: 'online', label: t('battlepass.pending.online'), width: 90 },
     { key: 'pending_intel', label: t('battlepass.pending.intel'), width: 110 },
     { key: 'actions', label: '', width: 150, sortable: false },
-  ]
-
-  const CLAIM_COLUMNS: Column<ClaimKey>[] = [
-    { key: 'tier_key', label: t('battlepass.claims.tier'), minWidth: 220 },
-    { key: 'status', label: t('battlepass.claims.status'), width: 100 },
-    { key: 'intel', label: t('battlepass.columns.intel'), width: 80 },
-    { key: 'earned_at', label: t('battlepass.claims.earnedAt'), minWidth: 150 },
-    { key: 'granted_at', label: t('battlepass.claims.grantedAt'), minWidth: 150 },
-    { key: 'last_error', label: t('battlepass.claims.lastError'), minWidth: 180 },
   ]
 
   return (
@@ -272,136 +227,65 @@ export const BattlepassTab: React.FC = () => {
         </PageHeader>
 
         {section === 'pending' && (
-          <Panel className="flex flex-col min-h-0 flex-1" contentClassName="flex-1 min-h-0">
-            <div className="flex-1 min-h-0">
-              <DataTable<BattlepassPendingRow, PendingKey>
-                aria-label={t('battlepass.sections.pending', { count: pending.length })}
-                pageSize={50}
-                rowHeight={48}
-                columns={PENDING_COLUMNS}
-                rows={pending}
-                loading={pendingLoading}
-                rowId={(p) => String(p.account_id)}
-                initialSort={{ column: 'pending_intel', direction: 'descending' }}
-                sortValue={(p, k) => {
-                  if (k === 'online') return p.online ? 1 : 0
-                  if (k === 'actions') return ''
-                  return (p as unknown as Record<string, string | number>)[k] ?? ''
-                }}
-                emptyState={(
-                  <EmptyState size="sm">
-                    <EmptyState.Header>
-                      <EmptyState.Title>{t('battlepass.pending.none')}</EmptyState.Title>
-                    </EmptyState.Header>
-                  </EmptyState>
-                )}
-                renderCell={(p, key) => {
-                  switch (key) {
-                    case 'account_id':
-                      return <span className="font-mono text-xs">{p.account_id}</span>
-                    case 'name':
-                      return p.name || <span className="text-muted">—</span>
-                    case 'online':
-                      return (
-                        <Chip size="sm" variant="soft" color={p.online ? 'success' : 'default'}>
-                          {p.online ? t('battlepass.pending.onlineState') : t('battlepass.pending.offlineState')}
-                        </Chip>
-                      )
-                    case 'pending_intel':
-                      return <span className="font-mono tabular-nums">{p.pending_intel}</span>
-                    case 'actions':
-                      return (
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          onPress={() => setGrantTarget(p)}
-                          isDisabled={p.online || granting === p.account_id}
-                        >
-                          <Icon name="gift" />
-                          {' '}
-                          {p.online ? t('battlepass.pending.grantOnlineHint') : t('battlepass.pending.grant')}
-                        </Button>
-                      )
-                  }
-                }}
-              />
-            </div>
-          </Panel>
+          <div className="flex flex-col min-h-0 flex-1">
+            <DataTable<BattlepassPendingRow, PendingKey>
+              aria-label={t('battlepass.sections.pending', { count: pending.length })}
+              pageSize={50}
+              rowHeight={48}
+              columns={PENDING_COLUMNS}
+              rows={pending}
+              loading={pendingLoading}
+              rowId={(p) => String(p.account_id)}
+              initialSort={{ column: 'pending_intel', direction: 'descending' }}
+              sortValue={(p, k) => {
+                if (k === 'online') return p.online ? 1 : 0
+                if (k === 'actions') return ''
+                return (p as unknown as Record<string, string | number>)[k] ?? ''
+              }}
+              emptyState={(
+                <EmptyState size="sm">
+                  <EmptyState.Header>
+                    <EmptyState.Title>{t('battlepass.pending.none')}</EmptyState.Title>
+                  </EmptyState.Header>
+                </EmptyState>
+              )}
+              renderCell={(p, key) => {
+                switch (key) {
+                  case 'account_id':
+                    return <span className="font-mono text-xs">{p.account_id}</span>
+                  case 'name':
+                    return p.name || <span className="text-muted">—</span>
+                  case 'online':
+                    return (
+                      <Chip size="sm" variant="soft" color={p.online ? 'success' : 'default'}>
+                        {p.online ? t('battlepass.pending.onlineState') : t('battlepass.pending.offlineState')}
+                      </Chip>
+                    )
+                  case 'pending_intel':
+                    return <span className="font-mono tabular-nums">{p.pending_intel}</span>
+                  case 'actions':
+                    return (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onPress={() => setGrantTarget(p)}
+                        isDisabled={p.online || granting === p.account_id}
+                      >
+                        <Icon name="gift" />
+                        {' '}
+                        {p.online ? t('battlepass.pending.grantOnlineHint') : t('battlepass.pending.grant')}
+                      </Button>
+                    )
+                }
+              }}
+            />
+          </div>
         )}
 
-        {section === 'progress' && (
-          <Panel className="flex flex-col min-h-0 flex-1" contentClassName="flex-1 min-h-0">
-            <div className="flex items-center gap-2 mb-3">
-              <SectionLabel>{t('battlepass.progress.title')}</SectionLabel>
-              <PlayerSearchField
-                className="w-72"
-                ariaLabel={t('battlepass.progress.title')}
-                onSelect={(p: Player) => {
-                  setProgressName(p.name)
-                  loadProgress(p.account_id)
-                }}
-                onClear={() => {
-                  setProgressAccount(null)
-                  setProgressName('')
-                  setClaims([])
-                }}
-              />
-              {progressAccount != null && (
-                <span className="text-xs text-muted font-mono">
-                  {progressName}
-                  {' · #'}
-                  {progressAccount}
-                </span>
-              )}
-            </div>
-            {progressAccount != null
-              ? (
-                  <div className="flex-1 min-h-0">
-                    <DataTable<BattlepassClaim, ClaimKey>
-                      aria-label={t('battlepass.progress.title')}
-                      pageSize={50}
-                      columns={CLAIM_COLUMNS}
-                      rows={claims}
-                      loading={claimsLoading}
-                      rowId={(c) => c.tier_key}
-                      initialSort={{ column: 'earned_at', direction: 'descending' }}
-                      sortValue={(c, k) => (c as unknown as Record<string, string | number>)[k] ?? ''}
-                      emptyState={(
-                        <EmptyState size="sm">
-                          <EmptyState.Header>
-                            <EmptyState.Title>{t('battlepass.progress.noClaims', { account: progressAccount })}</EmptyState.Title>
-                          </EmptyState.Header>
-                        </EmptyState>
-                      )}
-                      renderCell={(c, key) => {
-                        switch (key) {
-                          case 'tier_key':
-                            return <span className="font-mono text-xs">{c.tier_key}</span>
-                          case 'status':
-                            return (
-                              <Chip size="sm" variant="soft" color={claimStatusColor(c.status)}>
-                                {statusLabel(c.status)}
-                              </Chip>
-                            )
-                          case 'intel':
-                            return <span className="font-mono tabular-nums">{c.intel}</span>
-                          case 'earned_at':
-                            return <span className="text-muted text-xs">{c.earned_at || '—'}</span>
-                          case 'granted_at':
-                            return <span className="text-muted text-xs">{c.granted_at || '—'}</span>
-                          case 'last_error':
-                            return <span className="text-muted text-xs">{c.last_error || '—'}</span>
-                        }
-                      }}
-                    />
-                  </div>
-                )
-              : <div className="text-sm text-muted">{t('battlepass.progress.hint')}</div>}
-          </Panel>
-        )}
+        {section === 'progress' && <ProgressView />}
 
         {section === 'catalog' && (
-          <Panel className="flex flex-col min-h-0 flex-1" contentClassName="flex-1 min-h-0">
+          <div className="flex flex-col min-h-0 flex-1">
             <div className="flex items-center gap-2 mb-3">
               <SectionLabel>{t('battlepass.catalog.title', { count: visibleTiers.length })}</SectionLabel>
               <FieldSelect
@@ -519,7 +403,7 @@ export const BattlepassTab: React.FC = () => {
                 }}
               />
             </div>
-          </Panel>
+          </div>
         )}
 
         {section === 'track' && (

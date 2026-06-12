@@ -1587,7 +1587,10 @@
     },
     "catalog": {
       "title": "Catálogo de Rangos ({{count}})",
-      "empty": "No hay rangos en el catálogo. Usa Restablecer Catálogo para cargar los valores predeterminados."
+      "empty": "No hay rangos en el catálogo. Usa Restablecer Catálogo para cargar los valores predeterminados.",
+      "newTier": "Nuevo Rango",
+      "export": "Exportar",
+      "import": "Importar"
     },
     "sections": {
       "pending": "Pendiente ({{count}})",
@@ -1618,7 +1621,19 @@
       "tierSection": "Rango",
       "label": "Etiqueta",
       "itemRewards": "Recompensas de Objetos",
-      "saved": "Rango guardado."
+      "saved": "Rango guardado.",
+      "createTitle": "Crear Rango",
+      "tierKey": "Clave de Rango",
+      "category": "Categoría",
+      "signal": "Señal",
+      "threshold": "Umbral",
+      "signalKey": "Clave de Señal",
+      "created": "Rango creado.",
+      "signals": {
+        "level": "Nivel",
+        "journey_node": "Nodo de Viaje",
+        "player_tag": "Etiqueta de Jugador"
+      }
     },
     "bulk": {
       "enable": "Activar",
@@ -1680,6 +1695,14 @@
       "earnedAt": "Ganado",
       "grantedAt": "Otorgado",
       "lastError": "Último Error"
-    }
+    },
+    "importDialog": {
+      "title": "¿Reemplazar catálogo?",
+      "body": "Reemplaza todas las definiciones de rangos actuales con el catálogo importado. El historial de reclamaciones se conserva — las reclamaciones se vuelven a vincular por clave de rango.",
+      "confirm": "Reemplazar Catálogo"
+    },
+    "importSuccess": "{{count}} rangos importados.",
+    "exportSuccess": "Catálogo exportado.",
+    "importFailed": "Error de importación: {{message}}"
   }
 }

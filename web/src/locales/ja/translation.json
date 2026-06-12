@@ -1564,7 +1564,10 @@
     },
     "catalog": {
       "title": "ティアカタログ（{{count}}）",
-      "empty": "カタログにティアがありません。カタログをリセットしてデフォルトを読み込んでください。"
+      "empty": "カタログにティアがありません。カタログをリセットしてデフォルトを読み込んでください。",
+      "newTier": "新しいティア",
+      "export": "エクスポート",
+      "import": "インポート"
     },
     "sections": {
       "pending": "保留中（{{count}}）",
@@ -1595,7 +1598,19 @@
       "tierSection": "ティア",
       "label": "ラベル",
       "itemRewards": "アイテム報酬",
-      "saved": "ティアを保存しました。"
+      "saved": "ティアを保存しました。",
+      "createTitle": "ティアを作成",
+      "tierKey": "ティアキー",
+      "category": "カテゴリー",
+      "signal": "シグナル",
+      "threshold": "閾値",
+      "signalKey": "シグナルキー",
+      "created": "ティアを作成しました。",
+      "signals": {
+        "level": "レベル",
+        "journey_node": "旅ノード",
+        "player_tag": "プレイヤータグ"
+      }
     },
     "bulk": {
       "enable": "有効化",
@@ -1657,6 +1672,14 @@
       "earnedAt": "獲得日時",
       "grantedAt": "付与日時",
       "lastError": "最終エラー"
-    }
+    },
+    "importDialog": {
+      "title": "カタログを置き換えますか？",
+      "body": "現在のすべてのティア定義をインポートしたカタログで置き換えます。クレーム履歴は保持されます — クレームはティアキーで再接続されます。",
+      "confirm": "カタログを置き換え"
+    },
+    "importSuccess": "{{count}} 個のティアをインポートしました。",
+    "exportSuccess": "カタログをエクスポートしました。",
+    "importFailed": "インポート失敗: {{message}}"
   }
 }

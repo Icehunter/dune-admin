@@ -1587,7 +1587,10 @@
     },
     "catalog": {
       "title": "Catálogo de Níveis ({{count}})",
-      "empty": "Nenhum nível no catálogo. Use Redefinir Catálogo para carregar os padrões."
+      "empty": "Nenhum nível no catálogo. Use Redefinir Catálogo para carregar os padrões.",
+      "newTier": "Novo Nível",
+      "export": "Exportar",
+      "import": "Importar"
     },
     "sections": {
       "pending": "Pendente ({{count}})",
@@ -1618,7 +1621,19 @@
       "tierSection": "Nível",
       "label": "Rótulo",
       "itemRewards": "Recompensas de Itens",
-      "saved": "Nível salvo."
+      "saved": "Nível salvo.",
+      "createTitle": "Criar Nível",
+      "tierKey": "Chave do Nível",
+      "category": "Categoria",
+      "signal": "Sinal",
+      "threshold": "Limite",
+      "signalKey": "Chave de Sinal",
+      "created": "Nível criado.",
+      "signals": {
+        "level": "Nível",
+        "journey_node": "Nó de Jornada",
+        "player_tag": "Tag do Jogador"
+      }
     },
     "bulk": {
       "enable": "Ativar",
@@ -1680,6 +1695,14 @@
       "earnedAt": "Ganho em",
       "grantedAt": "Concedido em",
       "lastError": "Último Erro"
-    }
+    },
+    "importDialog": {
+      "title": "Substituir catálogo?",
+      "body": "Substitui todas as definições de níveis atuais pelo catálogo importado. O histórico de reivindicações é preservado — reivindicações são reanexadas pela chave do nível.",
+      "confirm": "Substituir Catálogo"
+    },
+    "importSuccess": "{{count}} níveis importados.",
+    "exportSuccess": "Catálogo exportado.",
+    "importFailed": "Falha na importação: {{message}}"
   }
 }

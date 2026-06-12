@@ -133,6 +133,8 @@ func openBattlepassStore(path string) (*battlepassStore, error) {
 	return &battlepassStore{db: db}, nil
 }
 
+var errBattlepassDuplicateTierKey = errors.New("tier_key already exists")
+
 // ── tiers ─────────────────────────────────────────────────────────────────────
 
 const battlepassTierColumns = `id, tier_key, category, label, signal, signal_key, threshold, intel, reward_items, enabled`
@@ -176,21 +178,45 @@ func (s *battlepassStore) getTier(id int64) (*battlepassTier, error) {
 	return &t, nil
 }
 
-func (s *battlepassStore) updateTier(id int64, label string, intel int64, enabled bool, rewardItems string) (*battlepassTier, error) {
+func (s *battlepassStore) updateTier(id int64, label string, intel int64, enabled bool, rewardItems, category string, signal battlepassSignal, signalKey string, threshold int64) (*battlepassTier, error) {
 	enabledInt := 0
 	if enabled {
 		enabledInt = 1
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := s.db.Exec(
-		`UPDATE battlepass_tiers SET label = ?, intel = ?, enabled = ?, reward_items = ?, updated_at = ? WHERE id = ?`,
-		label, intel, enabledInt, rewardItems, now, id)
+		`UPDATE battlepass_tiers SET label = ?, intel = ?, enabled = ?, reward_items = ?, category = ?, signal = ?, signal_key = ?, threshold = ?, updated_at = ? WHERE id = ?`,
+		label, intel, enabledInt, rewardItems, category, string(signal), signalKey, threshold, now, id)
 	if err != nil {
 		return nil, fmt.Errorf("update battlepass tier %d: %w", id, err)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return nil, errNotFound
 	}
+	return s.getTier(id)
+}
+
+// createTier inserts a new tier and returns the created row.
+// Returns errBattlepassDuplicateTierKey when tier_key already exists.
+func (s *battlepassStore) createTier(t battlepassTier) (*battlepassTier, error) {
+	enabledInt := 0
+	if t.Enabled {
+		enabledInt = 1
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	res, err := s.db.Exec(`
+		INSERT INTO battlepass_tiers
+			(tier_key, category, label, signal, signal_key, threshold, intel, reward_items, enabled, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		t.TierKey, t.Category, t.Label, string(t.Signal), t.SignalKey,
+		t.Threshold, t.Intel, t.RewardItems, enabledInt, now, now)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return nil, errBattlepassDuplicateTierKey
+		}
+		return nil, fmt.Errorf("create battlepass tier %q: %w", t.TierKey, err)
+	}
+	id, _ := res.LastInsertId()
 	return s.getTier(id)
 }
 

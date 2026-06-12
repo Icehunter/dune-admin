@@ -1587,7 +1587,10 @@
     },
     "catalog": {
       "title": "Catalogue de Paliers ({{count}})",
-      "empty": "Aucun palier dans le catalogue. Utilisez Réinitialiser le Catalogue pour charger les valeurs par défaut."
+      "empty": "Aucun palier dans le catalogue. Utilisez Réinitialiser le Catalogue pour charger les valeurs par défaut.",
+      "newTier": "Nouveau Palier",
+      "export": "Exporter",
+      "import": "Importer"
     },
     "sections": {
       "pending": "En attente ({{count}})",
@@ -1618,7 +1621,19 @@
       "tierSection": "Palier",
       "label": "Libellé",
       "itemRewards": "Récompenses d'Objets",
-      "saved": "Palier sauvegardé."
+      "saved": "Palier sauvegardé.",
+      "createTitle": "Créer un Palier",
+      "tierKey": "Clé de Palier",
+      "category": "Catégorie",
+      "signal": "Signal",
+      "threshold": "Seuil",
+      "signalKey": "Clé de Signal",
+      "created": "Palier créé.",
+      "signals": {
+        "level": "Niveau",
+        "journey_node": "Nœud de Voyage",
+        "player_tag": "Tag Joueur"
+      }
     },
     "bulk": {
       "enable": "Activer",
@@ -1680,6 +1695,14 @@
       "earnedAt": "Gagné le",
       "grantedAt": "Accordé le",
       "lastError": "Dernière Erreur"
-    }
+    },
+    "importDialog": {
+      "title": "Remplacer le catalogue ?",
+      "body": "Remplace toutes les définitions de paliers actuelles par le catalogue importé. L'historique des réclamations est conservé — les réclamations sont réattachées par clé de palier.",
+      "confirm": "Remplacer le Catalogue"
+    },
+    "importSuccess": "{{count}} paliers importés.",
+    "exportSuccess": "Catalogue exporté.",
+    "importFailed": "Échec de l'importation : {{message}}"
   }
 }

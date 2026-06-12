@@ -5,10 +5,13 @@ import type { Selection } from '@heroui/react'
 import type { DataGridColumn } from '@heroui-pro/react'
 import { DataGrid } from '@heroui-pro/react'
 import { api } from '../../../api/client'
-import type { BattlepassTier, GivePack } from '../../../api/client'
-import { ActionBar, FieldInput, Icon, NumberInput, SectionLabel } from '../../../dune-ui'
+import type { BattlepassSignal, BattlepassTier, GivePack } from '../../../api/client'
+import { ActionBar, FieldInput, FieldSelect, Icon, NumberInput, SectionLabel } from '../../../dune-ui'
 import { ManagePacksModal } from '../../PlayersTab/modals/ManagePacksModal'
 import type { KeyedRewardItem } from '../../EventsTab/types'
+
+const SIGNAL_OPTIONS: BattlepassSignal[] = ['level', 'journey_node', 'player_tag']
+const CATEGORY_OPTIONS = ['level', 'story', 'side_quest', 'faction', 'exploration', 'achievement']
 
 const FormSection: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => (
   <div className={`flex flex-col gap-3 rounded-[var(--radius)] border border-border bg-surface-secondary p-4 dune-lift ${className ?? ''}`}>
@@ -19,18 +22,29 @@ const FormSection: React.FC<{ children: React.ReactNode, className?: string }> =
 export interface TierEditorModalProps {
   isOpen: boolean
   onClose: () => void
+  /** Existing tier to edit, or null to open in create mode. */
   tier: BattlepassTier | null
   onSaved: () => void
 }
 
-/** Edit a battlepass tier: label, intel reward, enabled flag, and item
- *  rewards (hand-picked templates or whole give-packs). Mirrors the events
- *  reward editor: pack loader, Manage Packs, item DataGrid with ActionBar. */
+/** Edit or create a battlepass tier. In edit mode tier_key is read-only (claims
+ *  are keyed by it — editing would orphan them). In create mode all fields are
+ *  editable, including tier_key. */
 export const TierEditorModal: React.FC<TierEditorModalProps> = ({ isOpen, onClose, tier, onSaved }) => {
   const { t } = useTranslation()
+  const isCreate = tier === null
+
+  // Core fields
+  const [tierKey, setTierKey] = React.useState('')
+  const [category, setCategory] = React.useState('level')
   const [label, setLabel] = React.useState('')
   const [intel, setIntel] = React.useState(0)
   const [enabled, setEnabled] = React.useState(true)
+  const [signal, setSignal] = React.useState<BattlepassSignal>('level')
+  const [signalKey, setSignalKey] = React.useState('')
+  const [threshold, setThreshold] = React.useState(1)
+
+  // Reward item state
   const [rewardItems, setRewardItems] = React.useState<KeyedRewardItem[]>([])
   const [rewardItemKeys, setRewardItemKeys] = React.useState<Selection>(new Set())
   const [saving, setSaving] = React.useState(false)
@@ -46,25 +60,45 @@ export const TierEditorModal: React.FC<TierEditorModalProps> = ({ isOpen, onClos
   const nextKey = () => `k${++keyCounter.current}`
 
   React.useEffect(() => {
-    if (!isOpen || !tier) return
+    if (!isOpen) return
     Promise.resolve().then(() => {
-      setLabel(tier.label)
-      setIntel(tier.intel)
-      setEnabled(tier.enabled)
+      if (tier) {
+        // Edit mode — populate from existing tier
+        setTierKey(tier.tier_key)
+        setCategory(tier.category)
+        setLabel(tier.label)
+        setIntel(tier.intel)
+        setEnabled(tier.enabled)
+        setSignal(tier.signal)
+        setSignalKey(tier.signal_key)
+        setThreshold(tier.threshold)
+        let parsed: KeyedRewardItem[] = []
+        if (tier.reward_items) {
+          try {
+            const raw = JSON.parse(tier.reward_items) as { template: string, qty: number, quality: number }[]
+            parsed = raw.map((x) => ({ ...x, _key: nextKey() }))
+          }
+          catch {
+            parsed = []
+          }
+        }
+        setRewardItems(parsed)
+      }
+      else {
+        // Create mode — reset to defaults
+        setTierKey('')
+        setCategory('level')
+        setLabel('')
+        setIntel(0)
+        setEnabled(true)
+        setSignal('level')
+        setSignalKey('')
+        setThreshold(1)
+        setRewardItems([])
+      }
       setTemplateQuery('')
       setSelectedTemplate('')
       setRewardItemKeys(new Set())
-      let parsed: KeyedRewardItem[] = []
-      if (tier.reward_items) {
-        try {
-          const raw = JSON.parse(tier.reward_items) as { template: string, qty: number, quality: number }[]
-          parsed = raw.map((x) => ({ ...x, _key: nextKey() }))
-        }
-        catch {
-          parsed = []
-        }
-      }
-      setRewardItems(parsed)
     })
     api.players.templates().then(setTemplates).catch(() => {})
     api.givePacks.config().then((cfg) => setPacks(cfg.packs)).catch(() => {})
@@ -123,19 +157,38 @@ export const TierEditorModal: React.FC<TierEditorModalProps> = ({ isOpen, onClos
     setRewardItemKeys(new Set())
   }
 
+  const rewardItemsJson = rewardItems.length > 0
+    ? JSON.stringify(rewardItems.map(({ template, qty, quality }) => ({ template, qty, quality })))
+    : ''
+
   const handleSave = () => {
-    if (!tier) return
     setSaving(true)
-    const items = rewardItems.map(({ template, qty, quality }) => ({ template, qty, quality }))
-    api.battlepass
-      .updateTier(tier.id, {
-        label: label.trim() || tier.label,
-        intel,
-        enabled,
-        reward_items: items.length > 0 ? JSON.stringify(items) : '',
-      })
+    const promise = isCreate
+      ? api.battlepass.createTier({
+          tier_key: tierKey.trim(),
+          category,
+          label: label.trim(),
+          intel,
+          enabled,
+          signal,
+          signal_key: signalKey.trim(),
+          threshold,
+          reward_items: rewardItemsJson,
+        })
+      : api.battlepass.updateTier(tier!.id, {
+          label: label.trim() || tier!.label,
+          intel,
+          enabled,
+          reward_items: rewardItemsJson,
+          category,
+          signal,
+          signal_key: signalKey.trim(),
+          threshold,
+        })
+
+    promise
       .then(() => {
-        toast.success(t('battlepass.editor.saved'))
+        toast.success(isCreate ? t('battlepass.editor.created') : t('battlepass.editor.saved'))
         onSaved()
         onClose()
       })
@@ -234,10 +287,12 @@ export const TierEditorModal: React.FC<TierEditorModalProps> = ({ isOpen, onClos
           <Modal.Dialog className="p-10 dialog-surface-alt">
             <Modal.CloseTrigger />
             <Modal.Header className="flex items-center gap-4 shrink-0">
-              <Modal.Heading className="text-accent">{t('battlepass.editor.title')}</Modal.Heading>
-              {tier && (
+              <Modal.Heading className="text-accent">
+                {isCreate ? t('battlepass.editor.createTitle') : t('battlepass.editor.title')}
+              </Modal.Heading>
+              {!isCreate && (
                 <span className="text-xs text-muted font-mono">
-                  {tier.tier_key}
+                  {tier!.tier_key}
                   {' · '}
                   {requirement}
                 </span>
@@ -247,6 +302,63 @@ export const TierEditorModal: React.FC<TierEditorModalProps> = ({ isOpen, onClos
             <Modal.Body className="flex flex-col h-[80vh] min-h-0 gap-4">
               <FormSection className="shrink-0">
                 <SectionLabel>{t('battlepass.editor.tierSection')}</SectionLabel>
+
+                {/* tier_key — editable only in create mode */}
+                {isCreate && (
+                  <div>
+                    <span className={fieldLabelClass}>{t('battlepass.editor.tierKey')}</span>
+                    <FieldInput
+                      value={tierKey}
+                      onChange={setTierKey}
+                      ariaLabel={t('battlepass.editor.tierKey')}
+                      className="font-mono"
+                    />
+                  </div>
+                )}
+
+                {/* category + signal row */}
+                <div className="flex items-end gap-4">
+                  <div className="flex-1 min-w-0">
+                    <span className={fieldLabelClass}>{t('battlepass.editor.category')}</span>
+                    <FieldSelect
+                      value={category}
+                      onChange={setCategory}
+                      options={CATEGORY_OPTIONS}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className={fieldLabelClass}>{t('battlepass.editor.signal')}</span>
+                    <FieldSelect
+                      value={signal}
+                      onChange={(v) => setSignal(v as BattlepassSignal)}
+                      options={SIGNAL_OPTIONS}
+                    />
+                  </div>
+                  {signal === 'level'
+                    ? (
+                        <NumberInput
+                          prefix={t('battlepass.editor.threshold')}
+                          value={threshold}
+                          onChange={setThreshold}
+                          min={1}
+                          ariaLabel={t('battlepass.editor.threshold')}
+                          className="w-48 shrink-0"
+                        />
+                      )
+                    : (
+                        <div className="flex-1 min-w-0">
+                          <span className={fieldLabelClass}>{t('battlepass.editor.signalKey')}</span>
+                          <FieldInput
+                            value={signalKey}
+                            onChange={setSignalKey}
+                            ariaLabel={t('battlepass.editor.signalKey')}
+                            className="font-mono"
+                          />
+                        </div>
+                      )}
+                </div>
+
+                {/* label + intel + enabled row */}
                 <div className="flex items-end gap-4">
                   <div className="flex-1 min-w-0">
                     <span className={fieldLabelClass}>{t('battlepass.editor.label')}</span>
@@ -399,7 +511,7 @@ export const TierEditorModal: React.FC<TierEditorModalProps> = ({ isOpen, onClos
               <Button size="sm" variant="tertiary" slot="close" onPress={onClose}>
                 {t('common.cancel')}
               </Button>
-              <Button size="sm" variant="secondary" onPress={handleSave} isDisabled={saving || !tier}>
+              <Button size="sm" variant="secondary" onPress={handleSave} isDisabled={saving}>
                 {t('common.save')}
               </Button>
             </Modal.Footer>

@@ -40,6 +40,9 @@ func TestBattlepassHandlers_NilStore(t *testing.T) {
 		{"grant", handleBattlepassGrant, http.MethodPost, "/api/v1/battlepass/grant", ""},
 		{"grant-tier", handleBattlepassGrantTier, http.MethodPost, "/api/v1/battlepass/grant-tier", ""},
 		{"bulk", handleBattlepassTiersBulk, http.MethodPost, "/api/v1/battlepass/tiers/bulk", ""},
+		{"create", handleCreateBattlepassTier, http.MethodPost, "/api/v1/battlepass/tiers", ""},
+		{"export", handleExportBattlepassCatalog, http.MethodGet, "/api/v1/battlepass/export", ""},
+		{"import", handleImportBattlepassCatalog, http.MethodPost, "/api/v1/battlepass/import", ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -620,6 +623,257 @@ func TestHandleBattlepassGrantTier(t *testing.T) {
 	handleBattlepassGrantTier(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("missing tier_key: want 400, got %d", rec.Code)
+	}
+}
+
+// ── default count ─────────────────────────────────────────────────────────────
+
+func TestHandleListBattlepassTiers_DefaultCount(t *testing.T) {
+	s := setupBattlepassStore(t)
+	if _, err := s.seedTiersIfEmpty(testTiers()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/battlepass/tiers", nil)
+	rec := httptest.NewRecorder()
+	handleListBattlepassTiers(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp struct {
+		DefaultCount int `json:"default_count"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	want := len(defaultBattlepassCatalog())
+	if resp.DefaultCount != want {
+		t.Fatalf("default_count = %d, want %d", resp.DefaultCount, want)
+	}
+}
+
+// ── create ────────────────────────────────────────────────────────────────────
+
+func TestHandleCreateBattlepassTier(t *testing.T) {
+	setupBattlepassStore(t)
+
+	validBody := func(overrides map[string]any) []byte {
+		base := map[string]any{
+			"tier_key":  "level:99",
+			"category":  "level",
+			"label":     "Level 99",
+			"signal":    "level",
+			"threshold": 99,
+			"intel":     25,
+			"enabled":   true,
+		}
+		for k, v := range overrides {
+			base[k] = v
+		}
+		b, _ := json.Marshal(base)
+		return b
+	}
+
+	// Validation failures.
+	cases := []struct {
+		name string
+		body []byte
+	}{
+		{"empty tier_key", validBody(map[string]any{"tier_key": ""})},
+		{"bad signal", validBody(map[string]any{"signal": "bad"})},
+		{"neg intel", validBody(map[string]any{"intel": -1})},
+		{"level no threshold", validBody(map[string]any{"threshold": 0})},
+		{"journey no signal_key", validBody(map[string]any{"signal": "journey_node", "signal_key": "", "threshold": 0})},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/battlepass/tiers", bytes.NewReader(c.body))
+			rec := httptest.NewRecorder()
+			handleCreateBattlepassTier(rec, req)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("want 400, got %d: %s", rec.Code, rec.Body.String())
+			}
+		})
+	}
+
+	// Success.
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/battlepass/tiers", bytes.NewReader(validBody(nil)))
+	rec := httptest.NewRecorder()
+	handleCreateBattlepassTier(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("success: want 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var tier battlepassTier
+	if err := json.Unmarshal(rec.Body.Bytes(), &tier); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if tier.ID == 0 || tier.TierKey != "level:99" || tier.Intel != 25 {
+		t.Fatalf("created tier = %+v", tier)
+	}
+
+	// Duplicate tier_key → 409.
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/battlepass/tiers", bytes.NewReader(validBody(nil)))
+	rec = httptest.NewRecorder()
+	handleCreateBattlepassTier(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("duplicate: want 409, got %d", rec.Code)
+	}
+}
+
+// ── full-fields update ────────────────────────────────────────────────────────
+
+func TestHandleUpdateBattlepassTier_FullFields(t *testing.T) {
+	s := setupBattlepassStore(t)
+	if _, err := s.seedTiersIfEmpty(testTiers()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	tiers, _ := s.listTiers()
+	// tiers[1] = journey:DA_MQ_FindTheFremen, category=story, signal=journey_node.
+	id := fmt.Sprintf("%d", tiers[1].ID)
+
+	body, _ := json.Marshal(map[string]any{
+		"intel": 55, "enabled": true, "label": "Updated Journey",
+		"category": "faction", "signal": "journey_node", "signal_key": "DA_NEW_NODE",
+	})
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/battlepass/tiers/"+id, bytes.NewReader(body))
+	req.SetPathValue("id", id)
+	rec := httptest.NewRecorder()
+	handleUpdateBattlepassTier(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var tier battlepassTier
+	_ = json.Unmarshal(rec.Body.Bytes(), &tier)
+	if tier.Category != "faction" || tier.SignalKey != "DA_NEW_NODE" || tier.Label != "Updated Journey" {
+		t.Fatalf("full update result = %+v", tier)
+	}
+
+	// tier_key in body is ignored.
+	body, _ = json.Marshal(map[string]any{"tier_key": "should-be-ignored", "intel": 55, "enabled": true})
+	req = httptest.NewRequest(http.MethodPut, "/api/v1/battlepass/tiers/"+id, bytes.NewReader(body))
+	req.SetPathValue("id", id)
+	rec = httptest.NewRecorder()
+	handleUpdateBattlepassTier(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("tier_key-ignore: want 200, got %d", rec.Code)
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &tier)
+	if tier.TierKey != "journey:DA_MQ_FindTheFremen" {
+		t.Fatalf("tier_key changed to %q, must be immutable", tier.TierKey)
+	}
+}
+
+// ── export ────────────────────────────────────────────────────────────────────
+
+func TestHandleExportBattlepassCatalog(t *testing.T) {
+	s := setupBattlepassStore(t)
+	if _, err := s.seedTiersIfEmpty(testTiers()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/battlepass/export", nil)
+	rec := httptest.NewRecorder()
+	handleExportBattlepassCatalog(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var envelope battlepassCatalogEnvelope
+	if err := json.Unmarshal(rec.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if envelope.Version != 1 {
+		t.Fatalf("version = %d, want 1", envelope.Version)
+	}
+	if len(envelope.Tiers) != 3 {
+		t.Fatalf("tiers len = %d, want 3", len(envelope.Tiers))
+	}
+	for _, tier := range envelope.Tiers {
+		if tier.TierKey == "" {
+			t.Errorf("exported tier has empty tier_key: %+v", tier)
+		}
+	}
+
+	// Verify no "id" field in raw JSON.
+	var raw map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &raw)
+	for _, tr := range raw["tiers"].([]any) {
+		if _, ok := tr.(map[string]any)["id"]; ok {
+			t.Errorf("export tier must not contain 'id' field: %+v", tr)
+		}
+	}
+}
+
+// ── import ────────────────────────────────────────────────────────────────────
+
+func TestHandleImportBattlepassCatalog(t *testing.T) {
+	s := setupBattlepassStore(t)
+	if _, err := s.seedTiersIfEmpty(testTiers()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	_ = s.recordClaim("level:5", 1, 10, battlepassClaimGranted)
+
+	importTiers := []battlepassTierExport{
+		{TierKey: "level:5", Category: "level", Label: "Imported Level 5", Signal: battlepassSignalLevel, Threshold: 5, Intel: 20, Enabled: true},
+		{TierKey: "journey:new", Category: "story", Label: "New Journey", Signal: battlepassSignalJourneyNode, SignalKey: "DA_NEW_NODE", Intel: 50, Enabled: true},
+	}
+	body, _ := json.Marshal(battlepassCatalogEnvelope{Version: 1, Tiers: importTiers})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/battlepass/import", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	handleImportBattlepassCatalog(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var resp struct {
+		Imported int `json:"imported"`
+	}
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp.Imported != 2 {
+		t.Fatalf("imported = %d, want 2", resp.Imported)
+	}
+
+	// Catalog is replaced.
+	tiers, _ := s.listTiers()
+	if len(tiers) != 2 {
+		t.Fatalf("after import %d tiers, want 2", len(tiers))
+	}
+	// Claims survive.
+	keys, _ := s.claimedKeys(1)
+	if keys["level:5"] != battlepassClaimGranted {
+		t.Fatalf("claim lost after import: %v", keys)
+	}
+
+	// Invalid tier (bad signal) → 400.
+	badBody, _ := json.Marshal(battlepassCatalogEnvelope{Version: 1, Tiers: []battlepassTierExport{
+		{TierKey: "bad:1", Category: "level", Label: "Bad", Signal: "invalid", Threshold: 5, Intel: 10, Enabled: true},
+	}})
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/battlepass/import", bytes.NewReader(badBody))
+	rec = httptest.NewRecorder()
+	handleImportBattlepassCatalog(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("bad signal: want 400, got %d", rec.Code)
+	}
+
+	// Duplicate tier_key within payload → 400.
+	dupBody, _ := json.Marshal(battlepassCatalogEnvelope{Version: 1, Tiers: []battlepassTierExport{
+		{TierKey: "dup:1", Category: "level", Label: "Dup 1", Signal: battlepassSignalLevel, Threshold: 5, Intel: 10, Enabled: true},
+		{TierKey: "dup:1", Category: "level", Label: "Dup 2", Signal: battlepassSignalLevel, Threshold: 5, Intel: 10, Enabled: true},
+	}})
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/battlepass/import", bytes.NewReader(dupBody))
+	rec = httptest.NewRecorder()
+	handleImportBattlepassCatalog(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("dup keys: want 400, got %d", rec.Code)
+	}
+
+	// Empty tiers → 400.
+	emptyBody, _ := json.Marshal(battlepassCatalogEnvelope{Version: 1, Tiers: []battlepassTierExport{}})
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/battlepass/import", bytes.NewReader(emptyBody))
+	rec = httptest.NewRecorder()
+	handleImportBattlepassCatalog(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("empty tiers: want 400, got %d", rec.Code)
 	}
 }
 

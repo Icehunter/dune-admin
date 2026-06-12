@@ -785,6 +785,27 @@ export interface BattlepassTierUpdate {
   intel: number
   enabled: boolean
   reward_items?: string
+  category?: string
+  signal?: BattlepassSignal
+  signal_key?: string
+  threshold?: number
+}
+
+export interface BattlepassTierCreate {
+  tier_key: string
+  category: string
+  label: string
+  signal: BattlepassSignal
+  signal_key: string
+  threshold: number
+  intel: number
+  enabled: boolean
+  reward_items?: string
+}
+
+export interface BattlepassCatalogExport {
+  version: number
+  tiers: Omit<BattlepassTier, 'id'>[]
 }
 
 export interface BattlepassTierCounts {
@@ -797,6 +818,7 @@ export interface BattlepassTiersResponse {
   tiers: BattlepassTier[]
   counts: Record<string, BattlepassTierCounts>
   player_count: number
+  default_count: number
 }
 
 export interface BattlepassClaim {
@@ -1229,6 +1251,7 @@ export const api = {
   },
   battlepass: {
     tiers: () => req<BattlepassTiersResponse>('GET', '/battlepass/tiers'),
+    createTier: (body: BattlepassTierCreate) => req<BattlepassTier>('POST', '/battlepass/tiers', body),
     updateTier: (id: number, body: BattlepassTierUpdate) =>
       req<BattlepassTier>('PUT', `/battlepass/tiers/${id}`, body),
     tiersBulk: (ids: number[], action: 'enable' | 'disable' | 'delete') =>
@@ -1238,6 +1261,8 @@ export const api = {
     reseed: () => req<{ seeded: number }>('POST', '/battlepass/reseed'),
     grant: (account_id: number) => req<{ granted_intel: number, tiers: number }>('POST', '/battlepass/grant', { account_id }),
     grantTier: (account_id: number, tier_key: string) => req<{ granted_intel: number }>('POST', '/battlepass/grant-tier', { account_id, tier_key }),
+    exportCatalog: () => req<BattlepassCatalogExport>('GET', '/battlepass/export'),
+    importCatalog: (payload: BattlepassCatalogExport) => req<{ imported: number }>('POST', '/battlepass/import', payload),
     config: () => req<BattlepassConfig>('GET', '/battlepass/config'),
     saveConfig: (cfg: BattlepassConfig) => req<BattlepassConfig>('PUT', '/battlepass/config', cfg),
   },

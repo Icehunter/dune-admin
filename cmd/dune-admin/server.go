@@ -324,8 +324,11 @@ func startServer(addr string) {
 
 	// ── battlepass (intel-point reward track) ─────────────────────────────────
 	mux.HandleFunc("GET /api/v1/battlepass/tiers", handleListBattlepassTiers)
+	mux.HandleFunc("POST /api/v1/battlepass/tiers", handleCreateBattlepassTier)
 	mux.HandleFunc("PUT /api/v1/battlepass/tiers/{id}", handleUpdateBattlepassTier)
 	mux.HandleFunc("POST /api/v1/battlepass/tiers/bulk", handleBattlepassTiersBulk)
+	mux.HandleFunc("GET /api/v1/battlepass/export", handleExportBattlepassCatalog)
+	mux.HandleFunc("POST /api/v1/battlepass/import", handleImportBattlepassCatalog)
 	mux.HandleFunc("GET /api/v1/battlepass/progress/{accountId}", handleBattlepassProgress)
 	mux.HandleFunc("GET /api/v1/battlepass/pending", handleBattlepassPending)
 	mux.HandleFunc("POST /api/v1/battlepass/reseed", handleBattlepassReseed)

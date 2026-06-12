@@ -1564,7 +1564,10 @@
     },
     "catalog": {
       "title": "Stufenkatalog ({{count}})",
-      "empty": "Keine Stufen im Katalog. Verwende Katalog zurücksetzen, um die Standards zu laden."
+      "empty": "Keine Stufen im Katalog. Verwende Katalog zurücksetzen, um die Standards zu laden.",
+      "newTier": "Neue Stufe",
+      "export": "Exportieren",
+      "import": "Importieren"
     },
     "sections": {
       "pending": "Ausstehend ({{count}})",
@@ -1595,7 +1598,19 @@
       "tierSection": "Stufe",
       "label": "Bezeichnung",
       "itemRewards": "Gegenstandsbelohnungen",
-      "saved": "Stufe gespeichert."
+      "saved": "Stufe gespeichert.",
+      "createTitle": "Stufe erstellen",
+      "tierKey": "Stufenschlüssel",
+      "category": "Kategorie",
+      "signal": "Signal",
+      "threshold": "Schwellenwert",
+      "signalKey": "Signalschlüssel",
+      "created": "Stufe erstellt.",
+      "signals": {
+        "level": "Level",
+        "journey_node": "Reiseknoten",
+        "player_tag": "Spieler-Tag"
+      }
     },
     "bulk": {
       "enable": "Aktivieren",
@@ -1657,6 +1672,14 @@
       "earnedAt": "Verdient am",
       "grantedAt": "Vergeben am",
       "lastError": "Letzter Fehler"
-    }
+    },
+    "importDialog": {
+      "title": "Katalog ersetzen?",
+      "body": "Alle aktuellen Stufendefinitionen werden durch den importierten Katalog ersetzt. Der Anspruchsverlauf bleibt erhalten – Ansprüche werden über den Stufenschlüssel neu verknüpft.",
+      "confirm": "Katalog ersetzen"
+    },
+    "importSuccess": "{{count}} Stufen importiert.",
+    "exportSuccess": "Katalog exportiert.",
+    "importFailed": "Import fehlgeschlagen: {{message}}"
   }
 }

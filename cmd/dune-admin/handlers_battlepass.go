@@ -147,7 +147,12 @@ func handleListBattlepassTiers(w http.ResponseWriter, r *http.Request) {
 			log.Printf("handleListBattlepassTiers players: %v", err)
 		}
 	}
-	jsonOK(w, map[string]any{"tiers": tiers, "counts": counts, "player_count": playerCount})
+	jsonOK(w, map[string]any{
+		"tiers":         tiers,
+		"counts":        counts,
+		"player_count":  playerCount,
+		"default_count": len(defaultBattlepassCatalog()),
+	})
 }
 
 // handleBattlepassTiersBulk enables, disables, or deletes a set of tiers.
@@ -206,7 +211,90 @@ func mergeBattlepassTierUpdate(existing *battlepassTier, reqLabel, reqRewardItem
 	return label, rewardItems, nil
 }
 
-// handleUpdateBattlepassTier adjusts a tier's intel reward and enabled flag.
+// battlepassTierExport is the wire type for catalog export/import. It omits the
+// auto-assigned database ID so that exported files can be cleanly imported.
+type battlepassTierExport struct {
+	TierKey     string           `json:"tier_key"`
+	Category    string           `json:"category"`
+	Label       string           `json:"label"`
+	Signal      battlepassSignal `json:"signal"`
+	SignalKey   string           `json:"signal_key"`
+	Threshold   int64            `json:"threshold"`
+	Intel       int64            `json:"intel"`
+	RewardItems string           `json:"reward_items"`
+	Enabled     bool             `json:"enabled"`
+}
+
+// battlepassCatalogEnvelope wraps an exported catalog with a version number so
+// future format changes remain backward-compatible.
+type battlepassCatalogEnvelope struct {
+	Version int                    `json:"version"`
+	Tiers   []battlepassTierExport `json:"tiers"`
+}
+
+// validateBattlepassTier returns an error if any required field is invalid.
+// Used by create, full-update, and import handlers.
+func validateBattlepassTier(t battlepassTier) error {
+	if t.TierKey == "" {
+		return fmt.Errorf("tier_key is required")
+	}
+	if t.Category == "" {
+		return fmt.Errorf("category is required")
+	}
+	if t.Label == "" {
+		return fmt.Errorf("label is required")
+	}
+	switch t.Signal {
+	case battlepassSignalLevel, battlepassSignalJourneyNode, battlepassSignalPlayerTag:
+	default:
+		return fmt.Errorf("signal must be level, journey_node, or player_tag")
+	}
+	if t.Intel < 0 {
+		return fmt.Errorf("intel must be >= 0")
+	}
+	if t.Threshold < 0 {
+		return fmt.Errorf("threshold must be >= 0")
+	}
+	if t.Signal == battlepassSignalLevel && t.Threshold == 0 {
+		return fmt.Errorf("threshold must be > 0 for level signal")
+	}
+	if t.Signal != battlepassSignalLevel && t.SignalKey == "" {
+		return fmt.Errorf("signal_key is required for non-level signal")
+	}
+	if t.RewardItems != "" {
+		var items []rewardItem
+		if err := json.Unmarshal([]byte(t.RewardItems), &items); err != nil {
+			return fmt.Errorf("reward_items must be a JSON array of {template, qty, quality}")
+		}
+	}
+	return nil
+}
+
+// mergeOptionalTierFields applies optional pointer fields from a request onto
+// the existing tier, returning the merged category, signal, signal_key, and
+// threshold. Nil pointers keep the existing value.
+func mergeOptionalTierFields(ex *battlepassTier, cat *string, sig *battlepassSignal, sigKey *string, thr *int64) (string, battlepassSignal, string, int64) {
+	category := ex.Category
+	if cat != nil {
+		category = *cat
+	}
+	signal := ex.Signal
+	if sig != nil {
+		signal = *sig
+	}
+	signalKey := ex.SignalKey
+	if sigKey != nil {
+		signalKey = *sigKey
+	}
+	threshold := ex.Threshold
+	if thr != nil {
+		threshold = *thr
+	}
+	return category, signal, signalKey, threshold
+}
+
+// handleUpdateBattlepassTier adjusts a tier's editable fields. tier_key is
+// immutable and is silently ignored if present in the request body.
 func handleUpdateBattlepassTier(w http.ResponseWriter, r *http.Request) {
 	if globalBattlepassStore == nil {
 		jsonErr(w, fmt.Errorf("battlepass store not available"), http.StatusServiceUnavailable)
@@ -218,15 +306,21 @@ func handleUpdateBattlepassTier(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Label       *string `json:"label"`
-		Intel       int64   `json:"intel"`
-		Enabled     bool    `json:"enabled"`
-		RewardItems *string `json:"reward_items"`
+		Label       *string           `json:"label"`
+		Intel       int64             `json:"intel"`
+		Enabled     bool              `json:"enabled"`
+		RewardItems *string           `json:"reward_items"`
+		Category    *string           `json:"category"`
+		Signal      *battlepassSignal `json:"signal"`
+		SignalKey   *string           `json:"signal_key"`
+		Threshold   *int64            `json:"threshold"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, fmt.Errorf("invalid request body"), http.StatusBadRequest)
 		return
 	}
+	// Validate intel early so the test for negative intel (id=1, empty store)
+	// gets a 400 before the store lookup.
 	if req.Intel < 0 {
 		jsonErr(w, fmt.Errorf("intel must be >= 0"), http.StatusBadRequest)
 		return
@@ -248,8 +342,19 @@ func handleUpdateBattlepassTier(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, http.StatusBadRequest)
 		return
 	}
+	category, signal, signalKey, threshold := mergeOptionalTierFields(existing, req.Category, req.Signal, req.SignalKey, req.Threshold)
 
-	tier, err := globalBattlepassStore.updateTier(id, label, req.Intel, req.Enabled, rewardItems)
+	merged := battlepassTier{
+		TierKey: existing.TierKey, Category: category, Label: label,
+		Signal: signal, SignalKey: signalKey, Threshold: threshold,
+		Intel: req.Intel, Enabled: req.Enabled, RewardItems: rewardItems,
+	}
+	if err := validateBattlepassTier(merged); err != nil {
+		jsonErr(w, err, http.StatusBadRequest)
+		return
+	}
+
+	tier, err := globalBattlepassStore.updateTier(id, label, req.Intel, req.Enabled, rewardItems, category, signal, signalKey, threshold)
 	if errors.Is(err, errNotFound) {
 		jsonErr(w, fmt.Errorf("tier not found"), http.StatusNotFound)
 		return
@@ -515,4 +620,110 @@ func handleSaveBattlepassConfig(w http.ResponseWriter, r *http.Request) {
 
 	applyBattlepassEngine(loadedConfig)
 	jsonOK(w, battlepassConfigFromLoaded())
+}
+
+// handleCreateBattlepassTier inserts a new tier into the catalog.
+// Returns 409 when the tier_key already exists.
+func handleCreateBattlepassTier(w http.ResponseWriter, r *http.Request) {
+	if globalBattlepassStore == nil {
+		jsonErr(w, fmt.Errorf("battlepass store not available"), http.StatusServiceUnavailable)
+		return
+	}
+	var t battlepassTier
+	if err := decode(r, &t); err != nil {
+		jsonErr(w, fmt.Errorf("invalid request body"), http.StatusBadRequest)
+		return
+	}
+	if err := validateBattlepassTier(t); err != nil {
+		jsonErr(w, err, http.StatusBadRequest)
+		return
+	}
+	tier, err := globalBattlepassStore.createTier(t)
+	if errors.Is(err, errBattlepassDuplicateTierKey) {
+		jsonErr(w, fmt.Errorf("tier_key %q already exists", t.TierKey), http.StatusConflict)
+		return
+	}
+	if err != nil {
+		log.Printf("handleCreateBattlepassTier: %v", err)
+		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, tier)
+}
+
+// handleExportBattlepassCatalog returns the full tier catalog as a versioned
+// JSON envelope suitable for import on another server. Internal IDs are omitted.
+func handleExportBattlepassCatalog(w http.ResponseWriter, r *http.Request) {
+	if globalBattlepassStore == nil {
+		jsonErr(w, fmt.Errorf("battlepass store not available"), http.StatusServiceUnavailable)
+		return
+	}
+	tiers, err := globalBattlepassStore.listTiers()
+	if err != nil {
+		log.Printf("handleExportBattlepassCatalog: %v", err)
+		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
+		return
+	}
+	exports := make([]battlepassTierExport, len(tiers))
+	for i, t := range tiers {
+		exports[i] = battlepassTierExport{
+			TierKey: t.TierKey, Category: t.Category, Label: t.Label,
+			Signal: t.Signal, SignalKey: t.SignalKey, Threshold: t.Threshold,
+			Intel: t.Intel, RewardItems: t.RewardItems, Enabled: t.Enabled,
+		}
+	}
+	jsonOK(w, battlepassCatalogEnvelope{Version: 1, Tiers: exports})
+}
+
+// validateBattlepassImport validates the envelope and converts its tiers to
+// battlepassTier values ready for reseedTiers. Returns an error describing the
+// first problem found — the whole payload is rejected on any violation.
+func validateBattlepassImport(env battlepassCatalogEnvelope) ([]battlepassTier, error) {
+	if len(env.Tiers) == 0 {
+		return nil, fmt.Errorf("tiers must not be empty")
+	}
+	seen := make(map[string]bool, len(env.Tiers))
+	out := make([]battlepassTier, len(env.Tiers))
+	for i, e := range env.Tiers {
+		t := battlepassTier{
+			TierKey: e.TierKey, Category: e.Category, Label: e.Label,
+			Signal: e.Signal, SignalKey: e.SignalKey, Threshold: e.Threshold,
+			Intel: e.Intel, RewardItems: e.RewardItems, Enabled: e.Enabled,
+		}
+		if err := validateBattlepassTier(t); err != nil {
+			return nil, fmt.Errorf("tier %d (%q): %w", i, e.TierKey, err)
+		}
+		if seen[e.TierKey] {
+			return nil, fmt.Errorf("duplicate tier_key %q in import payload", e.TierKey)
+		}
+		seen[e.TierKey] = true
+		out[i] = t
+	}
+	return out, nil
+}
+
+// handleImportBattlepassCatalog replaces the entire tier catalog with the
+// tiers from the request body. Claims are preserved — they re-attach by
+// tier_key after the reseed. The whole payload is validated before any write.
+func handleImportBattlepassCatalog(w http.ResponseWriter, r *http.Request) {
+	if globalBattlepassStore == nil {
+		jsonErr(w, fmt.Errorf("battlepass store not available"), http.StatusServiceUnavailable)
+		return
+	}
+	var env battlepassCatalogEnvelope
+	if err := decode(r, &env); err != nil {
+		jsonErr(w, fmt.Errorf("invalid request body"), http.StatusBadRequest)
+		return
+	}
+	tiers, err := validateBattlepassImport(env)
+	if err != nil {
+		jsonErr(w, err, http.StatusBadRequest)
+		return
+	}
+	if err := globalBattlepassStore.reseedTiers(tiers); err != nil {
+		log.Printf("handleImportBattlepassCatalog: %v", err)
+		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, map[string]any{"imported": len(tiers)})
 }

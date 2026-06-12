@@ -4,7 +4,7 @@ import { Button, Chip, Separator, Switch, toast } from '@heroui/react'
 import type { Selection } from '@heroui/react'
 import { EmptyState, Segment } from '@heroui-pro/react'
 import { api } from '../../api/client'
-import type { BattlepassPendingRow, BattlepassTier, BattlepassTierCounts } from '../../api/client'
+import type { BattlepassCatalogExport, BattlepassPendingRow, BattlepassTier, BattlepassTierCounts } from '../../api/client'
 import { ActionBar, ConfirmDialog, DataTable, FieldSelect, Icon, NumberInput, PageHeader, Panel, SectionLabel, type Column } from '../../dune-ui'
 import { TierEditorModal } from './modals/TierEditorModal'
 import { RewardIcon } from './RewardIcons'
@@ -40,7 +40,12 @@ export const BattlepassTab: React.FC = () => {
   const [pending, setPending] = React.useState<BattlepassPendingRow[]>([])
   const [pendingLoading, setPendingLoading] = React.useState(false)
   const [granting, setGranting] = React.useState<string | null>(null)
+  const [defaultCount, setDefaultCount] = React.useState(0)
+  const importInputRef = React.useRef<HTMLInputElement>(null)
   const [reseedOpen, setReseedOpen] = React.useState(false)
+  const [createOpen, setCreateOpen] = React.useState(false)
+  const [importOpen, setImportOpen] = React.useState(false)
+  const [pendingImport, setPendingImport] = React.useState<BattlepassCatalogExport | null>(null)
   const [grantTarget, setGrantTarget] = React.useState<BattlepassPendingRow | null>(null)
   const [editorTier, setEditorTier] = React.useState<BattlepassTier | null>(null)
   const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
@@ -56,6 +61,7 @@ export const BattlepassTab: React.FC = () => {
         setTiers(resp.tiers)
         setCounts(resp.counts)
         setPlayerCount(resp.player_count)
+        setDefaultCount(resp.default_count)
       })
       .catch((e: unknown) => {
         toast.danger(t('battlepass.failedToLoad', { message: e instanceof Error ? e.message : String(e) }))
@@ -120,6 +126,57 @@ export const BattlepassTab: React.FC = () => {
       })
       .catch((e: unknown) => {
         toast.danger(t('battlepass.updateFailed', { message: e instanceof Error ? e.message : String(e) }))
+      })
+  }
+
+  const handleExport = () => {
+    api.battlepass
+      .exportCatalog()
+      .then((data) => {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'battlepass-catalog.json'
+        a.click()
+        URL.revokeObjectURL(url)
+        toast.success(t('battlepass.exportSuccess'))
+      })
+      .catch((e: unknown) => {
+        toast.danger(t('battlepass.importFailed', { message: e instanceof Error ? e.message : String(e) }))
+      })
+  }
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as BattlepassCatalogExport
+        setPendingImport(parsed)
+        setImportOpen(true)
+      }
+      catch {
+        toast.danger(t('battlepass.importFailed', { message: 'Invalid JSON' }))
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleImportConfirm = () => {
+    if (!pendingImport) return
+    setImportOpen(false)
+    api.battlepass
+      .importCatalog(pendingImport)
+      .then((r) => {
+        toast.success(t('battlepass.importSuccess', { count: r.imported }))
+        setPendingImport(null)
+        loadTiers()
+      })
+      .catch((e: unknown) => {
+        toast.danger(t('battlepass.importFailed', { message: e instanceof Error ? e.message : String(e) }))
       })
   }
 
@@ -338,6 +395,28 @@ export const BattlepassTab: React.FC = () => {
                 options={[CATEGORY_ALL, ...CATEGORY_ORDER]}
                 className="w-44"
               />
+              <Button size="sm" variant="ghost" onPress={() => setCreateOpen(true)}>
+                <Icon name="plus" />
+                {' '}
+                {t('battlepass.catalog.newTier')}
+              </Button>
+              <Button size="sm" variant="ghost" onPress={handleExport}>
+                <Icon name="download" />
+                {' '}
+                {t('battlepass.catalog.export')}
+              </Button>
+              <Button size="sm" variant="ghost" onPress={() => importInputRef.current?.click()}>
+                <Icon name="upload" />
+                {' '}
+                {t('battlepass.catalog.import')}
+              </Button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleImportFile}
+              />
               <Button size="sm" variant="danger" className="ml-auto" onPress={() => setReseedOpen(true)}>
                 <Icon name="rotate-ccw" />
                 {' '}
@@ -467,7 +546,7 @@ export const BattlepassTab: React.FC = () => {
           onCancel={() => setReseedOpen(false)}
           description={(
             <div className="flex flex-col gap-2">
-              <p>{t('battlepass.reseedDialog.intro', { count: 158 })}</p>
+              <p>{t('battlepass.reseedDialog.intro', { count: defaultCount })}</p>
               <ul className="list-disc pl-5 space-y-1">
                 <li>{t('battlepass.reseedDialog.resetsIntel')}</li>
                 <li>{t('battlepass.reseedDialog.resetsEnabled')}</li>
@@ -509,6 +588,30 @@ export const BattlepassTab: React.FC = () => {
           description={t('battlepass.pending.bulkGrantDialog.body', { count: pendingSelectionCount })}
         />
 
+        <ConfirmDialog
+          open={importOpen}
+          title={t('battlepass.importDialog.title')}
+          confirmLabel={t('battlepass.importDialog.confirm')}
+          onConfirm={handleImportConfirm}
+          onCancel={() => {
+            setImportOpen(false)
+            setPendingImport(null)
+          }}
+          description={t('battlepass.importDialog.body')}
+        />
+
+        {/* Create mode: tier=null triggers create flow in modal */}
+        <TierEditorModal
+          isOpen={createOpen}
+          onClose={() => setCreateOpen(false)}
+          tier={null}
+          onSaved={() => {
+            setCreateOpen(false)
+            loadTiers()
+          }}
+        />
+
+        {/* Edit mode */}
         <TierEditorModal
           isOpen={editorTier != null}
           onClose={() => setEditorTier(null)}

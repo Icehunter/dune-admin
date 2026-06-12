@@ -1471,7 +1471,10 @@
     },
     "catalog": {
       "title": "Tier Catalog ({{count}})",
-      "empty": "No tiers in the catalog. Use Reset Catalog to seed the defaults."
+      "empty": "No tiers in the catalog. Use Reset Catalog to seed the defaults.",
+      "newTier": "New Tier",
+      "export": "Export",
+      "import": "Import"
     },
     "sections": {
       "pending": "Pending ({{count}})",
@@ -1502,7 +1505,19 @@
       "tierSection": "Tier",
       "label": "Label",
       "itemRewards": "Item Rewards",
-      "saved": "Tier saved."
+      "saved": "Tier saved.",
+      "createTitle": "Create Tier",
+      "tierKey": "Tier Key",
+      "category": "Category",
+      "signal": "Signal",
+      "threshold": "Threshold",
+      "signalKey": "Signal Key",
+      "created": "Tier created.",
+      "signals": {
+        "level": "Level",
+        "journey_node": "Journey Node",
+        "player_tag": "Player Tag"
+      }
     },
     "bulk": {
       "enable": "Enable",
@@ -1564,7 +1579,15 @@
       "earnedAt": "Earned",
       "grantedAt": "Granted",
       "lastError": "Last Error"
-    }
+    },
+    "importDialog": {
+      "title": "Replace catalog?",
+      "body": "Replaces all current tier definitions with the imported catalog. Claim history is preserved — claims re-attach by tier key.",
+      "confirm": "Replace Catalog"
+    },
+    "importSuccess": "Imported {{count}} tiers.",
+    "exportSuccess": "Catalog exported.",
+    "importFailed": "Import failed: {{message}}"
   },
   "events": {
     "title": "Events ({{count}})",

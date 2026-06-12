@@ -71,7 +71,8 @@ func TestBattlepassStoreUpdateTier(t *testing.T) {
 	id := tiers[0].ID
 
 	rewards := `[{"template":"Kindjal_4","qty":1,"quality":3}]`
-	got, err := s.updateTier(id, "Renamed Tier", 25, false, rewards)
+	// tiers[0] is level:5 (category=level, signal=level, threshold=5).
+	got, err := s.updateTier(id, "Renamed Tier", 25, false, rewards, "level", battlepassSignalLevel, "", 5)
 	if err != nil {
 		t.Fatalf("updateTier: %v", err)
 	}
@@ -79,8 +80,58 @@ func TestBattlepassStoreUpdateTier(t *testing.T) {
 		t.Fatalf("updateTier result = %+v", got)
 	}
 
-	if _, err := s.updateTier(9999, "x", 1, true, ""); err != errNotFound {
+	if _, err := s.updateTier(9999, "x", 1, true, "", "level", battlepassSignalLevel, "", 5); err != errNotFound {
 		t.Fatalf("updateTier missing err = %v, want errNotFound", err)
+	}
+}
+
+func TestBattlepassStoreCreateTier(t *testing.T) {
+	s := testBattlepassStore(t)
+
+	t.Run("success returns populated row", func(t *testing.T) {
+		tier := battlepassTier{
+			TierKey: "level:5", Category: "level", Label: "Level 5",
+			Signal: battlepassSignalLevel, Threshold: 5, Intel: 10, Enabled: true,
+		}
+		got, err := s.createTier(tier)
+		if err != nil {
+			t.Fatalf("createTier: %v", err)
+		}
+		if got.ID == 0 || got.TierKey != "level:5" || got.Category != "level" || got.Intel != 10 {
+			t.Fatalf("createTier result = %+v", got)
+		}
+	})
+
+	t.Run("duplicate tier_key returns errBattlepassDuplicateTierKey", func(t *testing.T) {
+		dup := battlepassTier{
+			TierKey: "level:5", Category: "level", Label: "Duplicate",
+			Signal: battlepassSignalLevel, Threshold: 5, Intel: 5, Enabled: true,
+		}
+		if _, err := s.createTier(dup); !errors.Is(err, errBattlepassDuplicateTierKey) {
+			t.Fatalf("want errBattlepassDuplicateTierKey, got %v", err)
+		}
+	})
+}
+
+func TestBattlepassStoreUpdateTier_FullFields(t *testing.T) {
+	s := testBattlepassStore(t)
+	if _, err := s.seedTiersIfEmpty(testTiers()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	tiers, _ := s.listTiers()
+	// tiers[1] is journey:DA_MQ_FindTheFremen (category=story, signal=journey_node).
+	id := tiers[1].ID
+
+	got, err := s.updateTier(id, "Renamed", 99, false, "", "faction", battlepassSignalJourneyNode, "DA_NEW_NODE", 0)
+	if err != nil {
+		t.Fatalf("updateTier: %v", err)
+	}
+	if got.Category != "faction" || got.SignalKey != "DA_NEW_NODE" || got.Label != "Renamed" {
+		t.Fatalf("full-fields update did not persist: %+v", got)
+	}
+	// tier_key must not change.
+	if got.TierKey != "journey:DA_MQ_FindTheFremen" {
+		t.Fatalf("tier_key changed to %q, must be immutable", got.TierKey)
 	}
 }
 

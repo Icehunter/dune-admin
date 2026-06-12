@@ -1564,7 +1564,10 @@
     },
     "catalog": {
       "title": "Kademe Kataloğu ({{count}})",
-      "empty": "Katalogda kademe yok. Varsayılanları yüklemek için Kataloğu Sıfırla'yı kullan."
+      "empty": "Katalogda kademe yok. Varsayılanları yüklemek için Kataloğu Sıfırla'yı kullan.",
+      "newTier": "Yeni Kademe",
+      "export": "Dışa Aktar",
+      "import": "İçe Aktar"
     },
     "sections": {
       "pending": "Beklemede ({{count}})",
@@ -1595,7 +1598,19 @@
       "tierSection": "Kademe",
       "label": "Etiket",
       "itemRewards": "Eşya Ödülleri",
-      "saved": "Kademe kaydedildi."
+      "saved": "Kademe kaydedildi.",
+      "createTitle": "Kademe Oluştur",
+      "tierKey": "Kademe Anahtarı",
+      "category": "Kategori",
+      "signal": "Sinyal",
+      "threshold": "Eşik",
+      "signalKey": "Sinyal Anahtarı",
+      "created": "Kademe oluşturuldu.",
+      "signals": {
+        "level": "Seviye",
+        "journey_node": "Yolculuk Düğümü",
+        "player_tag": "Oyuncu Etiketi"
+      }
     },
     "bulk": {
       "enable": "Etkinleştir",
@@ -1657,6 +1672,14 @@
       "earnedAt": "Kazanıldı",
       "grantedAt": "Verildi",
       "lastError": "Son Hata"
-    }
+    },
+    "importDialog": {
+      "title": "Kataloğu değiştir?",
+      "body": "Tüm mevcut kademe tanımlarını içe aktarılan katalog ile değiştirir. Talep geçmişi korunur — talepler kademe anahtarıyla yeniden bağlanır.",
+      "confirm": "Kataloğu Değiştir"
+    },
+    "importSuccess": "{{count}} kademe içe aktarıldı.",
+    "exportSuccess": "Katalog dışa aktarıldı.",
+    "importFailed": "İçe aktarma başarısız: {{message}}"
   }
 }

@@ -1610,7 +1610,10 @@
     },
     "catalog": {
       "title": "Katalog Poziomów ({{count}})",
-      "empty": "Brak poziomów w katalogu. Użyj Resetuj Katalog, aby załadować domyślne."
+      "empty": "Brak poziomów w katalogu. Użyj Resetuj Katalog, aby załadować domyślne.",
+      "newTier": "Nowy Poziom",
+      "export": "Eksportuj",
+      "import": "Importuj"
     },
     "sections": {
       "pending": "Oczekujące ({{count}})",
@@ -1641,7 +1644,19 @@
       "tierSection": "Poziom",
       "label": "Etykieta",
       "itemRewards": "Nagrody Przedmiotów",
-      "saved": "Poziom zapisany."
+      "saved": "Poziom zapisany.",
+      "createTitle": "Utwórz Poziom",
+      "tierKey": "Klucz Poziomu",
+      "category": "Kategoria",
+      "signal": "Sygnał",
+      "threshold": "Próg",
+      "signalKey": "Klucz Sygnału",
+      "created": "Poziom utworzony.",
+      "signals": {
+        "level": "Poziom",
+        "journey_node": "Węzeł Podróży",
+        "player_tag": "Znacznik Gracza"
+      }
     },
     "bulk": {
       "enable": "Włącz",
@@ -1703,6 +1718,14 @@
       "earnedAt": "Zdobyto",
       "grantedAt": "Przyznano",
       "lastError": "Ostatni Błąd"
-    }
+    },
+    "importDialog": {
+      "title": "Zastąpić katalog?",
+      "body": "Zastępuje wszystkie bieżące definicje poziomów importowanym katalogiem. Historia roszczeń jest zachowywana — roszczenia są ponownie dołączane za pomocą klucza poziomu.",
+      "confirm": "Zastąp Katalog"
+    },
+    "importSuccess": "Zaimportowano {{count}} poziomów.",
+    "exportSuccess": "Katalog wyeksportowany.",
+    "importFailed": "Import nie powiódł się: {{message}}"
   }
 }

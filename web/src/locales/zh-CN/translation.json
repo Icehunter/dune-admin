@@ -1564,7 +1564,10 @@
     },
     "catalog": {
       "title": "阶位目录（{{count}}）",
-      "empty": "目录中没有阶位。使用重置目录来加载默认值。"
+      "empty": "目录中没有阶位。使用重置目录来加载默认值。",
+      "newTier": "新建阶位",
+      "export": "导出",
+      "import": "导入"
     },
     "sections": {
       "pending": "待处理（{{count}}）",
@@ -1595,7 +1598,19 @@
       "tierSection": "阶位",
       "label": "标签",
       "itemRewards": "物品奖励",
-      "saved": "阶位已保存。"
+      "saved": "阶位已保存。",
+      "createTitle": "创建阶位",
+      "tierKey": "阶位键",
+      "category": "类别",
+      "signal": "信号",
+      "threshold": "阈值",
+      "signalKey": "信号键",
+      "created": "阶位已创建。",
+      "signals": {
+        "level": "等级",
+        "journey_node": "旅途节点",
+        "player_tag": "玩家标签"
+      }
     },
     "bulk": {
       "enable": "启用",
@@ -1657,6 +1672,14 @@
       "earnedAt": "获得时间",
       "grantedAt": "发放时间",
       "lastError": "最后错误"
-    }
+    },
+    "importDialog": {
+      "title": "替换目录？",
+      "body": "将所有当前阶位定义替换为导入的目录。申领历史将被保留——申领通过阶位键重新关联。",
+      "confirm": "替换目录"
+    },
+    "importSuccess": "已导入 {{count}} 个阶位。",
+    "exportSuccess": "目录已导出。",
+    "importFailed": "导入失败：{{message}}"
   }
 }

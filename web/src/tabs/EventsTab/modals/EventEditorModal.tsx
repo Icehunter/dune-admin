@@ -5,8 +5,10 @@ import {
 import type { Selection } from '@heroui/react'
 import type { DataGridColumn } from '@heroui-pro/react'
 import { DataGrid, Segment } from '@heroui-pro/react'
+import { useAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { ActionBar, FieldInput, FieldSelect, Icon, NumberInput, SectionLabel } from '../../../dune-ui'
+import { gameplayTagsSyncAtom } from '../../../data/store'
 import { api } from '../../../api/client'
 import type { EventDefinition, GivePack, Player } from '../../../api/client'
 import type { MilestoneFields, MilestoneSignal, RewardXP, XPType, ZoneRaceFields, KeyedRewardItem } from '../types'
@@ -19,6 +21,77 @@ const FormSection: React.FC<{ children: React.ReactNode, className?: string }> =
     {children}
   </div>
 )
+
+type TagPickerFieldProps = {
+  value: string
+  onSelect: (tag: string) => void
+  options: string[]
+  ariaLabel: string
+}
+
+const TagPickerField: React.FC<TagPickerFieldProps> = ({ value, onSelect, options, ariaLabel }) => {
+  const [query, setQuery] = React.useState('')
+
+  const filtered = React.useMemo(() => {
+    if (!query) return []
+    const q = query.toLowerCase()
+    return options.filter((t) => t.toLowerCase().includes(q)).slice(0, 100)
+  }, [options, query])
+
+  const handleSelect = (tag: string) => {
+    onSelect(tag)
+    setQuery('')
+  }
+
+  return (
+    <>
+      {value && (
+        <div className="mb-1 flex items-center gap-1">
+          <span className="font-mono text-xs text-foreground">{value}</span>
+          <button
+            type="button"
+            className="text-xs text-muted hover:text-foreground ml-1"
+            onClick={() => {
+              onSelect('')
+              setQuery('')
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {/* Inline, absolutely-positioned dropdown anchored to the search field —
+          mirrors the reward-template picker below. A portal to document.body
+          lands outside the React Aria modal subtree, where the underlay blocks
+          pointer selection and scroll chains to the whole dialog. The dropdown
+          carries the `tag-dropdown` marker so the containing FormSection can
+          raise its stacking context (each .dune-lift is isolation:isolate, so a
+          plain z-index can't paint over the next sibling panel). */}
+      <div className="relative w-full">
+        <SearchField value={query} onChange={setQuery} aria-label={ariaLabel} className="w-full">
+          <SearchField.Group>
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder="Search gameplay tags…" />
+            <SearchField.ClearButton />
+          </SearchField.Group>
+        </SearchField>
+        {filtered.length > 0 && (
+          <div className="tag-dropdown absolute z-[200] w-full mt-1 max-h-52 overflow-y-auto overscroll-contain rounded-[var(--radius)] border border-border bg-surface shadow-lg">
+            {filtered.map((tag) => (
+              <div
+                key={tag}
+                className="px-3 py-1.5 text-xs font-mono cursor-pointer hover:bg-surface-hover"
+                onClick={() => handleSelect(tag)}
+              >
+                {tag}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
 
 const parseZoneConfig = (raw: string): ZoneRaceFields => {
   try {
@@ -102,7 +175,10 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const [milestone, setMilestone] = React.useState<MilestoneFields>(
     { signal: 'level', threshold: 50, tagName: '', awardPast: false },
   )
-  const [announceTemplate, setAnnounceTemplate] = React.useState('')
+  const [allGameplayTags] = useAtom(gameplayTagsSyncAtom)
+  const MILESTONE_DEFAULT_TEMPLATE = '{player} reached level {value} in {event}!'
+  const ZONE_RACE_DEFAULT_TEMPLATE = '{player} completed {event}!'
+  const [announceTemplate, setAnnounceTemplate] = React.useState(MILESTONE_DEFAULT_TEMPLATE)
   const [pollSeconds, setPollSeconds] = React.useState(7)
   const [jitterSeconds, setJitterSeconds] = React.useState(3)
   const [maps, setMaps] = React.useState<string[]>([])
@@ -163,7 +239,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           setRewardItems([])
           setRewardXP([])
         }
-        setAnnounceTemplate(editing.announce_template || '')
+        setAnnounceTemplate(editing.announce_template || (editing.type === 'zone_race' ? ZONE_RACE_DEFAULT_TEMPLATE : MILESTONE_DEFAULT_TEMPLATE))
         setPollSeconds(editing.poll_seconds > 0 ? editing.poll_seconds : 7)
         setJitterSeconds(editing.jitter_seconds > 0 ? editing.jitter_seconds : 3)
       }
@@ -176,7 +252,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         setRewardFactionScrip(0)
         setRewardItems([])
         setRewardXP([])
-        setAnnounceTemplate('')
+        setAnnounceTemplate(MILESTONE_DEFAULT_TEMPLATE)
         setPollSeconds(7)
         setJitterSeconds(3)
       }
@@ -209,18 +285,18 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     [templates],
   )
 
-  const ZONE_RACE_DEFAULT_TEMPLATE = '{player} completed {event}!'
-
   const handleTypeChange = (newType: string) => {
     const t2 = newType as EventDefinition['type']
     setType(t2)
     if (t2 === 'zone_race') {
       setZone({ map: '', x: 0, y: 0, z: 0, radius: 500, participants: [] })
-      if (!announceTemplate) setAnnounceTemplate(ZONE_RACE_DEFAULT_TEMPLATE)
+      if (!announceTemplate || announceTemplate === MILESTONE_DEFAULT_TEMPLATE)
+        setAnnounceTemplate(ZONE_RACE_DEFAULT_TEMPLATE)
     }
     else {
       setMilestone({ signal: 'level', threshold: 50, tagName: '', awardPast: false })
-      if (announceTemplate === ZONE_RACE_DEFAULT_TEMPLATE) setAnnounceTemplate('')
+      if (!announceTemplate || announceTemplate === ZONE_RACE_DEFAULT_TEMPLATE)
+        setAnnounceTemplate(MILESTONE_DEFAULT_TEMPLATE)
     }
   }
 
@@ -571,7 +647,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                 )}
 
                 {type === 'milestone' && (
-                  <FormSection>
+                  <FormSection className="has-[.tag-dropdown]:z-30">
                     <SectionLabel>{t('events.editor.milestoneConfig')}</SectionLabel>
                     <div className="flex flex-col gap-3 mt-2">
                       <div>
@@ -622,10 +698,10 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                       {milestone.signal === 'achievement_tag' && (
                         <div>
                           <span className={fieldLabelClass}>{t('events.editor.tagName')}</span>
-                          <FieldInput
+                          <TagPickerField
                             value={milestone.tagName}
-                            onChange={(v) => setMilestone((m) => ({ ...m, tagName: v }))}
-                            placeholder="e.g. SpiceVision_Unlocked"
+                            onSelect={(tag) => setMilestone((m) => ({ ...m, tagName: tag }))}
+                            options={allGameplayTags ?? []}
                             ariaLabel={t('events.editor.tagName')}
                           />
                         </div>

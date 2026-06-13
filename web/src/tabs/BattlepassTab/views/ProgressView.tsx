@@ -1,9 +1,10 @@
 import * as React from 'react'
-import { Chip, SearchField, toast } from '@heroui/react'
+import { Chip, SearchField, Tooltip, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
-import type { BattlepassClaim, Player } from '../../../api/client'
+import type { BattlepassClaim, BattlepassTier, Player } from '../../../api/client'
+import type { RewardItem } from '../../EventsTab/types'
 import { DataTable, Icon, SideNav, type Column } from '../../../dune-ui'
 
 type ClaimKey = 'tier_key' | 'status' | 'intel' | 'earned_at' | 'granted_at' | 'last_error'
@@ -14,6 +15,34 @@ const claimStatusColor = (status: BattlepassClaim['status']): 'success' | 'warni
   return 'default'
 }
 
+const parseItems = (raw: string): RewardItem[] => {
+  if (!raw) return []
+  try {
+    return JSON.parse(raw) as RewardItem[]
+  }
+  catch {
+    return []
+  }
+}
+
+const tierRequirement = (tier: BattlepassTier, levelLabel: (lvl: number) => string): string => {
+  if (tier.signal === 'level') return levelLabel(tier.threshold)
+  if (tier.signal === 'journey_node') return tier.signal_key || tier.tier_key
+  if (tier.signal === 'player_tag') return tier.signal_key || tier.tier_key
+  return tier.tier_key
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  level: 'Level',
+  story: 'Story',
+  side_quest: 'Side Quest',
+  faction: 'Faction',
+  exploration: 'Exploration',
+  achievement: 'Achievement',
+}
+
+const categoryLabel = (cat: string): string => CATEGORY_LABELS[cat] ?? cat
+
 export const ProgressView: React.FC = () => {
   const { t } = useTranslation()
   const [players, setPlayers] = React.useState<Player[]>([])
@@ -22,12 +51,16 @@ export const ProgressView: React.FC = () => {
   const [selected, setSelected] = React.useState<Player | null>(null)
   const [claims, setClaims] = React.useState<BattlepassClaim[]>([])
   const [claimsLoading, setClaimsLoading] = React.useState(false)
+  const [tierMap, setTierMap] = React.useState<Map<string, BattlepassTier>>(new Map())
 
   const loadPlayers = React.useCallback(() => {
     Promise.resolve()
       .then(() => setPlayersLoading(true))
-      .then(() => api.players.list())
-      .then(setPlayers)
+      .then(() => Promise.all([api.players.list(), api.battlepass.tiers()]))
+      .then(([pl, tr]) => {
+        setPlayers(pl)
+        setTierMap(new Map(tr.tiers.map((t) => [t.tier_key, t])))
+      })
       .catch((e: unknown) => {
         toast.danger(t('battlepass.failedToLoad', { message: e instanceof Error ? e.message : String(e) }))
       })
@@ -91,9 +124,9 @@ export const ProgressView: React.FC = () => {
   )
 
   const CLAIM_COLUMNS: Column<ClaimKey>[] = [
-    { key: 'tier_key', label: t('battlepass.claims.tier'), minWidth: 220 },
-    { key: 'status', label: t('battlepass.claims.status'), width: 100 },
-    { key: 'intel', label: t('battlepass.columns.intel'), width: 80 },
+    { key: 'tier_key', label: t('battlepass.claims.tier'), minWidth: 260 },
+    { key: 'status', label: t('battlepass.claims.status'), width: 110 },
+    { key: 'intel', label: t('battlepass.columns.intel'), width: 100 },
     { key: 'earned_at', label: t('battlepass.claims.earnedAt'), minWidth: 150 },
     { key: 'granted_at', label: t('battlepass.claims.grantedAt'), minWidth: 150 },
     { key: 'last_error', label: t('battlepass.claims.lastError'), minWidth: 180 },
@@ -167,17 +200,75 @@ export const ProgressView: React.FC = () => {
                       </EmptyState>
                     )}
                     renderCell={(c, key) => {
+                      const tier = tierMap.get(c.tier_key)
                       switch (key) {
-                        case 'tier_key':
-                          return <span className="font-mono text-xs">{c.tier_key}</span>
+                        case 'tier_key': {
+                          const cell = (
+                            <div className="flex flex-col gap-0.5 py-0.5">
+                              <span className="font-medium text-sm leading-tight">
+                                {tier?.label ?? c.tier_key}
+                              </span>
+                              {tier && (
+                                <div className="flex items-center gap-1.5">
+                                  <Chip size="sm" variant="soft" color="default" className="text-xs h-4 px-1">
+                                    {categoryLabel(tier.category)}
+                                  </Chip>
+                                  <span className="text-xs text-muted">{tierRequirement(tier, (lvl) => t('battlepass.requirementLevel', { level: lvl }))}</span>
+                                </div>
+                              )}
+                              {!tier && (
+                                <span className="font-mono text-xs text-muted">{c.tier_key}</span>
+                              )}
+                            </div>
+                          )
+                          return tier
+                            ? (
+                                <Tooltip delay={400}>
+                                  <Tooltip.Trigger>{cell}</Tooltip.Trigger>
+                                  <Tooltip.Content>
+                                    <span className="font-mono text-xs text-muted">{c.tier_key}</span>
+                                  </Tooltip.Content>
+                                </Tooltip>
+                              )
+                            : cell
+                        }
                         case 'status':
                           return (
                             <Chip size="sm" variant="soft" color={claimStatusColor(c.status)}>
                               {statusLabel(c.status)}
                             </Chip>
                           )
-                        case 'intel':
-                          return <span className="font-mono tabular-nums">{c.intel}</span>
+                        case 'intel': {
+                          const items = parseItems(tier?.reward_items ?? '')
+                          if (items.length === 0) {
+                            return <span className="font-mono tabular-nums">{c.intel}</span>
+                          }
+                          return (
+                            <Tooltip delay={300}>
+                              <Tooltip.Trigger>
+                                <span className="flex items-center gap-1.5 font-mono tabular-nums cursor-default">
+                                  {c.intel}
+                                  <Chip size="sm" variant="soft" color="default" className="text-xs h-4 px-1">
+                                    {`+${items.length} ${t('battlepass.claims.items')}`}
+                                  </Chip>
+                                </span>
+                              </Tooltip.Trigger>
+                              <Tooltip.Content>
+                                <div className="flex flex-col gap-0.5 text-xs">
+                                  {items.map((item, i) => (
+                                    <span key={i} className="font-mono">
+                                      {item.qty}
+                                      ×
+                                      {' '}
+                                      {item.template}
+                                      {item.quality > 0 ? ` (q${item.quality})` : ''}
+                                    </span>
+                                  ))}
+                                </div>
+                              </Tooltip.Content>
+                            </Tooltip>
+                          )
+                        }
                         case 'earned_at':
                           return <span className="text-muted text-xs">{c.earned_at || '—'}</span>
                         case 'granted_at':

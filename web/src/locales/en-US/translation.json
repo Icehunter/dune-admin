@@ -1551,9 +1551,9 @@
       "achievement": "Achievement"
     },
     "status": {
-      "baseline": "baseline",
-      "earned": "earned",
-      "granted": "granted"
+      "baseline": "Unearned",
+      "earned": "Earned",
+      "granted": "Granted"
     },
     "catalog": {
       "title": "Tier Catalog ({{count}})",
@@ -1666,7 +1666,8 @@
       "status": "Status",
       "earnedAt": "Earned",
       "grantedAt": "Granted",
-      "lastError": "Last Error"
+      "lastError": "Last Error",
+      "items": "items"
     },
     "importDialog": {
       "title": "Replace catalog?",

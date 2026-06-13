@@ -7,8 +7,8 @@ import type { ChipColor } from './types'
  */
 export const phaseColor = (phase: string): string => {
   switch (phase?.toLowerCase()) {
-    case 'running': return 'var(--success)'
-    case 'reconciling':
+    case 'running':
+    case 'reconciling': return 'var(--success)'
     case 'starting':
     case 'initializing': return 'var(--warning)'
     case 'stopping':
@@ -29,10 +29,10 @@ export type { ChipColor }
 export const phaseChipColor = (phase: string): ChipColor => {
   switch (phase?.toLowerCase()) {
     case 'running':
+    case 'reconciling':
     case 'ready':
     case 'connected':
     case 'healthy': return 'success'
-    case 'reconciling':
     case 'starting':
     case 'initializing': return 'warning'
     case 'stopping':

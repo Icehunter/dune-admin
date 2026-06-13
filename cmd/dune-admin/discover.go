@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -16,13 +15,25 @@ type gameServerArgs struct {
 	DirectorURL                string
 }
 
-// argValue extracts the value of `flag=value` or `flag value` from a command
-// line. Flags use one or two leading dashes. Returns "" when absent.
+// argValue extracts the value of `-flag=value` or `-flag value` from a command
+// line (one or two leading dashes). Returns "" when absent. A plain field scan
+// avoids recompiling a regex on every call — argValue runs many times per
+// discovery. A flag matches only when the whole token (after stripping leading
+// dashes) equals `flag` or starts with `flag=`, so a shorter flag never matches
+// a longer one that contains it as a prefix.
 func argValue(cmdline, flag string) string {
-	re := regexp.MustCompile(`(?:^|\s)-{1,2}` + regexp.QuoteMeta(flag) + `[= ]([^\s]+)`)
-	m := re.FindStringSubmatch(cmdline)
-	if len(m) == 2 {
-		return m[1]
+	fields := strings.Fields(cmdline)
+	for i, f := range fields {
+		name := strings.TrimLeft(f, "-")
+		if name == flag {
+			if i+1 < len(fields) {
+				return fields[i+1]
+			}
+			return ""
+		}
+		if strings.HasPrefix(name, flag+"=") {
+			return name[len(flag)+1:]
+		}
 	}
 	return ""
 }
@@ -131,20 +142,32 @@ func persistDiscoveredConfig(cfg appConfig, g gameServerArgs, gameIP, adminIP, d
 	return cfg
 }
 
-// resolveServicePodIP returns the pod IP of the first pod whose name matches
-// grepPattern, via kubectl through the executor (like discoverDBPod). Returns
-// "" (no error) when not found, so callers can skip that endpoint.
-func resolveServicePodIP(exec Executor, grepPattern string) string {
+// fetchClusterPodIPs returns a "name ip" listing of all pods, via kubectl
+// through the executor (one call). Empty on error. Callers resolve every
+// service from this single listing instead of one kubectl call per service.
+func fetchClusterPodIPs(exec Executor) string {
 	kctl := kubectlCLI(exec)
-	out, err := exec.Exec(fmt.Sprintf( // #nosec G204,G702 -- grepPattern is a constant service substring, not user input
-		`%s get pods -A -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.podIP}{"\n"}{end}' 2>/dev/null | grep %s | head -1`,
-		kctl, grepPattern))
+	out, err := exec.Exec(fmt.Sprintf( // #nosec G204,G702 -- constant kubectl command, no user input
+		`%s get pods -A -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.podIP}{"\n"}{end}' 2>/dev/null`,
+		kctl))
 	if err != nil {
 		return ""
 	}
-	parts := strings.Fields(strings.TrimSpace(out))
-	if len(parts) < 2 {
-		return ""
+	return out
+}
+
+// podIPByPattern returns the IP of the first pod whose name contains pattern,
+// from a "name ip" listing. "" when not found, so callers skip that endpoint.
+// Pure.
+func podIPByPattern(podList, pattern string) string {
+	for _, line := range strings.Split(podList, "\n") {
+		if !strings.Contains(line, pattern) {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			return parts[1]
+		}
 	}
-	return parts[1]
+	return ""
 }

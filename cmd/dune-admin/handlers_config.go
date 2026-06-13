@@ -303,9 +303,10 @@ func handleDiscover(w http.ResponseWriter, r *http.Request) {
 	}
 	var gameIP, adminIP, directorIP string
 	if globalControl != nil && globalControl.Name() == "kubectl" {
-		gameIP = resolveServicePodIP(globalExecutor, "mq-game")
-		adminIP = resolveServicePodIP(globalExecutor, "mq-admin")
-		directorIP = resolveServicePodIP(globalExecutor, "bgd")
+		pods := fetchClusterPodIPs(globalExecutor)
+		gameIP = podIPByPattern(pods, "mq-game")
+		adminIP = podIPByPattern(pods, "mq-admin")
+		directorIP = podIPByPattern(pods, "bgd")
 	}
 	cfg := persistDiscoveredConfig(loadedConfig, g, gameIP, adminIP, directorIP)
 	if r.URL.Query().Get("persist") == "true" {
@@ -349,5 +350,8 @@ func applyConfig(cfg appConfig) {
 	brokerUser = cfg.BrokerUser
 	brokerPass = cfg.BrokerPass
 	backupDir = cfg.BackupDir
+	sshMode = cfg.SSHMode
+	sshExtraOpts = cfg.SSHExtraOpts
+	autoDiscover = cfg.AutoDiscover
 	loadedConfig = cfg
 }

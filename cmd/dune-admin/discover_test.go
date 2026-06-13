@@ -18,16 +18,33 @@ func TestAppConfigAutoDiscoverRoundTrip(t *testing.T) {
 }
 
 func TestNeedsSetupAutoDiscoverAware(t *testing.T) {
-	origPass, origAuto := dbPass, autoDiscover
-	defer func() { dbPass, autoDiscover = origPass, origAuto }()
+	origPass, origAuto, origCtrl := dbPass, autoDiscover, controlPlane
+	defer func() { dbPass, autoDiscover, controlPlane = origPass, origAuto, origCtrl }()
 
-	dbPass, autoDiscover = "", true
+	// auto-discover + kubectl + empty pass → no setup (discovery supplies it).
+	dbPass, autoDiscover, controlPlane = "", true, "kubectl"
 	if needsSetupConfigured() {
-		t.Errorf("auto_discover=true + empty dbPass: want no setup")
+		t.Errorf("auto_discover=true + kubectl + empty dbPass: want no setup")
 	}
-	dbPass, autoDiscover = "", false
+	// auto-discover on but not kubectl → setup still required.
+	dbPass, autoDiscover, controlPlane = "", true, "local"
+	if !needsSetupConfigured() {
+		t.Errorf("auto_discover=true + non-kubectl + empty dbPass: want setup")
+	}
+	// auto-discover off → setup required.
+	dbPass, autoDiscover, controlPlane = "", false, "kubectl"
 	if !needsSetupConfigured() {
 		t.Errorf("auto_discover=false + empty dbPass: want setup")
+	}
+}
+
+func TestPodIPByPattern(t *testing.T) {
+	list := "ns-mq-game-svc-0 10.0.0.5\nns-mq-admin-svc-0 10.0.0.6\nns-bgd-svc-0 10.0.0.7\nns-db-dbdepl-sts-0 10.0.0.8\n"
+	cases := map[string]string{"mq-game": "10.0.0.5", "mq-admin": "10.0.0.6", "bgd": "10.0.0.7", "nope": ""}
+	for pattern, want := range cases {
+		if got := podIPByPattern(list, pattern); got != want {
+			t.Errorf("podIPByPattern(%q) = %q, want %q", pattern, got, want)
+		}
 	}
 }
 

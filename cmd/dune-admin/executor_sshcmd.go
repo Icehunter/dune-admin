@@ -188,7 +188,13 @@ func (e *sshCommandExecutor) PipeToWriter(cmd string, w io.Writer) error {
 	c.Stdout = w
 	var errBuf bytes.Buffer
 	c.Stderr = &errBuf
-	return c.Run()
+	if err := c.Run(); err != nil {
+		if stderr := strings.TrimSpace(errBuf.String()); stderr != "" {
+			return fmt.Errorf("%w: %s", err, stderr)
+		}
+		return err
+	}
+	return nil
 }
 
 func (e *sshCommandExecutor) WriteFile(path string, data io.Reader) error {

@@ -634,10 +634,16 @@ func loadItemData() error {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 // needsSetupConfigured reports whether a configured install still needs setup.
-// When auto_discover is on, an empty db_pass is fine — discovery supplies it —
-// so the (library-wired) wizard must not trigger.
+// auto_discover suppresses the (library-wired) wizard only when discovery is
+// actually applicable — the kubectl control plane, where it fills the DB
+// password from the running game server. Outside kubectl, an empty db_pass
+// still requires setup, so an unreachable/failed discovery doesn't strand the
+// operator without a wizard path.
 func needsSetupConfigured() bool {
-	return dbPass == "" && !autoDiscover
+	if dbPass != "" {
+		return false
+	}
+	return !autoDiscover || resolveControl() != "kubectl"
 }
 
 func needsSetup() bool {
@@ -763,9 +769,11 @@ func closeGlobalConnections() {
 	}
 	// Close the active executor so command-mode tears down its ControlMaster
 	// (ssh -O exit) on shutdown. For the library executor this also closes its
-	// *ssh.Client; the globalSSH.Close below is then a harmless idempotent no-op.
+	// underlying *ssh.Client (globalSSH), so drop that reference to avoid a
+	// double Close on it below.
 	if globalExecutor != nil {
 		globalExecutor.Close()
+		globalSSH = nil
 	}
 	if globalSSH != nil {
 		_ = globalSSH.Close()

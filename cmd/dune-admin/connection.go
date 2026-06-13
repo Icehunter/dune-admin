@@ -162,9 +162,10 @@ func applyAutoDiscovery(cfg *appConfig, exec Executor, ctrl string) {
 	log.Printf("connectAll: auto-discover filled DB user=%s name=%s (pass %s)",
 		cfg.DBUser, cfg.DBName, maskSecret(cfg.DBPass))
 	if ctrl == "kubectl" {
-		gameIP := resolveServicePodIP(exec, "mq-game")
-		adminIP := resolveServicePodIP(exec, "mq-admin")
-		directorIP := resolveServicePodIP(exec, "bgd")
+		pods := fetchClusterPodIPs(exec)
+		gameIP := podIPByPattern(pods, "mq-game")
+		adminIP := podIPByPattern(pods, "mq-admin")
+		directorIP := podIPByPattern(pods, "bgd")
 		applyDiscoveredEndpoints(cfg, g, gameIP, adminIP, directorIP)
 		brokerGameAddr, brokerAdminAddr, brokerTLS = cfg.BrokerGameAddr, cfg.BrokerAdminAddr, cfg.BrokerTLS
 	}

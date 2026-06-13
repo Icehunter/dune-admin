@@ -256,6 +256,8 @@ When `SSH_KEY` / `-key` is not set, dune-admin checks these paths in order:
 4. `~/.ssh/id_ed25519`
 5. `~/.ssh/id_rsa`
 
+For building your `~/.ssh/config` itself — modular `config.d` layout, jumphost (ProxyJump) chains, per-platform ssh-agent setup, and connection multiplexing — see [SETUP_SSH.md](SETUP_SSH.md).
+
 ---
 
 ## Tabs

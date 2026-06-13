@@ -288,6 +288,43 @@ func applyMarketBotConfig(cfg appConfig) {
 	}
 }
 
+// handleDiscover runs auto-discovery on demand and, when persist=true, writes
+// the gap-filled values into config.yaml (then applies them). Requires an
+// active executor (command-mode/kubectl).
+func handleDiscover(w http.ResponseWriter, r *http.Request) {
+	if globalExecutor == nil {
+		jsonErr(w, fmt.Errorf("no executor connected"), http.StatusServiceUnavailable)
+		return
+	}
+	g, err := discoverGameConfig(globalExecutor)
+	if err != nil {
+		jsonErr(w, err, http.StatusBadGateway)
+		return
+	}
+	var gameIP, adminIP, directorIP string
+	if globalControl != nil && globalControl.Name() == "kubectl" {
+		gameIP = resolveServicePodIP(globalExecutor, "mq-game")
+		adminIP = resolveServicePodIP(globalExecutor, "mq-admin")
+		directorIP = resolveServicePodIP(globalExecutor, "bgd")
+	}
+	cfg := persistDiscoveredConfig(loadedConfig, g, gameIP, adminIP, directorIP)
+	if r.URL.Query().Get("persist") == "true" {
+		if err := writeConfigFile(cfg); err != nil {
+			jsonErr(w, fmt.Errorf("write config: %w", err), http.StatusInternalServerError)
+			return
+		}
+		loadedConfig = cfg
+		applyConfig(cfg)
+	}
+	jsonOK(w, map[string]any{
+		"db_user": cfg.DBUser, "db_name": cfg.DBName,
+		"db_pass":     maskSecret(cfg.DBPass),
+		"broker_game": cfg.BrokerGameAddr, "broker_admin": cfg.BrokerAdminAddr,
+		"director_url": cfg.DirectorURL,
+		"persisted":    r.URL.Query().Get("persist") == "true",
+	})
+}
+
 // applyConfig pushes a saved appConfig back into the runtime globals so that
 // connectAll() picks up the new values without requiring a process restart.
 func applyConfig(cfg appConfig) {

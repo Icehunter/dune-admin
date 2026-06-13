@@ -112,6 +112,7 @@ func buildMux() *http.ServeMux {
 	handleAPI(mux, "POST /api/v1/reconnect", capServerControl, handleReconnect)
 	handleAPI(mux, "GET /api/v1/config", capConfigRead, handleGetConfig)
 	handleAPI(mux, "POST /api/v1/config", capConfigWrite, handleSaveConfig)
+	handleAPI(mux, "POST /api/v1/discover", capServerControl, handleDiscover)
 	handleAPI(mux, "GET /api/v1/update/check", capServerRead, handleUpdateCheck)
 	handleAPI(mux, "POST /api/v1/update/apply", capServerControl, handleUpdateApply)
 
@@ -488,7 +489,7 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]any{
 		"executor":         executorType,
 		"control":          controlName,
-		"ssh_connected":    globalSSH != nil,
+		"ssh_connected":    sshConnected(globalExecutor),
 		"db_connected":     globalDB != nil,
 		"pod_ns":           globalPodNS,
 		"pod_ip":           globalPodIP,

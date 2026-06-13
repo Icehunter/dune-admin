@@ -54,12 +54,15 @@ type Executor interface {
 	Type() string
 }
 
-// newExecutor returns an sshExecutor when sshHost is non-empty, otherwise
-// a localExecutor. The SSH connection is established immediately; the error
-// must be checked before using the executor.
-func newExecutor(sshHost, sshUser, sshKeyPath string) (Executor, error) {
+// newExecutor returns a localExecutor when sshHost is empty. Otherwise it
+// returns the OS-ssh-command executor when sshMode == "command", or the
+// default golang.org/x/crypto/ssh executor for "" / "library".
+func newExecutor(sshHost, sshUser, sshKeyPath, sshMode, sshExtraOpts string) (Executor, error) {
 	if sshHost == "" {
 		return &localExecutor{}, nil
+	}
+	if sshMode == "command" {
+		return newSSHCommandExecutor(sshHost, sshUser, sshKeyPath, sshExtraOpts)
 	}
 	client, err := dialSSH(sshHost, sshUser, sshKeyPath)
 	if err != nil {
@@ -215,6 +218,13 @@ func (e *localExecutor) WriteFile(path string, data io.Reader) error {
 
 func (e *localExecutor) Dial(network, addr string) (net.Conn, error) {
 	return net.Dial(network, addr)
+}
+
+// sshConnected reports whether the active executor tunnels over SSH (either
+// SSH implementation). Used for status without depending on the concrete
+// *ssh.Client global.
+func sshConnected(e Executor) bool {
+	return e != nil && e.Type() == "ssh"
 }
 
 // ── SSH dialer (used by newExecutor and setup wizard) ─────────────────────────

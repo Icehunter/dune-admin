@@ -1,16 +1,18 @@
 import * as React from 'react'
 import { toast } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
+import { Segment } from '@heroui-pro/react'
 import { api } from '../../api/client'
 import type { WelcomePackage, WelcomePackageConfig, WelcomeGrantRecord } from '../../api/client'
-import { SideNav } from '../../dune-ui'
 import type { WelcomeSection, WelcomeConfigDiff, WelcomePackageTabProps } from './types'
 import { ConfigView } from './views/ConfigView'
 import { PackagesView } from './views/PackagesView'
 import { GrantsView } from './views/GrantsView'
 
-export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav, section = 'config', onSectionChange }: WelcomePackageTabProps) => {
+export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ section: initialSection = 'config' }: WelcomePackageTabProps) => {
   const { t } = useTranslation()
+
+  const [section, setSection] = React.useState<WelcomeSection>(initialSection)
 
   const SECTIONS: { key: WelcomeSection, label: string }[] = [
     { key: 'config', label: t('welcome.sections.config') },
@@ -221,11 +223,28 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
     savedConfig,
   ])
 
+  const sectionNav = (
+    <Segment
+      selectedKey={section}
+      onSelectionChange={(k) => setSection(k as WelcomeSection)}
+      size="sm"
+      aria-label={t('welcome.title')}
+    >
+      {SECTIONS.map((s) => (
+        <Segment.Item key={s.key} id={s.key}>
+          <Segment.Separator />
+          {s.label}
+        </Segment.Item>
+      ))}
+    </Segment>
+  )
+
   const activeView = () => {
     switch (section) {
       case 'config':
         return (
           <ConfigView
+            nav={sectionNav}
             enabled={enabled}
             setEnabled={setEnabled}
             scanSecs={scanSecs}
@@ -267,6 +286,7 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
       case 'packages':
         return (
           <PackagesView
+            nav={sectionNav}
             packages={packages}
             setPackages={setPackages}
             activeVersions={activeVersions}
@@ -281,6 +301,7 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
       case 'grants':
         return (
           <GrantsView
+            nav={sectionNav}
             grants={grants}
             retry={retry}
             revoke={revoke}
@@ -292,22 +313,6 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
           />
         )
     }
-  }
-
-  if (showSubnav) {
-    return (
-      <div className="h-full min-h-0 flex gap-3">
-        <SideNav
-          title={t('welcome.title')}
-          items={SECTIONS}
-          active={section}
-          onSelect={(k) => onSectionChange?.(k as WelcomeSection)}
-        />
-        <div className="flex-1 min-h-0 flex flex-col">
-          {activeView()}
-        </div>
-      </div>
-    )
   }
 
   return (

@@ -34,7 +34,7 @@ import { LoginPage } from './auth/LoginPage'
 import { usePermissions } from './hooks/usePermissions'
 import { api } from './api/client'
 import type { UpdateCheckResult } from './api/client'
-import type { TabId, DbSection, WelcomeSection, AppCoreProps, ConnectionBadgeProps } from './types'
+import type { TabId, AppCoreProps, ConnectionBadgeProps } from './types'
 import { canSeeTabByControlPlane } from './tabNav'
 
 const TAB_IDS = [
@@ -158,21 +158,6 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     return can(cap)
   }, [authEnabled, isOwner, can, status?.control])
 
-  const DB_SECTIONS: { key: DbSection, label: string, icon: string }[] = [
-    { key: 'backups', label: t('database.sections.backups'), icon: 'archive' },
-    { key: 'tables', label: t('database.sections.tables'), icon: 'table' },
-    { key: 'describe', label: t('database.sections.describe'), icon: 'file-text' },
-    { key: 'sample', label: t('database.sections.sample'), icon: 'flask-conical' },
-    { key: 'search', label: t('database.sections.search'), icon: 'search' },
-    { key: 'sql', label: t('database.sections.sql'), icon: 'terminal' },
-  ]
-
-  const WELCOME_SECTIONS: { key: WelcomeSection, label: string, icon: string }[] = [
-    { key: 'config', label: t('welcome.sections.config'), icon: 'sliders-horizontal' },
-    { key: 'packages', label: t('welcome.sections.packages'), icon: 'package' },
-    { key: 'grants', label: t('welcome.sections.grants'), icon: 'gift' },
-  ]
-
   // Re-establish backend connections (DB + control plane) without a service
   // restart — used by the navbar Reconnect button when the DB shows disconnected
   // (e.g. dune-admin came up before the database was ready).
@@ -228,8 +213,6 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     },
   ]
 
-  const [dbSection, setDbSection] = React.useState<DbSection>('backups')
-  const [welcomeSection, setWelcomeSection] = React.useState<WelcomeSection>('config')
   const [showBackendConfig, setShowBackendConfig] = React.useState(false)
   const [updateInfo, setUpdateInfo] = React.useState<UpdateCheckResult | null>(null)
   const [showUpdateModal, setShowUpdateModal] = React.useState(false)
@@ -339,63 +322,12 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     return <BackendUnreachable onRetry={() => window.location.reload()} />
   }
 
-  // A single top-level menu item. When the item carries sub-sections (Database,
-  // Welcome Kits) we render a Submenu so the sections expand inline under it.
+  // A single top-level menu item. Sub-sections (Database, Welcome Kits,
+  // Battle Pass) live inside their tab via an in-header Segment, so every
+  // sidebar item is a plain top-level entry.
   const menuItem = (key: TabId) => {
     const label = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === key)?.label ?? key
     const icon = <Sidebar.MenuIcon><Icon name={TAB_ICONS[key]} /></Sidebar.MenuIcon>
-
-    if (key === 'database') {
-      return (
-        <Sidebar.MenuItem key={key} id={key} href={`/${key}`} isCurrent={currentTab === 'database'} onAction={() => navigate(`/${key}`)}>
-          {icon}
-          <Sidebar.MenuLabel>{label}</Sidebar.MenuLabel>
-          <Sidebar.MenuTrigger><Sidebar.MenuIndicator /></Sidebar.MenuTrigger>
-          <Sidebar.Submenu>
-            {DB_SECTIONS.map((s) => (
-              <Sidebar.MenuItem
-                key={s.key}
-                id={`db:${s.key}`}
-                isCurrent={currentTab === 'database' && dbSection === s.key}
-                onAction={() => {
-                  setDbSection(s.key)
-                  navigate('/database')
-                }}
-              >
-                <Sidebar.MenuIcon><Icon name={s.icon} /></Sidebar.MenuIcon>
-                <Sidebar.MenuLabel>{s.label}</Sidebar.MenuLabel>
-              </Sidebar.MenuItem>
-            ))}
-          </Sidebar.Submenu>
-        </Sidebar.MenuItem>
-      )
-    }
-
-    if (key === 'welcome') {
-      return (
-        <Sidebar.MenuItem key={key} id={key} href={`/${key}`} isCurrent={currentTab === 'welcome'} onAction={() => navigate(`/${key}`)}>
-          {icon}
-          <Sidebar.MenuLabel>{label}</Sidebar.MenuLabel>
-          <Sidebar.MenuTrigger><Sidebar.MenuIndicator /></Sidebar.MenuTrigger>
-          <Sidebar.Submenu>
-            {WELCOME_SECTIONS.map((s) => (
-              <Sidebar.MenuItem
-                key={s.key}
-                id={`welcome:${s.key}`}
-                isCurrent={currentTab === 'welcome' && welcomeSection === s.key}
-                onAction={() => {
-                  setWelcomeSection(s.key)
-                  navigate('/welcome')
-                }}
-              >
-                <Sidebar.MenuIcon><Icon name={s.icon} /></Sidebar.MenuIcon>
-                <Sidebar.MenuLabel>{s.label}</Sidebar.MenuLabel>
-              </Sidebar.MenuItem>
-            ))}
-          </Sidebar.Submenu>
-        </Sidebar.MenuItem>
-      )
-    }
 
     return (
       <Sidebar.MenuItem key={key} id={key} href={`/${key}`} isCurrent={pathname === `/${key}`} onAction={() => navigate(`/${key}`)}>
@@ -547,7 +479,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     <main className="flex-1 flex flex-col overflow-hidden min-h-0">
       {renderTab('battlegroup', <BattlegroupTab />)}
       {renderTab('players', <PlayersTab />)}
-      {renderTab('database', <DatabaseTab section={dbSection} />)}
+      {renderTab('database', <DatabaseTab />)}
       {renderTab('logs', <LogsTab control={status?.control} />)}
       {renderTab('blueprints', <BlueprintsTab isSignedIn={isSignedIn} />)}
       {renderTab('bases', <BasesTab isSignedIn={isSignedIn} />)}
@@ -558,7 +490,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
       {renderTab('server', <ServerSettingsTab />)}
       {renderTab('director', <DirectorTab />)}
       {renderTab('market', <MarketTab />)}
-      {renderTab('welcome', <WelcomePackageTab section={welcomeSection} />)}
+      {renderTab('welcome', <WelcomePackageTab />)}
       {renderTab('events', <EventsTab />)}
       {renderTab('battlepass', <BattlepassTab />)}
       {canSeeTab('permissions') && renderTab('permissions', <PermissionsTab />)}

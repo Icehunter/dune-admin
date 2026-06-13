@@ -22,6 +22,7 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
   load,
   loading,
   configDiff,
+  nav,
 }) => {
   const { t } = useTranslation()
   const { can } = usePermissions()
@@ -245,6 +246,7 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
   return (
     <div className="flex flex-col h-full min-h-0">
       <PageHeader title={t('welcome.sections.packages')} subtitle={t('welcome.packagesSubtitle')}>
+        {nav}
         <Button size="sm" variant="ghost" onPress={load} isDisabled={loading}>
           {loading
             ? <Spinner size="sm" color="current" />

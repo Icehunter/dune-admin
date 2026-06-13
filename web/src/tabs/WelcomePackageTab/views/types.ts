@@ -4,7 +4,7 @@ export type GrantKey = 'character' | 'fls' | 'version' | 'status' | 'attempts' |
 
 export type GrantsViewProps = Pick<
   WelcomeSharedProps,
-  'grants' | 'retry' | 'revoke' | 'override' | 'packages' | 'activeVersions' | 'load' | 'loading'
+  'grants' | 'retry' | 'revoke' | 'override' | 'packages' | 'activeVersions' | 'load' | 'loading' | 'nav'
 >
 
 export type ConfigViewProps = Pick<
@@ -28,11 +28,12 @@ export type ConfigViewProps = Pick<
   | 'runNow' | 'running'
   | 'load' | 'loading'
   | 'configDiff'
+  | 'nav'
 >
 
 export type PackagesViewProps = Pick<
   WelcomeSharedProps,
-  'packages' | 'setPackages' | 'activeVersions' | 'templates' | 'save' | 'saving' | 'load' | 'loading' | 'configDiff'
+  'packages' | 'setPackages' | 'activeVersions' | 'templates' | 'save' | 'saving' | 'load' | 'loading' | 'configDiff' | 'nav'
 >
 
 export type KeyedItem = WelcomePackageItem & { _key: string }

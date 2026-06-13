@@ -6,8 +6,9 @@ import { keymap } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
 import { acceptCompletion } from '@codemirror/autocomplete'
 import { Button, SearchField, Spinner, toast } from '@heroui/react'
+import { Segment } from '@heroui-pro/react'
 import { api } from '../../api/client'
-import { Icon, LoadingState, NumberInput, PageHeader, SideNav } from '../../dune-ui'
+import { Icon, LoadingState, NumberInput, PageHeader } from '../../dune-ui'
 import { duneTheme, type Section } from './constants'
 import { ResultTable } from './components/ResultTable'
 import { TableSearchInput } from './components/TableSearchInput'
@@ -15,11 +16,11 @@ import { BackupsView } from './components/BackupsView'
 import type { DatabaseTabProps, TableData } from './types'
 
 export const DatabaseTab: React.FC<DatabaseTabProps> = ({
-  section = 'backups',
-  onSectionChange,
-  showSubnav,
+  section: initialSection = 'backups',
 }) => {
   const { t } = useTranslation()
+
+  const [section, setSection] = React.useState<Section>(initialSection)
 
   const SECTIONS = React.useMemo<{ key: Section, label: string }[]>(() => [
     { key: 'backups', label: t('database.sections.backups') },
@@ -154,9 +155,26 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
 
   const activeLabel = SECTIONS.find((s) => s.key === section)?.label ?? ''
 
+  const sectionNav = (
+    <Segment
+      selectedKey={section}
+      onSelectionChange={(k) => setSection(k as Section)}
+      size="sm"
+      aria-label={t('database.sideNavTitle')}
+    >
+      {SECTIONS.map((s) => (
+        <Segment.Item key={s.key} id={s.key}>
+          <Segment.Separator />
+          {s.label}
+        </Segment.Item>
+      ))}
+    </Segment>
+  )
+
   const innerContent = (
     <>
       <PageHeader title={activeLabel}>
+        {sectionNav}
         <Button
           size="sm"
           variant="ghost"
@@ -280,24 +298,16 @@ export const DatabaseTab: React.FC<DatabaseTabProps> = ({
   )
 
   // The Backups section is self-contained (loads its own data); every other
-  // section shares the query/inspect shell above.
-  const body = section === 'backups' ? <BackupsView /> : innerContent
-
-  if (showSubnav) {
-    return (
-      <div className="h-full min-h-0 flex gap-3">
-        <SideNav
-          title={t('database.sideNavTitle')}
-          items={SECTIONS}
-          active={section ?? 'backups'}
-          onSelect={(key) => onSectionChange?.(key)}
-        />
-        <div className="flex-1 min-h-0 flex flex-col gap-3">
-          {body}
-        </div>
-      </div>
-    )
-  }
+  // section shares the query/inspect shell above. The Backups view owns its own
+  // PageHeader, so the section nav rides above it as a standalone bar.
+  const body = section === 'backups'
+    ? (
+        <>
+          <div className="flex justify-end shrink-0">{sectionNav}</div>
+          <BackupsView />
+        </>
+      )
+    : innerContent
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">

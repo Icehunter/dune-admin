@@ -26,6 +26,7 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
   runNow, running,
   load, loading,
   configDiff,
+  nav,
 }) => {
   const { t } = useTranslation()
   const { can } = usePermissions()
@@ -35,6 +36,7 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
     <div className="flex flex-col h-full min-h-0 gap-3">
       {/* Header */}
       <PageHeader title={t('welcome.sections.config')} subtitle={t('welcome.configSubtitle')}>
+        {nav}
         <Button size="sm" variant="ghost" onPress={load} isDisabled={loading}>
           {loading
             ? <Spinner size="sm" color="current" />

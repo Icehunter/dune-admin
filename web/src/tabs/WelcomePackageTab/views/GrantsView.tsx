@@ -16,7 +16,7 @@ const fmtTime = (s: string): string => {
 }
 
 export const GrantsView: React.FC<GrantsViewProps> = ({
-  grants, retry, revoke, override, packages, activeVersions, load, loading,
+  grants, retry, revoke, override, packages, activeVersions, load, loading, nav,
 }) => {
   const { t } = useTranslation()
   const { can } = usePermissions()
@@ -59,6 +59,7 @@ export const GrantsView: React.FC<GrantsViewProps> = ({
         title={t('welcome.grantsTitle', { count: grants.length })}
         subtitle={t('welcome.grantsLabel')}
       >
+        {nav}
         <Button size="sm" variant="ghost" onPress={load} isDisabled={loading}>
           {loading
             ? <Spinner size="sm" color="current" />

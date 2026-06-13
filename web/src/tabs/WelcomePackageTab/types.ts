@@ -1,10 +1,9 @@
 import type { WelcomePackage, WelcomeGrantRecord, WelcomePackageItem } from '../../api/client'
+import type * as React from 'react'
 
 export type WelcomeSection = 'config' | 'packages' | 'grants'
 
-export type WelcomePackageTabProps
-  = | { showSubnav?: false, section?: WelcomeSection, onSectionChange?: never }
-    | { showSubnav: true, section?: WelcomeSection, onSectionChange: (s: WelcomeSection) => void }
+export type WelcomePackageTabProps = { section?: WelcomeSection }
 
 export interface WelcomeConfigDiff {
   packageAdded: number
@@ -66,6 +65,8 @@ export interface WelcomeSharedProps {
   templates: { id: string, name: string }[]
   // unsaved-changes diff
   configDiff: WelcomeConfigDiff
+  // section nav rendered into each view's PageHeader (Segment)
+  nav?: React.ReactNode
 }
 
 export type { WelcomePackageItem }

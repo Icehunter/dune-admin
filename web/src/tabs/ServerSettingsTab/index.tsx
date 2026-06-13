@@ -209,9 +209,7 @@ export const ServerSettingsTab: React.FC = () => {
               <SearchField.ClearButton />
             </SearchField.Group>
           </SearchField>
-          <Button size="sm" variant="ghost" onPress={load} isDisabled={loading || saving}>
-            <Icon name="refresh-cw" />
-          </Button>
+          {/* view filter — pairs with search */}
           <Button
             size="sm"
             variant={showAll ? 'primary' : 'ghost'}
@@ -220,6 +218,10 @@ export const ServerSettingsTab: React.FC = () => {
           >
             <Icon name={showAll ? 'eye' : 'eye-off'} className="w-3.5 h-3.5" />
             <span className="ml-1">{showAll ? t('server.showAll') : t('server.showUser')}</span>
+          </Button>
+          {/* data + export utilities */}
+          <Button size="sm" variant="ghost" onPress={load} isDisabled={loading || saving}>
+            <Icon name="refresh-cw" />
           </Button>
           <Button
             size="sm"
@@ -230,6 +232,8 @@ export const ServerSettingsTab: React.FC = () => {
             <Icon name="download" className="w-3.5 h-3.5" />
             <span className="ml-1">{t('server.downloadGameIni')}</span>
           </Button>
+          {/* divider isolates the primary action */}
+          <div className="w-px h-6 bg-border/60 mx-1" aria-hidden="true" />
           <Button size="sm" onPress={save} isDisabled={dirtyCount === 0 || saving}>
             {saving
               ? <Spinner size="sm" color="current" />

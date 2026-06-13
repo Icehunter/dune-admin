@@ -14,6 +14,7 @@ import type { EventDefinition, GivePack, Player } from '../../../api/client'
 import type { MilestoneFields, MilestoneSignal, RewardXP, XPType, ZoneRaceFields, KeyedRewardItem } from '../types'
 import { XP_TRACKS } from '../types'
 import { ManagePacksModal } from '../../PlayersTab/modals/ManagePacksModal'
+import { CategorizedPackPicker } from '../../../components/CategorizedPackPicker'
 import type { EventEditorModalProps } from './types'
 
 const FormSection: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => (
@@ -890,12 +891,10 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                 <FormSection className="flex-1 min-h-0 flex flex-col">
                   <SectionLabel>{t('events.editor.items')}</SectionLabel>
                   <div className="flex items-center gap-2 mt-2 shrink-0">
-                    <Select
-                      aria-label={t('players.give.loadPack')}
-                      placeholder={t('players.give.loadPack')}
-                      selectedKey={null}
-                      onSelectionChange={(k) => {
-                        const pack = packs.find((p) => p.id === String(k))
+                    <CategorizedPackPicker
+                      packs={packs}
+                      onSelectPack={(id) => {
+                        const pack = packs.find((p) => p.id === id)
                         if (pack) {
                           setRewardItems((prev) => [
                             ...prev,
@@ -904,22 +903,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                         }
                       }}
                       className="flex-1"
-                    >
-                      <Select.Trigger>
-                        <Select.Value />
-                        <Select.Indicator />
-                      </Select.Trigger>
-                      <Select.Popover>
-                        <ListBox>
-                          {packs.map((p) => (
-                            <ListBox.Item key={p.id} id={p.id} textValue={p.name}>
-                              {p.name}
-                              <ListBox.ItemIndicator />
-                            </ListBox.Item>
-                          ))}
-                        </ListBox>
-                      </Select.Popover>
-                    </Select>
+                    />
                     <Button
                       size="sm"
                       variant="ghost"

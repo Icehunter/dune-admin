@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Chip, ListBox, Modal, SearchField, Select, Separator, Switch, TextField, toast } from '@heroui/react'
+import { Button, Chip, Modal, SearchField, Separator, Switch, TextField, toast } from '@heroui/react'
 import type { Selection } from '@heroui/react'
 import type { DataGridColumn } from '@heroui-pro/react'
 import { DataGrid } from '@heroui-pro/react'
@@ -8,6 +8,7 @@ import { api } from '../../../api/client'
 import type { BattlepassSignal, BattlepassTier, GivePack } from '../../../api/client'
 import { ActionBar, FieldInput, FieldSelect, Icon, NumberInput, SectionLabel } from '../../../dune-ui'
 import { ManagePacksModal } from '../../PlayersTab/modals/ManagePacksModal'
+import { CategorizedPackPicker } from '../../../components/CategorizedPackPicker'
 import type { KeyedRewardItem } from '../../EventsTab/types'
 
 const SIGNAL_OPTIONS: BattlepassSignal[] = ['level', 'journey_node', 'player_tag']
@@ -382,12 +383,10 @@ export const TierEditorModal: React.FC<TierEditorModalProps> = ({ isOpen, onClos
               <FormSection className="flex-1 min-h-0 flex flex-col">
                 <SectionLabel>{t('battlepass.editor.itemRewards')}</SectionLabel>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Select
-                    aria-label={t('players.give.loadPack')}
-                    placeholder={t('players.give.loadPack')}
-                    selectedKey={null}
-                    onSelectionChange={(k) => {
-                      const pack = packs.find((p) => p.id === String(k))
+                  <CategorizedPackPicker
+                    packs={packs}
+                    onSelectPack={(id) => {
+                      const pack = packs.find((p) => p.id === id)
                       if (pack) {
                         setRewardItems((prev) => [
                           ...prev,
@@ -396,22 +395,7 @@ export const TierEditorModal: React.FC<TierEditorModalProps> = ({ isOpen, onClos
                       }
                     }}
                     className="flex-1"
-                  >
-                    <Select.Trigger>
-                      <Select.Value />
-                      <Select.Indicator />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        {packs.map((p) => (
-                          <ListBox.Item key={p.id} id={p.id} textValue={p.name}>
-                            {p.name}
-                            <ListBox.ItemIndicator />
-                          </ListBox.Item>
-                        ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
+                  />
                   <Button
                     size="sm"
                     variant="ghost"

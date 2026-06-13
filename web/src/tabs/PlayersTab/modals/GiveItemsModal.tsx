@@ -1,7 +1,7 @@
 import * as React from 'react'
 import {
-  Button, Chip, Header, ListBox, Modal,
-  SearchField, Select, Separator, Spinner, TextField, toast,
+  Button, Chip, Modal,
+  SearchField, Separator, Spinner, TextField, toast,
 } from '@heroui/react'
 import type { Selection } from '@heroui/react'
 import type { DataGridColumn } from '@heroui-pro/react'
@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
 import { api } from '../../../api/client'
 import { ActionBar, Icon, LoadingState, NumberInput } from '../../../dune-ui'
+import { CategorizedPackPicker } from '../../../components/CategorizedPackPicker'
 import { packsSyncAtom } from '../../../data/store'
 import type { GiveItemsModalProps, GiveResult, StagedItem } from './types'
 
@@ -58,17 +59,12 @@ export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, on
       .slice(0, 100)
   }, [templates, query])
 
-  const groupedPacks = React.useMemo(() => {
-    const groups: Record<string, { id: string, name: string, tier: number }[]> = {}
-    for (const [id, pack] of Object.entries(packsData.packs)) {
-      if (!groups[pack.category]) groups[pack.category] = []
-      groups[pack.category].push({ id, name: pack.name, tier: pack.tier })
-    }
-    for (const cat of Object.keys(groups)) {
-      groups[cat].sort((a, b) => a.tier - b.tier)
-    }
-    return groups
-  }, [packsData])
+  const packOptions = React.useMemo(
+    () => Object.entries(packsData.packs).map(([id, pack]) => ({
+      id, name: pack.name, category: pack.category, tier: pack.tier,
+    })),
+    [packsData],
+  )
 
   const pick = (tpl: { id: string, name: string }) => {
     setSelected(tpl.id)
@@ -220,12 +216,9 @@ export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, on
               : (
                   <>
                     {/* Load Pack */}
-                    <Select
-                      aria-label={t('players.give.loadPack')}
-                      placeholder={t('players.give.loadPack')}
-                      selectedKey={null}
-                      onSelectionChange={(k) => {
-                        const id = k ? String(k) : ''
+                    <CategorizedPackPicker
+                      packs={packOptions}
+                      onSelectPack={(id) => {
                         const pack = packsData.packs[id]
                         if (pack) {
                           setStaged((prev) => [
@@ -235,30 +228,7 @@ export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, on
                         }
                       }}
                       className="w-full shrink-0"
-                    >
-                      <Select.Trigger>
-                        <Select.Value />
-                        <Select.Indicator />
-                      </Select.Trigger>
-                      <Select.Popover>
-                        <ListBox>
-                          {Object.entries(groupedPacks)
-                            .sort(([a], [b]) => a.localeCompare(b))
-                            .map(([cat, packs], i, arr) => (
-                              <ListBox.Section key={cat}>
-                                <Header>{cat.replace(/-/g, ' ')}</Header>
-                                {packs.map((p) => (
-                                  <ListBox.Item key={p.id} id={p.id} textValue={p.name}>
-                                    {p.name}
-                                    <ListBox.ItemIndicator />
-                                  </ListBox.Item>
-                                ))}
-                                {i < arr.length - 1 && <Separator />}
-                              </ListBox.Section>
-                            ))}
-                        </ListBox>
-                      </Select.Popover>
-                    </Select>
+                    />
 
                     {/* Template + Qty + Quality + Add */}
                     <div className="flex items-end gap-3 shrink-0">

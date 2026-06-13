@@ -99,7 +99,11 @@ export const BattlegroupTab: React.FC = () => {
       setCmdDone(true)
       if (action.cmd === 'start' || action.cmd === 'restart') setStartedAt(Date.now())
       if (action.cmd === 'backup') {
-        const match = (res.output || '').match(/database-dumps\/[^/]+\/([^\s]+\.backup)/)
+        // kubectl: "…/database-dumps/<bg>/<name>.backup". AMP: "database backup
+        // created: <name>.dump (N bytes)" (#169).
+        const out = res.output || ''
+        const match = out.match(/database-dumps\/[^/]+\/([^\s]+\.backup)/)
+          || out.match(/([A-Za-z0-9._-]+\.dump)/)
         if (match) setLastBackupFile(match[1])
       }
       toast.success(t('battlegroup.cmdCompleted', { label: t(`battlegroup.actions.${action.cmd}` as never) }))
@@ -125,6 +129,11 @@ export const BattlegroupTab: React.FC = () => {
 
   const bg = status?.battlegroup
   const servers = status?.servers ?? []
+
+  // Backup/restore are only meaningful where the backend has a working backup
+  // path: AMP (db-backup provider → pg_dump/.dump) and kubectl (battlegroup.sh →
+  // .backup). docker/local would surface an erroring button, so hide it (#169).
+  const backupSupported = connStatus?.control === 'amp' || connStatus?.control === 'kubectl'
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
@@ -186,7 +195,9 @@ export const BattlegroupTab: React.FC = () => {
             <SectionDivider title={t('battlegroup.serverControl')} />
             <div className="flex flex-wrap gap-2 shrink-0">
               {ACTIONS
-                .filter((action) => (action.cmd === 'backup' ? can('backups:manage') : can('server:control')))
+                .filter((action) => (action.cmd === 'backup'
+                  ? can('backups:manage') && backupSupported
+                  : can('server:control')))
                 .map((action) => (
                   <Button
                     key={action.cmd}
@@ -198,7 +209,7 @@ export const BattlegroupTab: React.FC = () => {
                     {t(`battlegroup.actions.${action.cmd}` as never)}
                   </Button>
                 ))}
-              {can('backups:manage') && (
+              {can('backups:manage') && backupSupported && (
                 <Button variant="danger-soft" size="sm" isDisabled={runningCmd !== null} onPress={openRestore}>
                   {t('battlegroup.restoreLabel')}
                 </Button>

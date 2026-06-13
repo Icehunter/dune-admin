@@ -80,31 +80,57 @@ func handleDBBackupCreate(w http.ResponseWriter, _ *http.Request) {
 	if !ok {
 		return
 	}
-	dir, err := dbBackupDir()
+	name, size, err := createDBBackup(prov)
 	if err != nil {
 		log.Printf("handleDBBackupCreate: %v", err)
-		jsonErr(w, fmt.Errorf("could not prepare backup dir"), http.StatusInternalServerError)
-		return
-	}
-	name := dbBackupFilename(time.Now())
-	dest := filepath.Join(dir, name)
-	out, err := prov.BackupDatabase(globalExecutor, dbBackupConn(), dest)
-	if err != nil {
-		log.Printf("handleDBBackupCreate: %v (%s)", err, out)
 		jsonErr(w, fmt.Errorf("backup failed"), http.StatusInternalServerError)
 		return
 	}
-	if err := verifyDumpFile(dest); err != nil {
-		_ = os.Remove(dest)
-		log.Printf("handleDBBackupCreate: invalid dump: %v", err)
-		jsonErr(w, fmt.Errorf("backup produced no valid archive"), http.StatusInternalServerError)
-		return
+	jsonOK(w, map[string]any{"ok": "backup created", "name": name, "size_bytes": size})
+}
+
+// createDBBackup takes a fresh pg_dump via the provider, verifies the archive,
+// and returns the new file's name and size. Shared by the Database-page create
+// handler and the battlegroup-page backup dispatch (issue #169).
+func createDBBackup(prov dbBackupProvider) (name string, size int64, err error) {
+	dir, err := dbBackupDir()
+	if err != nil {
+		return "", 0, fmt.Errorf("prepare backup dir: %w", err)
 	}
-	var size int64
+	name = dbBackupFilename(time.Now())
+	dest := filepath.Join(dir, name)
+	if out, bErr := prov.BackupDatabase(globalExecutor, dbBackupConn(), dest); bErr != nil {
+		return "", 0, fmt.Errorf("backup: %w (%s)", bErr, out)
+	}
+	if vErr := verifyDumpFile(dest); vErr != nil {
+		_ = os.Remove(dest)
+		return "", 0, fmt.Errorf("backup produced no valid archive: %w", vErr)
+	}
 	if info, statErr := os.Stat(dest); statErr == nil {
 		size = info.Size()
 	}
-	jsonOK(w, map[string]any{"ok": "backup created", "name": name, "size_bytes": size})
+	return name, size, nil
+}
+
+// restoreDBBackupFile restores a named .dump from the db-backup dir via the
+// provider. The name must be validated by validateBackupName before calling.
+// Shared by the Database-page restore handler and the battlegroup-page restore
+// dispatch (issue #169). Callers own the destructive-op (game-stopped) guard.
+func restoreDBBackupFile(prov dbBackupProvider, name string) (string, error) {
+	dir, err := dbBackupDir()
+	if err != nil {
+		return "", fmt.Errorf("backup dir unavailable: %w", err)
+	}
+	src := filepath.Join(dir, name)
+	if _, statErr := os.Stat(src); statErr != nil {
+		return "", fmt.Errorf("backup not found")
+	}
+	out, err := prov.RestoreDatabase(globalExecutor, dbBackupConn(), src)
+	if err != nil {
+		return out, fmt.Errorf("restore: %w", err)
+	}
+	invalidateAllJourneyCache() // the database was replaced under us
+	return out, nil
 }
 
 // @Summary Download a database backup
@@ -197,22 +223,11 @@ func handleDBBackupRestore(w http.ResponseWriter, r *http.Request) {
 			http.StatusConflict)
 		return
 	}
-	dir, err := dbBackupDir()
+	out, err := restoreDBBackupFile(prov, body.File)
 	if err != nil {
-		jsonErr(w, fmt.Errorf("backup dir unavailable"), http.StatusInternalServerError)
-		return
-	}
-	src := filepath.Join(dir, body.File)
-	if _, err := os.Stat(src); err != nil {
-		jsonErr(w, fmt.Errorf("backup not found"), http.StatusNotFound)
-		return
-	}
-	out, err := prov.RestoreDatabase(globalExecutor, dbBackupConn(), src)
-	if err != nil {
-		log.Printf("handleDBBackupRestore: %v (%s)", err, out)
+		log.Printf("handleDBBackupRestore: %v", err)
 		jsonErr(w, fmt.Errorf("restore failed"), http.StatusInternalServerError)
 		return
 	}
-	invalidateAllJourneyCache() // the database was replaced under us
 	jsonOK(w, map[string]string{"ok": "database restored", "output": out})
 }

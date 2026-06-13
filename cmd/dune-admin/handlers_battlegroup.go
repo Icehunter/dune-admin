@@ -23,8 +23,9 @@ type backupFile struct {
 
 var bgCmdAllowlist = map[string]bool{
 	"start": true, "stop": true, "restart": true,
-	"update": true, "backup": true,
-	// restore handled separately via handleBGRestore
+	"update": true,
+	// backup handled separately via handleBGBackup → dispatchBackup
+	// restore handled separately via handleBGRestore → dispatchRestore
 }
 
 // @Summary Get battlegroup and server status from the control plane
@@ -75,12 +76,23 @@ func handleBGExec(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	if !bgCmdAllowlist[req.Cmd] {
-		jsonErr(w, fmt.Errorf("unknown command %q", req.Cmd), 400)
-		return
-	}
 	if globalControl == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
+		return
+	}
+	// backup is dispatched to the db-backup provider when one is active (AMP),
+	// otherwise to ExecCommand("backup") (kubectl). It is NOT in bgCmdAllowlist.
+	if req.Cmd == "backup" {
+		out, err := dispatchBackup(r.Context())
+		if err != nil {
+			jsonErr(w, fmt.Errorf("backup: %w — output: %s", err, out), 500)
+			return
+		}
+		jsonOK(w, map[string]string{"output": out})
+		return
+	}
+	if !bgCmdAllowlist[req.Cmd] {
+		jsonErr(w, fmt.Errorf("unknown command %q", req.Cmd), 400)
 		return
 	}
 	out, err := globalControl.ExecCommand(r.Context(), globalExecutor, req.Cmd)
@@ -326,6 +338,17 @@ func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
+	// When a db-backup provider is active (AMP), the battlegroup page shares the
+	// same .dump store as the Database page (issue #169).
+	if _, ok := globalControl.(dbBackupProvider); ok {
+		files, err := listDBBackupsAsBGFiles()
+		if err != nil {
+			jsonErr(w, err, 500)
+			return
+		}
+		jsonOK(w, files)
+		return
+	}
 	dir, err := activeBackupDir()
 	if err != nil {
 		jsonErr(w, err, 500)
@@ -340,13 +363,19 @@ func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 500)
 		return
 	}
+	jsonOK(w, parseHostBackupListing(out, yamlOut))
+}
+
+// parseHostBackupListing turns the `ls`/yaml output from listBackupDir into the
+// backupFile slice the frontend renders (always non-nil).
+func parseHostBackupListing(out, yamlOut string) []backupFile {
 	hasYAML := make(map[string]bool)
 	for _, n := range strings.Split(strings.TrimSpace(yamlOut), "\n") {
 		if n != "" {
 			hasYAML[strings.TrimSpace(n)] = true
 		}
 	}
-	var files []backupFile
+	files := []backupFile{}
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
 		if line == "" {
 			continue
@@ -356,13 +385,9 @@ func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		size, _ := strconv.ParseInt(p[1], 10, 64)
-		name := p[0]
-		files = append(files, backupFile{Name: name, SizeB: size, Modified: p[2], HasYAML: hasYAML[name]})
+		files = append(files, backupFile{Name: p[0], SizeB: size, Modified: p[2], HasYAML: hasYAML[p[0]]})
 	}
-	if files == nil {
-		files = []backupFile{}
-	}
-	jsonOK(w, files)
+	return files
 }
 
 // @Summary Download a backup file (and its YAML metadata) as a zip archive
@@ -376,6 +401,12 @@ func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
 func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 	if globalExecutor == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
+		return
+	}
+	// Under a db-backup provider (AMP) the store holds .dump files served from
+	// the host dir — reuse the Database-page download path (issue #169).
+	if _, ok := globalControl.(dbBackupProvider); ok {
+		handleDBBackupDownload(w, r)
 		return
 	}
 	filename := r.URL.Query().Get("file")
@@ -433,11 +464,7 @@ func handleBGRestore(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	if req.File == "" || strings.ContainsAny(req.File, "/\\") || !strings.HasSuffix(req.File, ".backup") {
-		jsonErr(w, fmt.Errorf("invalid filename"), 400)
-		return
-	}
-	out, err := restoreViaControl(r.Context(), req.File)
+	out, err := dispatchRestore(r.Context(), req.File)
 	if err != nil {
 		jsonErr(w, fmt.Errorf("restore failed: %w\n%s", err, out), 500)
 		return
@@ -600,4 +627,60 @@ func restoreViaControl(ctx context.Context, filename string) (string, error) {
 	return globalExecutor.Exec(fmt.Sprintf(
 		`PGPASSWORD=%s pg_restore --no-password --clean --if-exists -h %s -p %d -U %s -d %s %s 2>&1`,
 		shellQuote(dbPass), dbHost, dbPort, dbUser, dbName, shellQuote(path)))
+}
+
+// dispatchBackup runs a battlegroup backup against the active control plane.
+// When the plane implements dbBackupProvider (AMP), a backup IS a database
+// backup: it delegates to the same pg_dump path the Database page uses, sharing
+// one .dump store (issue #169). Otherwise it falls back to ExecCommand("backup")
+// (kubectl runs battlegroup.sh backup). The returned string is human-facing
+// output forwarded to the command-output modal.
+func dispatchBackup(ctx context.Context) (string, error) {
+	if globalControl == nil {
+		return "", fmt.Errorf("not connected")
+	}
+	if prov, ok := globalControl.(dbBackupProvider); ok {
+		name, size, err := createDBBackup(prov)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("database backup created: %s (%d bytes)", name, size), nil
+	}
+	return globalControl.ExecCommand(ctx, globalExecutor, "backup")
+}
+
+// dispatchRestore restores a named backup against the active control plane.
+// When the plane implements dbBackupProvider (AMP) the file is a .dump restored
+// via pg_restore (issue #169); otherwise it is a .backup restored via
+// restoreViaControl (kubectl battlegroup.sh import / docker / local pg_restore).
+// Filename validation branches on the active store's extension.
+func dispatchRestore(ctx context.Context, filename string) (string, error) {
+	if globalControl == nil || globalExecutor == nil {
+		return "", fmt.Errorf("not connected")
+	}
+	if prov, ok := globalControl.(dbBackupProvider); ok {
+		if err := validateBackupName(filename); err != nil {
+			return "", err
+		}
+		return restoreDBBackupFile(prov, filename)
+	}
+	if filename == "" || strings.ContainsAny(filename, `/\`) || !strings.HasSuffix(filename, ".backup") {
+		return "", fmt.Errorf("invalid filename")
+	}
+	return restoreViaControl(ctx, filename)
+}
+
+// listDBBackupsAsBGFiles adapts the Database-page .dump listing into the
+// battlegroup page's backupFile shape so both pages render the same store under
+// AMP. .dump files carry no sidecar YAML, so HasYAML is always false.
+func listDBBackupsAsBGFiles() ([]backupFile, error) {
+	dumps, err := listDBBackups()
+	if err != nil {
+		return nil, err
+	}
+	files := make([]backupFile, 0, len(dumps))
+	for _, d := range dumps {
+		files = append(files, backupFile{Name: d.Name, SizeB: d.SizeB, Modified: d.Modified, HasYAML: false})
+	}
+	return files, nil
 }

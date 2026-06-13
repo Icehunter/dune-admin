@@ -114,7 +114,9 @@ Config is loaded in this order (first match wins per field):
 | `CONTROL` | `-control` | *(auto)* | Control plane: `amp`, `kubectl`, `docker`, or `local` |
 | `SSH_HOST` | `-host` | - | VM `host:port`, tunnels all connections through SSH when set |
 | `SSH_USER` | `-user` | `dune` | SSH user |
-| `SSH_KEY` | `-key` | *(auto-detected)* | SSH private key path |
+| `SSH_KEY` | `-key` | *(auto-detected)* | SSH private key path (library mode only) |
+| `SSH_MODE` | `-ssh-mode` | `library` | SSH transport: `library` (golang.org/x/crypto/ssh) or `command` (shells out to the OS `ssh` client — honours `~/.ssh/config`, ProxyJump and ssh-agent; never reads a private key) |
+| `SSH_EXTRA_OPTS` | `-ssh-extra-opts` | - | Extra `ssh -o` options for command mode (space-separated) |
 | `DB_HOST` | `-dbhost` | `127.0.0.1` | PostgreSQL host or Docker DNS name |
 | `DB_PORT` | `-dbport` | `15432` | PostgreSQL port |
 | `DB_USER` | `-dbuser` | `dune` | PostgreSQL user |
@@ -122,6 +124,7 @@ Config is loaded in this order (first match wins per field):
 | `DB_NAME` | `-dbname` | `dune` | PostgreSQL database name |
 | `DB_SCHEMA` | `-schema` | `dune` | PostgreSQL schema |
 | `CONTROL_NAMESPACE` | `-control-ns` | *(auto-discovered)* | K8s namespace (kubectl only) |
+| `AUTO_DISCOVER` | `-auto-discover` | `false` | Fill empty DB/RMQ/Director fields from the running game-server process args at connect time (command mode + kubectl). Explicit config always wins |
 | `BROKER_GAME_ADDR` | `-broker-game` | - | mq-game broker `host:port` |
 | `BROKER_ADMIN_ADDR` | `-broker-admin` | - | mq-admin broker `host:port` |
 | `BACKUP_DIR` | `-backup-dir` | - | Backup directory path |

@@ -78,6 +78,10 @@ var (
 	sshHost         string
 	sshUser         string
 	sshKeyPath      string
+	sshMode         string
+	sshExtraOpts    string
+	autoDiscover    bool
+	discoverWrite   bool
 	itemDataPath    string
 	scripCurrencyID int
 	dbHost          string
@@ -107,6 +111,15 @@ type appConfig struct {
 	SSHHost string `yaml:"ssh_host" json:"ssh_host"`
 	SSHUser string `yaml:"ssh_user" json:"ssh_user"`
 	SSHKey  string `yaml:"ssh_key"  json:"ssh_key"`
+	// SSHMode selects the SSH transport: "" / "library" uses golang.org/x/crypto/ssh
+	// (default); "command" shells out to the OS ssh client (honours ~/.ssh/config,
+	// ProxyJump, ssh-agent; never reads a private key).
+	SSHMode      string `yaml:"ssh_mode"       json:"ssh_mode"`
+	SSHExtraOpts string `yaml:"ssh_extra_opts" json:"ssh_extra_opts"`
+
+	// AutoDiscover: when true, fill empty DB/RMQ/Director fields from the
+	// running game-server process args at connect time (command-mode + kubectl).
+	AutoDiscover bool `yaml:"auto_discover" json:"auto_discover"`
 
 	// Database — always required.
 	DBHost   string `yaml:"db_host"   json:"db_host"`
@@ -376,6 +389,8 @@ func loadConfig() {
 			setEnvIfMissing("SSH_HOST", cfg.SSHHost)
 			setEnvIfMissing("SSH_USER", cfg.SSHUser)
 			setEnvIfMissing("SSH_KEY", cfg.SSHKey)
+			setEnvIfMissing("SSH_MODE", cfg.SSHMode)
+			setEnvIfMissing("SSH_EXTRA_OPTS", cfg.SSHExtraOpts)
 			setEnvIfMissing("DB_HOST", cfg.DBHost)
 			if cfg.DBPort != 0 {
 				setEnvIfMissing("DB_PORT", strconv.Itoa(cfg.DBPort))
@@ -474,6 +489,10 @@ func init() {
 	flag.StringVar(&sshHost, "host", envOr("SSH_HOST", ""), "SSH host:port (if set, all connections tunnel through SSH)")
 	flag.StringVar(&sshUser, "user", envOr("SSH_USER", "dune"), "SSH user")
 	flag.StringVar(&sshKeyPath, "key", envOr("SSH_KEY", ""), "SSH private key path (auto-detected if empty)")
+	flag.StringVar(&sshMode, "ssh-mode", envOr("SSH_MODE", ""), "SSH transport: library (default, x/crypto/ssh) | command (OS ssh client)")
+	flag.StringVar(&sshExtraOpts, "ssh-extra-opts", envOr("SSH_EXTRA_OPTS", ""), "Extra ssh -o options for command mode, space-separated")
+	flag.BoolVar(&autoDiscover, "auto-discover", loadedConfig.AutoDiscover, "Discover DB/RMQ/Director from running game-server args (command-mode + kubectl)")
+	flag.BoolVar(&discoverWrite, "discover-write", false, "Persist discovered values into config.yaml, then continue")
 	flag.StringVar(&itemDataPath, "itemdata", envOr("ITEM_DATA", ""), "Item data JSON path")
 	flag.IntVar(&scripCurrencyID, "scripcurrency", envIntOr("SCRIP_CURRENCY", 1), "Scrip currency id")
 	flag.StringVar(&dbHost, "dbhost", envOr("DB_HOST", "127.0.0.1"), "PostgreSQL host or DNS name")
@@ -614,13 +633,26 @@ func loadItemData() error {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 
+// needsSetupConfigured reports whether a configured install still needs setup.
+// auto_discover suppresses the (library-wired) wizard only when discovery is
+// actually applicable — the kubectl control plane, where it fills the DB
+// password from the running game server. Outside kubectl, an empty db_pass
+// still requires setup, so an unreachable/failed discovery doesn't strand the
+// operator without a wizard path.
+func needsSetupConfigured() bool {
+	if dbPass != "" {
+		return false
+	}
+	return !autoDiscover || resolveControl() != "kubectl"
+}
+
 func needsSetup() bool {
 	// config.yaml takes priority over legacy .env.
 	if _, err := os.Stat(configPath()); err == nil {
-		return dbPass == ""
+		return needsSetupConfigured()
 	}
 	if _, err := os.Stat(".env"); err == nil {
-		return dbPass == ""
+		return needsSetupConfigured()
 	}
 	return true
 }
@@ -734,6 +766,14 @@ func setupIfNeeded() bool {
 func closeGlobalConnections() {
 	if globalDB != nil {
 		globalDB.Close()
+	}
+	// Close the active executor so command-mode tears down its ControlMaster
+	// (ssh -O exit) on shutdown. For the library executor this also closes its
+	// underlying *ssh.Client (globalSSH), so drop that reference to avoid a
+	// double Close on it below.
+	if globalExecutor != nil {
+		globalExecutor.Close()
+		globalSSH = nil
 	}
 	if globalSSH != nil {
 		_ = globalSSH.Close()

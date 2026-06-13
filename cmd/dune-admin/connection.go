@@ -47,6 +47,9 @@ func connectAll() error {
 	cfg.SSHHost = sshHost
 	cfg.SSHUser = sshUser
 	cfg.SSHKey = resolveKeyPath()
+	cfg.SSHMode = sshMode
+	cfg.SSHExtraOpts = sshExtraOpts
+	cfg.AutoDiscover = autoDiscover
 	cfg.DBHost = dbHost
 	cfg.DBPort = dbPort
 	cfg.DBUser = dbUser
@@ -61,7 +64,7 @@ func connectAll() error {
 	cfg.BackupDir = backupDir
 	cfg.ServerIniDir = serverIniDir
 
-	exec, err := newExecutor(cfg.SSHHost, cfg.SSHUser, cfg.SSHKey)
+	exec, err := newExecutor(cfg.SSHHost, cfg.SSHUser, cfg.SSHKey, cfg.SSHMode, cfg.SSHExtraOpts)
 	if err != nil {
 		return fmt.Errorf("executor: %w", err)
 	}
@@ -75,6 +78,12 @@ func connectAll() error {
 		exec = &ampExecutor{Executor: exec, ampUser: user}
 	}
 	globalExecutor = exec
+
+	// Auto-discovery: fill empty DB/RMQ/Director fields from the running
+	// game-server args. Best-effort and self-contained in applyAutoDiscovery.
+	if cfg.AutoDiscover {
+		applyAutoDiscovery(&cfg, exec, ctrl)
+	}
 
 	// kubectl needs DB-pod discovery (via the executor, not the DB) to learn the
 	// namespace before the control plane and DB connect. A discovery failure is
@@ -135,6 +144,41 @@ func ensureDBSchema(pool *pgxpool.Pool) {
 	}
 }
 
+// applyAutoDiscovery runs game-server discovery and gap-fills cfg in place,
+// propagating the filled values into the connection globals the DB/broker
+// connect paths read. Best-effort: a discovery failure is logged and ignored
+// (the operator may have set everything explicitly). The password is never
+// logged in clear text. Extracted from connectAll to keep its cognitive
+// complexity within the project gate.
+func applyAutoDiscovery(cfg *appConfig, exec Executor, ctrl string) {
+	g, err := discoverGameConfig(exec)
+	if err != nil {
+		log.Printf("connectAll: auto-discover: %v", err)
+		return
+	}
+	applyDiscovered(cfg, g)
+	// Propagate into the globals the DB connect path reads.
+	dbUser, dbPass, dbName = cfg.DBUser, cfg.DBPass, cfg.DBName
+	log.Printf("connectAll: auto-discover filled DB user=%s name=%s (pass %s)",
+		cfg.DBUser, cfg.DBName, maskSecret(cfg.DBPass))
+	if ctrl == "kubectl" {
+		pods := fetchClusterPodIPs(exec)
+		gameIP := podIPByPattern(pods, "mq-game")
+		adminIP := podIPByPattern(pods, "mq-admin")
+		directorIP := podIPByPattern(pods, "bgd")
+		applyDiscoveredEndpoints(cfg, g, gameIP, adminIP, directorIP)
+		brokerGameAddr, brokerAdminAddr, brokerTLS = cfg.BrokerGameAddr, cfg.BrokerAdminAddr, cfg.BrokerTLS
+	}
+	if discoverWrite {
+		if werr := writeConfigFile(*cfg); werr != nil {
+			log.Printf("connectAll: discover-write: %v", werr)
+		} else {
+			loadedConfig = *cfg
+			log.Printf("connectAll: discover-write persisted config.yaml")
+		}
+	}
+}
+
 // cmdConnect wraps connectAll in the legacy Msg return type.
 func cmdConnect() Msg {
 	if err := connectAll(); err != nil {
@@ -192,7 +236,7 @@ func connectDB(ctx context.Context, user, pass string) (*pgxpool.Pool, error) {
 		return []string{globalPodIP}, nil
 	}
 	poolCfg.ConnConfig.DialFunc = func(_ context.Context, _, _ string) (net.Conn, error) {
-		return globalSSH.Dial("tcp", fmt.Sprintf("%s:%d", globalPodIP, dbPort))
+		return globalExecutor.Dial("tcp", fmt.Sprintf("%s:%d", globalPodIP, dbPort))
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {

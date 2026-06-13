@@ -2,7 +2,10 @@ import type { WelcomeSharedProps, WelcomePackageItem } from '../types'
 
 export type GrantKey = 'character' | 'fls' | 'version' | 'status' | 'attempts' | 'updated' | 'error' | 'actions'
 
-export type GrantsViewProps = Pick<WelcomeSharedProps, 'grants' | 'retry' | 'revoke' | 'load' | 'loading'>
+export type GrantsViewProps = Pick<
+  WelcomeSharedProps,
+  'grants' | 'retry' | 'revoke' | 'override' | 'packages' | 'activeVersions' | 'load' | 'loading'
+>
 
 export type ConfigViewProps = Pick<
   WelcomeSharedProps,

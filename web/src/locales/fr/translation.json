@@ -1478,7 +1478,25 @@
       "title": "Message du jour"
     },
     "runConfirmTitle": "Attribuer le pack de bienvenue maintenant ?",
-    "runConfirmBody": "Ceci attribue le(s) pack(s) {{versions}} à tous les joueurs en ligne éligibles immédiatement. Continuer ?"
+    "runConfirmBody": "Ceci attribue le(s) pack(s) {{versions}} à tous les joueurs en ligne éligibles immédiatement. Continuer ?",
+    "overrideTitle": "Attribution manuelle (forcer)",
+    "overrideHint": "Attribue de force un paquet à un joueur choisi, en ignorant la vérification « déjà attribué ». Pour ré-attribuer ou attribuer à un joueur oublié.",
+    "overridePlayer": "Joueur",
+    "overridePlayerPlaceholder": "Rechercher des joueurs…",
+    "overridePackage": "Paquet",
+    "overrideSelectPackage": "— sélectionner —",
+    "overrideButton": "Attribuer le paquet",
+    "overrideConfirmTitle": "Forcer l’attribution ?",
+    "overrideConfirmBody": "Attribuer le paquet « {{version}} » à {{name}} ? Cela ignore la protection « déjà attribué » et ré-attribue les objets.",
+    "overrideGranted": "Paquet « {{version}} » attribué à {{name}}",
+    "overrideFailed": "Échec de l’attribution : {{message}}",
+    "kit": {
+      "weightVolume": "Poids/Volume",
+      "slots": "Emplacements",
+      "stackOf": "piles de {{n}}",
+      "totalVolume": "Poids/volume total :",
+      "totalSlots": "Emplacements totaux :"
+    }
   },
   "events": {
     "title": "Événements ({{count}})",

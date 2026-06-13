@@ -1501,7 +1501,25 @@
       "title": "Wiadomość dnia"
     },
     "runConfirmTitle": "Przyznać pakiet powitalny teraz?",
-    "runConfirmBody": "Spowoduje to natychmiastowe przyznanie pakietu(ów) {{versions}} wszystkim kwalifikującym się graczom online. Kontynuować?"
+    "runConfirmBody": "Spowoduje to natychmiastowe przyznanie pakietu(ów) {{versions}} wszystkim kwalifikującym się graczom online. Kontynuować?",
+    "overrideTitle": "Ręczne przyznanie (nadpisanie)",
+    "overrideHint": "Wymusza przyznanie pakietu wybranemu graczowi, pomijając kontrolę „już przyznano”. Użyj do ponownego przyznania lub dla pominiętego gracza.",
+    "overridePlayer": "Gracz",
+    "overridePlayerPlaceholder": "Szukaj graczy…",
+    "overridePackage": "Pakiet",
+    "overrideSelectPackage": "— wybierz —",
+    "overrideButton": "Przyznaj pakiet",
+    "overrideConfirmTitle": "Wymusić przyznanie?",
+    "overrideConfirmBody": "Przyznać pakiet „{{version}}” graczowi {{name}}? Pominie to zabezpieczenie „już przyznano” i ponownie przyzna przedmioty.",
+    "overrideGranted": "Przyznano pakiet „{{version}}” graczowi {{name}}",
+    "overrideFailed": "Nadpisanie nie powiodło się: {{message}}",
+    "kit": {
+      "weightVolume": "Waga/Objętość",
+      "slots": "Sloty",
+      "stackOf": "stosy po {{n}}",
+      "totalVolume": "Łączna waga/objętość:",
+      "totalSlots": "Łączna liczba slotów:"
+    }
   },
   "events": {
     "title": "Wydarzenia ({{count}})",

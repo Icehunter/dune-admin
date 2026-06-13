@@ -1455,7 +1455,25 @@
       "title": "Günün Mesajı"
     },
     "runConfirmTitle": "Karşılama paketi şimdi verilsin mi?",
-    "runConfirmBody": "Bu, {{versions}} paket(ler)ini uygun tüm çevrimiçi oyunculara hemen verir. Devam edilsin mi?"
+    "runConfirmBody": "Bu, {{versions}} paket(ler)ini uygun tüm çevrimiçi oyunculara hemen verir. Devam edilsin mi?",
+    "overrideTitle": "Manuel verme (geçersiz kıl)",
+    "overrideHint": "Zaten verildi kontrolünü atlayarak seçilen oyuncuya bir paketi zorla verir. Yeniden vermek veya atlanan bir oyuncuya vermek için kullanın.",
+    "overridePlayer": "Oyuncu",
+    "overridePlayerPlaceholder": "Oyuncu ara…",
+    "overridePackage": "Paket",
+    "overrideSelectPackage": "— seç —",
+    "overrideButton": "Paketi ver",
+    "overrideConfirmTitle": "Vermeyi zorla?",
+    "overrideConfirmBody": "\"{{version}}\" paketi {{name}} oyuncusuna verilsin mi? Bu, zaten verildi korumasını atlar ve öğeleri yeniden verir.",
+    "overrideGranted": "\"{{version}}\" paketi {{name}} oyuncusuna verildi",
+    "overrideFailed": "Geçersiz kılma başarısız: {{message}}",
+    "kit": {
+      "weightVolume": "Ağırlık/Hacim",
+      "slots": "Yuvalar",
+      "stackOf": "{{n}} yığını",
+      "totalVolume": "Toplam ağırlık/hacim:",
+      "totalSlots": "Toplam yuva:"
+    }
   },
   "events": {
     "title": "Etkinlikler ({{count}})",

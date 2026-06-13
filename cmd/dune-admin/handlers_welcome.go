@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -318,6 +319,74 @@ func handleRevokeWelcomeGrant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonOK(w, map[string]any{"revoked": n})
+}
+
+// @Summary Manually grant a package to a chosen player, bypassing the already-granted guard
+// @Tags welcome-package
+// @Accept json
+// @Produce json
+// @Param body body object true "account_id, package_version"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 503 {object} map[string]string
+// @Router /api/v1/welcome-package/override [post]
+func handleOverrideWelcomeGrant(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AccountID      int64  `json:"account_id"`
+		PackageVersion string `json:"package_version"`
+	}
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, err, http.StatusBadRequest)
+		return
+	}
+	if req.AccountID <= 0 || req.PackageVersion == "" {
+		jsonErr(w, fmt.Errorf("account_id and package_version required"), http.StatusBadRequest)
+		return
+	}
+
+	// Resolve the package items from the live runtime so the override always
+	// uses the operator's current definition.
+	rt := getWelcomeRuntime()
+	idx := findPackage(rt.packages, req.PackageVersion)
+	if idx < 0 {
+		jsonErr(w, fmt.Errorf("package %q not found", req.PackageVersion), http.StatusBadRequest)
+		return
+	}
+	pkg := rt.packages[idx]
+	if err := validateWelcomeItems(pkg.Items); err != nil {
+		jsonErr(w, fmt.Errorf("package %q: %w", req.PackageVersion, err), http.StatusBadRequest)
+		return
+	}
+
+	if globalDB == nil {
+		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
+		return
+	}
+	if welcomeStoreDB == nil {
+		jsonErr(w, fmt.Errorf("welcome package store not available"), http.StatusServiceUnavailable)
+		return
+	}
+
+	acc, err := cmdFetchWelcomeAccount(r.Context(), globalDB, req.AccountID)
+	if err != nil {
+		if errors.Is(err, errNotFound) {
+			jsonErr(w, fmt.Errorf("player not found"), http.StatusNotFound)
+			return
+		}
+		log.Printf("handleOverrideWelcomeGrant: %v", err)
+		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
+		return
+	}
+
+	if err := overrideGrantToAccount(r.Context(), acc, pkg.Version, pkg.Items, welcomeScanDeps{
+		grant: welcomeGrantViaGiveItems,
+		store: welcomeStoreDB,
+	}); err != nil {
+		jsonErr(w, err, http.StatusBadRequest)
+		return
+	}
+	jsonOK(w, map[string]any{"granted": true, "account_id": acc.AccountID, "character_name": acc.CharacterName})
 }
 
 // @Summary Run a welcome-package scan now (one-off, regardless of enabled)

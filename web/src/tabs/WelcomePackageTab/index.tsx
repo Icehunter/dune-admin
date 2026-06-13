@@ -125,6 +125,12 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
     }
   }
 
+  const override = async (accountId: number, packageVersion: string) => {
+    const r = await api.welcomePackage.override(accountId, packageVersion)
+    toast.success(t('welcome.overrideGranted', { name: r.character_name || `#${r.account_id}`, version: packageVersion }))
+    setGrants(await api.welcomePackage.grants(100))
+  }
+
   const retry = async (g: WelcomeGrantRecord) => {
     try {
       await api.welcomePackage.retry(g.fls_id, g.package_version, g.account_id)
@@ -238,7 +244,18 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
           />
         )
       case 'grants':
-        return <GrantsView grants={grants} retry={retry} revoke={revoke} load={load} loading={loading} />
+        return (
+          <GrantsView
+            grants={grants}
+            retry={retry}
+            revoke={revoke}
+            override={override}
+            packages={packages}
+            activeVersions={activeVersions}
+            load={load}
+            loading={loading}
+          />
+        )
     }
   }
 

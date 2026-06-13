@@ -1501,7 +1501,25 @@
       "title": "Сообщение дня"
     },
     "runConfirmTitle": "Выдать приветственный пакет сейчас?",
-    "runConfirmBody": "Это немедленно выдаст пакет(ы) {{versions}} всем подходящим игрокам онлайн. Продолжить?"
+    "runConfirmBody": "Это немедленно выдаст пакет(ы) {{versions}} всем подходящим игрокам онлайн. Продолжить?",
+    "overrideTitle": "Ручная выдача (переопределение)",
+    "overrideHint": "Принудительно выдаёт набор выбранному игроку, минуя проверку «уже выдано». Используйте для повторной выдачи или для пропущенного игрока.",
+    "overridePlayer": "Игрок",
+    "overridePlayerPlaceholder": "Поиск игроков…",
+    "overridePackage": "Набор",
+    "overrideSelectPackage": "— выбрать —",
+    "overrideButton": "Выдать набор",
+    "overrideConfirmTitle": "Переопределить выдачу?",
+    "overrideConfirmBody": "Выдать набор «{{version}}» игроку {{name}}? Это обойдёт защиту «уже выдано» и повторно выдаст предметы.",
+    "overrideGranted": "Набор «{{version}}» выдан игроку {{name}}",
+    "overrideFailed": "Ошибка переопределения: {{message}}",
+    "kit": {
+      "weightVolume": "Вес/Объём",
+      "slots": "Слоты",
+      "stackOf": "стопки по {{n}}",
+      "totalVolume": "Общий вес/объём:",
+      "totalSlots": "Всего слотов:"
+    }
   },
   "events": {
     "title": "События ({{count}})",

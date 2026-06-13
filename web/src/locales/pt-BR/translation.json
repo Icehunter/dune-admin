@@ -1478,7 +1478,25 @@
       "title": "Mensagem do dia"
     },
     "runConfirmTitle": "Conceder pacote de boas-vindas agora?",
-    "runConfirmBody": "Isto concede o(s) pacote(s) {{versions}} a todos os jogadores online elegíveis agora. Continuar?"
+    "runConfirmBody": "Isto concede o(s) pacote(s) {{versions}} a todos os jogadores online elegíveis agora. Continuar?",
+    "overrideTitle": "Concessão manual (substituir)",
+    "overrideHint": "Concede um pacote a um jogador escolhido, ignorando a verificação de já concedido. Use para reconceder ou conceder a um jogador ignorado.",
+    "overridePlayer": "Jogador",
+    "overridePlayerPlaceholder": "Buscar jogadores…",
+    "overridePackage": "Pacote",
+    "overrideSelectPackage": "— selecionar —",
+    "overrideButton": "Conceder pacote",
+    "overrideConfirmTitle": "Forçar concessão?",
+    "overrideConfirmBody": "Conceder o pacote \"{{version}}\" a {{name}}? Isso ignora a proteção de já concedido e reconcede os itens.",
+    "overrideGranted": "Pacote \"{{version}}\" concedido a {{name}}",
+    "overrideFailed": "Falha na substituição: {{message}}",
+    "kit": {
+      "weightVolume": "Peso/Volume",
+      "slots": "Espaços",
+      "stackOf": "pilhas de {{n}}",
+      "totalVolume": "Peso/volume total:",
+      "totalSlots": "Total de espaços:"
+    }
   },
   "events": {
     "title": "Eventos ({{count}})",

@@ -1478,7 +1478,25 @@
       "title": "Mensaje del día"
     },
     "runConfirmTitle": "¿Otorgar paquete de bienvenida ahora?",
-    "runConfirmBody": "Esto otorga el/los paquete(s) {{versions}} a todos los jugadores en línea elegibles ahora mismo. ¿Continuar?"
+    "runConfirmBody": "Esto otorga el/los paquete(s) {{versions}} a todos los jugadores en línea elegibles ahora mismo. ¿Continuar?",
+    "overrideTitle": "Concesión manual (anular)",
+    "overrideHint": "Concede un paquete a un jugador elegido, omitiendo la comprobación de ya concedido. Úsalo para volver a conceder o conceder a un jugador omitido.",
+    "overridePlayer": "Jugador",
+    "overridePlayerPlaceholder": "Buscar jugadores…",
+    "overridePackage": "Paquete",
+    "overrideSelectPackage": "— seleccionar —",
+    "overrideButton": "Conceder paquete",
+    "overrideConfirmTitle": "¿Forzar concesión?",
+    "overrideConfirmBody": "¿Conceder el paquete «{{version}}» a {{name}}? Esto omite la protección de ya concedido y vuelve a entregar los objetos.",
+    "overrideGranted": "Paquete «{{version}}» concedido a {{name}}",
+    "overrideFailed": "Error al anular: {{message}}",
+    "kit": {
+      "weightVolume": "Peso/Volumen",
+      "slots": "Ranuras",
+      "stackOf": "pilas de {{n}}",
+      "totalVolume": "Peso/volumen total:",
+      "totalSlots": "Ranuras totales:"
+    }
   },
   "events": {
     "title": "Eventos ({{count}})",

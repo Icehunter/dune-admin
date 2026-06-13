@@ -314,6 +314,7 @@ func buildMux() *http.ServeMux {
 	handleAPI(mux, "GET /api/v1/welcome-package/grants", capWelcomeRead, handleGetWelcomeGrants)
 	handleAPI(mux, "POST /api/v1/welcome-package/retry", capWelcomeManage, handleRetryWelcomeGrant)
 	handleAPI(mux, "POST /api/v1/welcome-package/revoke", capWelcomeManage, handleRevokeWelcomeGrant)
+	handleAPI(mux, "POST /api/v1/welcome-package/override", capWelcomeManage, handleOverrideWelcomeGrant)
 	handleAPI(mux, "POST /api/v1/welcome-package/run", capWelcomeManage, handleRunWelcomePackage)
 
 	// ── give-items packs (operator-configurable pack library) ─────────────────

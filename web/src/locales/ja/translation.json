@@ -1455,7 +1455,25 @@
       "title": "今日のメッセージ"
     },
     "runConfirmTitle": "ウェルカムパッケージを今すぐ付与しますか？",
-    "runConfirmBody": "対象のオンラインプレイヤー全員にパッケージ {{versions}} を今すぐ付与します。続行しますか？"
+    "runConfirmBody": "対象のオンラインプレイヤー全員にパッケージ {{versions}} を今すぐ付与します。続行しますか？",
+    "overrideTitle": "手動付与（上書き）",
+    "overrideHint": "付与済みチェックを無視して、選択したプレイヤーにパッケージを強制付与します。再付与や付与漏れのプレイヤーへの付与に使用します。",
+    "overridePlayer": "プレイヤー",
+    "overridePlayerPlaceholder": "プレイヤーを検索…",
+    "overridePackage": "パッケージ",
+    "overrideSelectPackage": "— 選択 —",
+    "overrideButton": "パッケージを付与",
+    "overrideConfirmTitle": "付与を上書きしますか？",
+    "overrideConfirmBody": "パッケージ「{{version}}」を {{name}} に付与しますか？付与済みガードを無視してアイテムを再付与します。",
+    "overrideGranted": "パッケージ「{{version}}」を {{name}} に付与しました",
+    "overrideFailed": "上書きに失敗しました: {{message}}",
+    "kit": {
+      "weightVolume": "重量/体積",
+      "slots": "スロット",
+      "stackOf": "{{n}} 個スタック",
+      "totalVolume": "合計重量/体積:",
+      "totalSlots": "合計スロット数:"
+    }
   },
   "events": {
     "title": "イベント ({{count}})",

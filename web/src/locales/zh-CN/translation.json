@@ -1455,7 +1455,25 @@
       "title": "每日消息"
     },
     "runConfirmTitle": "立即发放欢迎礼包？",
-    "runConfirmBody": "这将立即向所有符合条件的在线玩家发放礼包 {{versions}}。是否继续？"
+    "runConfirmBody": "这将立即向所有符合条件的在线玩家发放礼包 {{versions}}。是否继续？",
+    "overrideTitle": "手动发放（覆盖）",
+    "overrideHint": "强制向选定玩家发放礼包，跳过已发放检查。用于重新发放或向遗漏的玩家发放。",
+    "overridePlayer": "玩家",
+    "overridePlayerPlaceholder": "搜索玩家…",
+    "overridePackage": "礼包",
+    "overrideSelectPackage": "— 选择 —",
+    "overrideButton": "发放礼包",
+    "overrideConfirmTitle": "覆盖发放？",
+    "overrideConfirmBody": "向 {{name}} 发放礼包“{{version}}”？这将跳过已发放保护并重新发放物品。",
+    "overrideGranted": "已向 {{name}} 发放礼包“{{version}}”",
+    "overrideFailed": "覆盖失败：{{message}}",
+    "kit": {
+      "weightVolume": "重量/体积",
+      "slots": "格位",
+      "stackOf": "每堆 {{n}}",
+      "totalVolume": "总重量/体积：",
+      "totalSlots": "总格位："
+    }
   },
   "events": {
     "title": "活动 ({{count}})",

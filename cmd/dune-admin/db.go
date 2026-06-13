@@ -1515,6 +1515,31 @@ func listWelcomeOnlineAccounts(ctx context.Context) ([]welcomeAccount, error) {
 	return out, rows.Err()
 }
 
+// cmdFetchWelcomeAccount returns one account's welcome-grant identity (pawn id,
+// FLS id, character name) by account id — the same joins as
+// listWelcomeOnlineAccounts but without the online filter, so a manual override
+// can target any player regardless of presence.
+func cmdFetchWelcomeAccount(ctx context.Context, pool *pgxpool.Pool, accountID int64) (welcomeAccount, error) {
+	if pool == nil {
+		return welcomeAccount{}, fmt.Errorf("not connected")
+	}
+	row := pool.QueryRow(ctx, `
+		SELECT ps.account_id, ps.player_pawn_id,
+		       COALESCE(ac."user", ''), COALESCE(ps.character_name, '')
+		FROM dune.player_state ps
+		JOIN dune.actors a ON a.id = ps.player_pawn_id
+		JOIN dune.accounts ac ON ac.id = a.owner_account_id
+		WHERE ps.account_id = $1`, accountID)
+	var acc welcomeAccount
+	if err := row.Scan(&acc.AccountID, &acc.PawnID, &acc.FlsID, &acc.CharacterName); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return welcomeAccount{}, errNotFound
+		}
+		return welcomeAccount{}, fmt.Errorf("fetch welcome account %d: %w", accountID, err)
+	}
+	return acc, nil
+}
+
 func checkInventoryCapacity(ctx context.Context, playerID int64, template string, qty int64) error {
 	if globalDB == nil {
 		return fmt.Errorf("not connected")

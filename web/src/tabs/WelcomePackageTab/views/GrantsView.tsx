@@ -1,11 +1,12 @@
 import * as React from 'react'
-import { Button, Spinner } from '@heroui/react'
+import { Button, ListBox, Select, Spinner, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { Icon as IconifyIcon } from '@iconify/react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '../../../hooks/usePermissions'
-import { DataTable, Icon, PageHeader, type Column } from '../../../dune-ui'
-import type { WelcomeGrantRecord } from '../../../api/client'
+import { ConfirmDialog, DataTable, Icon, PageHeader, type Column } from '../../../dune-ui'
+import { PlayerSearchField } from '../../../components/PlayerSearchField'
+import type { Player, WelcomeGrantRecord } from '../../../api/client'
 import type { GrantKey, GrantsViewProps } from './types'
 
 const fmtTime = (s: string): string => {
@@ -14,9 +15,32 @@ const fmtTime = (s: string): string => {
   return Number.isNaN(d.getTime()) ? s : d.toLocaleString()
 }
 
-export const GrantsView: React.FC<GrantsViewProps> = ({ grants, retry, revoke, load, loading }) => {
+export const GrantsView: React.FC<GrantsViewProps> = ({
+  grants, retry, revoke, override, packages, activeVersions, load, loading,
+}) => {
   const { t } = useTranslation()
   const { can } = usePermissions()
+
+  const [ovPlayer, setOvPlayer] = React.useState<Player | null>(null)
+  const [ovVersion, setOvVersion] = React.useState(() => activeVersions[0] ?? packages[0]?.version ?? '')
+  const [ovConfirm, setOvConfirm] = React.useState(false)
+  const [ovRunning, setOvRunning] = React.useState(false)
+
+  const doOverride = async () => {
+    if (!ovPlayer || !ovVersion) return
+    setOvConfirm(false)
+    setOvRunning(true)
+    try {
+      await override(ovPlayer.account_id, ovVersion)
+      setOvPlayer(null)
+    }
+    catch (e) {
+      toast.danger(t('welcome.overrideFailed', { message: e instanceof Error ? e.message : String(e) }))
+    }
+    finally {
+      setOvRunning(false)
+    }
+  }
 
   const GRANT_COLUMNS: Column<GrantKey>[] = [
     { key: 'character', label: t('welcome.columns.character'), minWidth: 130 },
@@ -47,6 +71,81 @@ export const GrantsView: React.FC<GrantsViewProps> = ({ grants, retry, revoke, l
               )}
         </Button>
       </PageHeader>
+
+      {can('welcome:manage') && (
+        <div className="shrink-0 rounded-[var(--radius)] border border-border bg-surface p-3 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Icon name="gift" />
+            <span className="text-sm font-medium">{t('welcome.overrideTitle')}</span>
+          </div>
+          <p className="text-xs text-muted">{t('welcome.overrideHint')}</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-0.5 flex-1 min-w-56">
+              <label className="text-xs text-muted">{t('welcome.overridePlayer')}</label>
+              <PlayerSearchField
+                ariaLabel={t('welcome.overridePlayer')}
+                placeholder={t('welcome.overridePlayerPlaceholder')}
+                onSelect={setOvPlayer}
+                onClear={() => setOvPlayer(null)}
+              />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <label className="text-xs text-muted">{t('welcome.overridePackage')}</label>
+              <Select
+                aria-label={t('welcome.overridePackage')}
+                selectedKey={ovVersion || null}
+                onSelectionChange={(k) => setOvVersion(k ? String(k) : '')}
+                className="w-48"
+              >
+                <Select.Trigger>
+                  <Select.Value>{ovVersion || t('welcome.overrideSelectPackage')}</Select.Value>
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    {packages.map((p) => (
+                      <ListBox.Item key={p.version} id={p.version} textValue={p.version}>
+                        {p.version}
+                        {activeVersions.includes(p.version) ? ' (active)' : ''}
+                        <ListBox.ItemIndicator />
+                      </ListBox.Item>
+                    ))}
+                  </ListBox>
+                </Select.Popover>
+              </Select>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              isDisabled={!ovPlayer || !ovVersion || ovRunning}
+              onPress={() => setOvConfirm(true)}
+            >
+              {ovRunning
+                ? <Spinner size="sm" color="current" />
+                : (
+                    <>
+                      <Icon name="gift" />
+                      {' '}
+                      {t('welcome.overrideButton')}
+                    </>
+                  )}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={ovConfirm}
+        title={t('welcome.overrideConfirmTitle')}
+        description={t('welcome.overrideConfirmBody', {
+          name: ovPlayer?.name ?? '',
+          version: ovVersion,
+        })}
+        confirmLabel={t('welcome.overrideButton')}
+        onConfirm={doOverride}
+        onCancel={() => setOvConfirm(false)}
+      />
+
       <DataTable<WelcomeGrantRecord, GrantKey>
         aria-label={t('welcome.grantsLabel')}
         columns={GRANT_COLUMNS}

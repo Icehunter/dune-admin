@@ -1455,7 +1455,25 @@
       "title": "Nachricht des Tages"
     },
     "runConfirmTitle": "Willkommenspaket jetzt vergeben?",
-    "runConfirmBody": "Dies vergibt das/die Paket(e) {{versions}} sofort an alle berechtigten Online-Spieler. Fortfahren?"
+    "runConfirmBody": "Dies vergibt das/die Paket(e) {{versions}} sofort an alle berechtigten Online-Spieler. Fortfahren?",
+    "overrideTitle": "Manuelle Vergabe (Override)",
+    "overrideHint": "Vergibt ein Paket erzwungen an einen ausgewählten Spieler und umgeht die Bereits-vergeben-Prüfung. Zum erneuten Vergeben oder für übersprungene Spieler.",
+    "overridePlayer": "Spieler",
+    "overridePlayerPlaceholder": "Spieler suchen…",
+    "overridePackage": "Paket",
+    "overrideSelectPackage": "— auswählen —",
+    "overrideButton": "Paket vergeben",
+    "overrideConfirmTitle": "Vergabe erzwingen?",
+    "overrideConfirmBody": "Paket „{{version}}“ an {{name}} vergeben? Dies umgeht die Bereits-vergeben-Sperre und vergibt die Gegenstände erneut.",
+    "overrideGranted": "Paket „{{version}}“ an {{name}} vergeben",
+    "overrideFailed": "Override fehlgeschlagen: {{message}}",
+    "kit": {
+      "weightVolume": "Gewicht/Volumen",
+      "slots": "Plätze",
+      "stackOf": "Stapel à {{n}}",
+      "totalVolume": "Gesamtgewicht/-volumen:",
+      "totalSlots": "Plätze gesamt:"
+    }
   },
   "events": {
     "title": "Events ({{count}})",

@@ -19,6 +19,56 @@ func setupWelcomeStore(t *testing.T) *welcomeStore {
 	return s
 }
 
+// TestHandleOverrideWelcomeGrant_Validation covers the request-validation and
+// runtime-lookup branches of the override handler that do not reach the DB.
+func TestHandleOverrideWelcomeGrant_Validation(t *testing.T) {
+	setupWelcomeStore(t)
+	setWelcomeRuntime(buildWelcomeRuntime(true, []string{"v1"}, 30,
+		[]welcomePackage{{Version: "v1", Items: []welcomePackageItem{{Template: "PlantFiber", Qty: 1}}}},
+		welcomeMessageOptions{}))
+	t.Cleanup(func() { setWelcomeRuntime(welcomePackageRuntime{}) })
+
+	tests := []struct {
+		name       string
+		body       string
+		wantStatus int
+	}{
+		{"bad json", `{`, http.StatusBadRequest},
+		{"missing account", `{"package_version":"v1"}`, http.StatusBadRequest},
+		{"missing version", `{"account_id":5}`, http.StatusBadRequest},
+		{"unknown package", `{"account_id":5,"package_version":"nope"}`, http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/welcome-package/override", bytes.NewReader([]byte(tt.body)))
+			rec := httptest.NewRecorder()
+			handleOverrideWelcomeGrant(rec, req)
+			if rec.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d (body=%s)", rec.Code, tt.wantStatus, rec.Body.String())
+			}
+		})
+	}
+}
+
+// TestHandleOverrideWelcomeGrant_NoDB returns 503 when no DB is connected even
+// for an otherwise-valid request (globalDB is nil in unit tests).
+func TestHandleOverrideWelcomeGrant_NoDB(t *testing.T) {
+	setupWelcomeStore(t)
+	setWelcomeRuntime(buildWelcomeRuntime(true, []string{"v1"}, 30,
+		[]welcomePackage{{Version: "v1", Items: []welcomePackageItem{{Template: "PlantFiber", Qty: 1}}}},
+		welcomeMessageOptions{}))
+	t.Cleanup(func() { setWelcomeRuntime(welcomePackageRuntime{}) })
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/welcome-package/override",
+		bytes.NewReader([]byte(`{"account_id":5,"package_version":"v1"}`)))
+	rec := httptest.NewRecorder()
+	handleOverrideWelcomeGrant(rec, req)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503 (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
 // TestHandlePutWelcomeConfig_MessageFieldsPersisted verifies that the welcome
 // message fields survive a PUT → GET round-trip via the SQLite store.
 // This is a regression test for the bug where the handler built the

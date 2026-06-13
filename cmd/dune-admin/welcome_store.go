@@ -158,6 +158,26 @@ func (s *welcomeStore) grantExists(flsID, version string, accountID int64) (bool
 	return true, nil
 }
 
+// findGrant returns the ledger row for (flsID, version, accountID) if present.
+func (s *welcomeStore) findGrant(flsID, version string, accountID int64) (welcomeGrantRecord, bool, error) {
+	var r welcomeGrantRecord
+	err := s.db.QueryRow(
+		`SELECT fls_id, package_version, account_id, character_name, status,
+		        granted_at, attempts, last_error, updated_at
+		 FROM welcome_grants
+		 WHERE fls_id = ? AND package_version = ? AND account_id = ? LIMIT 1`,
+		flsID, version, accountID).Scan(
+		&r.FlsID, &r.PackageVersion, &r.AccountID, &r.CharacterName, &r.Status,
+		&r.GrantedAt, &r.Attempts, &r.LastError, &r.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return welcomeGrantRecord{}, false, nil
+	}
+	if err != nil {
+		return welcomeGrantRecord{}, false, fmt.Errorf("find welcome grant: %w", err)
+	}
+	return r, true, nil
+}
+
 func (s *welcomeStore) insertGranted(flsID, version string, accountID int64, characterName string) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := s.db.Exec(`

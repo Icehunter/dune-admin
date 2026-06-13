@@ -53,6 +53,10 @@ export type ItemEntry = {
   is_gradeable?: boolean
   armor_value?: number
   mitigation?: Record<string, number>
+  /** Inventory-load metric (there is no separate weight field — labelled "weight/volume" in UI). */
+  volume?: number
+  /** Max quantity per inventory slot; slots needed = ceil(qty / stack_max). */
+  stack_max?: number
 }
 
 export type ItemDataFile = {
@@ -170,6 +174,7 @@ export const packsAtom = atom<Promise<PacksData>>(async () => {
 
 // ── Sync (unwrapped) atoms — safe to use without Suspense ─────────────────────
 
+export const itemDataSyncAtom = unwrap(itemDataAtom, (): ItemDataFile => ({ items: {} }))
 export const gameplayTagsSyncAtom = unwrap(gameplayTagsAtom, (): string[] => [])
 export const skillModulesSyncAtom = unwrap(skillModulesAtom, (): SkillModule[] => [])
 export const vehiclesSyncAtom = unwrap(vehiclesAtom, (): Vehicle[] => [])

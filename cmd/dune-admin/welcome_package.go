@@ -109,6 +109,32 @@ func grantItemsToAccount(ctx context.Context, acc welcomeAccount, version string
 	return 1, 0, 0, nil
 }
 
+// overrideGrantToAccount grants a package to one chosen account, bypassing the
+// already-granted guard used by grantItemsToAccount. It is the manual "force a
+// grant" path: it calls deps.grant directly and records the resulting ledger
+// row (granted on success, failed on error or skipped items). Unlike the
+// scanner, failures surface to the caller as an error so the operator sees them.
+func overrideGrantToAccount(ctx context.Context, acc welcomeAccount, version string, items []welcomePackageItem, deps welcomeScanDeps) error {
+	if strings.TrimSpace(acc.FlsID) == "" {
+		return fmt.Errorf("player has no FLS id (cannot record grant)")
+	}
+	if len(items) == 0 {
+		return fmt.Errorf("package %q has no items", version)
+	}
+	skippedItems, grantErr := deps.grant(ctx, acc.PawnID, acc.FlsID, items)
+	if grantErr != nil {
+		_ = deps.store.insertFailed(acc.FlsID, version, acc.AccountID, acc.CharacterName, grantErr.Error())
+		return fmt.Errorf("grant items: %w", grantErr)
+	}
+	if len(skippedItems) > 0 {
+		reason := "items skipped: " + strings.Join(skippedItems, "; ")
+		_ = deps.store.insertFailed(acc.FlsID, version, acc.AccountID, acc.CharacterName, reason)
+		return fmt.Errorf("%s", reason)
+	}
+	_ = deps.store.insertGranted(acc.FlsID, version, acc.AccountID, acc.CharacterName)
+	return nil
+}
+
 func whisperAccount(ctx context.Context, acc welcomeAccount, msgVersion string, deps welcomeScanDeps) error {
 	if deps.whisper == nil {
 		return nil

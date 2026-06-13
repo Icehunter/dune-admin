@@ -49,6 +49,8 @@ export interface WelcomeSharedProps {
   grants: WelcomeGrantRecord[]
   retry: (g: WelcomeGrantRecord) => Promise<void>
   revoke: (g: WelcomeGrantRecord) => Promise<void>
+  // manual grant override — force-grant a package to a chosen player
+  override: (accountId: number, packageVersion: string) => Promise<void>
   // templates (packages view)
   templates: { id: string, name: string }[]
   // unsaved-changes diff

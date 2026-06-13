@@ -3,8 +3,10 @@ import { Button, Chip, Input, ListBox, SearchField, Select, Separator, Spinner }
 import type { Selection } from '@heroui/react'
 import type { DataGridColumn } from '@heroui-pro/react'
 import { DataGrid } from '@heroui-pro/react'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '../../../hooks/usePermissions'
+import { itemDataSyncAtom } from '../../../data/store'
 import { ActionBar, Icon, NumberInput, PageHeader } from '../../../dune-ui'
 import type { WelcomePackage } from '../../../api/client'
 import { DiffStatus } from '../components/DiffStatus'
@@ -42,11 +44,39 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
 
   const nameMap = React.useMemo(() => new Map(templates.map((tpl) => [tpl.id, tpl.name])), [templates])
 
+  const itemData = useAtomValue(itemDataSyncAtom)
+  const defaultVolume = itemData.default_volume ?? 0
+  const defaultStackMax = itemData.default_stack_max ?? 0
+
+  // Per-row volume (volume × qty) — the inventory-load metric labelled "weight/volume".
+  const rowVolume = React.useCallback((template: string, qty: number): number => {
+    const v = itemData.items[template]?.volume ?? defaultVolume
+    return v > 0 ? v * qty : 0
+  }, [itemData, defaultVolume])
+
+  // Per-row slot need = ceil(qty / stack_max). Falls back to one slot per unit
+  // when no stack size is known.
+  const rowSlots = React.useCallback((template: string, qty: number): number => {
+    const stackMax = itemData.items[template]?.stack_max ?? defaultStackMax
+    if (stackMax > 0) return Math.ceil(qty / stackMax)
+    return qty
+  }, [itemData, defaultStackMax])
+
   // Derive keyed items from the selected package (index-based keys, cleared on any removal)
   const keyedItems = React.useMemo(() => {
     const pkg = packages.find((p) => p.version === selected)
     return (pkg?.items ?? []).map((it, i) => ({ ...it, _key: String(i) }))
   }, [packages, selected])
+
+  const totals = React.useMemo(() => {
+    let volume = 0
+    let slots = 0
+    for (const it of keyedItems) {
+      volume += rowVolume(it.template, it.qty)
+      slots += rowSlots(it.template, it.qty)
+    }
+    return { volume, slots }
+  }, [keyedItems, rowVolume, rowSlots])
 
   const setItems = (next: KeyedItem[]) => {
     const stripped = next.map(({ template, qty, quality }) => ({ template, qty, quality }))
@@ -159,6 +189,36 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
           className="w-full"
         />
       ),
+    },
+    {
+      id: 'weight',
+      header: t('welcome.kit.weightVolume'),
+      minWidth: 110,
+      maxWidth: 160,
+      allowsResizing: true,
+      cell: (item) => {
+        const v = rowVolume(item.template, item.qty)
+        return v > 0
+          ? <span className="text-muted text-xs tabular-nums">{Math.round(v * 100) / 100}</span>
+          : <span className="text-muted">—</span>
+      },
+    },
+    {
+      id: 'slots',
+      header: t('welcome.kit.slots'),
+      minWidth: 90,
+      maxWidth: 140,
+      allowsResizing: true,
+      cell: (item) => {
+        const stackMax = itemData.items[item.template]?.stack_max ?? defaultStackMax
+        const slots = rowSlots(item.template, item.qty)
+        return (
+          <span className="text-muted text-xs tabular-nums">
+            {slots}
+            {stackMax > 0 ? ` (${t('welcome.kit.stackOf', { n: stackMax })})` : ''}
+          </span>
+        )
+      },
     },
     {
       id: 'actions',
@@ -340,6 +400,22 @@ export const PackagesView: React.FC<PackagesViewProps> = ({
                 allowsColumnResize
               />
             )}
+
+      {/* Per-package totals */}
+      {selected && keyedItems.length > 0 && (
+        <div className="pt-3 shrink-0 flex flex-wrap items-center gap-4 text-xs text-muted">
+          <span className="flex items-center gap-1.5">
+            <Icon name="weight" />
+            {t('welcome.kit.totalVolume')}
+            <span className="text-foreground tabular-nums">{Math.round(totals.volume * 100) / 100}</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Icon name="grid-3x3" />
+            {t('welcome.kit.totalSlots')}
+            <span className="text-foreground tabular-nums">{totals.slots}</span>
+          </span>
+        </div>
+      )}
 
       {/* Save button + diff status */}
       {can('welcome:manage') && (

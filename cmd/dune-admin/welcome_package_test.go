@@ -32,6 +32,89 @@ func TestValidateWelcomeItems(t *testing.T) {
 	}
 }
 
+func TestOverrideGrantToAccount(t *testing.T) {
+	store, err := openWelcomeStore(filepath.Join(t.TempDir(), "w.sqlite"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer func() { _ = store.close() }()
+
+	items := []welcomePackageItem{{Template: "PlantFiber", Qty: 2, Quality: 0}}
+
+	t.Run("bypasses the already-granted guard and re-grants", func(t *testing.T) {
+		// Pre-grant so a normal scan would skip — override must NOT skip.
+		if err := store.insertGranted("FLS1", "v1", 1, "Paul"); err != nil {
+			t.Fatal(err)
+		}
+		var granted bool
+		acc := welcomeAccount{AccountID: 1, PawnID: 10, FlsID: "FLS1", CharacterName: "Paul"}
+		grantErr := overrideGrantToAccount(context.Background(), acc, "v1", items, welcomeScanDeps{
+			grant: func(_ context.Context, _ int64, _ string, _ []welcomePackageItem) ([]string, error) {
+				granted = true
+				return nil, nil
+			},
+			store: store,
+		})
+		if grantErr != nil {
+			t.Fatalf("override: %v", grantErr)
+		}
+		if !granted {
+			t.Fatal("override should re-grant even when a ledger row exists")
+		}
+		if ex, _ := store.grantExists("FLS1", "v1", 1); !ex {
+			t.Fatal("ledger row should exist after override")
+		}
+	})
+
+	t.Run("rejects empty FLS id", func(t *testing.T) {
+		acc := welcomeAccount{AccountID: 2, PawnID: 20, FlsID: "", CharacterName: "NoFls"}
+		err := overrideGrantToAccount(context.Background(), acc, "v1", items, welcomeScanDeps{
+			grant: func(_ context.Context, _ int64, _ string, _ []welcomePackageItem) ([]string, error) {
+				t.Fatal("grant must not be called for empty FLS id")
+				return nil, nil
+			},
+			store: store,
+		})
+		if err == nil {
+			t.Fatal("override should reject empty FLS id")
+		}
+	})
+
+	t.Run("records failed and errors on grant error", func(t *testing.T) {
+		acc := welcomeAccount{AccountID: 3, PawnID: 30, FlsID: "FLS3", CharacterName: "Chani"}
+		err := overrideGrantToAccount(context.Background(), acc, "v1", items, welcomeScanDeps{
+			grant: func(_ context.Context, _ int64, _ string, _ []welcomePackageItem) ([]string, error) {
+				return nil, errors.New("rmq down")
+			},
+			store: store,
+		})
+		if err == nil {
+			t.Fatal("override should return an error when grant fails")
+		}
+		row, ok, _ := store.findGrant("FLS3", "v1", 3)
+		if !ok || row.Status != "failed" {
+			t.Fatalf("expected failed ledger row, ok=%v row=%+v", ok, row)
+		}
+	})
+
+	t.Run("records failed and errors on skipped items", func(t *testing.T) {
+		acc := welcomeAccount{AccountID: 4, PawnID: 40, FlsID: "FLS4", CharacterName: "Stilgar"}
+		err := overrideGrantToAccount(context.Background(), acc, "v1", items, welcomeScanDeps{
+			grant: func(_ context.Context, _ int64, _ string, _ []welcomePackageItem) ([]string, error) {
+				return []string{"PlantFiber: inventory full"}, nil
+			},
+			store: store,
+		})
+		if err == nil {
+			t.Fatal("override should return an error when items are skipped")
+		}
+		row, ok, _ := store.findGrant("FLS4", "v1", 4)
+		if !ok || row.Status != "failed" {
+			t.Fatalf("expected failed ledger row for skipped items, ok=%v row=%+v", ok, row)
+		}
+	})
+}
+
 func TestWelcomePackageScanOnce(t *testing.T) {
 	store, err := openWelcomeStore(filepath.Join(t.TempDir(), "w.sqlite"))
 	if err != nil {

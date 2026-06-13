@@ -1318,6 +1318,11 @@ export const api = {
         account_id: accountId,
       }),
     run: () => req<{ granted: number, failed: number, skipped: number }>('POST', '/welcome-package/run'),
+    override: (accountId: number, packageVersion: string) =>
+      req<{ granted: boolean, account_id: number, character_name: string }>('POST', '/welcome-package/override', {
+        account_id: accountId,
+        package_version: packageVersion,
+      }),
   },
 
   givePacks: {

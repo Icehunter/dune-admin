@@ -1455,7 +1455,25 @@
       "title": "Message of the Day"
     },
     "runConfirmTitle": "Grant welcome package now?",
-    "runConfirmBody": "This grants package(s) {{versions}} to all eligible online players right now. Continue?"
+    "runConfirmBody": "This grants package(s) {{versions}} to all eligible online players right now. Continue?",
+    "overrideTitle": "Manual grant override",
+    "overrideHint": "Force-grant a package to a chosen player, bypassing the already-granted check. Use to re-grant or grant to a missed player.",
+    "overridePlayer": "Player",
+    "overridePlayerPlaceholder": "Search players…",
+    "overridePackage": "Package",
+    "overrideSelectPackage": "— select —",
+    "overrideButton": "Grant package",
+    "overrideConfirmTitle": "Override grant?",
+    "overrideConfirmBody": "Grant package \"{{version}}\" to {{name}}? This bypasses the already-granted guard and re-grants the items.",
+    "overrideGranted": "Granted package \"{{version}}\" to {{name}}",
+    "overrideFailed": "Override failed: {{message}}",
+    "kit": {
+      "weightVolume": "Weight/Volume",
+      "slots": "Slots",
+      "stackOf": "stacks of {{n}}",
+      "totalVolume": "Total weight/volume:",
+      "totalSlots": "Total slots:"
+    }
   },
   "playerSearch": {
     "placeholder": "Search players…",

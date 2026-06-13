@@ -54,6 +54,7 @@ type mapPlayerCount struct {
 // produced by collectStatusData and consumed by buildStatusEmbed; keeping them
 // separate makes the builder a pure, unit-testable function.
 type statusEmbedData struct {
+	ServerTitle   string
 	State         serverState
 	Maps          []mapPlayerCount
 	CurrentOnline int   // players currently online (best-effort)
@@ -72,32 +73,36 @@ func buildStatusEmbed(data statusEmbedData, now time.Time) *discordgo.MessageEmb
 		Color:     statusColor(data.State),
 		Timestamp: now.UTC().Format(time.RFC3339),
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Auto-updated by dune-admin",
+			Text: "Auto-updated by Dune-Admin",
 		},
+		Fields:    []*discordgo.MessageEmbedField{},
 	}
 
+	// Assemble everything into the Description for precise top-to-bottom layout
 	var desc strings.Builder
-	fmt.Fprintf(&desc, "**Status:** %s %s\n", statusEmoji(data.State), data.State)
-	if data.State == serverStateOnline {
-		fmt.Fprintf(&desc, "**Players online:** %d", data.CurrentOnline)
-		if data.TotalPlayers > 0 {
-			fmt.Fprintf(&desc, " / %d total", data.TotalPlayers)
-		}
-		desc.WriteString("\n")
+
+	// 1. Server Status
+	fmt.Fprintf(&desc, "%s **Server Status:** %s\n\u200B\n", statusEmoji(data.State), data.State)
+
+	// 2. Active Maps
+	desc.WriteString("🌍 **Active Maps**\n")
+	if len(data.Maps) > 0 {
+		desc.WriteString(formatMapLines(data.Maps))
+	} else {
+		desc.WriteString("*Nobody is currently online.*")
 	}
-	fmt.Fprintf(&desc, "**Unique players (24h):** %d", data.UniquePlayers)
+	desc.WriteString("\n\u200B\n")
+
+	// 3. Population Footer
+	fmt.Fprintf(&desc, "👥 **%d Online** | **%d Total** | **%d Unique (24h)**",
+		data.CurrentOnline, data.TotalPlayers, data.UniquePlayers)
+
 	embed.Description = desc.String()
 
-	if len(data.Maps) > 0 {
-		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "Active maps",
-			Value: formatMapLines(data.Maps),
-		})
-	}
 	return embed
 }
 
-// formatMapLines renders one "• Map — N players" line per map.
+// formatMapLines renders one "• **Map** — N players" line per map.
 func formatMapLines(maps []mapPlayerCount) string {
 	var sb strings.Builder
 	for _, m := range maps {
@@ -105,6 +110,7 @@ func formatMapLines(maps []mapPlayerCount) string {
 		if name == "" {
 			name = "Unknown"
 		}
+		// Fika style: "• **MapName** — N player(s)"
 		fmt.Fprintf(&sb, "• **%s** — %d player(s)\n", name, m.Players)
 	}
 	return strings.TrimRight(sb.String(), "\n")
@@ -158,7 +164,10 @@ func deriveServerState(status *BattlegroupStatus, err error) serverState {
 func aggregateMapCounts(servers []ServerRow) []mapPlayerCount {
 	totals := map[string]int{}
 	for _, s := range servers {
-		name := s.Map
+		name := prettyRegionName(s.Map)
+		if name == "" {
+			name = prettyRegionName(s.Sietch)
+		}
 		if name == "" {
 			name = "Unknown"
 		}
@@ -467,6 +476,10 @@ func applyControlStatus(ctx context.Context, data *statusEmbedData) {
 	data.State = deriveServerState(status, err)
 	if err != nil || status == nil {
 		return
+	}
+	data.ServerTitle = status.Title
+	if data.ServerTitle == "" {
+		data.ServerTitle = status.Name
 	}
 	data.Maps = aggregateMapCounts(status.Servers)
 	for _, m := range data.Maps {

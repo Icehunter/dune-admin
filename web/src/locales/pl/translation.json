@@ -1170,8 +1170,6 @@
       },
       "noVehiclesFound": "Nie znaleziono pojazdów",
       "recovered": "Odzyskano",
-      "refuel": "Zatankuj",
-      "refuelDone": "{{label}} zatankowano — zaloguj się ponownie, aby zobaczyć w grze",
       "vehiclesLabel": "Pojazdy"
     }
   },

@@ -1136,8 +1136,6 @@
       },
       "noVehiclesFound": "未找到载具",
       "recovered": "已恢复",
-      "refuel": "加油",
-      "refuelDone": "已为 {{label}} 加油 — 重新登录后在游戏中查看",
       "vehiclesLabel": "载具"
     }
   },

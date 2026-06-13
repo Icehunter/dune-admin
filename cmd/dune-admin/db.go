@@ -5241,49 +5241,6 @@ func cmdRepairPlayerGear(playerID int64) Cmd {
 	}
 }
 
-func cmdRefuelVehicle(playerID, vehicleID int64) Cmd {
-	return func() Msg {
-		if globalDB == nil {
-			return msgMutate{err: fmt.Errorf("not connected")}
-		}
-		if playerID == 0 {
-			return msgMutate{err: fmt.Errorf("player ID required")}
-		}
-		ctx := context.Background()
-		if err := checkPlayerOffline(ctx, playerID); err != nil {
-			return msgMutate{err: err}
-		}
-
-		// Each vehicle BP has its own properties bag keyed by the class basename
-		// (e.g. "BP_Sandbike_CHOAM_C"), so we derive it before writing m_InitialFuel.
-		var class string
-		err := globalDB.QueryRow(ctx, `SELECT class FROM dune.actors WHERE id = $1::bigint`, vehicleID).Scan(&class)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return msgMutate{err: fmt.Errorf("vehicle %d not found", vehicleID)}
-		}
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("look up vehicle class: %w", err)}
-		}
-		bpClass := class
-		if idx := strings.LastIndex(class, "."); idx >= 0 {
-			bpClass = class[idx+1:]
-		}
-
-		_, err = globalDB.Exec(ctx, `
-			UPDATE dune.actors
-			SET properties = jsonb_set(
-				COALESCE(properties, '{}'::jsonb),
-				ARRAY[$2::text, 'm_InitialFuel'],
-				to_jsonb(1.0::float8),
-				true)
-			WHERE id = $1::bigint`, vehicleID, bpClass)
-		if err != nil {
-			return msgMutate{err: fmt.Errorf("refuel vehicle: %w", err)}
-		}
-		return msgMutate{ok: fmt.Sprintf("Refueled vehicle %d — relog to see in-game", vehicleID)}
-	}
-}
-
 func cmdFetchCheatLog() Cmd {
 	return func() Msg {
 		if globalDB == nil {

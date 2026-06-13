@@ -1136,8 +1136,6 @@
       },
       "noVehiclesFound": "Keine Fahrzeuge gefunden",
       "recovered": "Wiederhergestellt",
-      "refuel": "Auftanken",
-      "refuelDone": "{{label}} aufgetankt — Neu einloggen, um im Spiel zu sehen",
       "vehiclesLabel": "Fahrzeuge"
     }
   },

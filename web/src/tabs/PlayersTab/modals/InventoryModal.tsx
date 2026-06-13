@@ -99,16 +99,6 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, on
     }
   }
 
-  const handleRefuelVehicle = async (v: VehicleRow) => {
-    try {
-      await api.players.refuelVehicle(v.id, player.id)
-      toast.success(t('players.vehicles.refuelDone', { label: v.vehicle_name || v.class }))
-    }
-    catch (e: unknown) {
-      toast.danger(e instanceof Error ? e.message : String(e))
-    }
-  }
-
   return (
     <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={open} onOpenChange={(v) => !v && onClose()}>
       <Modal.Container size="cover" scroll="outside">
@@ -244,9 +234,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, on
                             case 'actions':
                               return !v.is_backup
                                 ? (
-                                    <div className="flex gap-1">
-                                      <Button size="sm" variant="ghost" onPress={() => handleRefuelVehicle(v)}>{t('players.vehicles.refuel')}</Button>
-                                    </div>
+                                    <div className="flex gap-1" />
                                   )
                                 : null
                           }

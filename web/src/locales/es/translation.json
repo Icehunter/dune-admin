@@ -1153,8 +1153,6 @@
       },
       "noVehiclesFound": "No se encontraron vehículos",
       "recovered": "Recuperado",
-      "refuel": "Repostar",
-      "refuelDone": "{{label}} repostado — vuelve a iniciar sesión para verlo en el juego",
       "vehiclesLabel": "Vehículos"
     }
   },

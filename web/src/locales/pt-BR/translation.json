@@ -1153,8 +1153,6 @@
       },
       "noVehiclesFound": "Nenhum veículo encontrado",
       "recovered": "Recuperado",
-      "refuel": "Reabastecer",
-      "refuelDone": "{{label}} reabastecido — reconecte para ver no jogo",
       "vehiclesLabel": "Veículos"
     }
   },

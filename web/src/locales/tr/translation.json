@@ -1136,8 +1136,6 @@
       },
       "noVehiclesFound": "Araç bulunamadı",
       "recovered": "Kurtarıldı",
-      "refuel": "Yakıt Doldur",
-      "refuelDone": "{{label}} yakıt deposu dolduruldu — oyun içinde görmek için yeniden giriş yapın",
       "vehiclesLabel": "Araçlar"
     }
   },

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Button, Chip, toast } from '@heroui/react'
+import { Chip, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
 import { Icon as IconifyIcon } from '@iconify/react'
 import { useTranslation } from 'react-i18next'
@@ -37,16 +37,6 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({ player }) => {
       .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false))
   }, [player.controller_id])
-
-  const handleRefuelVehicle = async (v: VehicleRow) => {
-    try {
-      await api.players.refuelVehicle(v.id, player.id)
-      toast.success(t('players.vehicles.refuelDone', { label: v.vehicle_name || v.class }))
-    }
-    catch (e: unknown) {
-      toast.danger(e instanceof Error ? e.message : String(e))
-    }
-  }
 
   if (loading) {
     return <LoadingState size="md" />
@@ -101,9 +91,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({ player }) => {
             case 'actions':
               return !v.is_backup
                 ? (
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onPress={() => handleRefuelVehicle(v)}>{t('players.vehicles.refuel')}</Button>
-                    </div>
+                    <div className="flex gap-1" />
                   )
                 : null
           }

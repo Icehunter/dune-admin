@@ -1136,8 +1136,6 @@
       },
       "noVehiclesFound": "乗り物が見つかりません",
       "recovered": "回収済み",
-      "refuel": "給油",
-      "refuelDone": "{{label}} に給油しました — ゲーム内で確認するには再ログインしてください",
       "vehiclesLabel": "乗り物"
     }
   },

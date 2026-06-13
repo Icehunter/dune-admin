@@ -1139,8 +1139,6 @@
       },
       "noVehiclesFound": "No vehicles found",
       "recovered": "Recovered",
-      "refuel": "Refuel",
-      "refuelDone": "Refueled {{label}} — relog to see in-game",
       "vehiclesLabel": "Vehicles"
     }
   },

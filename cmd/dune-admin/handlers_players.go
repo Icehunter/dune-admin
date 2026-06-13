@@ -1754,36 +1754,6 @@ func handleRepairPlayerGear(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]any{"repaired": msg.repaired, "scanned": msg.scanned})
 }
 
-// @Summary Refuel a player's vehicle to full fuel
-// @Tags players
-// @Accept json
-// @Produce json
-// @Param body body object true "player_id, vehicle_id"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /api/v1/players/refuel-vehicle [post]
-func handleRefuelVehicle(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		PlayerID  int64 `json:"player_id"`
-		VehicleID int64 `json:"vehicle_id"`
-	}
-	if err := decode(r, &req); err != nil {
-		jsonErr(w, err, 400)
-		return
-	}
-	msg, ok := cmdRefuelVehicle(req.PlayerID, req.VehicleID)().(msgMutate)
-	if !ok {
-		jsonErr(w, fmt.Errorf("internal error"), 500)
-		return
-	}
-	if msg.err != nil {
-		jsonErr(w, msg.err, 500)
-		return
-	}
-	jsonOK(w, map[string]string{"ok": msg.ok})
-}
-
 // @Summary List available teleport partition locations
 // @Tags players
 // @Produce json

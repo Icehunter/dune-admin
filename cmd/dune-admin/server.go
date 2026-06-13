@@ -207,7 +207,6 @@ func buildMux() *http.ServeMux {
 	handleAPI(mux, "GET /api/v1/players/{id}/vehicles", capPlayersRead, handleGetPlayerVehicles)
 	handleAPI(mux, "POST /api/v1/players/repair-item", capPlayersWrite, handleRepairItem)
 	handleAPI(mux, "POST /api/v1/players/repair-gear", capPlayersWrite, handleRepairPlayerGear)
-	handleAPI(mux, "POST /api/v1/players/refuel-vehicle", capPlayersWrite, handleRefuelVehicle)
 	handleAPI(mux, "GET /api/v1/players/partitions", capPlayersRead, handleGetPartitions)
 	handleAPI(mux, "POST /api/v1/players/teleport", capPlayersWrite, handleTeleportPlayer)
 	handleAPI(mux, "POST /api/v1/players/teleport-coords", capPlayersWrite, handleTeleportCoords)

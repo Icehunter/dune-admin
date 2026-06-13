@@ -279,7 +279,7 @@ export const BattlepassTab: React.FC = () => {
           subtitle={t('battlepass.subtitle', { intel: totalIntel })}
         >
           <Segment
-            selectedKey={section}
+            defaultSelectedKey={section}
             onSelectionChange={(k) => setSection(k as Section)}
             size="sm"
             aria-label={t('battlepass.title', { count: tiers.length })}

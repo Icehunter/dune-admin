@@ -38,20 +38,50 @@ type regionAnnouncement struct {
 	sourcePlayer string
 }
 
-// prettyRegionName turns an internal map key (e.g. "HaggaBasin", "Map_TheShield")
+// prettyRegionName turns an internal map key (e.g. "HaggaBasin", "Map_TheShield", "Survival_1")
 // into a human-readable label ("Hagga Basin", "The Shield"). It strips a leading
-// "Map_" prefix, then inserts spaces before interior capitals that begin a new
-// word. Single-word and all-caps inputs pass through unchanged.
+// "Map_" and trailing "_0", handles specific hardcoded aliases, then inserts spaces.
 func prettyRegionName(region string) string {
 	region = strings.TrimSpace(region)
 	region = strings.TrimPrefix(region, "Map_")
+	region = strings.TrimPrefix(region, "SH_")
+
+	// Strip trailing _0, _1, etc.
+	if idx := strings.LastIndexByte(region, '_'); idx != -1 {
+		hasDigit := false
+		onlyDigits := true
+		for i := idx + 1; i < len(region); i++ {
+			if region[i] >= '0' && region[i] <= '9' {
+				hasDigit = true
+			} else {
+				onlyDigits = false
+				break
+			}
+		}
+		if hasDigit && onlyDigits {
+			region = region[:idx]
+		}
+	}
+
+	// Hardcoded region aliases
+	switch strings.ToLower(region) {
+	case "survival":
+		return "Hagga Basin"
+	case "overmap":
+		return "Overland"
+	case "deepdesert":
+		return "Deep Desert"
+	}
+
 	if region == "" {
 		return ""
 	}
+
+	// Auto-format CamelCase to Camel Case
 	runes := []rune(region)
 	var b strings.Builder
 	for i, r := range runes {
-		if i > 0 && unicode.IsUpper(r) && !unicode.IsUpper(runes[i-1]) {
+		if i > 0 && unicode.IsUpper(r) && !unicode.IsUpper(runes[i-1]) && runes[i-1] != ' ' {
 			b.WriteRune(' ')
 		}
 		b.WriteRune(r)

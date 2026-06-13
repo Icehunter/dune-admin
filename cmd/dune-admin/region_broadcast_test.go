@@ -14,11 +14,14 @@ func TestPrettyRegionName(t *testing.T) {
 	}{
 		{"HaggaBasin", "Hagga Basin"},
 		{"TheShield", "The Shield"},
+		{"Deepdesert", "Deep Desert"},
 		{"VermillionWells", "Vermillion Wells"},
 		{"", ""},
-		{"Deepdesert", "Deepdesert"},      // single word unchanged
-		{"ARRAKEEN", "ARRAKEEN"},          // all-caps acronym left intact
+		{"OVERMAP", "Overland"},
+		{"ARRAKEEN", "ARRAKEEN"},
 		{"Map_HaggaBasin", "Hagga Basin"}, // strips a leading Map_ prefix
+		{"Survival_1", "Hagga Basin"}, // aliases and trims numbers
+		{"DeepDesert_0", "Deep Desert"}, // trims numbers
 	}
 	for _, tt := range tests {
 		if got := prettyRegionName(tt.in); got != tt.want {

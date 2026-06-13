@@ -208,13 +208,14 @@ type welcomePackageRuntime struct {
 	motdEnabled      bool
 	motdMessage      string
 	motdSourcePlayer string
-	// Region join/leave broadcast (#167): whispers a notice to everyone online in
-	// a region when a player joins/leaves it (no region chat channel exists, so
-	// this reuses the GM-whisper path). Independent of the MOTD whisper.
+	// Region join/leave broadcast (#167): announces when a player joins/leaves a
+	// region. channelType "whisper" sends per-player whispers (original path);
+	// "map" publishes once to chat.map/{region}.0 (live-confirmed 2026-05-31).
 	regionJoinEnabled   bool
 	regionLeaveEnabled  bool
 	regionJoinTemplate  string
 	regionLeaveTemplate string
+	regionChatChannel   string // "whisper" (default) | "map"
 }
 
 // welcomeMessageOptions carries the optional whisper config passed to
@@ -239,6 +240,7 @@ type regionBroadcastOptions struct {
 	leaveEnabled  bool
 	joinTemplate  string
 	leaveTemplate string
+	chatChannel   string // "whisper" (default) | "map"
 }
 
 // welcomeExtraOptions bundles the optional MOTD and region-broadcast config
@@ -335,6 +337,7 @@ func buildWelcomeRuntime(enabled bool, activeVersions []string, scanSecs int, pa
 		rt.regionLeaveEnabled = opts[0].region.leaveEnabled
 		rt.regionJoinTemplate = opts[0].region.joinTemplate
 		rt.regionLeaveTemplate = opts[0].region.leaveTemplate
+		rt.regionChatChannel = opts[0].region.chatChannel
 	}
 	return rt
 }
@@ -418,12 +421,17 @@ func runPresenceWhispers(ctx context.Context, rt welcomePackageRuntime, online [
 		}
 	}
 	if regionActive {
-		runRegionBroadcastOnJoinLeave(ctx, joins, leaves, online, regionBroadcastConfig{
+		cfg := regionBroadcastConfig{
 			joinEnabled:   rt.regionJoinEnabled,
 			leaveEnabled:  rt.regionLeaveEnabled,
 			joinTemplate:  rt.regionJoinTemplate,
 			leaveTemplate: rt.regionLeaveTemplate,
-		}, sendWelcomeWhisper)
+		}
+		if rt.regionChatChannel == "map" {
+			runMapChatBroadcastOnJoinLeave(ctx, joins, leaves, cfg, sendWelcomeMapChat)
+		} else {
+			runRegionBroadcastOnJoinLeave(ctx, joins, leaves, online, cfg, sendWelcomeWhisper)
+		}
 	}
 }
 
@@ -458,6 +466,16 @@ func runWelcomePackageGrants(ctx context.Context, rt welcomePackageRuntime, onli
 			log.Printf("welcome-package: granted=%d failed=%d version=%q", g, f, pkg.Version)
 		}
 	}
+}
+
+// sendWelcomeMapChat publishes one map-chat message to the given region's channel.
+// Uses the seeded GM persona as the sender (the same identity used for whispers).
+func sendWelcomeMapChat(ctx context.Context, region, _ string, message string) error {
+	gm, err := cmdGetGMIdentity(ctx)
+	if err != nil {
+		return fmt.Errorf("region map chat: gm identity: %w", err)
+	}
+	return rmqSendMapChat(region, 0, gm.FuncomID, gm.HexID, message)
 }
 
 // sendWelcomeWhisper sends a welcome whisper to a player via the existing GM

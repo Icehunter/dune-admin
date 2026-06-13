@@ -47,6 +47,8 @@ export interface WelcomeSharedProps {
   setRegionJoinTemplate: (v: string) => void
   regionLeaveTemplate: string
   setRegionLeaveTemplate: (v: string) => void
+  regionChatChannel: string
+  setRegionChatChannel: (v: string) => void
   // actions
   save: () => Promise<void>
   runNow: () => Promise<void>

@@ -85,6 +85,72 @@ type courierEnvelope struct {
 	Type    string `json:"Type"`
 }
 
+// ── map chat (chat.map) ─────────────────────────────────────────────────────
+
+// mapChatSpoofedAuthor is the spoofed-author shape for map chat. It differs from
+// the whisper channel's FMessageAuthor: map chat uses {m_TableId, m_Key,
+// m_UnlocalizedName} (live-captured 2026-05-31) vs whisper's {m_Id, m_DisplayName}.
+type mapChatSpoofedAuthor struct {
+	TableID         string `json:"m_TableId"`
+	Key             string `json:"m_Key"`
+	UnlocalizedName string `json:"m_UnlocalizedName"`
+}
+
+// mapChatData is FChatMessageData for the Map channel. Field order matches the
+// live-captured body (dune-rmq-protocol/chat-and-courier.md, 2026-05-31).
+// Notable differences from whisperChatData:
+//   - No m_SubChannelId (whisper uses it for per-recipient routing).
+//   - m_UserNameTo is always empty (map chat is channel-broadcast, not direct).
+//   - m_ChannelType uses short form "Map" (not "ETextChatChannelType::Map").
+//   - Timestamp field is m_Timestamp (lowercase t) in "2006.01.02-15.04.05" format.
+type mapChatData struct {
+	ID             string               `json:"m_Id"`
+	ChannelType    string               `json:"m_ChannelType"`
+	UseSpoofedName bool                 `json:"m_bUseSpoofedUserName"`
+	SpoofedFrom    mapChatSpoofedAuthor `json:"m_SpoofedUserNameFrom"`
+	FuncomIDFrom   string               `json:"m_FuncomIdFrom"`
+	UserNameTo     string               `json:"m_UserNameTo"`
+	Message        localizableMessage   `json:"m_Message"`
+	Timestamp      string               `json:"m_Timestamp"`
+	OriginLocation vec3                 `json:"m_OriginLocation"`
+	HasSeenMessage bool                 `json:"m_HasSeenMessage"`
+}
+
+// mapChatEnvelope is the outer FCourierMessageContent for the map chat channel.
+// The envelope key is lowercase "content" (differs from whisper's "Content"), and
+// Type uses the short form "TextChat" (not "ECourierMessageType::TextChat").
+// Both differences are live-confirmed in dune-rmq-protocol/chat-and-courier.md.
+type mapChatEnvelope struct {
+	Content string `json:"content"`
+	Type    string `json:"Type"`
+}
+
+// buildMapChatBody serializes a map-channel chat message to the live-confirmed
+// wire body (dune-rmq-protocol/chat-and-courier.md, 2026-05-31). senderFuncomID
+// is the GM/bridge persona's chat id (m_FuncomIdFrom); the AMQP user_id and
+// routing key are applied at the publish layer by rmqSendMapChat.
+func buildMapChatBody(msgID, senderFuncomID, message string, ts time.Time) ([]byte, error) {
+	inner := mapChatData{
+		ID:           msgID,
+		ChannelType:  "Map",
+		FuncomIDFrom: senderFuncomID,
+		Message:      newLocalizableMessage(message),
+		Timestamp:    ts.UTC().Format("2006.01.02-15.04.05"),
+	}
+	innerJSON, err := json.Marshal(inner)
+	if err != nil {
+		return nil, fmt.Errorf("marshal map chat data: %w", err)
+	}
+	body, err := json.Marshal(mapChatEnvelope{
+		Content: string(innerJSON),
+		Type:    "TextChat",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal map chat envelope: %w", err)
+	}
+	return body, nil
+}
+
 // buildWhisperBody serializes a private (Whispers channel) chat message to the
 // exact live-confirmed wire body. The inner FChatMessageData is marshalled, then
 // embedded as a STRING inside the FCourierMessageContent envelope — the game

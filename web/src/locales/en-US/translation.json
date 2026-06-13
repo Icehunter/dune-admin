@@ -1488,13 +1488,19 @@
     },
     "region": {
       "title": "Region Join/Leave Broadcast",
-      "intro": "There is no in-game region chat channel, so dune-admin whispers this notice to every player currently in the same region when someone joins or leaves it. Use {player} for the player's name and {region} for the region name.",
+      "intro": "dune-admin whispers this notice to every player currently in the same region when someone joins or leaves it. Use {player} for the player's name and {region} for the region name.",
+      "introMap": "dune-admin posts this notice to the region's map chat channel when someone joins or leaves. Use {player} for the player's name and {region} for the region name.",
+      "channelLabel": "Delivery channel",
+      "channelWhisper": "Whisper (private, per-player)",
+      "channelWhisperHint": "Each player in the region receives a private whisper. Requires a source player account.",
+      "channelMap": "Map chat (regional channel)",
+      "channelMapHint": "One publish reaches the entire region's map chat. Uses the GM identity — no source player needed.",
       "joinEnabledLabel": "Announce when a player enters a region",
-      "joinEnabledHint": "Whispered to everyone already in that region the moment a player arrives.",
+      "joinEnabledHint": "Sent the moment a player arrives in a region.",
       "joinTemplateLabel": "Join message",
       "joinTemplatePlaceholder": "{player} has arrived in {region}.",
       "leaveEnabledLabel": "Announce when a player leaves a region",
-      "leaveEnabledHint": "Whispered to everyone still in that region the moment a player departs.",
+      "leaveEnabledHint": "Sent the moment a player departs a region.",
       "leaveTemplateLabel": "Leave message",
       "leaveTemplatePlaceholder": "{player} has left {region}."
     }

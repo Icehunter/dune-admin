@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Button, Input, ListBox, Spinner, Switch, TextArea } from '@heroui/react'
+import { Button, Input, ListBox, Spinner, Switch, TextArea, Select, SelectItem } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { ConfirmDialog, Icon, NumberInput, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
@@ -21,6 +21,7 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
   regionLeaveEnabled, setRegionLeaveEnabled,
   regionJoinTemplate, setRegionJoinTemplate,
   regionLeaveTemplate, setRegionLeaveTemplate,
+  regionChatChannel, setRegionChatChannel,
   save, saving,
   runNow, running,
   load, loading,
@@ -181,8 +182,30 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
         <Panel>
           <SectionLabel>{t('welcome.region.title')}</SectionLabel>
           <p className="text-xs text-muted mt-1 mb-3">
-            {t('welcome.region.intro')}
+            {regionChatChannel === 'map'
+              ? t('welcome.region.introMap')
+              : t('welcome.region.intro')}
           </p>
+
+          {/* Channel type selector */}
+          <div className="flex flex-col gap-1 mb-4">
+            <span className="text-xs text-muted">{t('welcome.region.channelLabel')}</span>
+            <Select
+              size="sm"
+              aria-label={t('welcome.region.channelLabel')}
+              selectedKeys={[regionChatChannel || 'whisper']}
+              onSelectionChange={(keys) => setRegionChatChannel(Array.from(keys)[0] as string)}
+              className="max-w-xs"
+            >
+              <SelectItem key="whisper">{t('welcome.region.channelWhisper')}</SelectItem>
+              <SelectItem key="map">{t('welcome.region.channelMap')}</SelectItem>
+            </Select>
+            <p className="text-xs text-muted">
+              {regionChatChannel === 'map'
+                ? t('welcome.region.channelMapHint')
+                : t('welcome.region.channelWhisperHint')}
+            </p>
+          </div>
 
           {/* Join half */}
           <Switch isSelected={regionJoinEnabled} onChange={setRegionJoinEnabled} size="sm">

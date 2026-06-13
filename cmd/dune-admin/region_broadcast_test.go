@@ -193,3 +193,76 @@ func TestRunRegionBroadcastOnJoinLeave_SenderErrorDoesNotPanic(t *testing.T) {
 	// Must not panic even when every send fails.
 	runRegionBroadcastOnJoinLeave(context.Background(), joins, nil, online, cfg, sender.send)
 }
+
+// ── map chat broadcast tests ─────────────────────────────────────────────────
+
+// fakeMapSender records map chat publishes: one per announcement, keyed on region.
+type fakeMapSender struct {
+	sent []struct {
+		region  string
+		message string
+	}
+	err error
+}
+
+func (f *fakeMapSender) send(_ context.Context, region, _ string, message string) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.sent = append(f.sent, struct {
+		region  string
+		message string
+	}{region, message})
+	return nil
+}
+
+// TestRunMapChatBroadcastOnJoinLeave_PublishesOncePerEvent verifies that map chat
+// sends exactly one publish per join/leave event (not one per player), which is
+// the key efficiency difference from the whisper path.
+func TestRunMapChatBroadcastOnJoinLeave_PublishesOncePerEvent(t *testing.T) {
+	t.Parallel()
+	joins := []welcomeAccount{{AccountID: 1, CharacterName: "Paul", Region: "HaggaBasin"}}
+	leaves := []welcomeAccount{{AccountID: 2, CharacterName: "Chani", Region: "Arrakeen"}}
+	cfg := regionBroadcastConfig{
+		joinEnabled:   true,
+		leaveEnabled:  true,
+		joinTemplate:  "{player} arrived in {region}",
+		leaveTemplate: "{player} left {region}",
+	}
+	sender := &fakeMapSender{}
+	runMapChatBroadcastOnJoinLeave(context.Background(), joins, leaves, cfg, sender.send)
+
+	if len(sender.sent) != 2 {
+		t.Fatalf("want 2 publishes, got %d", len(sender.sent))
+	}
+	byRegion := map[string]string{}
+	for _, s := range sender.sent {
+		byRegion[s.region] = s.message
+	}
+	if got := byRegion["HaggaBasin"]; got != "Paul arrived in Hagga Basin" {
+		t.Errorf("join text = %q", got)
+	}
+	if got := byRegion["Arrakeen"]; got != "Chani left Arrakeen" {
+		t.Errorf("leave text = %q", got)
+	}
+}
+
+func TestRunMapChatBroadcastOnJoinLeave_NoAnnouncementsNoSend(t *testing.T) {
+	t.Parallel()
+	joins := []welcomeAccount{{AccountID: 1, CharacterName: "Paul", Region: "HaggaBasin"}}
+	cfg := regionBroadcastConfig{joinEnabled: false, joinTemplate: "{player} in {region}"}
+	sender := &fakeMapSender{}
+	runMapChatBroadcastOnJoinLeave(context.Background(), joins, nil, cfg, sender.send)
+	if len(sender.sent) != 0 {
+		t.Fatalf("want 0 sends for disabled config, got %d", len(sender.sent))
+	}
+}
+
+func TestRunMapChatBroadcastOnJoinLeave_SenderErrorDoesNotPanic(t *testing.T) {
+	t.Parallel()
+	joins := []welcomeAccount{{AccountID: 1, CharacterName: "Paul", Region: "HaggaBasin"}}
+	cfg := regionBroadcastConfig{joinEnabled: true, joinTemplate: "{player} in {region}"}
+	sender := &fakeMapSender{err: errors.New("broker down")}
+	runMapChatBroadcastOnJoinLeave(context.Background(), joins, nil, cfg, sender.send)
+	// must not panic
+}

@@ -134,6 +134,21 @@ func appendAnnouncements(out []regionAnnouncement, accts []welcomeAccount, enabl
 // tests inject a fake.
 type regionChatSender func(ctx context.Context, accountID int64, sourcePlayer, message string) error
 
+// regionMapSender publishes one map-chat message to a region channel. One call
+// reaches all subscribers of that region — no per-player loop needed.
+type regionMapSender func(ctx context.Context, region, sourcePlayer, message string) error
+
+// runMapChatBroadcastOnJoinLeave publishes one map-chat message per join/leave
+// event. Unlike the whisper path it does not enumerate online players — one
+// publish to chat.map/{region}.{dim} reaches all subscribers of that region.
+func runMapChatBroadcastOnJoinLeave(ctx context.Context, joins, leaves []welcomeAccount, cfg regionBroadcastConfig, send regionMapSender) {
+	for _, ann := range regionAnnouncementsFor(joins, leaves, cfg) {
+		if err := send(ctx, ann.region, ann.sourcePlayer, ann.text); err != nil {
+			log.Printf("region-broadcast: map chat %s failed: %v", ann.region, err)
+		}
+	}
+}
+
 // runRegionBroadcastOnJoinLeave whispers each announcement (built from the
 // join/leave events under cfg) to every player in `online` who is currently in
 // the announcement's region. Send failures are logged, never fatal, so one bad

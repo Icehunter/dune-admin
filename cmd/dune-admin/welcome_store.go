@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS welcome_config (
 	region_leave_enabled           INTEGER NOT NULL DEFAULT 0,
 	region_join_template           TEXT    NOT NULL DEFAULT '',
 	region_leave_template          TEXT    NOT NULL DEFAULT '',
+	region_chat_channel            TEXT    NOT NULL DEFAULT 'whisper',
 	updated_at                     TEXT    NOT NULL
 );`
 
@@ -93,6 +94,7 @@ type welcomeConfigRow struct {
 	RegionLeaveEnabled         bool
 	RegionJoinTemplate         string
 	RegionLeaveTemplate        string
+	RegionChatChannel          string // "whisper" | "map"
 }
 
 // initWelcomeSchema creates the welcome tables and applies column migrations on
@@ -118,6 +120,7 @@ func initWelcomeSchema(db *sql.DB) error {
 		"ALTER TABLE welcome_config ADD COLUMN region_leave_enabled INTEGER NOT NULL DEFAULT 0",
 		"ALTER TABLE welcome_config ADD COLUMN region_join_template TEXT NOT NULL DEFAULT ''",
 		"ALTER TABLE welcome_config ADD COLUMN region_leave_template TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE welcome_config ADD COLUMN region_chat_channel TEXT NOT NULL DEFAULT 'whisper'",
 	} {
 		if _, alterErr := db.Exec(col); alterErr != nil {
 			if !isDuplicateColumnErr(alterErr) {
@@ -319,14 +322,18 @@ func (s *welcomeStore) saveConfig(cfg welcomeConfigRow) error {
 		return fmt.Errorf("marshal active_versions: %w", err)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
+	regionChatChannel := cfg.RegionChatChannel
+	if regionChatChannel == "" {
+		regionChatChannel = "whisper"
+	}
 	_, err = s.db.Exec(`
 		INSERT INTO welcome_config
 			(id, enabled, scan_secs, active_version, active_versions_json, packages_json,
 			 welcome_message_enabled, welcome_message, welcome_whisper_source_player,
 			 motd_enabled, motd_message, motd_source_player,
 			 region_join_enabled, region_leave_enabled, region_join_template, region_leave_template,
-			 updated_at)
-		VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			 region_chat_channel, updated_at)
+		VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			enabled                       = excluded.enabled,
 			scan_secs                     = excluded.scan_secs,
@@ -343,11 +350,13 @@ func (s *welcomeStore) saveConfig(cfg welcomeConfigRow) error {
 			region_leave_enabled          = excluded.region_leave_enabled,
 			region_join_template          = excluded.region_join_template,
 			region_leave_template         = excluded.region_leave_template,
+			region_chat_channel           = excluded.region_chat_channel,
 			updated_at                    = excluded.updated_at`,
 		enabled, cfg.ScanSecs, activeVersion, string(activeVersionsJSON), cfg.PackagesJSON,
 		msgEnabled, cfg.WelcomeMessage, cfg.WelcomeWhisperSourcePlayer,
 		motdEnabled, cfg.MotdMessage, cfg.MotdSourcePlayer,
-		regionJoinEnabled, regionLeaveEnabled, cfg.RegionJoinTemplate, cfg.RegionLeaveTemplate, now)
+		regionJoinEnabled, regionLeaveEnabled, cfg.RegionJoinTemplate, cfg.RegionLeaveTemplate,
+		regionChatChannel, now)
 	if err != nil {
 		return fmt.Errorf("save welcome config: %w", err)
 	}
@@ -365,12 +374,14 @@ func (s *welcomeStore) loadConfig() (welcomeConfigRow, bool, error) {
 		SELECT enabled, scan_secs, active_version, active_versions_json, packages_json,
 		       welcome_message_enabled, welcome_message, welcome_whisper_source_player,
 		       motd_enabled, motd_message, motd_source_player,
-		       region_join_enabled, region_leave_enabled, region_join_template, region_leave_template
+		       region_join_enabled, region_leave_enabled, region_join_template, region_leave_template,
+		       region_chat_channel
 		FROM welcome_config WHERE id = 1`).
 		Scan(&enabledInt, &row.ScanSecs, &row.ActiveVersion, &activeVersionsJSON, &row.PackagesJSON,
 			&msgEnabledInt, &row.WelcomeMessage, &row.WelcomeWhisperSourcePlayer,
 			&motdEnabledInt, &row.MotdMessage, &row.MotdSourcePlayer,
-			&regionJoinEnabledInt, &regionLeaveEnabledInt, &row.RegionJoinTemplate, &row.RegionLeaveTemplate)
+			&regionJoinEnabledInt, &regionLeaveEnabledInt, &row.RegionJoinTemplate, &row.RegionLeaveTemplate,
+			&row.RegionChatChannel)
 	if errors.Is(err, sql.ErrNoRows) {
 		return welcomeConfigRow{}, false, nil
 	}

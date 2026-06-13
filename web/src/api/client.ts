@@ -734,6 +734,7 @@ export interface WelcomePackageConfig {
   region_leave_enabled: boolean
   region_join_template: string
   region_leave_template: string
+  region_chat_channel?: string
 }
 
 export interface WelcomeGrantRecord {

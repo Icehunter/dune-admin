@@ -37,6 +37,7 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
   const [regionLeaveEnabled, setRegionLeaveEnabled] = React.useState(false)
   const [regionJoinTemplate, setRegionJoinTemplate] = React.useState('')
   const [regionLeaveTemplate, setRegionLeaveTemplate] = React.useState('')
+  const [regionChatChannel, setRegionChatChannel] = React.useState('whisper')
   const [templates, setTemplates] = React.useState<{ id: string, name: string }[]>([])
 
   // Snapshot of what's persisted on the server; null until first load completes.
@@ -60,6 +61,7 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
     setRegionLeaveEnabled(c.region_leave_enabled ?? false)
     setRegionJoinTemplate(c.region_join_template ?? '')
     setRegionLeaveTemplate(c.region_leave_template ?? '')
+    setRegionChatChannel(c.region_chat_channel ?? 'whisper')
   }, [])
 
   const load = React.useCallback(() => {
@@ -106,6 +108,7 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
         region_leave_enabled: regionLeaveEnabled,
         region_join_template: regionJoinTemplate,
         region_leave_template: regionLeaveTemplate,
+        region_chat_channel: regionChatChannel,
       }
       const saved = await api.welcomePackage.saveConfig(cfg)
       applyConfig(saved)
@@ -195,6 +198,7 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
         || regionLeaveEnabled !== (savedConfig.region_leave_enabled ?? false)
         || regionJoinTemplate !== (savedConfig.region_join_template ?? '')
         || regionLeaveTemplate !== (savedConfig.region_leave_template ?? '')
+        || regionChatChannel !== (savedConfig.region_chat_channel ?? 'whisper')
 
     const isDirty = packageAdded + packageRemoved + packageUpdated > 0 || settingsChanged
     return { packageAdded, packageRemoved, packageUpdated, settingsChanged, isDirty }
@@ -213,6 +217,7 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
     regionLeaveEnabled,
     regionJoinTemplate,
     regionLeaveTemplate,
+    regionChatChannel,
     savedConfig,
   ])
 
@@ -248,6 +253,8 @@ export const WelcomePackageTab: React.FC<WelcomePackageTabProps> = ({ showSubnav
             setRegionJoinTemplate={setRegionJoinTemplate}
             regionLeaveTemplate={regionLeaveTemplate}
             setRegionLeaveTemplate={setRegionLeaveTemplate}
+            regionChatChannel={regionChatChannel}
+            setRegionChatChannel={setRegionChatChannel}
             save={save}
             saving={saving}
             runNow={runNow}

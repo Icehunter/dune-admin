@@ -122,6 +122,20 @@ func rmqSendWhisper(senderFuncomID, senderHexID, recipientFuncomID, recipientNam
 	return publishCourierMessageAs("chat.whispers", recipientFuncomID, body, "text_chat", senderHexID)
 }
 
+// rmqSendMapChat publishes a message to the map chat channel for mapName/dimension,
+// shown in the regional chat tab for all players subscribed to that channel.
+// Exchange: chat.map, routing key: {mapName}.{dimension} (e.g. "HaggaBasin.0").
+// senderFuncomID is the GM/bridge persona's chat id (m_FuncomIdFrom); senderHexID
+// is the AMQP user_id — must be a real DB-backed FLS id (live-confirmed requirement).
+func rmqSendMapChat(mapName string, dimension int, senderFuncomID, senderHexID, message string) error {
+	body, err := buildMapChatBody(newCourierMessageID(), senderFuncomID, message, time.Now())
+	if err != nil {
+		return err
+	}
+	routingKey := fmt.Sprintf("%s.%d", mapName, dimension)
+	return publishCourierMessageAs("chat.map", routingKey, body, "text_chat", senderHexID)
+}
+
 // ── typed wrappers ────────────────────────────────────────────────────────────
 
 func rmqAddItemToInventory(flsID, itemName string, qty int, durability float64) error {

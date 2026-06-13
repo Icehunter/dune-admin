@@ -23,6 +23,7 @@ export type ConfigViewProps = Pick<
   | 'regionLeaveEnabled' | 'setRegionLeaveEnabled'
   | 'regionJoinTemplate' | 'setRegionJoinTemplate'
   | 'regionLeaveTemplate' | 'setRegionLeaveTemplate'
+  | 'regionChatChannel' | 'setRegionChatChannel'
   | 'save' | 'saving'
   | 'runNow' | 'running'
   | 'load' | 'loading'

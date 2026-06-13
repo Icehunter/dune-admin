@@ -32,6 +32,7 @@ type welcomeConfigResponse struct {
 	RegionLeaveEnabled         bool             `json:"region_leave_enabled"`
 	RegionJoinTemplate         string           `json:"region_join_template"`
 	RegionLeaveTemplate        string           `json:"region_leave_template"`
+	RegionChatChannel          string           `json:"region_chat_channel"` // "whisper" | "map"
 }
 
 func currentWelcomeConfig() welcomeConfigResponse {
@@ -64,6 +65,7 @@ func currentWelcomeConfig() welcomeConfigResponse {
 		RegionLeaveEnabled:         rt.regionLeaveEnabled,
 		RegionJoinTemplate:         rt.regionJoinTemplate,
 		RegionLeaveTemplate:        rt.regionLeaveTemplate,
+		RegionChatChannel:          rt.regionChatChannel,
 	}
 }
 
@@ -114,6 +116,7 @@ func applyWelcomeConfigFromStore() error {
 			leaveEnabled:  row.RegionLeaveEnabled,
 			joinTemplate:  row.RegionJoinTemplate,
 			leaveTemplate: row.RegionLeaveTemplate,
+			chatChannel:   row.RegionChatChannel,
 		},
 	}))
 	return nil
@@ -206,6 +209,7 @@ func handlePutWelcomeConfig(w http.ResponseWriter, r *http.Request) {
 			leaveEnabled:  req.RegionLeaveEnabled,
 			joinTemplate:  req.RegionJoinTemplate,
 			leaveTemplate: req.RegionLeaveTemplate,
+			chatChannel:   req.RegionChatChannel,
 		},
 	})
 
@@ -238,6 +242,7 @@ func handlePutWelcomeConfig(w http.ResponseWriter, r *http.Request) {
 			RegionLeaveEnabled:         rt.regionLeaveEnabled,
 			RegionJoinTemplate:         rt.regionJoinTemplate,
 			RegionLeaveTemplate:        rt.regionLeaveTemplate,
+			RegionChatChannel:          rt.regionChatChannel,
 		}
 		if err := welcomeStoreDB.saveConfig(row); err != nil {
 			log.Printf("handlePutWelcomeConfig: save to store: %v", err)

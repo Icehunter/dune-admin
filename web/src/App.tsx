@@ -35,6 +35,7 @@ import { usePermissions } from './hooks/usePermissions'
 import { api } from './api/client'
 import type { UpdateCheckResult } from './api/client'
 import type { TabId, DbSection, WelcomeSection, AppCoreProps, ConnectionBadgeProps } from './types'
+import { canSeeTabByControlPlane } from './tabNav'
 
 const TAB_IDS = [
   'battlegroup',
@@ -151,10 +152,11 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   // Whether a tab is visible for the current session. All-true when backend
   // auth is disabled.
   const canSeeTab = React.useCallback((key: TabId) => {
+    if (!canSeeTabByControlPlane(key, status?.control)) return false
     const cap = TAB_CAPABILITIES[key]
     if (cap === 'owner') return authEnabled && (isOwner || can('auth:manage'))
     return can(cap)
-  }, [authEnabled, isOwner, can])
+  }, [authEnabled, isOwner, can, status?.control])
 
   const DB_SECTIONS: { key: DbSection, label: string, icon: string }[] = [
     { key: 'backups', label: t('database.sections.backups'), icon: 'archive' },

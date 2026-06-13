@@ -1662,6 +1662,8 @@
       "enabledHint": "Wenn deaktiviert, stoppt die Polling-Engine und es werden keine neuen Claims aufgezeichnet.",
       "awardPast": "Vergangene Stufen belohnen",
       "awardPastHint": "Wenn aktiviert, werden bereits abgeschlossene Stufen als verdient erfasst. Muss vor dem ersten Scan gesetzt werden — danach nicht mehr retroaktiv änderbar.",
+      "autoGrant": "Belohnungen automatisch vergeben",
+      "autoGrantHint": "Wenn aktiviert, wird jede neu verdiente Stufe automatisch an den Spieler ausgeliefert — online oder offline — mit Wiederholungsversuchen bei Fehlern. Nach mehreren Fehlschlägen ist nur noch eine manuelle Vergabe möglich.",
       "timingSection": "Zeitsteuerung",
       "pollSeconds": "Abfrageintervall (Sekunden)",
       "scanPaceMs": "Scan-Tempo (ms pro Spieler)",

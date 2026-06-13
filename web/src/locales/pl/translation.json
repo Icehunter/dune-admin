@@ -1708,6 +1708,8 @@
       "enabledHint": "Po wyłączeniu silnik przestaje działać i nie rejestruje nowych roszczeń.",
       "awardPast": "Przyznaj minione poziomy",
       "awardPastHint": "Po włączeniu poziomy ukończone przed pierwszym skanem są rejestrowane jako zdobyte. Należy ustawić przed pierwszym skanem — nie można zmienić retroaktywnie.",
+      "autoGrant": "Automatyczne przyznawanie nagród",
+      "autoGrantHint": "Po włączeniu każdy nowo zdobyty poziom jest automatycznie dostarczany graczowi — online lub offline — z ponawianiem prób i odczekiwaniem. Po wielokrotnych niepowodzeniach poziom wraca do przyznawania tylko ręcznego.",
       "timingSection": "Taktowanie",
       "pollSeconds": "Interwał odpytywania (sekundy)",
       "scanPaceMs": "Tempo skanowania (ms/gracz)",

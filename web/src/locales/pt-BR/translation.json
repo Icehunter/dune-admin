@@ -1685,6 +1685,8 @@
       "enabledHint": "Quando desativado, o motor para e nenhuma nova reivindicação é registrada.",
       "awardPast": "Conceder níveis passados",
       "awardPastHint": "Quando ativado, os níveis concluídos antes da primeira verificação são registrados como ganhos. Deve ser configurado antes da primeira verificação — não pode ser alterado retroativamente.",
+      "autoGrant": "Conceder recompensas automaticamente",
+      "autoGrantHint": "Quando ativado, cada nível recém-ganho é entregue automaticamente ao jogador — online ou offline — com novas tentativas e espera progressiva. Após falhas repetidas, o nível volta a ser concedido apenas manualmente.",
       "timingSection": "Temporização",
       "pollSeconds": "Intervalo de consulta (segundos)",
       "scanPaceMs": "Ritmo de varredura (ms por jogador)",

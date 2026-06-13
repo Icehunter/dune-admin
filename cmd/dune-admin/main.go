@@ -274,8 +274,13 @@ type appConfig struct {
 	// 0 disables pacing; negative → default 75ms; max 5000ms.
 	// BattlepassScanStartDelayMs is the delay (ms) before the boot scan so the
 	// server and DB pool finish warming; 0 is immediate; negative → 3000ms.
+	// BattlepassAutoGrant (default off) records each newly-earned tier into a
+	// deferred-grant ledger and delivers it automatically — to online AND
+	// offline players — retrying with backoff up to deferredGrantMaxAttempts.
+	// After exhaustion the tier reverts to manual-grant only.
 	BattlepassEnabled          *bool `yaml:"battlepass_enabled"            json:"battlepass_enabled"`
 	BattlepassAwardPast        *bool `yaml:"battlepass_award_past"         json:"battlepass_award_past"`
+	BattlepassAutoGrant        *bool `yaml:"battlepass_auto_grant"         json:"battlepass_auto_grant"`
 	BattlepassPollSeconds      int   `yaml:"battlepass_poll_seconds"       json:"battlepass_poll_seconds"`
 	BattlepassScanPaceMs       int   `yaml:"battlepass_scan_pace_ms"       json:"battlepass_scan_pace_ms"`
 	BattlepassScanStartDelayMs int   `yaml:"battlepass_scan_start_delay_ms" json:"battlepass_scan_start_delay_ms"`

@@ -1685,6 +1685,8 @@
       "enabledHint": "Désactivé, le moteur s'arrête et aucune nouvelle réclamation n'est enregistrée.",
       "awardPast": "Récompenser les niveaux passés",
       "awardPastHint": "Activé, les niveaux déjà complétés avant le premier scan sont enregistrés comme gagnés. Doit être défini avant le premier scan — non rétroactif.",
+      "autoGrant": "Octroi automatique des récompenses",
+      "autoGrantHint": "Activé, chaque palier nouvellement gagné est livré automatiquement au joueur — en ligne ou hors ligne — avec des nouvelles tentatives espacées. Après plusieurs échecs, le palier repasse en octroi manuel uniquement.",
       "timingSection": "Temporisation",
       "pollSeconds": "Intervalle de sondage (secondes)",
       "scanPaceMs": "Cadence du scan (ms par joueur)",

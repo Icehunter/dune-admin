@@ -1557,6 +1557,8 @@
       "enabledHint": "When disabled, the polling engine stops and no new claims are recorded.",
       "awardPast": "Award past tiers",
       "awardPastHint": "When enabled, tiers already completed before the engine first ran are recorded as earned. Must be set before the first scan — after a player is baselined this cannot be changed retroactively.",
+      "autoGrant": "Auto-grant rewards",
+      "autoGrantHint": "When enabled, each newly earned tier is delivered automatically to the player — online or offline — retrying with backoff. After repeated failures a tier reverts to manual grant only.",
       "timingSection": "Timing",
       "pollSeconds": "Poll interval (seconds)",
       "scanPaceMs": "Scan pace (ms per player)",

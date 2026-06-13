@@ -91,7 +91,7 @@ func TestBattlepassFirstEvaluationBaselines(t *testing.T) {
 		map[int64][]string{1: {"DA_MQ_FindTheFremen"}},
 		map[int64][]string{})
 
-	if err := evaluateBattlepassTick(context.Background(), deps, s, false, 0); err != nil {
+	if err := evaluateBattlepassTick(context.Background(), deps, s, false, false, 0); err != nil {
 		t.Fatalf("tick: %v", err)
 	}
 
@@ -122,7 +122,7 @@ func TestBattlepassNewUnlocksEarnAfterBaseline(t *testing.T) {
 	deps := mockBattlepassDeps(players, journey, tags)
 
 	// First tick baselines level:5.
-	if err := evaluateBattlepassTick(context.Background(), deps, s, false, 0); err != nil {
+	if err := evaluateBattlepassTick(context.Background(), deps, s, false, false, 0); err != nil {
 		t.Fatalf("first tick: %v", err)
 	}
 
@@ -131,7 +131,7 @@ func TestBattlepassNewUnlocksEarnAfterBaseline(t *testing.T) {
 	journey[1] = []string{"DA_MQ_FindTheFremen"}
 	tags[1] = []string{"Exploration.Cave.Large.Altar1"}
 
-	if err := evaluateBattlepassTick(context.Background(), deps, s, false, 0); err != nil {
+	if err := evaluateBattlepassTick(context.Background(), deps, s, false, false, 0); err != nil {
 		t.Fatalf("second tick: %v", err)
 	}
 
@@ -155,7 +155,7 @@ func TestBattlepassAwardPastSkipsBaseline(t *testing.T) {
 	players := []battlepassPlayer{{AccountID: 1, PawnID: 100, Name: "Paul", Level: 7}}
 	deps := mockBattlepassDeps(players, map[int64][]string{}, map[int64][]string{})
 
-	if err := evaluateBattlepassTick(context.Background(), deps, s, true, 0); err != nil {
+	if err := evaluateBattlepassTick(context.Background(), deps, s, true, false, 0); err != nil {
 		t.Fatalf("tick: %v", err)
 	}
 
@@ -175,7 +175,7 @@ func TestBattlepassFetchErrorSkipsBaseline(t *testing.T) {
 
 	// Evaluation fails mid-pass: the account must NOT be marked baselined,
 	// so the next successful pass still baselines instead of over-rewarding.
-	if err := evaluateBattlepassTick(context.Background(), deps, s, false, 0); err != nil {
+	if err := evaluateBattlepassTick(context.Background(), deps, s, false, false, 0); err != nil {
 		t.Fatalf("tick: %v", err)
 	}
 	if baselined, _ := s.isBaselined(1); baselined {
@@ -185,7 +185,7 @@ func TestBattlepassFetchErrorSkipsBaseline(t *testing.T) {
 	deps.fetchCompletedJourneyNodes = func(ctx context.Context, accountID int64) ([]string, error) {
 		return []string{"DA_MQ_FindTheFremen"}, nil
 	}
-	if err := evaluateBattlepassTick(context.Background(), deps, s, false, 0); err != nil {
+	if err := evaluateBattlepassTick(context.Background(), deps, s, false, false, 0); err != nil {
 		t.Fatalf("second tick: %v", err)
 	}
 	keys, _ := s.claimedKeys(1)
@@ -211,7 +211,7 @@ func TestBattlepassSkipsSignalFetchWhenAllClaimed(t *testing.T) {
 		pace: func(_ context.Context, _ time.Duration) error { return nil },
 	}
 
-	if err := evaluateBattlepassTick(context.Background(), deps, s, false, 0); err != nil {
+	if err := evaluateBattlepassTick(context.Background(), deps, s, false, false, 0); err != nil {
 		t.Fatalf("first tick: %v", err)
 	}
 	if journeyCalls != 1 || tagCalls != 1 {
@@ -219,7 +219,7 @@ func TestBattlepassSkipsSignalFetchWhenAllClaimed(t *testing.T) {
 	}
 
 	// Everything is claimed — second tick must not re-fetch per-player signals.
-	if err := evaluateBattlepassTick(context.Background(), deps, s, false, 0); err != nil {
+	if err := evaluateBattlepassTick(context.Background(), deps, s, false, false, 0); err != nil {
 		t.Fatalf("second tick: %v", err)
 	}
 	if journeyCalls != 1 || tagCalls != 1 {
@@ -293,7 +293,7 @@ func TestBattlepassPaceCalledBetweenPlayers(t *testing.T) {
 	deps.pace = recordingPace(&paced)
 
 	const paceEvery = 50 * time.Millisecond
-	if err := evaluateBattlepassTick(context.Background(), deps, s, false, paceEvery); err != nil {
+	if err := evaluateBattlepassTick(context.Background(), deps, s, false, false, paceEvery); err != nil {
 		t.Fatalf("tick: %v", err)
 	}
 
@@ -321,7 +321,7 @@ func TestBattlepassPaceCancellationStopsLoop(t *testing.T) {
 	defer cancel()
 	deps.pace = cancellingPace(cancel)
 
-	err := evaluateBattlepassTick(ctx, deps, s, false, 10*time.Millisecond)
+	err := evaluateBattlepassTick(ctx, deps, s, false, false, 10*time.Millisecond)
 	if err == nil {
 		t.Fatal("tick must return an error when ctx is cancelled during pacing")
 	}
@@ -347,7 +347,7 @@ func TestRunBattlepassEngineBootScanRunsBeforeFirstInterval(t *testing.T) {
 
 	// Interval is 1 hour — the ticker never fires during this test.
 	// startDelay=0 so the boot scan fires immediately.
-	go runBattlepassEngine(ctx, deps, s, time.Hour, 0, 0, true)
+	go runBattlepassEngine(ctx, deps, s, time.Hour, 0, 0, true, false)
 
 	// Poll claimedKeys: with awardPast=true the engine records claims as "earned"
 	// but does NOT call markBaselined (that only runs when !baselined). Waiting for
@@ -396,7 +396,7 @@ func TestRunBattlepassEngineBootScanHonorsCancelDuringStartDelay(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		runBattlepassEngine(ctx, deps, s, time.Hour, 0, 5*time.Second, true)
+		runBattlepassEngine(ctx, deps, s, time.Hour, 0, 5*time.Second, true, false)
 	}()
 
 	// Wait until the goroutine enters the start-delay pace, then cancel.
@@ -423,7 +423,7 @@ func TestBattlepassAwardPastPopulatesEarnedTotals(t *testing.T) {
 	players := []battlepassPlayer{{AccountID: 1, PawnID: 100, Name: "Paul", Level: 7}}
 	deps := mockBattlepassDeps(players, map[int64][]string{}, map[int64][]string{})
 
-	if err := evaluateBattlepassTick(context.Background(), deps, s, true, 0); err != nil {
+	if err := evaluateBattlepassTick(context.Background(), deps, s, true, false, 0); err != nil {
 		t.Fatalf("tick: %v", err)
 	}
 

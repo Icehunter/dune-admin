@@ -6418,6 +6418,28 @@ func cmdFetchEventGrantTargets(ctx context.Context, pool *pgxpool.Pool, accountI
 	return controllerID, actorID, nil
 }
 
+// cmdFetchBattlepassGrantTargets returns the player_pawn_id for a single
+// account regardless of online status. Battlepass auto-grant retries must work
+// for offline players, so — unlike cmdFetchBattlepassPlayers' online flag — this
+// query does NOT filter on online_status. The pawn is the actor that receives
+// both intel (awardIntel) and item rewards (giveItem).
+func cmdFetchBattlepassGrantTargets(ctx context.Context, pool *pgxpool.Pool, accountID int64) (pawnID int64, err error) {
+	row := pool.QueryRow(ctx, `
+		SELECT COALESCE(ps.player_pawn_id, 0)
+		FROM dune.player_state ps
+		WHERE ps.account_id = $1`, accountID)
+	if scanErr := row.Scan(&pawnID); scanErr != nil {
+		if errors.Is(scanErr, pgx.ErrNoRows) {
+			return 0, errNotFound
+		}
+		return 0, fmt.Errorf("fetch battlepass grant targets %d: %w", accountID, scanErr)
+	}
+	if pawnID == 0 {
+		return 0, errNotFound
+	}
+	return pawnID, nil
+}
+
 // cmdFetchOnlinePositions returns a map of account_id → position for all
 // provided account IDs that are currently online and have a live actor.
 func cmdFetchOnlinePositions(ctx context.Context, pool *pgxpool.Pool, accountIDs []int64) (map[int64]playerPosition, error) {

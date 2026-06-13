@@ -511,10 +511,6 @@ func processOneEvent(ctx context.Context, deps eventDeps, store *eventStore, def
 
 // ── reward-grant retry loop ────────────────────────────────────────────────────
 
-// eventRetryInterval is how often the retry loop scans for due pending claims.
-// Coarse on purpose: backoff is measured in days, so a 1-minute tick is plenty.
-const eventRetryInterval = time.Minute
-
 // attemptGrantForClaim re-delivers a single claim's reward. It resolves the
 // event's reward spec and the player's current grant targets, attempts the
 // grant, and records success or failure on the claim ledger. Returns an error
@@ -565,36 +561,54 @@ func parseRewardSpec(rewardJSON string) (*rewardSpec, error) {
 	return &rs, nil
 }
 
-// runEventRetryLoop periodically retries pending reward grants whose backoff
-// window has elapsed. It is ctx-cancellable and a no-op when the store is nil.
-func runEventRetryLoop(ctx context.Context, deps eventDeps, store *eventStore) {
-	if store == nil {
-		return
-	}
-	ticker := time.NewTicker(eventRetryInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case now := <-ticker.C:
-			processRetryTick(ctx, deps, store, now)
-		}
-	}
+// eventGrantSource adapts an eventStore to the shared deferredGrantSource
+// contract. It carries the eventDeps and store needed to attempt grants so the
+// generic loop can drive event reward retries without knowing event specifics.
+type eventGrantSource struct {
+	deps  eventDeps
+	store *eventStore
+	// pending maps an owner (account) ID to the full claim record for the
+	// current tick, so the attempt closure can recover typed claim fields the
+	// generic deferredClaim does not carry.
+	pending map[int64]eventClaimRecord
 }
 
-// processRetryTick attempts every claim that is currently due for retry.
-func processRetryTick(ctx context.Context, deps eventDeps, store *eventStore, now time.Time) {
-	claims, err := store.listRetryableClaims(now)
+func newEventGrantSource(deps eventDeps, store *eventStore) *eventGrantSource {
+	return &eventGrantSource{deps: deps, store: store, pending: map[int64]eventClaimRecord{}}
+}
+
+func (s *eventGrantSource) listRetryableDeferredClaims(now time.Time) ([]deferredClaim, error) {
+	claims, err := s.store.listRetryableClaims(now)
 	if err != nil {
-		log.Printf("events: list retryable claims: %v", err)
+		return nil, err
+	}
+	out := make([]deferredClaim, 0, len(claims))
+	s.pending = make(map[int64]eventClaimRecord, len(claims))
+	for _, c := range claims {
+		s.pending[c.AccountID] = c
+		out = append(out, deferredClaim{OwnerID: c.AccountID, Attempts: c.Attempts})
+	}
+	return out, nil
+}
+
+func (s *eventGrantSource) attempt(ctx context.Context, dc deferredClaim) error {
+	claim, ok := s.pending[dc.OwnerID]
+	if !ok {
+		return fmt.Errorf("event claim for account %d not found in tick", dc.OwnerID)
+	}
+	return attemptGrantForClaim(ctx, s.deps, s.store, claim)
+}
+
+// runEventRetryLoop periodically retries pending reward grants whose backoff
+// window has elapsed. It is ctx-cancellable and a no-op when the store is nil.
+// Delegates to the shared deferred-grant core.
+func runEventRetryLoop(ctx context.Context, deps eventDeps, store *eventStore) {
+	if store == nil {
+		runDeferredGrantLoop(ctx, nil, nil)
 		return
 	}
-	for _, claim := range claims {
-		if err := attemptGrantForClaim(ctx, deps, store, claim); err != nil {
-			log.Printf("events: retry grant %d/%d/%d: %v", claim.EventID, claim.Version, claim.AccountID, err)
-		}
-	}
+	src := newEventGrantSource(deps, store)
+	runDeferredGrantLoop(ctx, src, src.attempt)
 }
 
 // applyEventEngine stops any running events engine goroutine, then starts a

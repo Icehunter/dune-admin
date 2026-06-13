@@ -445,6 +445,7 @@ func TestHandleSaveBattlepassConfig(t *testing.T) {
 	body, _ := json.Marshal(battlepassConfigPayload{
 		Enabled:          boolPtr(true),
 		AwardPast:        boolPtr(false),
+		AutoGrant:        boolPtr(true),
 		PollSeconds:      90,
 		ScanPaceMs:       50,
 		ScanStartDelayMs: 2000,
@@ -463,12 +464,18 @@ func TestHandleSaveBattlepassConfig(t *testing.T) {
 	if got.Enabled == nil || !*got.Enabled {
 		t.Errorf("Enabled = %v, want true", got.Enabled)
 	}
+	if got.AutoGrant == nil || !*got.AutoGrant {
+		t.Errorf("AutoGrant = %v, want true", got.AutoGrant)
+	}
 	if got.PollSeconds != 90 {
 		t.Errorf("PollSeconds = %d, want 90", got.PollSeconds)
 	}
 	// Verify loadedConfig was updated in-memory.
 	if loadedConfig.BattlepassPollSeconds != 90 {
 		t.Errorf("loadedConfig.PollSeconds = %d, want 90", loadedConfig.BattlepassPollSeconds)
+	}
+	if loadedConfig.BattlepassAutoGrant == nil || !*loadedConfig.BattlepassAutoGrant {
+		t.Errorf("loadedConfig.BattlepassAutoGrant = %v, want true", loadedConfig.BattlepassAutoGrant)
 	}
 }
 

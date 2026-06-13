@@ -1685,6 +1685,8 @@
       "enabledHint": "Cuando está desactivado, el motor deja de funcionar y no se registran nuevas reclamaciones.",
       "awardPast": "Otorgar niveles pasados",
       "awardPastHint": "Cuando está activo, los niveles completados antes del primer escaneo se registran como ganados. Debe configurarse antes del primer escaneo — no se puede cambiar retroactivamente.",
+      "autoGrant": "Otorgar recompensas automáticamente",
+      "autoGrantHint": "Cuando está activo, cada nivel recién ganado se entrega automáticamente al jugador — en línea o desconectado — reintentando con espera progresiva. Tras varios fallos, el nivel vuelve a otorgarse solo manualmente.",
       "timingSection": "Temporización",
       "pollSeconds": "Intervalo de sondeo (segundos)",
       "scanPaceMs": "Ritmo de escaneo (ms por jugador)",

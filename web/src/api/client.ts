@@ -885,6 +885,7 @@ export interface EventsConfig {
 export interface BattlepassConfig {
   battlepass_enabled: boolean | null
   battlepass_award_past: boolean | null
+  battlepass_auto_grant: boolean | null
   battlepass_poll_seconds: number
   battlepass_scan_pace_ms: number
   battlepass_scan_start_delay_ms: number

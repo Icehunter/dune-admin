@@ -63,11 +63,12 @@ const (
 	eventClaimStatusExhausted = "exhausted"
 
 	// eventGrantMaxAttempts is the number of grant attempts allowed before a
-	// claim becomes exhausted (manual-only).
-	eventGrantMaxAttempts = 3
+	// claim becomes exhausted (manual-only). Sourced from the shared
+	// deferred-grant core so events and battlepass use one backoff policy.
+	eventGrantMaxAttempts = deferredGrantMaxAttempts
 
 	// eventGrantRetryBackoff is the delay added before the next automatic retry.
-	eventGrantRetryBackoff = 24 * time.Hour
+	eventGrantRetryBackoff = deferredGrantRetryBackoff
 )
 
 const eventsStoreSchema = `

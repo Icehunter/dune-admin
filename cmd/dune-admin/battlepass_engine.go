@@ -79,7 +79,7 @@ func battlepassUnclaimed(tiers []battlepassTier, claimed map[string]string) (unc
 // During the account's first complete pass (and unless awardPast is set),
 // satisfied tiers are recorded as baseline — pre-existing progress is not
 // rewarded; the pass pays for new unlocks only.
-func evaluateBattlepassPlayer(ctx context.Context, deps battlepassDeps, store *battlepassStore, tiers []battlepassTier, p battlepassPlayer, awardPast bool) error {
+func evaluateBattlepassPlayer(ctx context.Context, deps battlepassDeps, store *battlepassStore, tiers []battlepassTier, p battlepassPlayer, awardPast, autoGrant bool) error {
 	claimed, err := store.claimedKeys(p.AccountID)
 	if err != nil {
 		return fmt.Errorf("claimed keys: %w", err)
@@ -99,7 +99,10 @@ func evaluateBattlepassPlayer(ctx context.Context, deps battlepassDeps, store *b
 		if !baselined {
 			status = battlepassClaimBaseline
 		}
-		if err := recordSatisfiedBattlepassTiers(ctx, deps, store, unclaimed, p, status, needsJourney, needsTags); err != nil {
+		// Only enqueue auto-grant for genuinely earned tiers — baseline rows are
+		// pre-existing progress and never grantable.
+		enqueue := autoGrant && status == battlepassClaimEarned
+		if err := recordSatisfiedBattlepassTiers(ctx, deps, store, unclaimed, p, status, needsJourney, needsTags, enqueue); err != nil {
 			return err
 		}
 	}
@@ -116,7 +119,7 @@ func evaluateBattlepassPlayer(ctx context.Context, deps battlepassDeps, store *b
 
 // recordSatisfiedBattlepassTiers fetches the needed signal sets and records a
 // claim with the given status for every satisfied tier.
-func recordSatisfiedBattlepassTiers(ctx context.Context, deps battlepassDeps, store *battlepassStore, tiers []battlepassTier, p battlepassPlayer, status string, needsJourney, needsTags bool) error {
+func recordSatisfiedBattlepassTiers(ctx context.Context, deps battlepassDeps, store *battlepassStore, tiers []battlepassTier, p battlepassPlayer, status string, needsJourney, needsTags, enqueueGrant bool) error {
 	journey, tags, err := fetchBattlepassSignals(ctx, deps, p.AccountID, needsJourney, needsTags)
 	if err != nil {
 		return err
@@ -127,6 +130,11 @@ func recordSatisfiedBattlepassTiers(ctx context.Context, deps battlepassDeps, st
 		}
 		if err := store.recordClaim(t.TierKey, p.AccountID, t.Intel, status); err != nil {
 			return fmt.Errorf("record claim %s: %w", t.TierKey, err)
+		}
+		if enqueueGrant {
+			if err := store.recordPendingGrant(t.TierKey, p.AccountID); err != nil {
+				return fmt.Errorf("record pending grant %s: %w", t.TierKey, err)
+			}
 		}
 	}
 	return nil
@@ -161,7 +169,7 @@ func fetchBattlepassSignals(ctx context.Context, deps battlepassDeps, accountID 
 // tiers. Per-player failures are logged and skipped so one bad row cannot
 // stall the whole pass. paceEvery > 0 inserts a context-aware pause between
 // players; a ctx cancellation mid-pace returns the ctx error immediately.
-func evaluateBattlepassTick(ctx context.Context, deps battlepassDeps, store *battlepassStore, awardPast bool, paceEvery time.Duration) error {
+func evaluateBattlepassTick(ctx context.Context, deps battlepassDeps, store *battlepassStore, awardPast, autoGrant bool, paceEvery time.Duration) error {
 	tiers, err := store.listTiers()
 	if err != nil {
 		return fmt.Errorf("battlepass list tiers: %w", err)
@@ -179,7 +187,7 @@ func evaluateBattlepassTick(ctx context.Context, deps battlepassDeps, store *bat
 				return err // ctx cancelled mid-scan: stop cleanly
 			}
 		}
-		if err := evaluateBattlepassPlayer(ctx, deps, store, tiers, p, awardPast); err != nil {
+		if err := evaluateBattlepassPlayer(ctx, deps, store, tiers, p, awardPast, autoGrant); err != nil {
 			log.Printf("battlepass: evaluate account %d: %v", p.AccountID, err)
 		}
 	}
@@ -230,13 +238,13 @@ func clampBattlepassStartDelayMs(ms int) time.Duration {
 // bootBattlepassScan runs a single evaluation tick after an optional ctx-aware
 // start delay. Called once at engine startup before the ticker loop begins.
 // Returns early (without scanning) if ctx is cancelled during the delay.
-func bootBattlepassScan(ctx context.Context, deps battlepassDeps, store *battlepassStore, awardPast bool, paceEvery, startDelay time.Duration) {
+func bootBattlepassScan(ctx context.Context, deps battlepassDeps, store *battlepassStore, awardPast, autoGrant bool, paceEvery, startDelay time.Duration) {
 	if startDelay > 0 {
 		if err := deps.pace(ctx, startDelay); err != nil {
 			return // cancelled during warm-up
 		}
 	}
-	if err := evaluateBattlepassTick(ctx, deps, store, awardPast, paceEvery); err != nil {
+	if err := evaluateBattlepassTick(ctx, deps, store, awardPast, autoGrant, paceEvery); err != nil {
 		log.Printf("battlepass: boot scan: %v", err)
 	}
 }
@@ -245,8 +253,8 @@ func bootBattlepassScan(ctx context.Context, deps battlepassDeps, store *battlep
 // It performs an immediate boot scan (after an optional start delay) before
 // entering the ticker loop, so the dashboard populates quickly on startup
 // without waiting a full poll interval.
-func runBattlepassEngine(ctx context.Context, deps battlepassDeps, store *battlepassStore, interval, paceEvery, startDelay time.Duration, awardPast bool) {
-	bootBattlepassScan(ctx, deps, store, awardPast, paceEvery, startDelay)
+func runBattlepassEngine(ctx context.Context, deps battlepassDeps, store *battlepassStore, interval, paceEvery, startDelay time.Duration, awardPast, autoGrant bool) {
+	bootBattlepassScan(ctx, deps, store, awardPast, autoGrant, paceEvery, startDelay)
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -255,7 +263,7 @@ func runBattlepassEngine(ctx context.Context, deps battlepassDeps, store *battle
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := evaluateBattlepassTick(ctx, deps, store, awardPast, paceEvery); err != nil {
+			if err := evaluateBattlepassTick(ctx, deps, store, awardPast, autoGrant, paceEvery); err != nil {
 				log.Printf("battlepass: tick: %v", err)
 			}
 		}
@@ -348,13 +356,20 @@ func applyBattlepassEngine(cfg appConfig) {
 	interval := clampBattlepassInterval(cfg.BattlepassPollSeconds)
 	paceEvery := clampBattlepassPaceMs(cfg.BattlepassScanPaceMs)
 	startDelay := clampBattlepassStartDelayMs(cfg.BattlepassScanStartDelayMs)
-	log.Printf("battlepass: engine started (interval %s, pace %s, start_delay %s, award_past=%t)",
-		interval, paceEvery, startDelay, battlepassAwardPast(cfg))
+	autoGrant := battlepassAutoGrant(cfg)
+	log.Printf("battlepass: engine started (interval %s, pace %s, start_delay %s, award_past=%t, auto_grant=%t)",
+		interval, paceEvery, startDelay, battlepassAwardPast(cfg), autoGrant)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	globalBattlepassCancel = cancel
 	go runBattlepassEngine(ctx, productionBattlepassDeps(),
-		globalBattlepassStore, interval, paceEvery, startDelay, battlepassAwardPast(cfg))
+		globalBattlepassStore, interval, paceEvery, startDelay, battlepassAwardPast(cfg), autoGrant)
+
+	// When auto-grant is on, run the deferred-grant retry loop alongside the
+	// evaluation engine. It is cancelled by the same ctx on stop/reconfigure.
+	if autoGrant {
+		go runBattlepassGrantLoop(ctx, globalBattlepassStore, productionBattlepassGrantDeps())
+	}
 }
 
 // stopBattlepassEngine cancels the running battlepass engine goroutine if any.

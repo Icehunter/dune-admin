@@ -109,6 +109,11 @@ func initBattlepassSchema(db *sql.DB) error {
 		!strings.Contains(err.Error(), "duplicate column") {
 		return fmt.Errorf("migrate battlepass reward_items: %w", err)
 	}
+	// Auto-grant deferred ledger (#197). CREATE TABLE IF NOT EXISTS is
+	// idempotent across restarts and shared-store reuse.
+	if _, err := db.Exec(battlepassGrantLedgerSchema); err != nil {
+		return fmt.Errorf("init battlepass grant ledger schema: %w", err)
+	}
 	return nil
 }
 
@@ -174,6 +179,20 @@ func (s *battlepassStore) getTier(id int64) (*battlepassTier, error) {
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get battlepass tier %d: %w", id, err)
+	}
+	return &t, nil
+}
+
+// getTierByKey returns the tier with the given tier_key. Used by the auto-grant
+// engine to resolve a tier's intel + item rewards from its claim.
+func (s *battlepassStore) getTierByKey(tierKey string) (*battlepassTier, error) {
+	row := s.db.QueryRow(`SELECT `+battlepassTierColumns+` FROM battlepass_tiers WHERE tier_key = ?`, tierKey)
+	t, err := scanBattlepassTier(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get battlepass tier by key %q: %w", tierKey, err)
 	}
 	return &t, nil
 }

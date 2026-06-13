@@ -20,6 +20,9 @@ type battlepassGrantDeps struct {
 	fetchPlayers func(ctx context.Context) ([]battlepassPlayer, error)
 	awardIntel   func(ctx context.Context, pawnID, amount int64) error
 	giveItem     func(ctx context.Context, actorID int64, template string, qty, quality int64) error
+	// resolveGrantTarget returns a pawn ID for an account without requiring the
+	// player to be online — used by the auto-grant retry loop (#197).
+	resolveGrantTarget func(ctx context.Context, accountID int64) (pawnID int64, err error)
 }
 
 // grantBattlepassEarned sums the account's earned claims, awards the intel in
@@ -113,6 +116,12 @@ func productionBattlepassGrantDeps() battlepassGrantDeps {
 		},
 		giveItem: func(ctx context.Context, actorID int64, template string, qty, quality int64) error {
 			return cmdGiveItemCtx(ctx, globalDB, actorID, template, qty, quality)
+		},
+		resolveGrantTarget: func(ctx context.Context, accountID int64) (int64, error) {
+			if globalDB == nil {
+				return 0, fmt.Errorf("database not connected")
+			}
+			return cmdFetchBattlepassGrantTargets(ctx, globalDB, accountID)
 		},
 	}
 }
@@ -576,6 +585,7 @@ func handleBattlepassGrant(w http.ResponseWriter, r *http.Request) {
 type battlepassConfigPayload struct {
 	Enabled          *bool `json:"battlepass_enabled"`
 	AwardPast        *bool `json:"battlepass_award_past"`
+	AutoGrant        *bool `json:"battlepass_auto_grant"`
 	PollSeconds      int   `json:"battlepass_poll_seconds"`
 	ScanPaceMs       int   `json:"battlepass_scan_pace_ms"`
 	ScanStartDelayMs int   `json:"battlepass_scan_start_delay_ms"`
@@ -585,6 +595,7 @@ func battlepassConfigFromLoaded() battlepassConfigPayload {
 	return battlepassConfigPayload{
 		Enabled:          loadedConfig.BattlepassEnabled,
 		AwardPast:        loadedConfig.BattlepassAwardPast,
+		AutoGrant:        loadedConfig.BattlepassAutoGrant,
 		PollSeconds:      loadedConfig.BattlepassPollSeconds,
 		ScanPaceMs:       loadedConfig.BattlepassScanPaceMs,
 		ScanStartDelayMs: loadedConfig.BattlepassScanStartDelayMs,
@@ -608,6 +619,7 @@ func handleSaveBattlepassConfig(w http.ResponseWriter, r *http.Request) {
 
 	loadedConfig.BattlepassEnabled = p.Enabled
 	loadedConfig.BattlepassAwardPast = p.AwardPast
+	loadedConfig.BattlepassAutoGrant = p.AutoGrant
 	loadedConfig.BattlepassPollSeconds = p.PollSeconds
 	loadedConfig.BattlepassScanPaceMs = p.ScanPaceMs
 	loadedConfig.BattlepassScanStartDelayMs = p.ScanStartDelayMs

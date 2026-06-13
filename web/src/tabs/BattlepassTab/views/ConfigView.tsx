@@ -10,6 +10,7 @@ import { Icon, NumberInput, PageHeader, Panel, SectionLabel } from '../../../dun
 const DEFAULTS: BattlepassConfig = {
   battlepass_enabled: false,
   battlepass_award_past: false,
+  battlepass_auto_grant: false,
   battlepass_poll_seconds: 60,
   battlepass_scan_pace_ms: 75,
   battlepass_scan_start_delay_ms: 3000,
@@ -54,6 +55,7 @@ export const ConfigView: React.FC = () => {
 
   const enabledBool = cfg.battlepass_enabled ?? false
   const awardPastBool = cfg.battlepass_award_past ?? false
+  const autoGrantBool = cfg.battlepass_auto_grant ?? false
 
   return (
     <div className="flex flex-col h-full min-h-0 gap-3">
@@ -98,8 +100,20 @@ export const ConfigView: React.FC = () => {
             <Switch.Control><Switch.Thumb /></Switch.Control>
             <Switch.Content>{t('battlepass.config.awardPast')}</Switch.Content>
           </Switch>
-          <p className="text-xs text-muted mt-1">
+          <p className="text-xs text-muted mt-1 mb-3">
             {t('battlepass.config.awardPastHint')}
+          </p>
+
+          <Switch
+            isSelected={autoGrantBool}
+            onChange={(v) => set('battlepass_auto_grant')(v)}
+            size="sm"
+          >
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            <Switch.Content>{t('battlepass.config.autoGrant')}</Switch.Content>
+          </Switch>
+          <p className="text-xs text-muted mt-1">
+            {t('battlepass.config.autoGrantHint')}
           </p>
         </Panel>
 

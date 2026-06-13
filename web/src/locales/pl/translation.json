@@ -1325,7 +1325,8 @@
       "discordRoles": "Poziomy ról",
       "authDashboard": "Logowanie do panelu",
       "authDiscord": "Logowanie przez Discord (OAuth)",
-      "authOwners": "Właściciele"
+      "authOwners": "Właściciele",
+      "discordStatus": "Osadzenie statusu"
     },
     "ssh": {
       "hostPort": "Host : port",
@@ -1363,7 +1364,14 @@
       "setupStep1": "1. discord.com/developers/applications → New Application → Bot tab → Enable Bot → copy the token.",
       "setupStep2": "2. OAuth2 → URL Generator → Scopes: bot + applications.commands → Bot Permissions: Send Messages → copy the URL and open it to invite the bot.",
       "setupStep3": "3. Enable Developer Mode (Discord Settings → Advanced → Developer Mode) to unlock Copy ID by right-clicking servers and channels.",
-      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update."
+      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update.",
+      "statusHint": "Publikuje jedno, zawsze aktualne osadzenie na jednym kanale i edytuje je w miejscu według czasomierza — status serwera, aktywne mapy z liczbą graczy oraz unikalni gracze w ciągu ostatnich 24 godzin.",
+      "statusEnabled": "Włącz osadzenie statusu",
+      "statusEnabledHint": "Wymaga włączonego i połączonego bota Discord.",
+      "statusChannel": "ID kanału statusu",
+      "statusChannelHint": "Kliknij kanał prawym przyciskiem → Kopiuj ID kanału (wymaga trybu programisty).",
+      "statusInterval": "Interwał aktualizacji (sekundy)",
+      "statusIntervalHint": "Jak często osadzenie się odświeża. Minimum 30 sekund; domyślnie 60."
     },
     "auth": {
       "hint": "Wymagaj logowania do panelu i API. Zalecane, gdy dune-admin jest dostępny spoza Twojej sieci LAN.",

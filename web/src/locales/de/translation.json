@@ -1283,7 +1283,8 @@
       "discordRoles": "Rollenstufen",
       "authDashboard": "Dashboard-Anmeldung",
       "authDiscord": "Discord-Anmeldung (OAuth)",
-      "authOwners": "Besitzer"
+      "authOwners": "Besitzer",
+      "discordStatus": "Status-Embed"
     },
     "ssh": {
       "hostPort": "Host : Port",
@@ -1321,7 +1322,14 @@
       "setupStep1": "1. discord.com/developers/applications → New Application → Bot tab → Enable Bot → copy the token.",
       "setupStep2": "2. OAuth2 → URL Generator → Scopes: bot + applications.commands → Bot Permissions: Send Messages → copy the URL and open it to invite the bot.",
       "setupStep3": "3. Enable Developer Mode (Discord Settings → Advanced → Developer Mode) to unlock Copy ID by right-clicking servers and channels.",
-      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update."
+      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update.",
+      "statusHint": "Postet ein einzelnes, stets aktuelles Embed in einen Kanal und aktualisiert es zeitgesteuert direkt — Serverstatus, aktive Karten mit Spielerzahlen und eindeutige Spieler der letzten 24 Stunden.",
+      "statusEnabled": "Status-Embed aktivieren",
+      "statusEnabledHint": "Erfordert einen aktivierten und verbundenen Discord-Bot.",
+      "statusChannel": "Status-Kanal-ID",
+      "statusChannelHint": "Rechtsklick auf den Kanal → Kanal-ID kopieren (erfordert Entwicklermodus).",
+      "statusInterval": "Aktualisierungsintervall (Sekunden)",
+      "statusIntervalHint": "Wie oft das Embed aktualisiert wird. Minimum 30 Sekunden; Standard 60."
     },
     "auth": {
       "hint": "Anmeldung für Dashboard und API erzwingen. Empfohlen, wenn dune-admin von außerhalb deines LANs erreichbar ist.",

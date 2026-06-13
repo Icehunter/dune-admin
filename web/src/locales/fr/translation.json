@@ -1304,7 +1304,8 @@
       "discordRoles": "Niveaux de rôles",
       "authDashboard": "Connexion au tableau de bord",
       "authDiscord": "Connexion Discord (OAuth)",
-      "authOwners": "Propriétaires"
+      "authOwners": "Propriétaires",
+      "discordStatus": "Embed de statut"
     },
     "ssh": {
       "hostPort": "Hôte : port",
@@ -1342,7 +1343,14 @@
       "setupStep1": "1. discord.com/developers/applications → New Application → Bot tab → Enable Bot → copy the token.",
       "setupStep2": "2. OAuth2 → URL Generator → Scopes: bot + applications.commands → Bot Permissions: Send Messages → copy the URL and open it to invite the bot.",
       "setupStep3": "3. Enable Developer Mode (Discord Settings → Advanced → Developer Mode) to unlock Copy ID by right-clicking servers and channels.",
-      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update."
+      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update.",
+      "statusHint": "Publie un embed unique toujours à jour dans un salon et le modifie sur place selon un minuteur : statut du serveur, cartes actives avec le nombre de joueurs et joueurs uniques sur les dernières 24 heures.",
+      "statusEnabled": "Activer l'embed de statut",
+      "statusEnabledHint": "Nécessite que le bot Discord soit activé et connecté.",
+      "statusChannel": "ID du salon de statut",
+      "statusChannelHint": "Clic droit sur le salon → Copier l’identifiant du salon (nécessite le Mode développeur).",
+      "statusInterval": "Intervalle de mise à jour (secondes)",
+      "statusIntervalHint": "Fréquence de rafraîchissement de l'embed. Minimum 30 secondes ; 60 par défaut."
     },
     "auth": {
       "hint": "Exiger une connexion pour le tableau de bord et l'API. Recommandé dès que dune-admin est accessible hors de votre LAN.",

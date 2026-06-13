@@ -211,6 +211,15 @@ type appConfig struct {
 	DiscordRolesAdmin        string `yaml:"discord_roles_admin"          json:"discord_roles_admin"`
 	DiscordAnnounceChannelID string `yaml:"discord_announce_channel_id"  json:"discord_announce_channel_id"`
 
+	// ── Discord status embed (#188) ────────────────────────────────────────
+	// A persistent, auto-updating embed posted to one channel that the bot edits
+	// in place every interval. Pointer so "unset" (default-off) is distinct from
+	// explicit false. The posted message ID is persisted in the unified SQLite
+	// store (meta table) so restarts edit the same message instead of re-posting.
+	DiscordStatusEnabled         *bool  `yaml:"discord_status_enabled"          json:"discord_status_enabled"`
+	DiscordStatusChannelID       string `yaml:"discord_status_channel_id"        json:"discord_status_channel_id"`
+	DiscordStatusIntervalSeconds int    `yaml:"discord_status_interval_seconds"  json:"discord_status_interval_seconds"`
+
 	// ── Welcome package ────────────────────────────────────────────────────
 	// Auto-grants a configured item package to every player once, on first
 	// login. Defaults OFF — it mutates every player's inventory, so it must be
@@ -890,6 +899,7 @@ func main() {
 
 	applyDiscordConfig(loadedConfig)
 	defer stopDiscordBot()
+	defer stopDiscordStatusLoop()
 
 	globalWelcomeCancel = startWelcomePackageScanner(loadedConfig)
 	defer stopWelcomeScanner()

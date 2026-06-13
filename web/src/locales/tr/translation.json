@@ -1283,7 +1283,8 @@
       "discordRoles": "Rol Kademeleri",
       "authDashboard": "Panel girişi",
       "authDiscord": "Discord girişi (OAuth)",
-      "authOwners": "Sahipler"
+      "authOwners": "Sahipler",
+      "discordStatus": "Durum Gömme"
     },
     "ssh": {
       "hostPort": "Ana Bilgisayar : port",
@@ -1321,7 +1322,14 @@
       "setupStep1": "1. discord.com/developers/applications → New Application → Bot tab → Enable Bot → copy the token.",
       "setupStep2": "2. OAuth2 → URL Generator → Scopes: bot + applications.commands → Bot Permissions: Send Messages → copy the URL and open it to invite the bot.",
       "setupStep3": "3. Enable Developer Mode (Discord Settings → Advanced → Developer Mode) to unlock Copy ID by right-clicking servers and channels.",
-      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update."
+      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update.",
+      "statusHint": "Tek bir kanala her zaman güncel tek bir gömme gönderir ve onu zamanlayıcıyla yerinde düzenler — sunucu durumu, oyuncu sayılarıyla etkin haritalar ve son 24 saatteki benzersiz oyuncular.",
+      "statusEnabled": "Durum gömmesini etkinleştir",
+      "statusEnabledHint": "Discord botunun etkin ve bağlı olmasını gerektirir.",
+      "statusChannel": "Durum kanalı kimliği",
+      "statusChannelHint": "Kanala sağ tıklayın → Kanal kimliğini kopyala (Geliştirici Modu gerekir).",
+      "statusInterval": "Güncelleme aralığı (saniye)",
+      "statusIntervalHint": "Gömmenin ne sıklıkta yenileneceği. En az 30 saniye; varsayılan 60."
     },
     "auth": {
       "hint": "Panel ve API için giriş zorunlu kıl. dune-admin LAN dışından erişilebilir olduğunda önerilir.",

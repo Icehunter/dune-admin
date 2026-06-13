@@ -48,6 +48,9 @@ const EMPTY: AppConfig = {
   discord_roles_economy: '',
   discord_roles_admin: '',
   discord_announce_channel_id: '',
+  discord_status_enabled: false,
+  discord_status_channel_id: '',
+  discord_status_interval_seconds: 60,
   auth_enabled: false,
   auth_local_username: '', auth_local_password_hash: '', auth_local_password_new: '',
   auth_discord_enabled: false,
@@ -246,7 +249,7 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
   const set = (key: keyof AppConfig) => (v: string) =>
     setCfg((prev) => ({
       ...prev,
-      [key]: key === 'db_port' || key === 'scrip_currency' || key === 'market_bot_max_buys' || key === 'amp_api_port'
+      [key]: key === 'db_port' || key === 'scrip_currency' || key === 'market_bot_max_buys' || key === 'amp_api_port' || key === 'discord_status_interval_seconds'
         ? (Number(v) || 0)
         : key === 'market_bot_buy_threshold'
           ? (parseFloat(v) || 0)
@@ -591,6 +594,35 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({ saveRef,
               />
               <FieldRow label={t('settings.discord.announceChannel')} hint={t('settings.discord.announceChannelHint')}>
                 <TextInput value={cfg.discord_announce_channel_id} onChange={set('discord_announce_channel_id')} placeholder="444444444444444444" />
+              </FieldRow>
+            </TwoColumnGrid>
+          </Panel>
+
+          <Panel>
+            <SectionLabel>{t('settings.sections.discordStatus')}</SectionLabel>
+            <div className="flex flex-col gap-1 -mt-1">
+              <p className="text-sm text-muted">{t('settings.discord.statusHint')}</p>
+            </div>
+            <TwoColumnGrid>
+              <div className="sm:col-span-2">
+                <CheckboxField
+                  label={t('settings.discord.statusEnabled')}
+                  hint={t('settings.discord.statusEnabledHint')}
+                  checked={cfg.discord_status_enabled}
+                  onChange={setBool('discord_status_enabled')}
+                />
+              </div>
+              <FieldRow label={t('settings.discord.statusChannel')} hint={t('settings.discord.statusChannelHint')}>
+                <TextInput value={cfg.discord_status_channel_id} onChange={set('discord_status_channel_id')} placeholder="555555555555555555" />
+              </FieldRow>
+              <FieldRow label={t('settings.discord.statusInterval')} hint={t('settings.discord.statusIntervalHint')}>
+                <NumberInput
+                  ariaLabel={t('settings.discord.statusInterval')}
+                  value={Number(cfg.discord_status_interval_seconds) || 0}
+                  onChange={(v) => set('discord_status_interval_seconds')(String(v))}
+                  showButtons={false}
+                  className="w-full"
+                />
               </FieldRow>
             </TwoColumnGrid>
           </Panel>

@@ -206,6 +206,10 @@ export type AppConfig = {
   discord_roles_economy: string
   discord_roles_admin: string
   discord_announce_channel_id: string
+  // Discord persistent status embed (#188)
+  discord_status_enabled: boolean
+  discord_status_channel_id: string
+  discord_status_interval_seconds: number
   // Dashboard authentication
   auth_enabled: boolean
   auth_local_username: string

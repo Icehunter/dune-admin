@@ -1283,7 +1283,8 @@
       "discordRoles": "身份组层级",
       "authDashboard": "面板登录",
       "authDiscord": "Discord 登录（OAuth）",
-      "authOwners": "所有者"
+      "authOwners": "所有者",
+      "discordStatus": "状态嵌入"
     },
     "ssh": {
       "hostPort": "主机：端口",
@@ -1321,7 +1322,14 @@
       "setupStep1": "1. discord.com/developers/applications → New Application → Bot tab → Enable Bot → copy the token.",
       "setupStep2": "2. OAuth2 → URL Generator → Scopes: bot + applications.commands → Bot Permissions: Send Messages → copy the URL and open it to invite the bot.",
       "setupStep3": "3. Enable Developer Mode (Discord Settings → Advanced → Developer Mode) to unlock Copy ID by right-clicking servers and channels.",
-      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update."
+      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update.",
+      "statusHint": "在一个频道中发布一条始终保持最新的嵌入消息，并按定时器就地编辑——显示服务器状态、活跃地图及其玩家数量，以及过去 24 小时的独立玩家数。",
+      "statusEnabled": "启用状态嵌入",
+      "statusEnabledHint": "需要启用并已连接 Discord 机器人。",
+      "statusChannel": "状态频道 ID",
+      "statusChannelHint": "右键点击频道 →“复制频道 ID”（需要开发者模式）。",
+      "statusInterval": "更新间隔（秒）",
+      "statusIntervalHint": "嵌入消息的刷新频率。最少 30 秒；默认 60。"
     },
     "auth": {
       "hint": "要求登录面板和 API。当 dune-admin 可从局域网外访问时建议启用。",

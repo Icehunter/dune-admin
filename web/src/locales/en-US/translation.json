@@ -1283,7 +1283,8 @@
       "discordRoles": "Role Tiers",
       "authDashboard": "Dashboard login",
       "authDiscord": "Discord login (OAuth)",
-      "authOwners": "Owners"
+      "authOwners": "Owners",
+      "discordStatus": "Status Embed"
     },
     "ssh": {
       "hostPort": "Host : port",
@@ -1321,7 +1322,14 @@
       "announceChannelHint": "Right-click the channel → Copy Channel ID (requires Developer Mode)",
       "addRole": "Add role…",
       "rolesNotLoaded": "Connect the bot to browse roles by name",
-      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update."
+      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update.",
+      "statusHint": "Posts a single, always-up-to-date embed to one channel and edits it in place on a timer — server status, active maps with player counts, and unique players in the last 24 hours.",
+      "statusEnabled": "Enable status embed",
+      "statusEnabledHint": "Requires the Discord bot to be enabled and connected.",
+      "statusChannel": "Status channel ID",
+      "statusChannelHint": "Right-click the channel → Copy Channel ID (requires Developer Mode).",
+      "statusInterval": "Update interval (seconds)",
+      "statusIntervalHint": "How often the embed refreshes. Minimum 30 seconds; defaults to 60."
     },
     "auth": {
       "hint": "Require login for the dashboard and API. Recommended whenever dune-admin is reachable from outside your LAN.",

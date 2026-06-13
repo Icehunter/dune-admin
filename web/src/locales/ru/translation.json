@@ -1325,7 +1325,8 @@
       "discordRoles": "Уровни ролей",
       "authDashboard": "Вход в панель",
       "authDiscord": "Вход через Discord (OAuth)",
-      "authOwners": "Владельцы"
+      "authOwners": "Владельцы",
+      "discordStatus": "Встраиваемое сообщение о статусе"
     },
     "ssh": {
       "hostPort": "Хост : порт",
@@ -1363,7 +1364,14 @@
       "setupStep1": "1. discord.com/developers/applications → New Application → Bot tab → Enable Bot → copy the token.",
       "setupStep2": "2. OAuth2 → URL Generator → Scopes: bot + applications.commands → Bot Permissions: Send Messages → copy the URL and open it to invite the bot.",
       "setupStep3": "3. Enable Developer Mode (Discord Settings → Advanced → Developer Mode) to unlock Copy ID by right-clicking servers and channels.",
-      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update."
+      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update.",
+      "statusHint": "Публикует одно постоянно обновляемое встраиваемое сообщение в канал и редактирует его на месте по таймеру — статус сервера, активные карты с числом игроков и уникальные игроки за последние 24 часа.",
+      "statusEnabled": "Включить сообщение о статусе",
+      "statusEnabledHint": "Требуется включённый и подключённый бот Discord.",
+      "statusChannel": "ID канала статуса",
+      "statusChannelHint": "Щёлкните правой кнопкой по каналу → «Копировать ID канала» (требуется режим разработчика).",
+      "statusInterval": "Интервал обновления (секунды)",
+      "statusIntervalHint": "Как часто обновляется сообщение. Минимум 30 секунд; по умолчанию 60."
     },
     "auth": {
       "hint": "Требовать вход для панели и API. Рекомендуется, если dune-admin доступен извне вашей локальной сети.",

@@ -84,6 +84,10 @@ func stopDiscordBot() {
 // so that enable/disable takes effect without a process restart.
 func applyDiscordConfig(cfg appConfig) {
 	stopDiscordBot()
+	// The status embed loop depends on a live bot session; (re)apply it whenever
+	// the bot does. It guards a nil session per tick, so starting it before the
+	// gateway is fully open is safe — it simply skips until the session arrives.
+	applyDiscordStatusLoop(cfg)
 	if !discordBotEnabled(cfg) {
 		return
 	}

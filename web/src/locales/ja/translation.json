@@ -1283,7 +1283,8 @@
       "discordRoles": "ロール階層",
       "authDashboard": "ダッシュボードログイン",
       "authDiscord": "Discordログイン（OAuth）",
-      "authOwners": "オーナー"
+      "authOwners": "オーナー",
+      "discordStatus": "ステータス埋め込み"
     },
     "ssh": {
       "hostPort": "ホスト：ポート",
@@ -1321,7 +1322,14 @@
       "setupStep1": "1. discord.com/developers/applications → New Application → Bot tab → Enable Bot → copy the token.",
       "setupStep2": "2. OAuth2 → URL Generator → Scopes: bot + applications.commands → Bot Permissions: Send Messages → copy the URL and open it to invite the bot.",
       "setupStep3": "3. Enable Developer Mode (Discord Settings → Advanced → Developer Mode) to unlock Copy ID by right-clicking servers and channels.",
-      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update."
+      "rolesRefreshNote": "After assigning roles in Discord, users must refresh the dune-admin UI for permissions to update.",
+      "statusHint": "常に最新の埋め込みを1つのチャンネルに投稿し、タイマーでその場で編集します。サーバーの状態、稼働中のマップとプレイヤー数、過去24時間のユニークプレイヤー数を表示します。",
+      "statusEnabled": "ステータス埋め込みを有効化",
+      "statusEnabledHint": "Discordボットが有効かつ接続されている必要があります。",
+      "statusChannel": "ステータスチャンネルID",
+      "statusChannelHint": "チャンネルを右クリック →「IDをコピー」（開発者モードが必要）。",
+      "statusInterval": "更新間隔（秒）",
+      "statusIntervalHint": "埋め込みを更新する頻度。最小30秒、既定値は60です。"
     },
     "auth": {
       "hint": "ダッシュボードとAPIにログインを必須にします。dune-adminがLAN外からアクセス可能な場合に推奨します。",

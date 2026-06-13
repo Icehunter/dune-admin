@@ -14,7 +14,9 @@ For the dune-admin config reference (env vars, flags, key lookup order), see the
 
 The per-user client config is a single file, `~/.ssh/config`. OpenSSH is strict about
 permissions: the `.ssh` directory must be mode `700`, and the config and private-key files
-mode `600`. A private key with looser permissions is silently ignored.
+mode `600`. A private key with looser permissions is refused — ssh prints a
+`Permissions ... are too open` / `Bad permissions` warning and ignores the key, so watch for
+that in the output.
 
 ```bash
 chmod 700 ~/.ssh
@@ -150,8 +152,9 @@ Start-Service ssh-agent
 ssh-add $env:USERPROFILE\.ssh\id_ed25519
 ```
 
-The service holds the decrypted key in the Windows credential store, so the passphrase is
-entered once and survives reboots.
+The Windows ssh-agent stores the added key in the registry, encrypted to your user account, so
+it survives reboots and the passphrase is entered only once. (Microsoft recommends backing up
+the key file and deleting it from disk afterwards, since the agent keeps a copy.)
 
 #### WSL2
 

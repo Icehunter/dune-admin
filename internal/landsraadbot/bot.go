@@ -229,6 +229,10 @@ func (i *Instance) simulateFaction(ctx context.Context, factionID int, guildID i
 			return
 		}
 		
+		if numTargets < 1 {
+			numTargets = 1
+		}
+		
 		if len(scoredTasks) > numTargets {
 			scoredTasks = scoredTasks[:numTargets]
 		}

@@ -1,6 +1,34 @@
 package main
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
+
+// TestConnectDB_NilExecutorReturnsError verifies that connectDB returns a clean
+// error (not a nil-pointer panic) when globalExecutor has not been set.
+func TestConnectDB_NilExecutorReturnsError(t *testing.T) {
+	origExec := globalExecutor
+	origPodIP := globalPodIP
+	origDBPort := dbPort
+	origDBUser, origDBPass, origDBName, origDBSchema := dbUser, dbPass, dbName, dbSchema
+	t.Cleanup(func() {
+		globalExecutor = origExec
+		globalPodIP = origPodIP
+		dbPort = origDBPort
+		dbUser, dbPass, dbName, dbSchema = origDBUser, origDBPass, origDBName, origDBSchema
+	})
+
+	globalExecutor = nil
+	globalPodIP = "127.0.0.1"
+	dbPort = 1
+	dbUser, dbPass, dbName, dbSchema = "t", "t", "t", "t"
+
+	_, err := connectDB(context.Background(), "t", "t")
+	if err == nil {
+		t.Fatal("expected error when globalExecutor is nil, got nil")
+	}
+}
 
 // TestConnectAll_ControlPlaneSurvivesDBFailure verifies that a DB connection
 // failure leaves the control plane and executor established. The control plane

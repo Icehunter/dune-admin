@@ -235,6 +235,9 @@ func connectDB(ctx context.Context, user, pass string) (*pgxpool.Pool, error) {
 	poolCfg.ConnConfig.LookupFunc = func(_ context.Context, _ string) ([]string, error) {
 		return []string{globalPodIP}, nil
 	}
+	if globalExecutor == nil {
+		return nil, fmt.Errorf("cannot connect to DB: globalExecutor is nil (DB pod discovery likely failed)")
+	}
 	poolCfg.ConnConfig.DialFunc = func(_ context.Context, _, _ string) (net.Conn, error) {
 		return globalExecutor.Dial("tcp", fmt.Sprintf("%s:%d", globalPodIP, dbPort))
 	}

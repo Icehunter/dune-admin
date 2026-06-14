@@ -12,11 +12,11 @@ For the dune-admin config reference (env vars, flags, key lookup order), see the
 
 ### Where the config lives
 
-The per-user client config is a single file, `~/.ssh/config`. OpenSSH is strict about
-permissions: the `.ssh` directory must be mode `700`, and the config and private-key files
-mode `600`. A private key with looser permissions is refused — ssh prints a
-`Permissions ... are too open` / `Bad permissions` warning and ignores the key, so watch for
-that in the output.
+The per-user client config is a single file, `~/.ssh/config`. On POSIX systems (Linux/macOS/WSL),
+OpenSSH is strict about permissions: the `.ssh` directory should be `700`, and private keys
+typically `600` (ssh will warn `Permissions ... are too open` / `Bad permissions` and ignore the key).
+On Windows, OpenSSH uses NTFS ACLs instead of POSIX modes — ensure only your user can read the
+`.ssh` directory and private key.
 
 ```bash
 chmod 700 ~/.ssh

@@ -970,6 +970,9 @@ func main() {
 	applyBattlepassEngine(loadedConfig)
 	defer stopBattlepassEngine()
 
+	startEmbeddedLandsraadBotIfEnabled()
+	defer stopLandsraadBot()
+
 	startServer(listenAddr)
 }
 

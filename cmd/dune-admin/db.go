@@ -390,6 +390,16 @@ const guildSummarySelect = `
 	FROM dune.guilds g
 	LEFT JOIN dune.factions f ON f.id = g.guild_faction`
 
+func cmdCreateGuild(ctx context.Context, pool *pgxpool.Pool, name, description string, factionID int) (int64, error) {
+	var id int64
+	err := pool.QueryRow(ctx, `
+		INSERT INTO dune.guilds (guild_name, guild_description, guild_faction)
+		VALUES ($1, $2, $3)
+		RETURNING guild_id
+	`, name, description, factionID).Scan(&id)
+	return id, err
+}
+
 func cmdFetchGuilds(ctx context.Context, pool *pgxpool.Pool) ([]guildSummary, error) {
 	rows, err := pool.Query(ctx, guildSummarySelect+`
 		ORDER BY g.guild_name NULLS LAST, g.guild_id`)
@@ -594,13 +604,14 @@ type landsraadDecree struct {
 }
 
 type landsraadTask struct {
-	ID             int64  `json:"id"`
-	BoardIndex     int16  `json:"board_index"`
-	House          string `json:"house"`
-	Completed      bool   `json:"completed"`
-	WinningFaction string `json:"winning_faction"`
-	Sysselraad     bool   `json:"sysselraad"`
-	GoalAmount     int    `json:"goal_amount"`
+	ID              int64  `json:"id"`
+	BoardIndex      int16  `json:"board_index"`
+	House           string `json:"house"`
+	Completed       bool   `json:"completed"`
+	WinningFaction  string `json:"winning_faction"`
+	Sysselraad      bool   `json:"sysselraad"`
+	GoalAmount      int    `json:"goal_amount"`
+	CurrentProgress int    `json:"current_progress"`
 }
 
 type landsraadOverview struct {
@@ -662,8 +673,10 @@ func fetchLandsraadTerm(ctx context.Context, pool *pgxpool.Pool) (*landsraadTerm
 
 func fetchLandsraadDecrees(ctx context.Context, pool *pgxpool.Pool) ([]landsraadDecree, error) {
 	rows, err := pool.Query(ctx, `
-		SELECT id, decree_name, weight::float8, disabled
-		FROM dune.landsraad_decrees ORDER BY id`)
+		SELECT d.id, d.decree_name, d.weight::float8, d.disabled
+		FROM dune.landsraad_decree_rotation r
+		INNER JOIN dune.landsraad_decrees d ON r.decree_id = d.id
+		ORDER BY d.id`)
 	if err != nil {
 		return nil, fmt.Errorf("landsraad decrees: %w", err)
 	}
@@ -681,7 +694,10 @@ func fetchLandsraadDecrees(ctx context.Context, pool *pgxpool.Pool) ([]landsraad
 
 const landsraadTasksSQL = `
 	SELECT t.id, t.board_index, t.house_name, t.completed,
-	       COALESCE(wf.name, ''), t.sysselraad, t.goal_amount
+	       COALESCE(wf.name, ''), t.sysselraad, t.goal_amount,
+	       (COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_guild_contributions WHERE task_id = t.id), 0) +
+	        COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_faction_contributions WHERE task_id = t.id), 0) +
+	        COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_player_contributions WHERE task_id = t.id), 0))::int AS current_progress
 	FROM dune.landsraad_tasks t
 	LEFT JOIN dune.factions wf ON wf.id = t.winning_faction_id
 	WHERE t.term_id = $1
@@ -697,7 +713,7 @@ func fetchLandsraadTasks(ctx context.Context, pool *pgxpool.Pool, termID int64) 
 	for rows.Next() {
 		var tk landsraadTask
 		var house string
-		if err := rows.Scan(&tk.ID, &tk.BoardIndex, &house, &tk.Completed, &tk.WinningFaction, &tk.Sysselraad, &tk.GoalAmount); err != nil {
+		if err := rows.Scan(&tk.ID, &tk.BoardIndex, &house, &tk.Completed, &tk.WinningFaction, &tk.Sysselraad, &tk.GoalAmount, &tk.CurrentProgress); err != nil {
 			return nil, fmt.Errorf("scan task: %w", err)
 		}
 		tk.House = landsraadHouseName(house)

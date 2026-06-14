@@ -277,12 +277,16 @@ func buildMux() *http.ServeMux {
 
 	// ── guilds ──────────────────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/guilds", capPlayersRead, handleListGuilds)
+	handleAPI(mux, "POST /api/v1/guilds", capPlayersWrite, handleCreateGuild)
 	handleAPI(mux, "GET /api/v1/guilds/{id}", capPlayersRead, handleGetGuild)
 	handleAPI(mux, "PATCH /api/v1/guilds/{id}", capPlayersWrite, handleUpdateGuild)
 	handleAPI(mux, "PUT /api/v1/guilds/{id}/members/{pid}/role", capPlayersWrite, handleSetGuildMemberRole)
 
-	// ── landsraad (read-only) ─────────────────────────────────────────────────
+	// ── landsraad ───────────────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/landsraad", capPlayersRead, handleGetLandsraad)
+	handleAPI(mux, "POST /api/v1/landsraad/reset", capPlayersWrite, handleResetLandsraadTerm)
+	handleAPI(mux, "GET /api/v1/landsraad/bot/config", capPlayersRead, handleGetLandsraadBotConfig)
+	handleAPI(mux, "PUT /api/v1/landsraad/bot/config", capPlayersWrite, handleUpdateLandsraadBotConfig)
 
 	// ── static data files (Go-first, CDN fallback on the frontend) ──────────
 	handleAPI(mux, "GET /api/v1/data/{file}", capWorldRead, handleGetDataFile)

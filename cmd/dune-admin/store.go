@@ -88,6 +88,9 @@ func applyUnifiedSchema(db *sql.DB) error {
 	if err := initAuthUsersSchema(db); err != nil {
 		return fmt.Errorf("unified store: auth users schema: %w", err)
 	}
+	if err := initLandsraadBotSchema(db); err != nil {
+		return fmt.Errorf("unified store: landsraad bot schema: %w", err)
+	}
 	if _, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS meta (
 			key   TEXT PRIMARY KEY,

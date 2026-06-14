@@ -252,10 +252,10 @@ func (i *Instance) simulateFaction(ctx context.Context, factionID int, guildID i
 		query := `
 			SELECT l.id 
 			FROM dune.landsraad_tasks l
-			WHERE l.completed = false
-			ORDER BY RANDOM() LIMIT $1
+			WHERE l.completed = false AND l.term_id = $1
+			ORDER BY RANDOM() LIMIT $2
 		`
-		rows, err := i.pool.Query(ctx, query, numTargets)
+		rows, err := i.pool.Query(ctx, query, termID, numTargets)
 		if err != nil {
 			return
 		}

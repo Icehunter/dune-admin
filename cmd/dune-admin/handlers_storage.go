@@ -14,7 +14,7 @@ import (
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/storage [get]
 func handleListStorage(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdListStorageContainers().(msgStorageContainers)
+	msg, ok := cmdListStorageContainers(dbFromCtx(r)).(msgStorageContainers)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -45,7 +45,7 @@ func handleGetStorageItems(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdGetContainerInventory(id)().(msgContainerInventory)
+	msg, ok := cmdGetContainerInventory(dbFromCtx(r), id)().(msgContainerInventory)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -91,7 +91,7 @@ func handleGiveItemToStorage(w http.ResponseWriter, r *http.Request) {
 		req.Qty = 1
 	}
 
-	msg, ok := cmdGiveItemToContainer(id, req.Template, req.Qty, req.Quality)().(msgMutate)
+	msg, ok := cmdGiveItemToContainer(dbFromCtx(r), id, req.Template, req.Qty, req.Quality)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -143,7 +143,7 @@ func handleGiveItemsToStorage(w http.ResponseWriter, r *http.Request) {
 		if qty <= 0 {
 			qty = 1
 		}
-		msg, ok := cmdGiveItemToContainer(id, item.Template, qty, item.Quality)().(msgMutate)
+		msg, ok := cmdGiveItemToContainer(dbFromCtx(r), id, item.Template, qty, item.Quality)().(msgMutate)
 		if !ok || msg.err != nil {
 			reason := "internal error"
 			if ok && msg.err != nil {

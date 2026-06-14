@@ -102,16 +102,17 @@ func handleRMQFillWater(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
+	pool := dbFromCtx(r)
 	err := processFillWater(fillWaterParams{
 		flsID:       req.FlsID,
 		waterAmount: req.WaterAmount,
 		isOnline:    func(id string) bool { return isHexIDOnline(ctx, id) },
 		sendRMQ:     func(id string, amt int) error { return rmqUpdateAllWaterFillables(id, amt) },
 		resolveActor: func(id string) (int64, error) {
-			return cmdActorIDFromFlsID(ctx, id)
+			return cmdActorIDFromFlsID(ctx, pool, id)
 		},
 		refillDB: func(actorID int64) (int64, error) {
-			return cmdRefillWaterOffline(ctx, actorID)
+			return cmdRefillWaterOffline(ctx, pool, actorID)
 		},
 	})
 	if err != nil {

@@ -19,7 +19,7 @@ import (
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/blueprints [get]
 func handleListBlueprints(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdListBlueprints().(msgBlueprintList)
+	msg, ok := cmdListBlueprints(dbFromCtx(r)).(msgBlueprintList)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -509,7 +509,7 @@ func importBlueprintData(ctx context.Context, db *pgxpool.Pool, playerPawnID int
 	}
 
 	// Player must be offline.
-	if err := checkPlayerOffline(ctx, playerPawnID); err != nil {
+	if err := checkPlayerOfflinePool(ctx, db, playerPawnID); err != nil {
 		return msgMutate{err: err}
 	}
 

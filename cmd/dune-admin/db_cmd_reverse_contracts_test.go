@@ -104,7 +104,7 @@ func TestContractBatchSummary(t *testing.T) {
 func TestRemoveContractTags_NoTagsIsNoop(t *testing.T) {
 	t.Parallel()
 
-	if err := removeContractTags(context.Background(), 123, nil); err != nil {
+	if err := removeContractTags(context.Background(), nil, 123, nil); err != nil {
 		t.Fatalf("expected no-op nil tags, got %v", err)
 	}
 }
@@ -112,10 +112,10 @@ func TestRemoveContractTags_NoTagsIsNoop(t *testing.T) {
 func TestStripContractSkillBlocks_NoopCases(t *testing.T) {
 	t.Parallel()
 
-	if stripped, err := stripContractSkillBlocks(context.Background(), 0, []string{"Skills.Key.A"}); err != nil || stripped != 0 {
+	if stripped, err := stripContractSkillBlocks(context.Background(), nil, 0, []string{"Skills.Key.A"}); err != nil || stripped != 0 {
 		t.Fatalf("expected pawn 0 no-op, stripped=%d err=%v", stripped, err)
 	}
-	if stripped, err := stripContractSkillBlocks(context.Background(), 10, nil); err != nil || stripped != 0 {
+	if stripped, err := stripContractSkillBlocks(context.Background(), nil, 10, nil); err != nil || stripped != 0 {
 		t.Fatalf("expected empty skills no-op, stripped=%d err=%v", stripped, err)
 	}
 }
@@ -123,7 +123,7 @@ func TestStripContractSkillBlocks_NoopCases(t *testing.T) {
 func TestApplyContractSkillGrants_NoSkillsIsNoop(t *testing.T) {
 	t.Parallel()
 
-	extra, err := applyContractSkillGrants(context.Background(), 123, nil)
+	extra, err := applyContractSkillGrants(context.Background(), nil, 123, nil)
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}

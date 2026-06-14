@@ -53,11 +53,11 @@ func invalidateAllJourneyCache() {
 
 // ── data fetch commands ───────────────────────────────────────────────────────
 
-func cmdFetchPlayers() Msg {
-	if globalDB == nil {
+func cmdFetchPlayers(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgPlayers{err: fmt.Errorf("not connected")}
 	}
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT a.id,
 		       COALESCE(a.owner_account_id, 0),
 		       COALESCE(ps.character_name, convert_from(e.encrypted_funcom_id, 'UTF8'), ''),
@@ -863,12 +863,12 @@ func averageLevel(xps []int64) float64 {
 	return float64(sum) / float64(len(xps))
 }
 
-func cmdFetchInventory(playerID int64) Cmd {
+func cmdFetchInventory(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgInventory{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT i.id, i.template_id, i.stack_size, i.quality_level,
 			       COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'CurrentDurability'), 'N/A'),
 			       COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'MaxDurability'), 'N/A')
@@ -897,11 +897,11 @@ func cmdFetchInventory(playerID int64) Cmd {
 	}
 }
 
-func cmdFetchCurrency() Msg {
-	if globalDB == nil {
+func cmdFetchCurrency(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgCurrency{err: fmt.Errorf("not connected")}
 	}
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT player_controller_id, currency_id, balance
 		FROM dune.player_virtual_currency_balances
 		ORDER BY player_controller_id, currency_id`)
@@ -924,16 +924,16 @@ func cmdFetchCurrency() Msg {
 	return msgCurrency{rows: out}
 }
 
-func cmdFetchFactions() Msg {
-	if globalDB == nil {
+func cmdFetchFactions(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgFactions{err: fmt.Errorf("not connected")}
 	}
 	ctx := context.Background()
-	scripID, err := resolveScripCurrencyID(ctx)
+	scripID, err := resolveScripCurrencyID(ctx, pool)
 	if err != nil {
 		return msgFactions{err: err}
 	}
-	rows, err := globalDB.Query(ctx, `
+	rows, err := pool.Query(ctx, `
 		SELECT pfr.actor_id, pfr.faction_id, f.name, pfr.reputation_amount,
 		       COALESCE(vcb.balance, 0)
 		FROM dune.player_faction_reputation pfr
@@ -961,11 +961,11 @@ func cmdFetchFactions() Msg {
 	return msgFactions{rows: out, scripCurrencyID: scripID}
 }
 
-func cmdFetchSpecs() Msg {
-	if globalDB == nil {
+func cmdFetchSpecs(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgSpecs{err: fmt.Errorf("not connected")}
 	}
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT player_id, track_type::text, xp_amount, level
 		FROM dune.specialization_tracks
 		ORDER BY player_id, track_type`)
@@ -1045,12 +1045,12 @@ func formatSQLStringRows(rows [][]any) [][]string {
 	return out
 }
 
-func cmdRunSQL(sql string) Cmd {
+func cmdRunSQL(pool *pgxpool.Pool, sql string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgSQL{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), sql)
+		rows, err := pool.Query(context.Background(), sql)
 		if err != nil {
 			return msgSQL{err: err}
 		}
@@ -1067,14 +1067,14 @@ func cmdRunSQL(sql string) Cmd {
 	}
 }
 
-func cmdGiveItem(playerID int64, template string, qty, quality int64) Cmd {
+func cmdGiveItem(pool *pgxpool.Pool, playerID int64, template string, qty, quality int64) Cmd {
 	return func() Msg {
-		return runGiveItem(playerID, template, qty, quality)
+		return runGiveItem(pool, playerID, template, qty, quality)
 	}
 }
 
-func runGiveItem(playerID int64, template string, qty, quality int64) Msg {
-	if globalDB == nil {
+func runGiveItem(pool *pgxpool.Pool, playerID int64, template string, qty, quality int64) Msg {
+	if pool == nil {
 		return msgMutate{err: fmt.Errorf("not connected")}
 	}
 	trimmedTemplate, err := validateGiveItemInput(playerID, template, qty)
@@ -1084,20 +1084,20 @@ func runGiveItem(playerID int64, template string, qty, quality int64) Msg {
 	template = trimmedTemplate
 
 	ctx := context.Background()
-	inv, err := findGiveItemInventory(ctx, playerID)
+	inv, err := findGiveItemInventory(ctx, pool, playerID)
 	if err != nil {
 		return msgMutate{err: err}
 	}
-	state, err := loadGiveItemInventoryState(ctx, inv.id, template, quality, inv.hasVolumeCap)
+	state, err := loadGiveItemInventoryState(ctx, pool, inv.id, template, quality, inv.hasVolumeCap)
 	if err != nil {
 		return msgMutate{err: err}
 	}
-	stackMax, known, err := resolveStackMax(ctx, template, quality)
+	stackMax, known, err := resolveStackMax(ctx, pool, template, quality)
 	if err != nil {
 		return msgMutate{err: err}
 	}
 	stackMax = effectiveStackMax(stackMax, known, qty)
-	if err := ensureGiveItemVolumeCapacity(ctx, inv, state, template, qty); err != nil {
+	if err := ensureGiveItemVolumeCapacity(ctx, pool, inv, state, template, qty); err != nil {
 		return msgMutate{err: err}
 	}
 
@@ -1105,7 +1105,7 @@ func runGiveItem(playerID int64, template string, qty, quality int64) Msg {
 	if err := ensureGiveItemSlotCapacity(inv, state, len(newStacks)); err != nil {
 		return msgMutate{err: err}
 	}
-	if err := applyGiveItemChanges(ctx, inv.id, template, quality, state.maxPos, updates, newStacks); err != nil {
+	if err := applyGiveItemChanges(ctx, pool, inv.id, template, quality, state.maxPos, updates, newStacks); err != nil {
 		return msgMutate{err: err}
 	}
 	return msgMutate{ok: formatGiveItemResult(playerID, template, qty, len(updates), len(newStacks))}
@@ -1150,9 +1150,9 @@ func validateGiveItemInput(playerID int64, template string, qty int64) (string, 
 	return template, nil
 }
 
-func findGiveItemInventory(ctx context.Context, playerID int64) (giveItemInventory, error) {
+func findGiveItemInventory(ctx context.Context, pool *pgxpool.Pool, playerID int64) (giveItemInventory, error) {
 	var inv giveItemInventory
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
 		FROM dune.inventories
 		WHERE actor_id = $1::bigint AND inventory_type = 0
@@ -1162,7 +1162,7 @@ func findGiveItemInventory(ctx context.Context, playerID int64) (giveItemInvento
 		inv.hasVolumeCap = inv.maxVolume > 0
 		return inv, nil
 	}
-	err = globalDB.QueryRow(ctx, `
+	err = pool.QueryRow(ctx, `
 		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
 		FROM dune.inventories
 		WHERE actor_id = $1::bigint
@@ -1175,8 +1175,8 @@ func findGiveItemInventory(ctx context.Context, playerID int64) (giveItemInvento
 	return inv, nil
 }
 
-func loadGiveItemInventoryState(ctx context.Context, invID int64, template string, quality int64, includeVolume bool) (giveItemInventoryState, error) {
-	rows, err := globalDB.Query(ctx, `
+func loadGiveItemInventoryState(ctx context.Context, pool *pgxpool.Pool, invID int64, template string, quality int64, includeVolume bool) (giveItemInventoryState, error) {
+	rows, err := pool.Query(ctx, `
 		SELECT id, template_id, stack_size, quality_level, volume_override, position_index
 		FROM dune.items
 		WHERE inventory_id = $1::bigint`, invID)
@@ -1235,6 +1235,7 @@ func inventoryItemVolume(template string, vol pgtype.Float8) float64 {
 
 func ensureGiveItemVolumeCapacity(
 	ctx context.Context,
+	pool *pgxpool.Pool,
 	inv giveItemInventory,
 	state giveItemInventoryState,
 	template string,
@@ -1243,7 +1244,7 @@ func ensureGiveItemVolumeCapacity(
 	if !inv.hasVolumeCap {
 		return nil
 	}
-	perItemVol, err := resolveItemVolume(ctx, template)
+	perItemVol, err := resolveItemVolume(ctx, pool, template)
 	if err != nil {
 		return err
 	}
@@ -1325,6 +1326,7 @@ func ensureGiveItemSlotCapacity(inv giveItemInventory, state giveItemInventorySt
 
 func applyGiveItemChanges(
 	ctx context.Context,
+	pool *pgxpool.Pool,
 	invID int64,
 	template string,
 	quality int64,
@@ -1332,7 +1334,7 @@ func applyGiveItemChanges(
 	updates []giveItemStackUpdate,
 	newStacks []int64,
 ) error {
-	tx, err := globalDB.Begin(ctx)
+	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -1384,9 +1386,9 @@ type inventoryUsage struct {
 	usedVolume float64
 }
 
-func loadBackpackCapacity(ctx context.Context, playerID int64) (inventoryCapacityProfile, bool) {
+func loadBackpackCapacity(ctx context.Context, pool *pgxpool.Pool, playerID int64) (inventoryCapacityProfile, bool) {
 	var profile inventoryCapacityProfile
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 		SELECT id, COALESCE(max_item_count, -1), COALESCE(max_item_volume, -1)
 		FROM dune.inventories
 		WHERE actor_id = $1::bigint AND inventory_type = 0
@@ -1400,8 +1402,8 @@ func loadBackpackCapacity(ctx context.Context, playerID int64) (inventoryCapacit
 	return profile, true
 }
 
-func loadInventoryUsage(ctx context.Context, inventoryID int64, includeVolume bool) (inventoryUsage, error) {
-	rows, err := globalDB.Query(ctx, `
+func loadInventoryUsage(ctx context.Context, pool *pgxpool.Pool, inventoryID int64, includeVolume bool) (inventoryUsage, error) {
+	rows, err := pool.Query(ctx, `
 		SELECT template_id, stack_size, volume_override
 		FROM dune.items
 		WHERE inventory_id = $1::bigint`, inventoryID)
@@ -1440,6 +1442,7 @@ func requiredStackCount(qty, stackMax int64) int {
 
 func checkInventoryVolumeLimit(
 	ctx context.Context,
+	pool *pgxpool.Pool,
 	profile inventoryCapacityProfile,
 	usage inventoryUsage,
 	template string,
@@ -1448,7 +1451,7 @@ func checkInventoryVolumeLimit(
 	if !profile.hasVolumeCap {
 		return nil
 	}
-	perItemVol, err := resolveItemVolume(ctx, template)
+	perItemVol, err := resolveItemVolume(ctx, pool, template)
 	if err != nil || perItemVol <= 0 {
 		return nil
 	}
@@ -1461,11 +1464,11 @@ func checkInventoryVolumeLimit(
 	return nil
 }
 
-func checkInventorySlotLimit(ctx context.Context, profile inventoryCapacityProfile, usage inventoryUsage, template string, qty int64) error {
+func checkInventorySlotLimit(ctx context.Context, pool *pgxpool.Pool, profile inventoryCapacityProfile, usage inventoryUsage, template string, qty int64) error {
 	if !profile.hasSlotCap {
 		return nil
 	}
-	stackMax, known, err := resolveStackMax(ctx, template, 0)
+	stackMax, known, err := resolveStackMax(ctx, pool, template, 0)
 	if err != nil {
 		known = false
 	}
@@ -1550,21 +1553,21 @@ func checkInventoryCapacity(ctx context.Context, playerID int64, template string
 	if globalDB == nil {
 		return fmt.Errorf("not connected")
 	}
-	profile, ok := loadBackpackCapacity(ctx, playerID)
+	profile, ok := loadBackpackCapacity(ctx, globalDB, playerID)
 	if !ok {
 		return nil
 	}
 	if !profile.hasSlotCap && !profile.hasVolumeCap {
 		return nil
 	}
-	usage, err := loadInventoryUsage(ctx, profile.id, profile.hasVolumeCap)
+	usage, err := loadInventoryUsage(ctx, globalDB, profile.id, profile.hasVolumeCap)
 	if err != nil {
 		return nil
 	}
-	if err := checkInventoryVolumeLimit(ctx, profile, usage, template, qty); err != nil {
+	if err := checkInventoryVolumeLimit(ctx, globalDB, profile, usage, template, qty); err != nil {
 		return err
 	}
-	if err := checkInventorySlotLimit(ctx, profile, usage, template, qty); err != nil {
+	if err := checkInventorySlotLimit(ctx, globalDB, profile, usage, template, qty); err != nil {
 		return err
 	}
 	return nil
@@ -1572,19 +1575,19 @@ func checkInventoryCapacity(ctx context.Context, playerID int64, template string
 
 // cmdGrantLive inserts into landsraad_house_rewards which fires a pg_notify trigger.
 // The game server receives the notification immediately and shows "Claim Rewards" to the player.
-func cmdGrantLive(controllerID int64, templateID string, amount int64) Cmd {
+func cmdGrantLive(pool *pgxpool.Pool, controllerID int64, templateID string, amount int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
-		_, err := globalDB.Exec(context.Background(), `
+		_, err := pool.Exec(context.Background(), `
 			DELETE FROM dune.landsraad_house_rewards
 			WHERE player_id = $1 AND house_name = 'AdminGrant'`,
 			controllerID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("grant live clear: %w", err)}
 		}
-		_, err = globalDB.Exec(context.Background(), `
+		_, err = pool.Exec(context.Background(), `
 			INSERT INTO dune.landsraad_house_rewards (player_id, house_name, amount, template_id, last_updated)
 			VALUES ($1, 'AdminGrant', $2, $3, NOW())`,
 			controllerID, amount, templateID)
@@ -1595,9 +1598,9 @@ func cmdGrantLive(controllerID int64, templateID string, amount int64) Cmd {
 	}
 }
 
-func cmdGiveCurrency(playerID int64, amount int64) Cmd {
+func cmdGiveCurrency(pool *pgxpool.Pool, playerID int64, amount int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if playerID == 0 {
@@ -1606,7 +1609,7 @@ func cmdGiveCurrency(playerID int64, amount int64) Cmd {
 		ctx := context.Background()
 		// Route through adjust_player_virtual_currency_balance for audit logging
 		// and negative-balance guards. The casts match the live function signature.
-		_, err := globalDB.Exec(ctx, `
+		_, err := pool.Exec(ctx, `
 			SELECT dune.adjust_player_virtual_currency_balance(
 				$1::bigint,
 				dune.get_solaris_id(),
@@ -1617,7 +1620,7 @@ func cmdGiveCurrency(playerID int64, amount int64) Cmd {
 			return msgMutate{err: err}
 		}
 		var balance int64
-		_ = globalDB.QueryRow(ctx, `
+		_ = pool.QueryRow(ctx, `
 			SELECT balance FROM dune.player_virtual_currency_balances
 			WHERE player_controller_id = $1::bigint AND currency_id = dune.get_solaris_id()`,
 			playerID).Scan(&balance)
@@ -1703,37 +1706,37 @@ func cmdFindPlayersByName(ctx context.Context, db *pgxpool.Pool, name string) ([
 	return players, nil
 }
 
-func cmdGiveFactionRep(actorID int64, factionID int16, delta int32) Cmd {
+func cmdGiveFactionRep(pool *pgxpool.Pool, actorID int64, factionID int16, delta int32) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
-		return applyFactionRepDelta(ctx, actorID, factionID, delta)
+		return applyFactionRepDelta(ctx, pool, actorID, factionID, delta)
 	}
 }
 
-func cmdGiveLandsraadScrip(actorID int64, delta int32) Cmd {
+func cmdGiveLandsraadScrip(pool *pgxpool.Pool, actorID int64, delta int32) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
 		if actorID == 0 {
 			return msgMutate{err: fmt.Errorf("player ID required")}
 		}
-		currencyID, err := resolveScripCurrencyID(ctx)
+		currencyID, err := resolveScripCurrencyID(ctx, pool)
 		if err != nil {
 			return msgMutate{err: err}
 		}
-		_, err = globalDB.Exec(ctx, `
+		_, err = pool.Exec(ctx, `
 			SELECT dune.adjust_player_virtual_currency_balance($1::bigint, $2::smallint, $3::bigint)`,
 			actorID, currencyID, int64(delta))
 		if err != nil {
 			return msgMutate{err: err}
 		}
 		var balance int64
-		_ = globalDB.QueryRow(ctx, `
+		_ = pool.QueryRow(ctx, `
 			SELECT balance FROM dune.player_virtual_currency_balances
 			WHERE player_controller_id = $1::bigint AND currency_id = $2::smallint`,
 			actorID, currencyID).Scan(&balance)
@@ -1743,16 +1746,16 @@ func cmdGiveLandsraadScrip(actorID int64, delta int32) Cmd {
 	}
 }
 
-func cmdAwardXP(playerID int64, trackType string, delta int32) Cmd {
+func cmdAwardXP(pool *pgxpool.Pool, playerID int64, trackType string, delta int32) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		const maxXP int32 = 44182
 		if delta > maxXP {
 			delta = maxXP
 		}
-		res, err := globalDB.Exec(context.Background(), `
+		res, err := pool.Exec(context.Background(), `
 			UPDATE dune.specialization_tracks
 			SET xp_amount = GREATEST(LEAST(xp_amount + $1::integer, $4::integer), 0)
 			WHERE player_id = $2::bigint AND track_type::text = $3::text`,
@@ -1761,7 +1764,7 @@ func cmdAwardXP(playerID int64, trackType string, delta int32) Cmd {
 			return msgMutate{err: err}
 		}
 		if res.RowsAffected() == 0 {
-			_, err = globalDB.Exec(context.Background(), `
+			_, err = pool.Exec(context.Background(), `
 				INSERT INTO dune.specialization_tracks (player_id, track_type, xp_amount, level)
 				VALUES ($1::bigint, $2::dune.specializationtracktype, LEAST($3::integer, $4::integer), 0::real)`,
 				playerID, trackType, delta, maxXP)
@@ -1773,9 +1776,9 @@ func cmdAwardXP(playerID int64, trackType string, delta int32) Cmd {
 	}
 }
 
-func cmdRenameCharacter(accountID int64, name string) Cmd {
+func cmdRenameCharacter(pool *pgxpool.Pool, accountID int64, name string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if accountID == 0 {
@@ -1785,7 +1788,7 @@ func cmdRenameCharacter(accountID int64, name string) Cmd {
 		if name == "" {
 			return msgMutate{err: fmt.Errorf("name required")}
 		}
-		_, err := globalDB.Exec(context.Background(), `SELECT dune.set_character_name($1, $2)`, accountID, name)
+		_, err := pool.Exec(context.Background(), `SELECT dune.set_character_name($1, $2)`, accountID, name)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("rename character: %w", err)}
 		}
@@ -1836,9 +1839,9 @@ func processDeleteCharacter(p deleteCharacterParams) error {
 // dune.delete_account proc, which deletes the player actors (with row locking),
 // respawn beacons, and account row; writes an account_removal_log audit entry;
 // fires guild/party/ownership cascades; and pg_notifies the live server.
-func cmdDeleteCharacter(accountID int64, reason string) Cmd {
+func cmdDeleteCharacter(pool *pgxpool.Pool, accountID int64, reason string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
@@ -1846,11 +1849,11 @@ func cmdDeleteCharacter(accountID int64, reason string) Cmd {
 			accountID: accountID,
 			reason:    reason,
 			resolveUser: func(id int64) (string, error) {
-				return rawFuncomID(ctx, id)
+				return rawFuncomID(ctx, pool, id)
 			},
 			deleteAccount: func(user, reason string) (bool, error) {
 				var deleted bool
-				if err := globalDB.QueryRow(ctx,
+				if err := pool.QueryRow(ctx,
 					`SELECT dune.delete_account($1, $2)`, user, reason).Scan(&deleted); err != nil {
 					return false, err
 				}
@@ -1865,12 +1868,12 @@ func cmdDeleteCharacter(accountID int64, reason string) Cmd {
 	}
 }
 
-func cmdGetPlayerTags(accountID int64) Cmd {
+func cmdGetPlayerTags(pool *pgxpool.Pool, accountID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgTags{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(),
+		rows, err := pool.Query(context.Background(),
 			`SELECT tag FROM dune.player_tags WHERE account_id=$1 ORDER BY tag`, accountID)
 		if err != nil {
 			return msgTags{err: err}
@@ -1891,9 +1894,9 @@ func cmdGetPlayerTags(accountID int64) Cmd {
 	}
 }
 
-func cmdUpdatePlayerTags(accountID int64, add []string, remove []string) Cmd {
+func cmdUpdatePlayerTags(pool *pgxpool.Pool, accountID int64, add []string, remove []string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		var addArg, removeArg interface{}
@@ -1907,7 +1910,7 @@ func cmdUpdatePlayerTags(accountID int64, add []string, remove []string) Cmd {
 		} else {
 			removeArg = []string{}
 		}
-		_, err := globalDB.Exec(context.Background(),
+		_, err := pool.Exec(context.Background(),
 			`SELECT dune.update_player_tags($1, $2::text[], $3::text[])`, accountID, addArg, removeArg)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("update player tags: %w", err)}
@@ -1921,9 +1924,9 @@ func cmdUpdatePlayerTags(accountID int64, add []string, remove []string) Cmd {
 // complete_journey_story_nodes_for_player, update_returning_player_status,
 // delete_account, and other procs — distinct from encrypted_funcom_id which
 // stores the human-readable display name (e.g. "Icehunter#55381").
-func rawFuncomID(ctx context.Context, accountID int64) (string, error) {
+func rawFuncomID(ctx context.Context, pool *pgxpool.Pool, accountID int64) (string, error) {
 	var id string
-	err := globalDB.QueryRow(ctx, `SELECT "user" FROM dune.accounts WHERE id = $1`, accountID).Scan(&id)
+	err := pool.QueryRow(ctx, `SELECT "user" FROM dune.accounts WHERE id = $1`, accountID).Scan(&id)
 	return id, err
 }
 
@@ -2085,17 +2088,17 @@ func cmdEnsureGMIdentity(ctx context.Context) error {
 	return nil
 }
 
-func cmdGrantReturningPlayerAward(accountID int64) Cmd {
+func cmdGrantReturningPlayerAward(pool *pgxpool.Pool, accountID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
-		rawID, err := rawFuncomID(ctx, accountID)
+		rawID, err := rawFuncomID(ctx, pool, accountID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("look up funcom id: %w", err)}
 		}
-		_, err = globalDB.Exec(ctx, `
+		_, err = pool.Exec(ctx, `
 			UPDATE dune.encrypted_player_state
 			SET last_returning_player_awarded_time = NULL,
 			    last_returning_player_event_time = NULL
@@ -2103,7 +2106,7 @@ func cmdGrantReturningPlayerAward(accountID int64) Cmd {
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("reset returning player timestamps: %w", err)}
 		}
-		_, err = globalDB.Exec(ctx, `SELECT dune.update_returning_player_status($1, 0)`, rawID)
+		_, err = pool.Exec(ctx, `SELECT dune.update_returning_player_status($1, 0)`, rawID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("update_returning_player_status: %w", err)}
 		}
@@ -2111,13 +2114,13 @@ func cmdGrantReturningPlayerAward(accountID int64) Cmd {
 	}
 }
 
-func cmdDismissReturningPlayerAward(accountID int64) Cmd {
+func cmdDismissReturningPlayerAward(pool *pgxpool.Pool, accountID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
-		_, err := globalDB.Exec(ctx, `
+		_, err := pool.Exec(ctx, `
 			UPDATE dune.encrypted_player_state
 			SET last_returning_player_awarded_time = NOW(),
 			    last_returning_player_event_time = NOW()
@@ -2129,18 +2132,18 @@ func cmdDismissReturningPlayerAward(accountID int64) Cmd {
 	}
 }
 
-func cmdDeleteAccount(accountID int64, reason string) Cmd {
+func cmdDeleteAccount(pool *pgxpool.Pool, accountID int64, reason string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
-		rawID, err := rawFuncomID(ctx, accountID)
+		rawID, err := rawFuncomID(ctx, pool, accountID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("look up funcom id: %w", err)}
 		}
 		var result bool
-		err = globalDB.QueryRow(ctx, `SELECT dune.delete_account($1, $2)`, rawID, reason).Scan(&result)
+		err = pool.QueryRow(ctx, `SELECT dune.delete_account($1, $2)`, rawID, reason).Scan(&result)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("delete account: %w", err)}
 		}
@@ -2148,15 +2151,15 @@ func cmdDeleteAccount(accountID int64, reason string) Cmd {
 	}
 }
 
-func cmdDeleteItem(itemID int64) Cmd {
+func cmdDeleteItem(pool *pgxpool.Pool, itemID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if itemID == 0 {
 			return msgMutate{err: fmt.Errorf("item ID required")}
 		}
-		_, err := globalDB.Exec(context.Background(), `SELECT dune.delete_item($1::bigint)`, itemID)
+		_, err := pool.Exec(context.Background(), `SELECT dune.delete_item($1::bigint)`, itemID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("delete item: %w", err)}
 		}
@@ -2164,9 +2167,9 @@ func cmdDeleteItem(itemID int64) Cmd {
 	}
 }
 
-func cmdResetSpecializations(playerID int64, trackType string) Cmd {
+func cmdResetSpecializations(pool *pgxpool.Pool, playerID int64, trackType string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if playerID == 0 {
@@ -2175,16 +2178,16 @@ func cmdResetSpecializations(playerID int64, trackType string) Cmd {
 		ctx := context.Background()
 
 		if trackType == "" || strings.EqualFold(trackType, "all") {
-			if _, err := globalDB.Exec(ctx, `SELECT dune.reset_specialization_tracks($1)`, playerID); err != nil {
+			if _, err := pool.Exec(ctx, `SELECT dune.reset_specialization_tracks($1)`, playerID); err != nil {
 				return msgMutate{err: fmt.Errorf("reset tracks: %w", err)}
 			}
-			if _, err := globalDB.Exec(ctx, `SELECT dune.reset_specialization_keystones($1)`, playerID); err != nil {
+			if _, err := pool.Exec(ctx, `SELECT dune.reset_specialization_keystones($1)`, playerID); err != nil {
 				return msgMutate{err: fmt.Errorf("reset keystones: %w", err)}
 			}
 			return msgMutate{ok: fmt.Sprintf("Reset all spec tracks + keystones for player %d", playerID)}
 		}
 
-		res, err := globalDB.Exec(ctx, `
+		res, err := pool.Exec(ctx, `
 			DELETE FROM dune.specialization_tracks
 			WHERE player_id = $1::bigint AND track_type::text = $2::text`, playerID, trackType)
 		if err != nil {
@@ -2209,11 +2212,11 @@ type msgOnlineState struct {
 	err  error
 }
 
-func cmdFetchOnlineState() Msg {
-	if globalDB == nil {
+func cmdFetchOnlineState(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgOnlineState{err: fmt.Errorf("not connected")}
 	}
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT ps.player_controller_id,
 		       COALESCE(ps.character_name, ''),
 		       COALESCE(a.map, ''),
@@ -2250,14 +2253,14 @@ func cmdFetchOnlineState() Msg {
 // default). Callers must treat an unknown cap as "stacks freely" rather than
 // "one per slot" — otherwise stackables we lack data for (e.g. Ammo) get
 // counted as one inventory slot per unit. See effectiveStackMax.
-func resolveStackMax(ctx context.Context, template string, quality int64) (stackMax int64, known bool, err error) {
+func resolveStackMax(ctx context.Context, pool *pgxpool.Pool, template string, quality int64) (stackMax int64, known bool, err error) {
 	if itemData.Items != nil {
 		if rule, ok := itemData.Items[strings.ToLower(template)]; ok && rule.StackMax > 0 {
 			return rule.StackMax, true, nil
 		}
 	}
 	var maxStack int64
-	if err := globalDB.QueryRow(ctx, `
+	if err := pool.QueryRow(ctx, `
 		SELECT COALESCE(MAX(stack_size), 0)
 		FROM dune.items
 		WHERE template_id = $1::text AND quality_level = $2::bigint`, template, quality).Scan(&maxStack); err != nil {
@@ -2284,7 +2287,7 @@ func effectiveStackMax(stackMax int64, known bool, qty int64) int64 {
 	return stackMax
 }
 
-func resolveItemVolume(ctx context.Context, template string) (float64, error) {
+func resolveItemVolume(ctx context.Context, pool *pgxpool.Pool, template string) (float64, error) {
 	if itemData.Items != nil {
 		if rule, ok := itemData.Items[strings.ToLower(template)]; ok {
 			// volume=0 is valid (item takes no inventory space).
@@ -2292,7 +2295,7 @@ func resolveItemVolume(ctx context.Context, template string) (float64, error) {
 		}
 	}
 	var vol pgtype.Float8
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 		SELECT MAX(volume_override)
 		FROM dune.items
 		WHERE template_id = $1::text AND volume_override IS NOT NULL`, template).Scan(&vol)
@@ -2316,11 +2319,11 @@ func formatCurrencyIDs(ids []int16) string {
 	return strings.Join(parts, ", ")
 }
 
-func resolveScripCurrencyID(ctx context.Context) (int16, error) {
+func resolveScripCurrencyID(ctx context.Context, pool *pgxpool.Pool) (int16, error) {
 	if scripCurrencyID >= 0 {
 		return int16(scripCurrencyID), nil
 	}
-	rows, err := globalDB.Query(ctx, `
+	rows, err := pool.Query(ctx, `
 		SELECT currency_id, COALESCE(SUM(balance), 0) AS total
 		FROM dune.player_virtual_currency_balances
 		WHERE currency_id <> dune.get_solaris_id()
@@ -2464,11 +2467,11 @@ func syncFactionComponent(ctx context.Context, db factionComponentDB, controller
 	return writeFactionComponent(ctx, db, controllerID, arr)
 }
 
-func applyFactionRepDelta(ctx context.Context, actorID int64, factionID int16, delta int32) msgMutate {
+func applyFactionRepDelta(ctx context.Context, pool *pgxpool.Pool, actorID int64, factionID int16, delta int32) msgMutate {
 	// Route through set_player_faction_reputation which handles tier tags correctly.
 	// First get current rep to compute the new absolute value.
 	var currentRep int32
-	_ = globalDB.QueryRow(ctx, `
+	_ = pool.QueryRow(ctx, `
 		SELECT COALESCE(reputation_amount, 0) FROM dune.player_faction_reputation
 		WHERE actor_id = $1::bigint AND faction_id = $2::smallint`, actorID, factionID).Scan(&currentRep)
 
@@ -2480,13 +2483,13 @@ func applyFactionRepDelta(ctx context.Context, actorID int64, factionID int16, d
 		newRep = factionRepCap
 	}
 
-	_, err := globalDB.Exec(ctx, `
+	_, err := pool.Exec(ctx, `
 		SELECT dune.set_player_faction_reputation($1::bigint, $2::smallint, $3::integer)`,
 		actorID, factionID, newRep)
 	if err != nil {
 		return msgMutate{err: fmt.Errorf("set_player_faction_reputation: %w", err)}
 	}
-	if err = syncFactionComponent(ctx, globalDB, actorID); err != nil {
+	if err = syncFactionComponent(ctx, pool, actorID); err != nil {
 		return msgMutate{err: fmt.Errorf("update FactionPlayerComponent rep: %w", err)}
 	}
 
@@ -2552,9 +2555,9 @@ func factionDisplayName(id int16) string {
 	}
 }
 
-func cmdSetFactionTier(actorID int64, factionID int16, tier int) Cmd {
+func cmdSetFactionTier(pool *pgxpool.Pool, actorID int64, factionID int16, tier int) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if tier < 0 || tier > 20 {
@@ -2572,16 +2575,16 @@ func cmdSetFactionTier(actorID int64, factionID int16, tier int) Cmd {
 		// character previously wrote rep with no player_faction row, so the game
 		// treated them as unaligned. change_player_faction upserts alignment and
 		// fires pg_notify('faction_notify_channel'). neutral_faction_id = 3 ("None").
-		if _, err := globalDB.Exec(ctx,
+		if _, err := pool.Exec(ctx,
 			`SELECT dune.change_player_faction($1::bigint, $2::smallint, 3::smallint, NOW()::timestamp)`,
 			actorID, factionID); err != nil {
 			return msgMutate{err: fmt.Errorf("change_player_faction: %w", err)}
 		}
-		if _, err := globalDB.Exec(ctx, `SELECT dune.set_player_faction_reputation($1, $2, $3)`,
+		if _, err := pool.Exec(ctx, `SELECT dune.set_player_faction_reputation($1, $2, $3)`,
 			actorID, factionID, rep); err != nil {
 			return msgMutate{err: fmt.Errorf("set_player_faction_reputation: %w", err)}
 		}
-		if err := syncFactionComponent(ctx, globalDB, actorID); err != nil {
+		if err := syncFactionComponent(ctx, pool, actorID); err != nil {
 			return msgMutate{err: fmt.Errorf("update FactionPlayerComponent rep: %w", err)}
 		}
 		fName := factionDisplayName(factionID)
@@ -2648,11 +2651,11 @@ type msgSearchCols struct {
 	err     error
 }
 
-func cmdFetchTables() Msg {
-	if globalDB == nil {
+func cmdFetchTables(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgTables{err: fmt.Errorf("not connected")}
 	}
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT relname, COALESCE(n_live_tup, 0)
 		FROM pg_stat_user_tables
 		ORDER BY relname`)
@@ -2671,12 +2674,12 @@ func cmdFetchTables() Msg {
 	return msgTables{rows: result}
 }
 
-func cmdDescribeTable(tbl string) Cmd {
+func cmdDescribeTable(pool *pgxpool.Pool, tbl string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgDescribe{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT column_name, data_type,
 			       CASE is_nullable WHEN 'YES' THEN 'null' ELSE 'not null' END
 			FROM information_schema.columns
@@ -2737,12 +2740,12 @@ func sampleTableRows(rows pgx.Rows) ([][]string, error) {
 	return result, nil
 }
 
-func cmdSampleTable(tbl string, limit int) Cmd {
+func cmdSampleTable(pool *pgxpool.Pool, tbl string, limit int) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgSample{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), sampleTableQuery(tbl, limit))
+		rows, err := pool.Query(context.Background(), sampleTableQuery(tbl, limit))
 		if err != nil {
 			return msgSample{table: tbl, err: err}
 		}
@@ -2760,12 +2763,12 @@ func cmdSampleTable(tbl string, limit int) Cmd {
 	}
 }
 
-func cmdSearchColumns(term string) Cmd {
+func cmdSearchColumns(pool *pgxpool.Pool, term string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgSearchCols{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT table_name, column_name, data_type
 			FROM information_schema.columns
 			WHERE table_schema = $1::text
@@ -2793,9 +2796,9 @@ func cmdSearchColumns(term string) Cmd {
 
 // ── journey / progression commands ───────────────────────────────────────────
 
-func cmdFetchJourneyNodes(accountID int64) Cmd {
+func cmdFetchJourneyNodes(pool *pgxpool.Pool, accountID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgJourney{err: fmt.Errorf("not connected")}
 		}
 
@@ -2807,7 +2810,7 @@ func cmdFetchJourneyNodes(accountID int64) Cmd {
 			return msgJourney{rows: entry.nodes}
 		}
 
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT story_node_id,
 			       (complete_condition_state = 'true'::jsonb) AS is_complete,
 			       (reveal_condition_state   = 'true'::jsonb) AS is_revealed,
@@ -2921,15 +2924,15 @@ func factionIDByName(name string) int16 {
 	return 0
 }
 
-func cmdCompleteJourneyNode(accountID int64, nodeID string) Cmd {
+func cmdCompleteJourneyNode(pool *pgxpool.Pool, accountID int64, nodeID string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
 		// Complete the node itself plus all child nodes (nodeID + ".anything").
 		// The game checks sub-nodes to determine quest completion state.
-		res, err := globalDB.Exec(ctx, `
+		res, err := pool.Exec(ctx, `
 			UPDATE dune.journey_story_node
 			SET complete_condition_state = 'true'::jsonb,
 			    reveal_condition_state   = 'true'::jsonb
@@ -2942,7 +2945,7 @@ func cmdCompleteJourneyNode(accountID int64, nodeID string) Cmd {
 		updated := res.RowsAffected()
 		if updated == 0 {
 			// Node doesn't exist yet — insert it.
-			_, err = globalDB.Exec(ctx, `
+			_, err = pool.Exec(ctx, `
 				INSERT INTO dune.journey_story_node
 					(account_id, story_node_id, has_pending_reward,
 					 complete_condition_state, reveal_condition_state,
@@ -2964,12 +2967,12 @@ func cmdCompleteJourneyNode(accountID int64, nodeID string) Cmd {
 		// written — which is why journey-only completion historically did not
 		// "stick" without login/logout cycles.
 		appliedTags := tagsForJourneyNodeSubtree(nodeID)
-		extra, err := applyTagsWithTierBump(ctx, accountID, appliedTags)
+		extra, err := applyTagsWithTierBump(ctx, pool, accountID, appliedTags)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 
-		svExtra, svErr := maybeGrantSpiceVision(ctx, accountID, nodeID)
+		svExtra, svErr := maybeGrantSpiceVision(ctx, pool, accountID, nodeID)
 		if svErr != nil {
 			return msgMutate{err: svErr}
 		}
@@ -2985,11 +2988,11 @@ func cmdCompleteJourneyNode(accountID int64, nodeID string) Cmd {
 // in-game rank UI reflects the promotion. Never lowers existing rep.
 // Returns a short " , +K tag(s), bumped rep for N faction(s)" fragment for
 // inclusion in the caller's success message (empty when no tags applied).
-func applyTagsWithTierBump(ctx context.Context, accountID int64, tags []string) (string, error) {
+func applyTagsWithTierBump(ctx context.Context, pool *pgxpool.Pool, accountID int64, tags []string) (string, error) {
 	if len(tags) == 0 {
 		return "", nil
 	}
-	if _, err := globalDB.Exec(ctx,
+	if _, err := pool.Exec(ctx,
 		`SELECT dune.update_player_tags($1, $2::text[], '{}'::text[])`,
 		accountID, tags); err != nil {
 		return "", fmt.Errorf("apply tags: %w", err)
@@ -3003,7 +3006,7 @@ func applyTagsWithTierBump(ctx context.Context, accountID int64, tags []string) 
 	}
 
 	var controllerID int64
-	_ = globalDB.QueryRow(ctx, `
+	_ = pool.QueryRow(ctx, `
 		SELECT player_controller_id FROM dune.player_state
 		WHERE account_id = $1 LIMIT 1`, accountID).Scan(&controllerID)
 	if controllerID == 0 {
@@ -3020,7 +3023,7 @@ func applyTagsWithTierBump(ctx context.Context, accountID int64, tags []string) 
 			continue
 		}
 		var current int32
-		_ = globalDB.QueryRow(ctx, `
+		_ = pool.QueryRow(ctx, `
 			SELECT COALESCE(reputation_amount, 0)
 			FROM dune.player_faction_reputation
 			WHERE actor_id = $1 AND faction_id = $2`,
@@ -3028,7 +3031,7 @@ func applyTagsWithTierBump(ctx context.Context, accountID int64, tags []string) 
 		if current >= rep {
 			continue
 		}
-		if _, err := globalDB.Exec(ctx,
+		if _, err := pool.Exec(ctx,
 			`SELECT dune.set_player_faction_reputation($1::bigint, $2::smallint, $3::integer)`,
 			controllerID, fid, rep); err != nil {
 			return "", fmt.Errorf("bump %s rep: %w", faction, err)
@@ -3038,7 +3041,7 @@ func applyTagsWithTierBump(ctx context.Context, accountID int64, tags []string) 
 	if bumped > 0 {
 		// Rebuild the component once from the now-updated rep table (Gap 2 fix:
 		// the old per-faction update no-oped on an empty m_FactionDataArray).
-		if err := syncFactionComponent(ctx, globalDB, controllerID); err != nil {
+		if err := syncFactionComponent(ctx, pool, controllerID); err != nil {
 			return "", fmt.Errorf("sync FactionPlayerComponent: %w", err)
 		}
 		extra += fmt.Sprintf(", bumped rep for %d faction(s)", bumped)
@@ -3062,8 +3065,8 @@ func resolveContractTags(contractID string) (string, []string, error) {
 }
 
 // cmdCompleteContract applies the AddedFlagsOnCompletion tags for one contract.
-func cmdCompleteContract(accountID int64, contractID string) Cmd {
-	return cmdCompleteContracts(accountID, []string{contractID})
+func cmdCompleteContract(pool *pgxpool.Pool, accountID int64, contractID string) Cmd {
+	return cmdCompleteContracts(pool, accountID, []string{contractID})
 }
 
 // cmdCompleteContracts applies the union of AddedFlagsOnCompletion across
@@ -3071,9 +3074,9 @@ func cmdCompleteContract(accountID int64, contractID string) Cmd {
 // pass, plus any SkillsKeyRewards skill-block unlocks. Unknown contracts
 // cause the whole batch to fail before any write so the operation is
 // all-or-nothing.
-func cmdCompleteContracts(accountID int64, contractIDs []string) Cmd {
+func cmdCompleteContracts(pool *pgxpool.Pool, accountID int64, contractIDs []string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if err := validateContractMutationInput(accountID, contractIDs); err != nil {
@@ -3086,12 +3089,12 @@ func cmdCompleteContracts(accountID int64, contractIDs []string) Cmd {
 		}
 
 		ctx := context.Background()
-		extra, err := applyTagsWithTierBump(ctx, accountID, set.removeTags)
+		extra, err := applyTagsWithTierBump(ctx, pool, accountID, set.removeTags)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 
-		grantedExtra, err := applyContractSkillGrants(ctx, accountID, set.removeSkills)
+		grantedExtra, err := applyContractSkillGrants(ctx, pool, accountID, set.removeSkills)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -3102,7 +3105,7 @@ func cmdCompleteContracts(accountID int64, contractIDs []string) Cmd {
 		// force-completed. ContractName.Name uses the short alias form
 		// (no DA_CT_ prefix).
 		shortNames := contractShortNames(set.resolvedNames)
-		dismissedExtra, err := dismissActiveContracts(ctx, accountID, shortNames)
+		dismissedExtra, err := dismissActiveContracts(ctx, pool, accountID, shortNames)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -3163,11 +3166,11 @@ func buildContractRemovalSet(contractIDs []string) (contractRemovalSet, error) {
 	return set, nil
 }
 
-func applyContractSkillGrants(ctx context.Context, accountID int64, skills []string) (string, error) {
+func applyContractSkillGrants(ctx context.Context, pool *pgxpool.Pool, accountID int64, skills []string) (string, error) {
 	if len(skills) == 0 {
 		return "", nil
 	}
-	return grantSkillBlocks(ctx, accountID, skills)
+	return grantSkillBlocks(ctx, pool, accountID, skills)
 }
 
 func contractShortNames(resolvedNames []string) []string {
@@ -3178,11 +3181,11 @@ func contractShortNames(resolvedNames []string) []string {
 	return shortNames
 }
 
-func removeContractTags(ctx context.Context, accountID int64, removeTags []string) error {
+func removeContractTags(ctx context.Context, pool *pgxpool.Pool, accountID int64, removeTags []string) error {
 	if len(removeTags) == 0 {
 		return nil
 	}
-	if _, err := globalDB.Exec(ctx,
+	if _, err := pool.Exec(ctx,
 		`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
 		accountID, removeTags); err != nil {
 		return fmt.Errorf("remove tags: %w", err)
@@ -3190,15 +3193,15 @@ func removeContractTags(ctx context.Context, accountID int64, removeTags []strin
 	return nil
 }
 
-func loadContractPawnID(ctx context.Context, accountID int64) int64 {
+func loadContractPawnID(ctx context.Context, pool *pgxpool.Pool, accountID int64) int64 {
 	var pawnID int64
-	_ = globalDB.QueryRow(ctx,
+	_ = pool.QueryRow(ctx,
 		`SELECT player_pawn_id FROM dune.player_state WHERE account_id = $1 LIMIT 1`,
 		accountID).Scan(&pawnID)
 	return pawnID
 }
 
-func stripContractSkillBlocks(ctx context.Context, pawnID int64, removeSkills []string) (int, error) {
+func stripContractSkillBlocks(ctx context.Context, pool *pgxpool.Pool, pawnID int64, removeSkills []string) (int, error) {
 	if pawnID == 0 || len(removeSkills) == 0 {
 		return 0, nil
 	}
@@ -3206,7 +3209,7 @@ func stripContractSkillBlocks(ctx context.Context, pawnID int64, removeSkills []
 	stripped := 0
 	for _, skill := range removeSkills {
 		key := fmt.Sprintf(`(TagName="%s")`, skill)
-		tag, err := globalDB.Exec(ctx, `
+		tag, err := pool.Exec(ctx, `
 			UPDATE dune.fgl_entities fe
 			SET components = jsonb_set(
 				fe.components,
@@ -3244,9 +3247,9 @@ func contractBatchSummary(resolvedNames []string) string {
 // Skills.Key.* ModuleData entries that cmdCompleteContracts wrote. Skill blocks
 // are only removed when SkillPointsSpent <= 1 — branches the player genuinely
 // levelled beyond the admin grant are left intact.
-func cmdReverseContracts(accountID int64, contractIDs []string) Cmd {
+func cmdReverseContracts(pool *pgxpool.Pool, accountID int64, contractIDs []string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if err := validateContractMutationInput(accountID, contractIDs); err != nil {
@@ -3259,12 +3262,12 @@ func cmdReverseContracts(accountID int64, contractIDs []string) Cmd {
 		}
 
 		ctx := context.Background()
-		if err := removeContractTags(ctx, accountID, set.removeTags); err != nil {
+		if err := removeContractTags(ctx, pool, accountID, set.removeTags); err != nil {
 			return msgMutate{err: err}
 		}
 
-		pawnID := loadContractPawnID(ctx, accountID)
-		stripped, err := stripContractSkillBlocks(ctx, pawnID, set.removeSkills)
+		pawnID := loadContractPawnID(ctx, pool, accountID)
+		stripped, err := stripContractSkillBlocks(ctx, pool, pawnID, set.removeSkills)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -3282,9 +3285,9 @@ func cmdReverseContracts(accountID int64, contractIDs []string) Cmd {
 // rows (e.g. SuspensorGrenade_Reduction lingers after Skills.Key.Trooper1
 // is gone) which the game still treats as refundable for 1 SP each (the
 // "phantom SP" bug). Removing every SkillArea-matching module avoids that.
-func cmdResetJobSkills(accountID int64, job string) Cmd {
+func cmdResetJobSkills(pool *pgxpool.Pool, accountID int64, job string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if accountID == 0 {
@@ -3297,7 +3300,7 @@ func cmdResetJobSkills(accountID int64, job string) Cmd {
 		ctx := context.Background()
 
 		var pawnID int64
-		_ = globalDB.QueryRow(ctx, `
+		_ = pool.QueryRow(ctx, `
 			SELECT player_pawn_id FROM dune.player_state
 			WHERE account_id = $1 LIMIT 1`, accountID).Scan(&pawnID)
 		if pawnID == 0 {
@@ -3310,7 +3313,7 @@ func cmdResetJobSkills(accountID int64, job string) Cmd {
 		for i, m := range modules {
 			keys[i] = fmt.Sprintf(`(TagName="%s")`, m)
 		}
-		tag, err := globalDB.Exec(ctx, `
+		tag, err := pool.Exec(ctx, `
 			UPDATE dune.fgl_entities fe
 			SET components = jsonb_set(
 				fe.components,
@@ -3356,9 +3359,9 @@ func resolveStarterClassAbility(job string) (string, error) {
 	return ability, nil
 }
 
-func loadPawnIDForAccount(ctx context.Context, accountID int64) (int64, error) {
+func loadPawnIDForAccount(ctx context.Context, pool *pgxpool.Pool, accountID int64) (int64, error) {
 	var pawnID int64
-	_ = globalDB.QueryRow(ctx, `
+	_ = pool.QueryRow(ctx, `
 		SELECT player_pawn_id FROM dune.player_state
 		WHERE account_id = $1 LIMIT 1`, accountID).Scan(&pawnID)
 	if pawnID == 0 {
@@ -3367,9 +3370,9 @@ func loadPawnIDForAccount(ctx context.Context, accountID int64) (int64, error) {
 	return pawnID, nil
 }
 
-func loadStarterTagForPawn(ctx context.Context, pawnID int64) string {
+func loadStarterTagForPawn(ctx context.Context, pool *pgxpool.Pool, pawnID int64) string {
 	var starterTag string
-	_ = globalDB.QueryRow(ctx, `
+	_ = pool.QueryRow(ctx, `
 		SELECT fe.components->'FLevelComponent'->1->'StarterSkillTreeTag'->>'TagName'
 		FROM dune.fgl_entities fe
 		JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
@@ -3402,12 +3405,13 @@ func starterClassTagAndKeys(job, ability string) (starterTag, starterKey, abilit
 
 func applyStarterClassUpdate(
 	ctx context.Context,
+	pool *pgxpool.Pool,
 	pawnID int64,
 	newStarterTag, newStarterKey string,
 	keysToRemove []string,
 	newAbilityKey string,
 ) error {
-	_, err := globalDB.Exec(ctx, `
+	_, err := pool.Exec(ctx, `
 		UPDATE dune.fgl_entities fe
 		SET components = jsonb_set(
 			jsonb_set(
@@ -3452,9 +3456,9 @@ func formatStarterClassMessage(job, newStarterTag, newAbility string, removedCou
 //
 // Result on next login: only one class is recognised as starter, with its
 // canonical first ability already learned.
-func cmdSetStarterClass(accountID int64, job string) Cmd {
+func cmdSetStarterClass(pool *pgxpool.Pool, accountID int64, job string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if accountID == 0 {
@@ -3466,7 +3470,7 @@ func cmdSetStarterClass(accountID int64, job string) Cmd {
 		}
 		ctx := context.Background()
 
-		pawnID, err := loadPawnIDForAccount(ctx, accountID)
+		pawnID, err := loadPawnIDForAccount(ctx, pool, accountID)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -3474,7 +3478,7 @@ func cmdSetStarterClass(accountID int64, job string) Cmd {
 		// Look up the current starter so we can deactivate it. Format is
 		// "Skills.Key.<Job>1"; we strip the prefix/suffix to recover the
 		// job name and look up its starter-ability for removal.
-		oldStarterTag := loadStarterTagForPawn(ctx, pawnID)
+		oldStarterTag := loadStarterTagForPawn(ctx, pool, pawnID)
 		keysToRemove := starterKeysToRemove(oldStarterTag, job)
 		newStarterTag, newStarterKey, newAbilityKey := starterClassTagAndKeys(job, newAbility)
 
@@ -3482,7 +3486,7 @@ func cmdSetStarterClass(accountID int64, job string) Cmd {
 		// new starter block, grant new starter ability. - operator on an
 		// empty text[] is a no-op so it's safe when there's no old starter
 		// to clean up (e.g. fresh character with StarterSkillTreeTag=None).
-		if err := applyStarterClassUpdate(ctx, pawnID, newStarterTag, newStarterKey, keysToRemove, newAbilityKey); err != nil {
+		if err := applyStarterClassUpdate(ctx, pool, pawnID, newStarterTag, newStarterKey, keysToRemove, newAbilityKey); err != nil {
 			return msgMutate{err: err}
 		}
 
@@ -3496,9 +3500,9 @@ func cmdSetStarterClass(accountID int64, job string) Cmd {
 // contract-granted via SkillsKeyRewards; the rest are normally unlocked by
 // trainer dialogue or auto on level progression, so the admin Unlock Trainer
 // action calls this after the contract batch to bypass those gates.
-func cmdGrantJobSkills(accountID int64, job string) Cmd {
+func cmdGrantJobSkills(pool *pgxpool.Pool, accountID int64, job string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if accountID == 0 {
@@ -3509,7 +3513,7 @@ func cmdGrantJobSkills(accountID int64, job string) Cmd {
 			return msgMutate{err: fmt.Errorf("unknown job %q (check tags-data.json job_skill_blocks)", job)}
 		}
 		ctx := context.Background()
-		extra, err := grantSkillBlocks(ctx, accountID, blocks)
+		extra, err := grantSkillBlocks(ctx, pool, accountID, blocks)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -3523,18 +3527,18 @@ func cmdGrantJobSkills(accountID int64, job string) Cmd {
 // completing a contract via tags we need to remove the live instance
 // otherwise the player keeps seeing "Deploy Assault Seekers" / etc as
 // outstanding. No-op if the player never had the contract active.
-func dismissActiveContracts(ctx context.Context, accountID int64, shortNames []string) (string, error) {
+func dismissActiveContracts(ctx context.Context, pool *pgxpool.Pool, accountID int64, shortNames []string) (string, error) {
 	if len(shortNames) == 0 {
 		return "", nil
 	}
 	var pawnID int64
-	_ = globalDB.QueryRow(ctx, `
+	_ = pool.QueryRow(ctx, `
 		SELECT player_pawn_id FROM dune.player_state
 		WHERE account_id = $1 LIMIT 1`, accountID).Scan(&pawnID)
 	if pawnID == 0 {
 		return "", nil
 	}
-	tag, err := globalDB.Exec(ctx, `
+	tag, err := pool.Exec(ctx, `
 		DELETE FROM dune.items
 		WHERE template_id = 'ContractItem'
 		  AND inventory_id IN (
@@ -3559,9 +3563,9 @@ func dismissActiveContracts(ctx context.Context, accountID int64, shortNames []s
 // exists it's left alone — preserves any further SP the player may have
 // already spent on that branch's child nodes. Returns a short fragment to
 // append to the caller's success message.
-func grantSkillBlocks(ctx context.Context, accountID int64, skillKeys []string) (string, error) {
+func grantSkillBlocks(ctx context.Context, pool *pgxpool.Pool, accountID int64, skillKeys []string) (string, error) {
 	var pawnID int64
-	_ = globalDB.QueryRow(ctx, `
+	_ = pool.QueryRow(ctx, `
 		SELECT player_pawn_id FROM dune.player_state
 		WHERE account_id = $1 LIMIT 1`, accountID).Scan(&pawnID)
 	if pawnID == 0 {
@@ -3577,7 +3581,7 @@ func grantSkillBlocks(ctx context.Context, accountID int64, skillKeys []string) 
 		//     means "available but not yet purchased").
 		// SpSpent >= 1 is left alone so any further SP the player has
 		// already spent on child nodes survives.
-		tag, err := globalDB.Exec(ctx, `
+		tag, err := pool.Exec(ctx, `
 			UPDATE dune.fgl_entities fe
 			SET components = jsonb_set(
 				fe.components,
@@ -3631,15 +3635,15 @@ const spiceVisionEnableSQL = `
 // maybeGrantSpiceVision conditionally enables SpiceVision for the account
 // when nodeID is within the FindTheFremen quest. It is a thin wrapper so
 // cmdCompleteJourneyNode stays under the complexity gate.
-func maybeGrantSpiceVision(ctx context.Context, accountID int64, nodeID string) (string, error) {
+func maybeGrantSpiceVision(ctx context.Context, pool *pgxpool.Pool, accountID int64, nodeID string) (string, error) {
 	if !nodeIDTriggersSpiceVision(nodeID) {
 		return "", nil
 	}
 	var pawnID int64
-	_ = globalDB.QueryRow(ctx,
+	_ = pool.QueryRow(ctx,
 		`SELECT player_pawn_id FROM dune.player_state WHERE account_id = $1 LIMIT 1`,
 		accountID).Scan(&pawnID)
-	return grantSpiceVision(ctx, pawnID)
+	return grantSpiceVision(ctx, pool, pawnID)
 }
 
 // nodeIDTriggersSpiceVision reports whether completing nodeID should also
@@ -3654,11 +3658,11 @@ func nodeIDTriggersSpiceVision(nodeID string) bool {
 // DuneCharacter FGL entity. It is idempotent — a no-op if already enabled.
 // Returns a short extra fragment for the caller's success message, or "" if
 // the pawn was not found or the flag was already set.
-func grantSpiceVision(ctx context.Context, pawnID int64) (string, error) {
+func grantSpiceVision(ctx context.Context, pool *pgxpool.Pool, pawnID int64) (string, error) {
 	if pawnID == 0 {
 		return ", spice vision skipped (no pawn yet)", nil
 	}
-	res, err := globalDB.Exec(ctx, spiceVisionEnableSQL, pawnID)
+	res, err := pool.Exec(ctx, spiceVisionEnableSQL, pawnID)
 	if err != nil {
 		return "", fmt.Errorf("grant spice vision: %w", err)
 	}
@@ -3689,13 +3693,13 @@ func allJourneyTags() []string {
 	return out
 }
 
-func cmdResetJourneyNode(accountID int64, nodeID string) Cmd {
+func cmdResetJourneyNode(pool *pgxpool.Pool, accountID int64, nodeID string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
-		_, err := globalDB.Exec(ctx, `
+		_, err := pool.Exec(ctx, `
 			UPDATE dune.journey_story_node
 			SET complete_condition_state = 'false'::jsonb,
 			    has_pending_reward       = false
@@ -3711,7 +3715,7 @@ func cmdResetJourneyNode(accountID int64, nodeID string) Cmd {
 		removeTags := tagsForJourneyNodeSubtree(nodeID)
 		extra := ""
 		if len(removeTags) > 0 {
-			if _, err = globalDB.Exec(ctx,
+			if _, err = pool.Exec(ctx,
 				`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
 				accountID, removeTags); err != nil {
 				return msgMutate{err: fmt.Errorf("remove node tags: %w", err)}
@@ -3722,13 +3726,13 @@ func cmdResetJourneyNode(accountID int64, nodeID string) Cmd {
 	}
 }
 
-func cmdWipeJourneyNodes(accountID int64) Cmd {
+func cmdWipeJourneyNodes(pool *pgxpool.Pool, accountID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
-		_, err := globalDB.Exec(ctx,
+		_, err := pool.Exec(ctx,
 			`SELECT dune.delete_all_journey_story_nodes($1)`, accountID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("wipe journey: %w", err)}
@@ -3739,7 +3743,7 @@ func cmdWipeJourneyNodes(accountID int64) Cmd {
 		removeTags := allJourneyTags()
 		extra := ""
 		if len(removeTags) > 0 {
-			if _, err = globalDB.Exec(ctx,
+			if _, err = pool.Exec(ctx,
 				`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
 				accountID, removeTags); err != nil {
 				return msgMutate{err: fmt.Errorf("remove journey tags: %w", err)}
@@ -3980,8 +3984,8 @@ func progressionUnlockTags(cfg progressionFactionConfig, targetTier int) []strin
 	return allTags
 }
 
-func resolveProgressionUnlockPlayer(ctx context.Context, actorID int64) (accountID, controllerID int64, flsID string, err error) {
-	if err = globalDB.QueryRow(ctx, `
+func resolveProgressionUnlockPlayer(ctx context.Context, pool *pgxpool.Pool, actorID int64) (accountID, controllerID int64, flsID string, err error) {
+	if err = pool.QueryRow(ctx, `
 		SELECT COALESCE(a.owner_account_id, 0),
 		       COALESCE(ps.player_controller_id, 0)
 		FROM dune.actors a
@@ -3993,7 +3997,7 @@ func resolveProgressionUnlockPlayer(ctx context.Context, actorID int64) (account
 	if controllerID == 0 {
 		return 0, 0, "", fmt.Errorf("player %d has no controller actor", actorID)
 	}
-	flsID, err = rawFuncomID(ctx, accountID)
+	flsID, err = rawFuncomID(ctx, pool, accountID)
 	if err != nil || flsID == "" {
 		return 0, 0, "", fmt.Errorf("player %d has no FLS ID", actorID)
 	}
@@ -4002,13 +4006,14 @@ func resolveProgressionUnlockPlayer(ctx context.Context, actorID int64) (account
 
 func applyProgressionUnlock(
 	ctx context.Context,
+	pool *pgxpool.Pool,
 	accountID, controllerID int64,
 	flsID string,
 	factionID int16,
 	targetTier int,
 	journeyNodes, allTags []string,
 ) error {
-	tx, err := globalDB.Begin(ctx)
+	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -4065,9 +4070,9 @@ func formatProgressionUnlockSuccess(
 		preset, faction, journeyNodeCount, factionName, progressionUnlockMaxTier, targetTier, controllerID)
 }
 
-func resolveProgressionAccountID(ctx context.Context, actorID int64) (int64, error) {
+func resolveProgressionAccountID(ctx context.Context, pool *pgxpool.Pool, actorID int64) (int64, error) {
 	var accountID int64
-	if err := globalDB.QueryRow(ctx,
+	if err := pool.QueryRow(ctx,
 		`SELECT COALESCE(owner_account_id, 0) FROM dune.actors WHERE id = $1`,
 		actorID).Scan(&accountID); err != nil || accountID == 0 {
 		return 0, fmt.Errorf("player %d not found or has no account", actorID)
@@ -4093,8 +4098,8 @@ func progressionReverseTags(baseTags, nodes []string) []string {
 	return allTags
 }
 
-func applyProgressionReverse(ctx context.Context, accountID int64, allTags, nodes []string) (int64, error) {
-	tx, err := globalDB.Begin(ctx)
+func applyProgressionReverse(ctx context.Context, pool *pgxpool.Pool, accountID int64, allTags, nodes []string) (int64, error) {
+	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -4135,9 +4140,9 @@ func formatProgressionReverseSuccess(preset, faction string, resetNodes int64, r
 //
 // faction: "atreides" | "harkonnen"
 // preset:  "ch3_start" (rank 5 — House Operator) | "rank19_eligible" (rank 19)
-func cmdProgressionUnlock(actorID int64, faction, preset string) Cmd {
+func cmdProgressionUnlock(pool *pgxpool.Pool, actorID int64, faction, preset string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 
@@ -4155,13 +4160,14 @@ func cmdProgressionUnlock(actorID int64, faction, preset string) Cmd {
 		allTags := progressionUnlockTags(cfg, targetTier)
 
 		ctx := context.Background()
-		accountID, controllerID, flsID, err := resolveProgressionUnlockPlayer(ctx, actorID)
+		accountID, controllerID, flsID, err := resolveProgressionUnlockPlayer(ctx, pool, actorID)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 
 		if err := applyProgressionUnlock(
 			ctx,
+			pool,
 			accountID,
 			controllerID,
 			flsID,
@@ -4188,9 +4194,9 @@ func cmdProgressionUnlock(actorID int64, faction, preset string) Cmd {
 // nodes from nodesForPreset back to not-complete and removes all tags the
 // forward function wrote. Reputation and faction alignment are not touched —
 // matching the existing per-node reset behaviour.
-func cmdReverseProgressionUnlock(actorID int64, faction, preset string) Cmd {
+func cmdReverseProgressionUnlock(pool *pgxpool.Pool, actorID int64, faction, preset string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 
@@ -4204,7 +4210,7 @@ func cmdReverseProgressionUnlock(actorID int64, faction, preset string) Cmd {
 		}
 
 		ctx := context.Background()
-		accountID, err := resolveProgressionAccountID(ctx, actorID)
+		accountID, err := resolveProgressionAccountID(ctx, pool, actorID)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -4213,7 +4219,7 @@ func cmdReverseProgressionUnlock(actorID int64, faction, preset string) Cmd {
 		baseTags := progressionUnlockTags(cfg, targetTier)
 		allTags := progressionReverseTags(baseTags, nodes)
 
-		resetNodes, err := applyProgressionReverse(ctx, accountID, allTags, nodes)
+		resetNodes, err := applyProgressionReverse(ctx, pool, accountID, allTags, nodes)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -4227,15 +4233,15 @@ func cmdReverseProgressionUnlock(actorID int64, faction, preset string) Cmd {
 	}
 }
 
-func cmdDeleteAllTutorials(playerID int64) Cmd {
+func cmdDeleteAllTutorials(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if playerID == 0 {
 			return msgMutate{err: fmt.Errorf("player ID required")}
 		}
-		_, err := globalDB.Exec(context.Background(),
+		_, err := pool.Exec(context.Background(),
 			`SELECT dune.delete_all_tutorial_entries($1)`, playerID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("delete tutorials: %w", err)}
@@ -4244,15 +4250,15 @@ func cmdDeleteAllTutorials(playerID int64) Cmd {
 	}
 }
 
-func cmdWipeCodex(accountID int64) Cmd {
+func cmdWipeCodex(pool *pgxpool.Pool, accountID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if accountID == 0 {
 			return msgMutate{err: fmt.Errorf("account ID required")}
 		}
-		_, err := globalDB.Exec(context.Background(),
+		_, err := pool.Exec(context.Background(),
 			`SELECT dune.delete_mnemonic_recall_lesson_all($1)`, accountID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("wipe codex: %w", err)}
@@ -4353,8 +4359,8 @@ func intelAtLevel(level int) int64 {
 
 // checkPlayerOffline returns an error if the player is currently online.
 // playerID is the pawn actor ID (PlayerCharacter).
-func checkPlayerOffline(ctx context.Context, playerID int64) error {
-	return checkPlayerOfflinePool(ctx, globalDB, playerID)
+func checkPlayerOffline(ctx context.Context, pool *pgxpool.Pool, playerID int64) error {
+	return checkPlayerOfflinePool(ctx, pool, playerID)
 }
 
 // checkPlayerOfflinePool is the injectable (ctx+pool) form of checkPlayerOffline.
@@ -4392,13 +4398,13 @@ type charXPOutcome struct {
 	capped       bool
 }
 
-func cmdFetchCharXP(playerID int64) Cmd {
+func cmdFetchCharXP(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgCharXP{err: fmt.Errorf("not connected")}
 		}
 		var xp int64
-		err := globalDB.QueryRow(context.Background(), `
+		err := pool.QueryRow(context.Background(), `
 			SELECT COALESCE((fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint, 0)
 			FROM dune.fgl_entities fe
 			JOIN dune.actor_fgl_entities afe ON afe.entity_id = fe.entity_id
@@ -4410,8 +4416,8 @@ func cmdFetchCharXP(playerID int64) Cmd {
 	}
 }
 
-func readCharXPState(ctx context.Context, playerID int64) (currentXP, spentSP int64, err error) {
-	err = globalDB.QueryRow(ctx, `
+func readCharXPState(ctx context.Context, pool *pgxpool.Pool, playerID int64) (currentXP, spentSP int64, err error) {
+	err = pool.QueryRow(ctx, `
 		SELECT
 			(fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint,
 			COALESCE((
@@ -4429,9 +4435,9 @@ func readCharXPState(ctx context.Context, playerID int64) (currentXP, spentSP in
 	return currentXP, spentSP, nil
 }
 
-func resolveControllerIDForPawn(ctx context.Context, playerID int64) (int64, error) {
+func resolveControllerIDForPawn(ctx context.Context, pool *pgxpool.Pool, playerID int64) (int64, error) {
 	var controllerID int64
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 		SELECT player_controller_id FROM dune.player_state
 		WHERE player_pawn_id = $1 LIMIT 1`, playerID).Scan(&controllerID)
 	if err != nil {
@@ -4443,11 +4449,11 @@ func resolveControllerIDForPawn(ctx context.Context, playerID int64) (int64, err
 	return controllerID, nil
 }
 
-func loadControllerKeystoneIDs(ctx context.Context, controllerID int64) ([]int16, error) {
+func loadControllerKeystoneIDs(ctx context.Context, pool *pgxpool.Pool, controllerID int64) ([]int16, error) {
 	if controllerID == 0 {
 		return nil, nil
 	}
-	rows, err := globalDB.Query(ctx, `
+	rows, err := pool.Query(ctx, `
 		SELECT keystone_id FROM dune.purchased_specialization_keystones
 		WHERE player_id = $1::bigint`, controllerID)
 	if err != nil {
@@ -4469,12 +4475,12 @@ func loadControllerKeystoneIDs(ctx context.Context, controllerID int64) ([]int16
 	return ids, nil
 }
 
-func fetchKeystoneBonusForPawn(ctx context.Context, playerID int64) (int64, error) {
-	controllerID, err := resolveControllerIDForPawn(ctx, playerID)
+func fetchKeystoneBonusForPawn(ctx context.Context, pool *pgxpool.Pool, playerID int64) (int64, error) {
+	controllerID, err := resolveControllerIDForPawn(ctx, pool, playerID)
 	if err != nil {
 		return 0, err
 	}
-	ids, err := loadControllerKeystoneIDs(ctx, controllerID)
+	ids, err := loadControllerKeystoneIDs(ctx, pool, controllerID)
 	if err != nil {
 		return 0, err
 	}
@@ -4504,8 +4510,8 @@ func computeAwardCharXPOutcome(currentXP, spentSP, keystoneBonus, amount int64) 
 	}
 }
 
-func applyAwardCharXPFLevelUpdate(ctx context.Context, playerID int64, outcome charXPOutcome) error {
-	_, err := globalDB.Exec(ctx, `
+func applyAwardCharXPFLevelUpdate(ctx context.Context, pool *pgxpool.Pool, playerID int64, outcome charXPOutcome) error {
+	_, err := pool.Exec(ctx, `
 		UPDATE dune.fgl_entities
 		SET components = jsonb_set(jsonb_set(jsonb_set(
 			components,
@@ -4522,8 +4528,8 @@ func applyAwardCharXPFLevelUpdate(ctx context.Context, playerID int64, outcome c
 	return nil
 }
 
-func applyAwardCharXPIntelUpdate(ctx context.Context, playerID int64, newIntel int64) error {
-	_, err := globalDB.Exec(ctx, `
+func applyAwardCharXPIntelUpdate(ctx context.Context, pool *pgxpool.Pool, playerID int64, newIntel int64) error {
+	_, err := pool.Exec(ctx, `
 		UPDATE dune.actors
 		SET properties = jsonb_set(
 			properties,
@@ -4547,25 +4553,25 @@ func formatAwardCharXPSuccess(playerID int64, outcome charXPOutcome, spentSP int
 		playerID, outcome.newLevel, capped, outcome.newXP, outcome.newUnspentSP, spentSP, outcome.newIntel)
 }
 
-func cmdAwardCharXP(playerID int64, amount int64) Cmd {
+func cmdAwardCharXP(pool *pgxpool.Pool, playerID int64, amount int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		if playerID == 0 {
 			return msgMutate{err: fmt.Errorf("player ID required")}
 		}
 		ctx := context.Background()
-		if err := checkPlayerOffline(ctx, playerID); err != nil {
+		if err := checkPlayerOfflinePool(ctx, pool, playerID); err != nil {
 			return msgMutate{err: err}
 		}
 
-		currentXP, spentSP, err := readCharXPState(ctx, playerID)
+		currentXP, spentSP, err := readCharXPState(ctx, pool, playerID)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 
-		keystoneBonus, err := fetchKeystoneBonusForPawn(ctx, playerID)
+		keystoneBonus, err := fetchKeystoneBonusForPawn(ctx, pool, playerID)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -4573,12 +4579,12 @@ func cmdAwardCharXP(playerID int64, amount int64) Cmd {
 		outcome := computeAwardCharXPOutcome(currentXP, spentSP, keystoneBonus, amount)
 
 		// Update FLevelComponent: XP + both skill point fields.
-		if err := applyAwardCharXPFLevelUpdate(ctx, playerID, outcome); err != nil {
+		if err := applyAwardCharXPFLevelUpdate(ctx, pool, playerID, outcome); err != nil {
 			return msgMutate{err: err}
 		}
 
 		// Update intel points on the PlayerCharacter actor.
-		if err := applyAwardCharXPIntelUpdate(ctx, playerID, outcome.newIntel); err != nil {
+		if err := applyAwardCharXPIntelUpdate(ctx, pool, playerID, outcome.newIntel); err != nil {
 			return msgMutate{err: err}
 		}
 
@@ -4586,12 +4592,12 @@ func cmdAwardCharXP(playerID int64, amount int64) Cmd {
 	}
 }
 
-func cmdAwardIntel(playerID int64, amount int64) Cmd {
+func cmdAwardIntel(pool *pgxpool.Pool, playerID int64, amount int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
-		if err := cmdAwardIntelCtx(context.Background(), globalDB, playerID, amount); err != nil {
+		if err := cmdAwardIntelCtx(context.Background(), pool, playerID, amount); err != nil {
 			return msgMutate{err: err}
 		}
 		return msgMutate{ok: fmt.Sprintf("Awarded %d intel points to player %d", amount, playerID)}
@@ -4673,11 +4679,11 @@ type blueprintFile struct {
 
 // ── blueprint commands ────────────────────────────────────────────────────────
 
-func cmdListBlueprints() Msg {
-	if globalDB == nil {
+func cmdListBlueprints(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgBlueprintList{err: fmt.Errorf("not connected")}
 	}
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT bb.id,
 		       COALESCE(ps.character_name, '') AS owner,
 		       COALESCE(bb.item_id, 0),
@@ -4718,12 +4724,12 @@ func cmdListBlueprints() Msg {
 	return msgBlueprintList{rows: out}
 }
 
-func cmdGrantMaxSpec(playerID int64, trackType string) Cmd {
+func cmdGrantMaxSpec(pool *pgxpool.Pool, playerID int64, trackType string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
-		_, err := globalDB.Exec(context.Background(),
+		_, err := pool.Exec(context.Background(),
 			`SELECT dune.set_specialization_xp_and_level($1, $2::dune.specializationtracktype, $3, $4)`,
 			playerID, trackType, 44182, 100.0)
 		if err != nil {
@@ -4733,12 +4739,12 @@ func cmdGrantMaxSpec(playerID int64, trackType string) Cmd {
 	}
 }
 
-func cmdFetchPlayerSpecs(playerID int64) Cmd {
+func cmdFetchPlayerSpecs(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgSpecs{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT player_id, track_type::text, xp_amount, level
 			FROM dune.specialization_tracks
 			WHERE player_id = $1::bigint
@@ -4783,8 +4789,8 @@ func keystoneSPBonus(ids []int16) int64 {
 	return total
 }
 
-func insertAllPurchasedKeystones(ctx context.Context, playerID int64) error {
-	_, err := globalDB.Exec(ctx, `
+func insertAllPurchasedKeystones(ctx context.Context, pool *pgxpool.Pool, playerID int64) error {
+	_, err := pool.Exec(ctx, `
 			INSERT INTO dune.purchased_specialization_keystones (player_id, keystone_id)
 			SELECT $1::bigint, generate_series(1, 205)
 			ON CONFLICT DO NOTHING`, playerID)
@@ -4799,9 +4805,9 @@ func allKeystoneIDs() []int16 {
 	return ids
 }
 
-func readLevelComponentSkillState(ctx context.Context, playerID int64) (int64, int64, int64, error) {
+func readLevelComponentSkillState(ctx context.Context, pool *pgxpool.Pool, playerID int64) (int64, int64, int64, error) {
 	var xp, currentTotal, spentSP int64
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 			SELECT
 				(fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint,
 				(fe.components->'FLevelComponent'->1->>'TotalSkillPoints')::bigint,
@@ -4836,8 +4842,8 @@ func grantAllKeystoneTargets(xp, spentSP int64) (int64, int64, int64) {
 	return expectedTotal, expectedUnspent, keystoneBonus
 }
 
-func updateLevelComponentSkillPoints(ctx context.Context, playerID, expectedTotal, expectedUnspent int64) error {
-	_, err := globalDB.Exec(ctx, `
+func updateLevelComponentSkillPoints(ctx context.Context, pool *pgxpool.Pool, playerID, expectedTotal, expectedUnspent int64) error {
+	_, err := pool.Exec(ctx, `
 			UPDATE dune.fgl_entities
 			SET components = jsonb_set(jsonb_set(
 				components,
@@ -4859,24 +4865,24 @@ func updateLevelComponentSkillPoints(ctx context.Context, playerID, expectedTota
 	return nil
 }
 
-func cmdGrantAllKeystones(playerID int64) Cmd {
+func cmdGrantAllKeystones(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
 
-		if err := checkPlayerOffline(ctx, playerID); err != nil {
+		if err := checkPlayerOffline(ctx, pool, playerID); err != nil {
 			return msgMutate{err: err}
 		}
 
-		if err := insertAllPurchasedKeystones(ctx, playerID); err != nil {
+		if err := insertAllPurchasedKeystones(ctx, pool, playerID); err != nil {
 			return msgMutate{err: err}
 		}
 
 		// Read XP, current TotalSkillPoints, and SP spent in non-starter modules.
 		// Uses pawn actor id (purchased_specialization_keystones uses controller id).
-		xp, currentTotal, spentSP, err := readLevelComponentSkillState(ctx, playerID)
+		xp, currentTotal, spentSP, err := readLevelComponentSkillState(ctx, pool, playerID)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -4889,7 +4895,7 @@ func cmdGrantAllKeystones(playerID int64) Cmd {
 				playerID, currentTotal, expectedUnspent)}
 		}
 
-		if err := updateLevelComponentSkillPoints(ctx, playerID, expectedTotal, expectedUnspent); err != nil {
+		if err := updateLevelComponentSkillPoints(ctx, pool, playerID, expectedTotal, expectedUnspent); err != nil {
 			return msgMutate{err: err}
 		}
 
@@ -4902,22 +4908,22 @@ func cmdGrantAllKeystones(playerID int64) Cmd {
 // cmdResetAllKeystones is the inverse of cmdGrantAllKeystones: it deletes all
 // purchased keystones and rolls TotalSkillPoints/UnspentSkillPoints back to
 // the XP-derived baseline (no keystone bonus). Requires the player to be offline.
-func cmdResetAllKeystones(playerID int64) Cmd {
+func cmdResetAllKeystones(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 
 		ctx := context.Background()
 
-		if err := checkPlayerOffline(ctx, playerID); err != nil {
+		if err := checkPlayerOffline(ctx, pool, playerID); err != nil {
 			return msgMutate{err: err}
 		}
 
 		// Read XP, current total SP, and non-starter spent SP — same query as
 		// cmdGrantAllKeystones so the arithmetic is symmetric.
 		var xp, currentTotal, spentSP int64
-		err := globalDB.QueryRow(ctx, `
+		err := pool.QueryRow(ctx, `
 			SELECT
 				(fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint,
 				(fe.components->'FLevelComponent'->1->>'TotalSkillPoints')::bigint,
@@ -4938,7 +4944,7 @@ func cmdResetAllKeystones(playerID int64) Cmd {
 			return msgMutate{err: fmt.Errorf("read FLevelComponent: %w", err)}
 		}
 
-		if _, err := globalDB.Exec(ctx,
+		if _, err := pool.Exec(ctx,
 			`DELETE FROM dune.purchased_specialization_keystones WHERE player_id = $1`,
 			playerID); err != nil {
 			return msgMutate{err: fmt.Errorf("delete keystones: %w", err)}
@@ -4951,7 +4957,7 @@ func cmdResetAllKeystones(playerID int64) Cmd {
 			newUnspent = 0
 		}
 
-		if _, err := globalDB.Exec(ctx, `
+		if _, err := pool.Exec(ctx, `
 			UPDATE dune.fgl_entities
 			SET components = jsonb_set(jsonb_set(
 				components,
@@ -4976,12 +4982,12 @@ func cmdResetAllKeystones(playerID int64) Cmd {
 	}
 }
 
-func cmdFetchPlayerKeystones(playerID int64) Cmd {
+func cmdFetchPlayerKeystones(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgKeystones{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT keystone_id FROM dune.purchased_specialization_keystones
 			WHERE player_id = $1::bigint ORDER BY keystone_id`, playerID)
 		if err != nil {
@@ -5000,21 +5006,21 @@ func cmdFetchPlayerKeystones(playerID int64) Cmd {
 	}
 }
 
-func cmdGetPlayerVehicles(controllerID int64) Cmd {
+func cmdGetPlayerVehicles(pool *pgxpool.Pool, controllerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgVehicles{err: fmt.Errorf("not connected")}
 		}
 		// Look up account_id from controller_id — vehicle actors don't use owner_account_id.
 		var accountID int64
-		err := globalDB.QueryRow(context.Background(),
+		err := pool.QueryRow(context.Background(),
 			`SELECT ps.account_id FROM dune.player_state ps WHERE ps.player_controller_id = $1 LIMIT 1`,
 			controllerID).Scan(&accountID)
 		if err != nil {
 			return msgVehicles{err: fmt.Errorf("look up account: %w", err)}
 		}
 
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT pa.actor_id, a.class, COALESCE(a.map, ''),
 			       COALESCE(rv.chassis_durability::float8, 1.0),
 			       COALESCE(pa.actor_name, rv.vehicle_name, ''),
@@ -5058,9 +5064,9 @@ func cmdGetPlayerVehicles(controllerID int64) Cmd {
 	}
 }
 
-func lookupRepairItemOwner(ctx context.Context, itemID int64) (int64, error) {
+func lookupRepairItemOwner(ctx context.Context, pool *pgxpool.Pool, itemID int64) (int64, error) {
 	var pawnID int64
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 			SELECT inv.actor_id
 			FROM dune.items i
 			JOIN dune.inventories inv ON inv.id = i.inventory_id
@@ -5074,8 +5080,8 @@ func lookupRepairItemOwner(ctx context.Context, itemID int64) (int64, error) {
 	return pawnID, nil
 }
 
-func repairItemDurability(ctx context.Context, itemID int64) (int64, error) {
-	res, err := globalDB.Exec(ctx, `
+func repairItemDurability(ctx context.Context, pool *pgxpool.Pool, itemID int64) (int64, error) {
+	res, err := pool.Exec(ctx, `
 			UPDATE dune.items i
 			SET stats = jsonb_set(
 				jsonb_set(i.stats,
@@ -5103,9 +5109,9 @@ func repairItemDurability(ctx context.Context, itemID int64) (int64, error) {
 	return res.RowsAffected(), nil
 }
 
-func itemHasDurabilityStats(ctx context.Context, itemID int64) (bool, error) {
+func itemHasDurabilityStats(ctx context.Context, pool *pgxpool.Pool, itemID int64) (bool, error) {
 	var hasDurability bool
-	if err := globalDB.QueryRow(ctx, `
+	if err := pool.QueryRow(ctx, `
 				SELECT stats ? 'FItemStackAndDurabilityStats'
 				FROM dune.items WHERE id = $1::bigint`, itemID).Scan(&hasDurability); err != nil {
 		return false, fmt.Errorf("check item: %w", err)
@@ -5124,31 +5130,31 @@ func repairItemSuccessMessage(itemID int64) msgMutate {
 	return msgMutate{ok: fmt.Sprintf("Repaired item %d — relog to see in-game", itemID)}
 }
 
-func cmdRepairItem(itemID int64) Cmd {
+func cmdRepairItem(pool *pgxpool.Pool, itemID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
 
 		// Derive owning player from item → inventory → actor (pawn) so we can gate Offline.
-		pawnID, err := lookupRepairItemOwner(ctx, itemID)
+		pawnID, err := lookupRepairItemOwner(ctx, pool, itemID)
 		if err != nil {
 			return msgMutate{err: err}
 		}
-		if err := checkPlayerOffline(ctx, pawnID); err != nil {
+		if err := checkPlayerOffline(ctx, pool, pawnID); err != nil {
 			return msgMutate{err: err}
 		}
 
 		// Write both fields: Current-only gets clamped to surviving Decayed on reload.
 		// Fallback target = 100.0 covers the 0-100 gear scale when MaxDurability is absent.
-		rowsAffected, err := repairItemDurability(ctx, itemID)
+		rowsAffected, err := repairItemDurability(ctx, pool, itemID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("repair item: %w", err)}
 		}
 		if rowsAffected == 0 {
 			// Item exists (owner lookup succeeded). Either no durability field, or already at ceiling.
-			hasDurability, err := itemHasDurabilityStats(ctx, itemID)
+			hasDurability, err := itemHasDurabilityStats(ctx, pool, itemID)
 			if err != nil {
 				return msgMutate{err: err}
 			}
@@ -5207,8 +5213,8 @@ func buildRepairCandidate(
 	return repairCandidate{id: id, target: target}, true
 }
 
-func loadPlayerGearRepairCandidates(ctx context.Context, playerID int64) ([]repairCandidate, int, error) {
-	rows, err := globalDB.Query(ctx, `
+func loadPlayerGearRepairCandidates(ctx context.Context, pool *pgxpool.Pool, playerID int64) ([]repairCandidate, int, error) {
+	rows, err := pool.Query(ctx, `
 		SELECT i.id,
 		       (i.stats->'FItemStackAndDurabilityStats'->1->>'MaxDurability'),
 		       (i.stats->'FItemStackAndDurabilityStats'->1->>'CurrentDurability'),
@@ -5247,8 +5253,8 @@ func loadPlayerGearRepairCandidates(ctx context.Context, playerID int64) ([]repa
 	return toRepair, scanned, nil
 }
 
-func validateRepairPlayerGearInput(playerID int64) error {
-	if globalDB == nil {
+func validateRepairPlayerGearInput(pool *pgxpool.Pool, playerID int64) error {
+	if pool == nil {
 		return fmt.Errorf("not connected")
 	}
 	if playerID == 0 {
@@ -5262,8 +5268,8 @@ type gearRepairRunResult struct {
 	err      error
 }
 
-func runPlayerGearRepairs(ctx context.Context, toRepair []repairCandidate) gearRepairRunResult {
-	tx, err := globalDB.Begin(ctx)
+func runPlayerGearRepairs(ctx context.Context, pool *pgxpool.Pool, toRepair []repairCandidate) gearRepairRunResult {
+	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return gearRepairRunResult{err: fmt.Errorf("begin tx: %w", err)}
 	}
@@ -5295,22 +5301,22 @@ func runPlayerGearRepairs(ctx context.Context, toRepair []repairCandidate) gearR
 	return gearRepairRunResult{repaired: repaired}
 }
 
-func cmdRepairPlayerGear(playerID int64) Cmd {
+func cmdRepairPlayerGear(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
-		if err := validateRepairPlayerGearInput(playerID); err != nil {
+		if err := validateRepairPlayerGearInput(pool, playerID); err != nil {
 			return msgRepairGear{err: err}
 		}
 		ctx := context.Background()
-		if err := checkPlayerOffline(ctx, playerID); err != nil {
+		if err := checkPlayerOffline(ctx, pool, playerID); err != nil {
 			return msgRepairGear{err: err}
 		}
 
-		toRepair, scanned, err := loadPlayerGearRepairCandidates(ctx, playerID)
+		toRepair, scanned, err := loadPlayerGearRepairCandidates(ctx, pool, playerID)
 		if err != nil {
 			return msgRepairGear{scanned: scanned, err: err}
 		}
 
-		run := runPlayerGearRepairs(ctx, toRepair)
+		run := runPlayerGearRepairs(ctx, pool, toRepair)
 		if run.err != nil {
 			return msgRepairGear{repaired: run.repaired, scanned: scanned, err: run.err}
 		}
@@ -5318,12 +5324,12 @@ func cmdRepairPlayerGear(playerID int64) Cmd {
 	}
 }
 
-func cmdFetchCheatLog() Cmd {
+func cmdFetchCheatLog(pool *pgxpool.Pool) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgCheatLog{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT ct.fls_id, ct.cheat_type::text,
 			       to_char(ct.event_time AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS'),
 			       COALESCE(ps.character_name, ct.fls_id)
@@ -5352,12 +5358,12 @@ func cmdFetchCheatLog() Cmd {
 	}
 }
 
-func cmdFetchEventLog(actorID int64) Cmd {
+func cmdFetchEventLog(pool *pgxpool.Pool, actorID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgEvents{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT actor_id,
 			       to_char(universe_time AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS'),
 			       COALESCE(map, ''),
@@ -5387,12 +5393,12 @@ func cmdFetchEventLog(actorID int64) Cmd {
 	}
 }
 
-func cmdFetchPlayerDungeons(playerID int64) Cmd {
+func cmdFetchPlayerDungeons(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgDungeons{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT dc.dungeon_id, dc.difficulty::text, dc.duration_ms, dc.players_num, dc.completion_id
 			FROM dune.dungeon_completion_players dcp
 			JOIN dune.dungeon_completion dc ON dc.completion_id = dcp.completion_id
@@ -5431,8 +5437,11 @@ var cheatLocations = []teleportLocation{
 	{Name: "PS5_ESW_3", X: -117312.0, Y: -305453.9, Z: 21649.8},
 }
 
-func cmdListPartitions() Cmd {
+func cmdListPartitions(pool *pgxpool.Pool) Cmd {
 	return func() Msg {
+		if pool == nil {
+			return msgPartitions{err: fmt.Errorf("not connected")}
+		}
 		if globalLocationStore != nil {
 			locs, err := globalLocationStore.list()
 			if err == nil {
@@ -5444,9 +5453,9 @@ func cmdListPartitions() Cmd {
 	}
 }
 
-func cmdTeleportPlayer(flsID string, locationName string) Cmd {
+func cmdTeleportPlayer(pool *pgxpool.Pool, flsID string, locationName string) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		loc, err := resolveLocation(locationName)
@@ -5456,16 +5465,16 @@ func cmdTeleportPlayer(flsID string, locationName string) Cmd {
 		ctx := context.Background()
 		// Use the player's current partition so the zone server is correct.
 		var partitionID int64
-		if scanErr := globalDB.QueryRow(ctx, `
+		if scanErr := pool.QueryRow(ctx, `
 			SELECT COALESCE(a.partition_id, 0)
 			FROM dune.encrypted_accounts e
 			JOIN dune.player_state ps ON ps.account_id = e.id
 			JOIN dune.actors a ON a.id = ps.player_pawn_id
 			WHERE convert_from(e.encrypted_funcom_id, 'UTF8') = $1`, flsID).Scan(&partitionID); scanErr != nil || partitionID == 0 {
-			_ = globalDB.QueryRow(ctx,
+			_ = pool.QueryRow(ctx,
 				`SELECT id FROM dune.world_partition WHERE blocked = false LIMIT 1`).Scan(&partitionID)
 		}
-		if _, execErr := globalDB.Exec(ctx, `
+		if _, execErr := pool.Exec(ctx, `
 			SELECT dune.admin_move_offline_player_to_partition($1::text, $2::bigint, ROW($3::float8,$4::float8,$5::float8)::dune.Vector)`,
 			flsID, partitionID, loc.X, loc.Y, loc.Z); execErr != nil {
 			return msgMutate{err: fmt.Errorf("teleport: %w", execErr)}
@@ -5487,13 +5496,13 @@ type playerPosition struct {
 // actors table. The transform column is a composite type holding a vector
 // location plus a quaternion rotation; we only need the vector.
 // playerID is the actor id (dune.actors.id) — matches playerInfo.ID.
-func cmdGetPlayerPosition(playerID int64) Cmd {
+func cmdGetPlayerPosition(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgPlayerPosition{err: fmt.Errorf("not connected")}
 		}
 		var pos playerPosition
-		err := globalDB.QueryRow(context.Background(), `
+		err := pool.QueryRow(context.Background(), `
 			SELECT
 				COALESCE(a.partition_id, 0),
 				COALESCE(a.map, ''),
@@ -5512,15 +5521,15 @@ func cmdGetPlayerPosition(playerID int64) Cmd {
 // cmdTeleportPlayerToCoords moves an offline player to a specific
 // (partition_id, x, y, z). For online players this should be skipped in
 // favour of rmqTeleportTo, which has immediate effect.
-func cmdTeleportPlayerToCoords(flsID string, partitionID int64, x, y, z float64) Cmd {
+func cmdTeleportPlayerToCoords(pool *pgxpool.Pool, flsID string, partitionID int64, x, y, z float64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
 		if partitionID == 0 {
 			// Try the player's current partition first (most likely to be valid).
-			_ = globalDB.QueryRow(ctx, `
+			_ = pool.QueryRow(ctx, `
 				SELECT COALESCE(a.partition_id, 0)
 				FROM dune.accounts ac
 				JOIN dune.player_state ps ON ps.account_id = ac.id
@@ -5529,14 +5538,14 @@ func cmdTeleportPlayerToCoords(flsID string, partitionID int64, x, y, z float64)
 		}
 		if partitionID == 0 {
 			// Fall back to any non-blocked partition (handles offline/no-actor state).
-			_ = globalDB.QueryRow(ctx,
+			_ = pool.QueryRow(ctx,
 				`SELECT id FROM dune.world_partition WHERE blocked = false ORDER BY id LIMIT 1`,
 			).Scan(&partitionID)
 		}
 		if partitionID == 0 {
 			return msgMutate{err: fmt.Errorf("could not resolve a valid partition for teleport")}
 		}
-		if _, execErr := globalDB.Exec(ctx, `
+		if _, execErr := pool.Exec(ctx, `
 			SELECT dune.admin_move_offline_player_to_partition($1::text, $2::bigint, ROW($3::float8,$4::float8,$5::float8)::dune.Vector)`,
 			flsID, partitionID, x, y, z); execErr != nil {
 			return msgMutate{err: fmt.Errorf("teleport: %w", execErr)}
@@ -5729,8 +5738,8 @@ type msgStorageContainers struct {
 	err  error
 }
 
-func cmdListStorageContainers() Msg {
-	if globalDB == nil {
+func cmdListStorageContainers(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgStorageContainers{err: fmt.Errorf("not connected")}
 	}
 	// Drive from dune.placeables so we catch player-built containers regardless
@@ -5743,7 +5752,7 @@ func cmdListStorageContainers() Msg {
 	// User-given container names live on dune.permission_actor.actor_name.
 	// Unnamed containers default to 'None' or '##<PlaceableType>_Placeable' —
 	// filter both out so only real custom names surface.
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT p.id,
 		       COALESCE(MAX(CASE
 		           WHEN pa.actor_name NOT LIKE '##%' AND pa.actor_name <> 'None'
@@ -5810,12 +5819,12 @@ type msgContainerInventory struct {
 	err  error
 }
 
-func cmdGetContainerInventory(actorID int64) Cmd {
+func cmdGetContainerInventory(pool *pgxpool.Pool, actorID int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgContainerInventory{err: fmt.Errorf("not connected")}
 		}
-		rows, err := globalDB.Query(context.Background(), `
+		rows, err := pool.Query(context.Background(), `
 			SELECT i.id, i.template_id, i.stack_size, i.quality_level,
 			       COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'CurrentDurability'), 'N/A'),
 			       COALESCE((i.stats->'FItemStackAndDurabilityStats'->1->>'MaxDurability'), 'N/A')
@@ -5843,9 +5852,9 @@ func cmdGetContainerInventory(actorID int64) Cmd {
 	}
 }
 
-func cmdGiveItemToContainer(actorID int64, templateID string, qty, quality int64) Cmd {
+func cmdGiveItemToContainer(pool *pgxpool.Pool, actorID int64, templateID string, qty, quality int64) Cmd {
 	return func() Msg {
-		if globalDB == nil {
+		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
@@ -5854,7 +5863,7 @@ func cmdGiveItemToContainer(actorID int64, templateID string, qty, quality int64
 		var invID int64
 		var maxCount int
 		var maxVol float32
-		err := globalDB.QueryRow(ctx, `
+		err := pool.QueryRow(ctx, `
 			SELECT id, max_item_count, max_item_volume
 			FROM dune.inventories
 			WHERE actor_id = $1
@@ -5865,7 +5874,7 @@ func cmdGiveItemToContainer(actorID int64, templateID string, qty, quality int64
 
 		// Count current items.
 		var currentCount int64
-		if err := globalDB.QueryRow(ctx, `SELECT COUNT(*) FROM dune.items WHERE inventory_id = $1`, invID).Scan(&currentCount); err != nil {
+		if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM dune.items WHERE inventory_id = $1`, invID).Scan(&currentCount); err != nil {
 			return msgMutate{err: fmt.Errorf("count items: %w", err)}
 		}
 		if maxCount > 0 && currentCount >= int64(maxCount) {
@@ -5873,7 +5882,7 @@ func cmdGiveItemToContainer(actorID int64, templateID string, qty, quality int64
 		}
 
 		// Insert item with minimal valid stats matching game-generated items.
-		_, err = globalDB.Exec(ctx, `
+		_, err = pool.Exec(ctx, `
 			INSERT INTO dune.items (inventory_id, template_id, stack_size, quality_level, position_index, stats)
 			VALUES ($1, $2, $3, $4, $5, '{"FCustomizationStats":[[],{}],"FItemStackAndDurabilityStats":[[],{}]}')`,
 			invID, templateID, qty, quality, currentCount)
@@ -5884,11 +5893,11 @@ func cmdGiveItemToContainer(actorID int64, templateID string, qty, quality int64
 	}
 }
 
-func cmdListBases() Msg {
-	if globalDB == nil {
+func cmdListBases(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgBaseList{err: fmt.Errorf("not connected")}
 	}
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT b.id,
 		       COALESCE(pa.actor_name, '') AS name,
 		       COALESCE(inst.cnt, 0) AS pieces,
@@ -6263,12 +6272,12 @@ func fetchSolarisBalance(ctx context.Context, pool *pgxpool.Pool, accountID int6
 // cmdActorIDFromFlsID resolves the player pawn actor ID from their hex FLS ID
 // (accounts."user"). Used by cmdRefillWaterOffline and similar offline writes
 // that require an actor_id to locate inventories.
-func cmdActorIDFromFlsID(ctx context.Context, flsID string) (int64, error) {
-	if globalDB == nil {
+func cmdActorIDFromFlsID(ctx context.Context, pool *pgxpool.Pool, flsID string) (int64, error) {
+	if pool == nil {
 		return 0, fmt.Errorf("not connected")
 	}
 	var actorID int64
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 		SELECT ps.player_pawn_id
 		FROM dune.accounts ac
 		JOIN dune.player_state ps ON ps.account_id = ac.id
@@ -6285,11 +6294,11 @@ func cmdActorIDFromFlsID(ctx context.Context, flsID string) (int64, error) {
 // action wheel, bank). Uses the waterFillableTemplates list generated from
 // DT_ItemTableFillables.json. For online players use rmqUpdateAllWaterFillables
 // instead — this path takes effect on the player's next relog.
-func cmdRefillWaterOffline(ctx context.Context, actorID int64) (int64, error) {
-	if globalDB == nil {
+func cmdRefillWaterOffline(ctx context.Context, pool *pgxpool.Pool, actorID int64) (int64, error) {
+	if pool == nil {
 		return 0, fmt.Errorf("not connected")
 	}
-	tag, err := globalDB.Exec(ctx, `
+	tag, err := pool.Exec(ctx, `
 		UPDATE dune.items i
 		SET stats = jsonb_set(
 			i.stats,
@@ -6634,10 +6643,8 @@ func cmdFetchCompletedJourneyNodeIDs(ctx context.Context, pool *pgxpool.Pool, ac
 }
 
 // cmdGiveItemCtx is the injectable form used by the events engine.
-// ctx and pool are accepted for API uniformity but are not forwarded —
-// runGiveItem always uses globalDB. Callers must ensure globalDB is non-nil.
-func cmdGiveItemCtx(_ context.Context, _ *pgxpool.Pool, actorID int64, template string, qty, quality int64) error {
-	msg := runGiveItem(actorID, template, qty, quality)
+func cmdGiveItemCtx(_ context.Context, pool *pgxpool.Pool, actorID int64, template string, qty, quality int64) error {
+	msg := runGiveItem(pool, actorID, template, qty, quality)
 	if m, ok := msg.(msgMutate); ok && m.err != nil {
 		return m.err
 	}
@@ -6645,10 +6652,8 @@ func cmdGiveItemCtx(_ context.Context, _ *pgxpool.Pool, actorID int64, template 
 }
 
 // cmdAwardXPCtx is the injectable form used by the events engine.
-// ctx and pool are accepted for API uniformity but are not forwarded —
-// the underlying Cmd always uses globalDB. Callers must ensure globalDB is non-nil.
-func cmdAwardXPCtx(_ context.Context, _ *pgxpool.Pool, playerID int64, track string, amount int32) error {
-	msg := cmdAwardXP(playerID, track, amount)()
+func cmdAwardXPCtx(_ context.Context, pool *pgxpool.Pool, playerID int64, track string, amount int32) error {
+	msg := cmdAwardXP(pool, playerID, track, amount)()
 	if m, ok := msg.(msgMutate); ok && m.err != nil {
 		return m.err
 	}

@@ -57,7 +57,7 @@ func TestFormatAwardCharXPSuccess(t *testing.T) {
 func TestLoadControllerKeystoneIDs_NoController(t *testing.T) {
 	t.Parallel()
 
-	ids, err := loadControllerKeystoneIDs(t.Context(), 0)
+	ids, err := loadControllerKeystoneIDs(t.Context(), nil, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

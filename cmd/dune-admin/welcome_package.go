@@ -164,7 +164,7 @@ func whisperAccount(ctx context.Context, acc welcomeAccount, msgVersion string, 
 // shipped give-items path (live RMQ for online players, DB-write fallback
 // otherwise) and returns "template: reason" strings for any skipped items.
 func welcomeGrantViaGiveItems(ctx context.Context, pawnID int64, flsID string, items []welcomePackageItem) ([]string, error) {
-	online, resolvedFls := resolveGiveItemsOnlinePath(ctx, pawnID, checkPlayerOffline, flsIDFromActorID)
+	online, resolvedFls := resolveGiveItemsOnlinePath(ctx, pawnID, func(ctx context.Context, id int64) error { return checkPlayerOfflinePool(ctx, globalDB, id) }, flsIDFromActorID)
 	if resolvedFls == "" {
 		resolvedFls = flsID
 	}
@@ -176,7 +176,7 @@ func welcomeGrantViaGiveItems(ctx context.Context, pawnID int64, flsID string, i
 		checkCapacity: checkInventoryCapacity,
 		rmqAdd:        rmqAddItemToInventory,
 		dbGive: func(playerID int64, template string, qty, quality int64) (msgMutate, bool) {
-			msg, ok := cmdGiveItem(playerID, template, qty, quality)().(msgMutate)
+			msg, ok := cmdGiveItem(globalDB, playerID, template, qty, quality)().(msgMutate)
 			return msg, ok
 		},
 		needsDBPath: itemNeedsDBPath,

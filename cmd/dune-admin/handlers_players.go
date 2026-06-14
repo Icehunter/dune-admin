@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // @Summary List all players
@@ -18,7 +20,7 @@ import (
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players [get]
 func handleGetPlayers(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchPlayers().(msgPlayers)
+	msg, ok := cmdFetchPlayers(dbFromCtx(r)).(msgPlayers)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -122,7 +124,7 @@ func handleGetFactionTrends(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/online [get]
 func handleGetOnlineState(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchOnlineState().(msgOnlineState)
+	msg, ok := cmdFetchOnlineState(dbFromCtx(r)).(msgOnlineState)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -153,7 +155,7 @@ func handleGetOnlineState(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/currency [get]
 func handleGetCurrency(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchCurrency().(msgCurrency)
+	msg, ok := cmdFetchCurrency(dbFromCtx(r)).(msgCurrency)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -176,7 +178,7 @@ func handleGetCurrency(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/factions [get]
 func handleGetFactions(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchFactions().(msgFactions)
+	msg, ok := cmdFetchFactions(dbFromCtx(r)).(msgFactions)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -199,7 +201,7 @@ func handleGetFactions(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/specs [get]
 func handleGetSpecs(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchSpecs().(msgSpecs)
+	msg, ok := cmdFetchSpecs(dbFromCtx(r)).(msgSpecs)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -249,7 +251,7 @@ func handleGetInventory(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdFetchInventory(id)().(msgInventory)
+	msg, ok := cmdFetchInventory(dbFromCtx(r), id)().(msgInventory)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -280,7 +282,7 @@ func handleGetJourney(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid accountId"), 400)
 		return
 	}
-	msg, ok := cmdFetchJourneyNodes(accountID)().(msgJourney)
+	msg, ok := cmdFetchJourneyNodes(dbFromCtx(r), accountID)().(msgJourney)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -323,9 +325,9 @@ func handleGetJourney(w http.ResponseWriter, r *http.Request) {
 // was handled (success or error written to w), false if the caller should fall
 // through to the DB path. RMQ is skipped for quality > 0 or for item types
 // (schematics, augments) where grade is stored as quality_level in the DB.
-func tryGiveItemViaRMQ(w http.ResponseWriter, playerID int64, template string, qty int64) bool {
+func tryGiveItemViaRMQ(w http.ResponseWriter, db *pgxpool.Pool, playerID int64, template string, qty int64) bool {
 	ctx := context.Background()
-	if checkPlayerOffline(ctx, playerID) == nil {
+	if checkPlayerOfflinePool(ctx, db, playerID) == nil {
 		return false
 	}
 	if err := checkInventoryCapacity(ctx, playerID, template, qty); err != nil {
@@ -364,13 +366,13 @@ func handleGiveItem(w http.ResponseWriter, r *http.Request) {
 	// Schematics and augment items are excluded — their quality_level must be
 	// stored explicitly in the DB; the RMQ command has no grade field.
 	if req.Quality == 0 && !itemNeedsDBPath(req.Template) {
-		if tryGiveItemViaRMQ(w, req.PlayerID, req.Template, req.Qty) {
+		if tryGiveItemViaRMQ(w, dbFromCtx(r), req.PlayerID, req.Template, req.Qty) {
 			return
 		}
 	}
 
 	// DB path: offline player, quality > 0, or grade-sensitive item.
-	msg, ok := cmdGiveItem(req.PlayerID, req.Template, req.Qty, req.Quality)().(msgMutate)
+	msg, ok := cmdGiveItem(dbFromCtx(r), req.PlayerID, req.Template, req.Qty, req.Quality)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -492,12 +494,12 @@ func handleGiveItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := context.Background()
-	online, flsID := resolveGiveItemsOnlinePath(ctx, req.PlayerID, checkPlayerOffline, flsIDFromActorID)
+	online, flsID := resolveGiveItemsOnlinePath(ctx, req.PlayerID, func(ctx context.Context, id int64) error { return checkPlayerOfflinePool(ctx, dbFromCtx(r), id) }, flsIDFromActorID)
 	given, skipped := processGiveItems(ctx, req, online, flsID, giveItemsDeps{
 		checkCapacity: checkInventoryCapacity,
 		rmqAdd:        rmqAddItemToInventory,
 		dbGive: func(playerID int64, template string, qty, quality int64) (msgMutate, bool) {
-			msg, ok := cmdGiveItem(playerID, template, qty, quality)().(msgMutate)
+			msg, ok := cmdGiveItem(dbFromCtx(r), playerID, template, qty, quality)().(msgMutate)
 			return msg, ok
 		},
 		needsDBPath: itemNeedsDBPath,
@@ -532,7 +534,7 @@ func handleGrantLive(w http.ResponseWriter, r *http.Request) {
 	if req.Amount <= 0 {
 		req.Amount = 1
 	}
-	msg, ok := cmdGrantLive(req.ControllerID, req.Template, req.Amount)().(msgMutate)
+	msg, ok := cmdGrantLive(dbFromCtx(r), req.ControllerID, req.Template, req.Amount)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -562,7 +564,7 @@ func handleGiveCurrency(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdGiveCurrency(req.PlayerID, req.Amount)().(msgMutate)
+	msg, ok := cmdGiveCurrency(dbFromCtx(r), req.PlayerID, req.Amount)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -593,7 +595,7 @@ func handleGiveFactionRep(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdGiveFactionRep(req.ActorID, req.FactionID, req.Delta)().(msgMutate)
+	msg, ok := cmdGiveFactionRep(dbFromCtx(r), req.ActorID, req.FactionID, req.Delta)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -623,7 +625,7 @@ func handleGiveScrip(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdGiveLandsraadScrip(req.ActorID, req.Delta)().(msgMutate)
+	msg, ok := cmdGiveLandsraadScrip(dbFromCtx(r), req.ActorID, req.Delta)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -658,7 +660,7 @@ func handleAwardXP(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("player_id required"), 400)
 		return
 	}
-	msg, ok := cmdAwardXP(req.PlayerID, req.TrackType, req.Delta)().(msgMutate)
+	msg, ok := cmdAwardXP(dbFromCtx(r), req.PlayerID, req.TrackType, req.Delta)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -705,7 +707,7 @@ func handleAwardCharXP(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("player_id required"), 400)
 		return
 	}
-	msg, ok := cmdAwardCharXP(req.PlayerID, req.Amount)().(msgMutate)
+	msg, ok := cmdAwardCharXP(dbFromCtx(r), req.PlayerID, req.Amount)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -735,7 +737,7 @@ func handleAwardIntel(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdAwardIntel(req.PlayerID, req.Amount)().(msgMutate)
+	msg, ok := cmdAwardIntel(dbFromCtx(r), req.PlayerID, req.Amount)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -765,7 +767,7 @@ func handleRenameCharacter(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdRenameCharacter(req.AccountID, req.Name)().(msgMutate)
+	msg, ok := cmdRenameCharacter(dbFromCtx(r), req.AccountID, req.Name)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -806,7 +808,7 @@ func handleDeleteCharacter(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("reason required"), 400)
 		return
 	}
-	msg, ok := cmdDeleteCharacter(req.AccountID, req.Reason)().(msgMutate)
+	msg, ok := cmdDeleteCharacter(dbFromCtx(r), req.AccountID, req.Reason)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -834,7 +836,7 @@ func handleGetPlayerTags(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdGetPlayerTags(id)().(msgTags)
+	msg, ok := cmdGetPlayerTags(dbFromCtx(r), id)().(msgTags)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -869,7 +871,7 @@ func handleUpdatePlayerTags(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdUpdatePlayerTags(req.AccountID, req.Add, req.Remove)().(msgMutate)
+	msg, ok := cmdUpdatePlayerTags(dbFromCtx(r), req.AccountID, req.Add, req.Remove)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -898,7 +900,7 @@ func handleDismissReturningPlayerAward(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdDismissReturningPlayerAward(req.AccountID)().(msgMutate)
+	msg, ok := cmdDismissReturningPlayerAward(dbFromCtx(r), req.AccountID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -927,7 +929,7 @@ func handleGrantReturningPlayerAward(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdGrantReturningPlayerAward(req.AccountID)().(msgMutate)
+	msg, ok := cmdGrantReturningPlayerAward(dbFromCtx(r), req.AccountID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -957,7 +959,7 @@ func handleCharacterExport(w http.ResponseWriter, r *http.Request) {
 	}
 	db := dbFromCtx(r)
 	ctx := r.Context()
-	rawID, err := rawFuncomID(ctx, accountID)
+	rawID, err := rawFuncomID(ctx, db, accountID)
 	if err != nil {
 		jsonErr(w, fmt.Errorf("account not found: %w", err), 404)
 		return
@@ -991,7 +993,7 @@ func handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdDeleteAccount(req.AccountID, req.Reason)().(msgMutate)
+	msg, ok := cmdDeleteAccount(dbFromCtx(r), req.AccountID, req.Reason)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1018,7 +1020,7 @@ func handleDeleteItem(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdDeleteItem(id)().(msgMutate)
+	msg, ok := cmdDeleteItem(dbFromCtx(r), id)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1048,7 +1050,7 @@ func handleResetSpec(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdResetSpecializations(req.PlayerID, req.TrackType)().(msgMutate)
+	msg, ok := cmdResetSpecializations(dbFromCtx(r), req.PlayerID, req.TrackType)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1079,7 +1081,7 @@ func handleSetFactionTier(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdSetFactionTier(req.ActorID, req.FactionID, req.Tier)().(msgMutate)
+	msg, ok := cmdSetFactionTier(dbFromCtx(r), req.ActorID, req.FactionID, req.Tier)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1110,7 +1112,7 @@ func handleProgressionUnlock(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdProgressionUnlock(req.PlayerID, req.Faction, req.Preset)().(msgMutate)
+	msg, ok := cmdProgressionUnlock(dbFromCtx(r), req.PlayerID, req.Faction, req.Preset)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1142,7 +1144,7 @@ func handleProgressionReverse(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdReverseProgressionUnlock(req.PlayerID, req.Faction, req.Preset)().(msgMutate)
+	msg, ok := cmdReverseProgressionUnlock(dbFromCtx(r), req.PlayerID, req.Faction, req.Preset)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1173,7 +1175,7 @@ func handleJourneyComplete(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdCompleteJourneyNode(req.AccountID, req.NodeID)().(msgMutate)
+	msg, ok := cmdCompleteJourneyNode(dbFromCtx(r), req.AccountID, req.NodeID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1204,7 +1206,7 @@ func handleCompleteContract(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdCompleteContract(req.AccountID, req.ContractID)().(msgMutate)
+	msg, ok := cmdCompleteContract(dbFromCtx(r), req.AccountID, req.ContractID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1235,7 +1237,7 @@ func handleResetJobSkills(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdResetJobSkills(req.AccountID, req.Job)().(msgMutate)
+	msg, ok := cmdResetJobSkills(dbFromCtx(r), req.AccountID, req.Job)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1265,7 +1267,7 @@ func handleSetStarterClass(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdSetStarterClass(req.AccountID, req.Job)().(msgMutate)
+	msg, ok := cmdSetStarterClass(dbFromCtx(r), req.AccountID, req.Job)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1295,7 +1297,7 @@ func handleGrantJobSkills(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdGrantJobSkills(req.AccountID, req.Job)().(msgMutate)
+	msg, ok := cmdGrantJobSkills(dbFromCtx(r), req.AccountID, req.Job)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1325,7 +1327,7 @@ func handleCompleteContracts(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdCompleteContracts(req.AccountID, req.ContractIDs)().(msgMutate)
+	msg, ok := cmdCompleteContracts(dbFromCtx(r), req.AccountID, req.ContractIDs)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1356,7 +1358,7 @@ func handleReverseContracts(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdReverseContracts(req.AccountID, req.ContractIDs)().(msgMutate)
+	msg, ok := cmdReverseContracts(dbFromCtx(r), req.AccountID, req.ContractIDs)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1413,7 +1415,7 @@ func handleJourneyReset(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdResetJourneyNode(req.AccountID, req.NodeID)().(msgMutate)
+	msg, ok := cmdResetJourneyNode(dbFromCtx(r), req.AccountID, req.NodeID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1443,7 +1445,7 @@ func handleJourneyWipe(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdWipeJourneyNodes(req.AccountID)().(msgMutate)
+	msg, ok := cmdWipeJourneyNodes(dbFromCtx(r), req.AccountID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1474,7 +1476,7 @@ func handleDeleteTutorials(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// db.go names this cmdDeleteAllTutorials
-	msg, ok := cmdDeleteAllTutorials(req.PlayerID)().(msgMutate)
+	msg, ok := cmdDeleteAllTutorials(dbFromCtx(r), req.PlayerID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1503,7 +1505,7 @@ func handleWipeCodex(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdWipeCodex(req.AccountID)().(msgMutate)
+	msg, ok := cmdWipeCodex(dbFromCtx(r), req.AccountID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1530,7 +1532,7 @@ func handleGetCharXP(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdFetchCharXP(id)().(msgCharXP)
+	msg, ok := cmdFetchCharXP(dbFromCtx(r), id)().(msgCharXP)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1559,7 +1561,7 @@ func handleGrantAllKeystones(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdGrantAllKeystones(req.PlayerID)().(msgMutate)
+	msg, ok := cmdGrantAllKeystones(dbFromCtx(r), req.PlayerID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1588,7 +1590,7 @@ func handleResetAllKeystones(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdResetAllKeystones(req.PlayerID)().(msgMutate)
+	msg, ok := cmdResetAllKeystones(dbFromCtx(r), req.PlayerID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1615,7 +1617,7 @@ func handleGetPlayerKeystones(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdFetchPlayerKeystones(id)().(msgKeystones)
+	msg, ok := cmdFetchPlayerKeystones(dbFromCtx(r), id)().(msgKeystones)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1664,7 +1666,7 @@ func handleGetPlayerSpecs(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdFetchPlayerSpecs(id)().(msgSpecs)
+	msg, ok := cmdFetchPlayerSpecs(dbFromCtx(r), id)().(msgSpecs)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1698,7 +1700,7 @@ func handleGrantMaxSpec(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdGrantMaxSpec(req.PlayerID, req.TrackType)().(msgMutate)
+	msg, ok := cmdGrantMaxSpec(dbFromCtx(r), req.PlayerID, req.TrackType)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1725,7 +1727,7 @@ func handleGetPlayerVehicles(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdGetPlayerVehicles(id)().(msgVehicles)
+	msg, ok := cmdGetPlayerVehicles(dbFromCtx(r), id)().(msgVehicles)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1758,7 +1760,7 @@ func handleRepairItem(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdRepairItem(req.ID)().(msgMutate)
+	msg, ok := cmdRepairItem(dbFromCtx(r), req.ID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1787,7 +1789,7 @@ func handleRepairPlayerGear(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdRepairPlayerGear(req.PlayerID)().(msgRepairGear)
+	msg, ok := cmdRepairPlayerGear(dbFromCtx(r), req.PlayerID)().(msgRepairGear)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1806,7 +1808,7 @@ func handleRepairPlayerGear(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/partitions [get]
 func handleGetPartitions(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdListPartitions()().(msgPartitions)
+	msg, ok := cmdListPartitions(dbFromCtx(r))().(msgPartitions)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1870,7 +1872,7 @@ func handleTeleportPlayer(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("resolve player: %w", err), 404)
 		return
 	}
-	msg, ok := cmdTeleportPlayer(displayName, req.Location)().(msgMutate)
+	msg, ok := cmdTeleportPlayer(dbFromCtx(r), displayName, req.Location)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1900,7 +1902,7 @@ func handleGetPlayerPosition(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdGetPlayerPosition(id)().(msgPlayerPosition)
+	msg, ok := cmdGetPlayerPosition(dbFromCtx(r), id)().(msgPlayerPosition)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1939,7 +1941,7 @@ func handleTeleportToPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	posMsg, ok := cmdGetPlayerPosition(req.TargetID)().(msgPlayerPosition)
+	posMsg, ok := cmdGetPlayerPosition(dbFromCtx(r), req.TargetID)().(msgPlayerPosition)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1965,7 +1967,7 @@ func handleTeleportToPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Offline: write directly to DB at the target's partition.
-	msg, ok := cmdTeleportPlayerToCoords(req.SourceFLSID, target.PartitionID, target.X, target.Y, target.Z)().(msgMutate)
+	msg, ok := cmdTeleportPlayerToCoords(dbFromCtx(r), req.SourceFLSID, target.PartitionID, target.X, target.Y, target.Z)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1996,7 +1998,7 @@ func handleGetPlayerEvents(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdFetchEventLog(id)().(msgEvents)
+	msg, ok := cmdFetchEventLog(dbFromCtx(r), id)().(msgEvents)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -2027,7 +2029,7 @@ func handleGetPlayerDungeons(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdFetchPlayerDungeons(id)().(msgDungeons)
+	msg, ok := cmdFetchPlayerDungeons(dbFromCtx(r), id)().(msgDungeons)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -2092,6 +2094,7 @@ func handleTeleportCoords(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
+	pool := dbFromCtx(r)
 	err := processTeleportCoords(teleportCoordsParams{
 		flsID:       req.FlsID,
 		x:           req.X,
@@ -2101,7 +2104,7 @@ func handleTeleportCoords(w http.ResponseWriter, r *http.Request) {
 		isOnline:    func(id string) bool { return isHexIDOnline(ctx, id) },
 		sendRMQ:     func(id string, x, y, z float64) error { return rmqTeleportTo(id, x, y, z) },
 		writeDB: func(id string, pid int64, x, y, z float64) error {
-			msg, ok := cmdTeleportPlayerToCoords(id, pid, x, y, z)().(msgMutate)
+			msg, ok := cmdTeleportPlayerToCoords(pool, id, pid, x, y, z)().(msgMutate)
 			if !ok {
 				return fmt.Errorf("internal error")
 			}

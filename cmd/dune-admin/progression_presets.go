@@ -139,7 +139,7 @@ func cmdApplyProgressionPreset(accountID int64, presetID string) Cmd {
 		}
 
 		totalNodes, totalTags, err := applyProgressionPresetNodes(accountID, presetID, preset.Nodes, func(id int64, nodeID string) (msgMutate, bool) {
-			msg, ok := cmdCompleteJourneyNode(id, nodeID)().(msgMutate)
+			msg, ok := cmdCompleteJourneyNode(globalDB, id, nodeID)().(msgMutate)
 			return msg, ok
 		})
 		if err != nil {

@@ -661,7 +661,7 @@ func runSQLMode(query string) error {
 	if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
 		return fmt.Errorf("connect: %w", msg.err)
 	}
-	if msg, ok := cmdRunSQL(query)().(msgSQL); ok {
+	if msg, ok := cmdRunSQL(globalDB, query)().(msgSQL); ok {
 		if msg.err != nil {
 			return msg.err
 		}

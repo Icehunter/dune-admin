@@ -115,7 +115,7 @@ func splitLines(s string) []string {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/logs/cheats [get]
 func handleGetCheatLog(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchCheatLog()().(msgCheatLog)
+	msg, ok := cmdFetchCheatLog(dbFromCtx(r))().(msgCheatLog)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return

@@ -70,8 +70,8 @@ func parseVec4(s string) (x, y, z, w float64, err error) {
 // @Success 200 {array} map[string]interface{}
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/bases [get]
-func handleListBases(w http.ResponseWriter, _ *http.Request) {
-	msg, ok := cmdListBases().(msgBaseList)
+func handleListBases(w http.ResponseWriter, r *http.Request) {
+	msg, ok := cmdListBases(dbFromCtx(r)).(msgBaseList)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return

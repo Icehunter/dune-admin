@@ -28,7 +28,7 @@ func isReadOnlySQL(sql string) bool {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/database/tables [get]
 func handleDBTables(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchTables().(msgTables)
+	msg, ok := cmdFetchTables(dbFromCtx(r)).(msgTables)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -62,7 +62,7 @@ func handleDBDescribe(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("table required"), 400)
 		return
 	}
-	msg, ok := cmdDescribeTable(table)().(msgDescribe)
+	msg, ok := cmdDescribeTable(dbFromCtx(r), table)().(msgDescribe)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -103,7 +103,7 @@ func handleDBSample(w http.ResponseWriter, r *http.Request) {
 	if limit <= 0 {
 		limit = 20
 	}
-	msg, ok := cmdSampleTable(table, limit)().(msgSample)
+	msg, ok := cmdSampleTable(dbFromCtx(r), table, limit)().(msgSample)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -133,7 +133,7 @@ func handleDBSearch(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("term required"), 400)
 		return
 	}
-	msg, ok := cmdSearchColumns(term)().(msgSearchCols)
+	msg, ok := cmdSearchColumns(dbFromCtx(r), term)().(msgSearchCols)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -174,7 +174,7 @@ func handleDBSQL(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("only SELECT, EXPLAIN, and SHOW statements are allowed"), 400)
 		return
 	}
-	msg, ok := cmdRunSQL(req.SQL)().(msgSQL)
+	msg, ok := cmdRunSQL(dbFromCtx(r), req.SQL)().(msgSQL)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return

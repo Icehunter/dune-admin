@@ -363,12 +363,12 @@ func buildMux() *http.ServeMux {
 	// then fall back to a local dist directory for dev/AMP deployments.
 	if fsys := embeddedSPAFS(); fsys != nil {
 		log.Println("Serving frontend from embedded assets")
-		mux.Handle("/", spaHandlerFS(fsys))
+		mux.Handle("/", staticCacheMiddleware(spaHandlerFS(fsys)))
 	} else {
 		for _, dir := range []string{"./dist", "./web/dist"} {
 			if info, err := os.Stat(dir); err == nil && info.IsDir() {
 				log.Printf("Serving frontend from %s", dir)
-				mux.Handle("/", spaHandler(dir))
+				mux.Handle("/", staticCacheMiddleware(spaHandler(dir)))
 				break
 			}
 		}
@@ -449,6 +449,33 @@ func isRegularFile(fsys http.FileSystem, path string) bool {
 	defer func() { _ = f.Close() }()
 	fi, err := f.Stat()
 	return err == nil && !fi.IsDir()
+}
+
+// staticCacheMiddleware sets Cache-Control headers for static assets served by
+// the SPA handler. Vite-hashed bundles and stable public assets get long-lived
+// immutable caching; the HTML shell gets no-cache so new deploys are picked up.
+func staticCacheMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		switch {
+		case strings.HasPrefix(p, "/assets/"):
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		case strings.HasPrefix(p, "/art/"),
+			strings.HasPrefix(p, "/theme/"),
+			strings.HasPrefix(p, "/fonts/"):
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		case strings.HasSuffix(p, ".svg"),
+			strings.HasSuffix(p, ".png"),
+			strings.HasSuffix(p, ".ico"),
+			strings.HasSuffix(p, ".webp"),
+			strings.HasSuffix(p, ".woff2"),
+			strings.HasSuffix(p, ".woff"):
+			w.Header().Set("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400")
+		default:
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ── JSON helpers ──────────────────────────────────────────────────────────────

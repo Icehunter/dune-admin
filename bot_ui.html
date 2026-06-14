@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Landsraad Bot Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f1115;
+      --bg-card: rgba(255, 255, 255, 0.03);
+      --bg-input: rgba(255, 255, 255, 0.05);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --success: #10b981;
+      --danger: #ef4444;
+      --border: rgba(255, 255, 255, 0.1);
+      
+      --glow-atreides: rgba(56, 189, 248, 0.15);
+      --glow-harkonnen: rgba(248, 113, 113, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 3rem 1rem;
+      background-image: 
+        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.08), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.05), transparent 25%);
+    }
+
+    .container {
+      max-width: 900px;
+      width: 100%;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 2.5rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      background: linear-gradient(to right, #fff, #9ca3af);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .badge {
+      padding: 0.5rem 1rem;
+      border-radius: 99px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .badge.disabled {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+    }
+
+    .card.atreides:hover { box-shadow: 0 10px 30px var(--glow-atreides); border-color: rgba(56, 189, 248, 0.3); }
+    .card.harkonnen:hover { box-shadow: 0 10px 30px var(--glow-harkonnen); border-color: rgba(248, 113, 113, 0.3); }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card.atreides .card-title { color: #38bdf8; }
+    .card.harkonnen .card-title { color: #f87171; }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    input, select {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: white;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    option {
+      background: #1f2229;
+      color: white;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .btn.secondary {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+    }
+    .btn.secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      z-index: 50;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--bg-input);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .atreides .progress-fill { background: #38bdf8; }
+    .harkonnen .progress-fill { background: #f87171; }
+
+    .toast {
+      background: var(--bg-card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      color: white;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1), fadeOut 0.3s 2.7s forwards;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(50px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateY(10px); }
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(5px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 100;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal {
+      background: #1f2229;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+      transform: scale(0.95);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .modal-overlay.active .modal {
+      transform: scale(1);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div>
+        <h1>Landsraad Bot Control</h1>
+        <p style="color: var(--text-muted); margin-top: 0.25rem;">Independent Simulation Dev Interface</p>
+      </div>
+      <button id="toggleBtn" class="badge disabled" onclick="toggleBot()">Disabled (Click to Enable)</button>
+    </header>
+
+    <div class="grid-2">
+      <!-- Global Settings -->
+      <div class="form-group" style="grid-column: span 2;">
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+          <div style="flex: 1;">
+            <label>Progress Rate (%)</label>
+            <input type="number" id="progress_rate" value="100">
+          </div>
+          <div style="flex: 1;">
+            <label>Simultaneous Targets</label>
+            <input type="number" id="simultaneous_targets" value="1">
+          </div>
+          <div style="flex: 1;">
+            <label>AI Pacing & Pathing</label>
+            <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+              <strong style="color: var(--accent);">Dynamic Term Sync:</strong> Pacing is now automatically scaled to the exact start/end time of the active game term. The budget allows for 8 tasks per term (5 for bingo + 3 for blocking).<br><br>
+              <strong style="color: var(--accent);">Dynamic Pathing:</strong> The bot evaluates all 12 bingo paths every tick. If its primary path is blocked, it intelligently pivots to the next best unblocked path, turning the term into a dynamic 50/50 race.
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+          <div style="flex: 1;">
+            <label>Tick Interval (s)</label>
+            <input type="number" id="tick_interval_seconds" value="300">
+          </div>
+          <div style="flex: 1;">
+            <label>Tick Jitter (s)</label>
+            <input type="number" id="tick_jitter_seconds" value="10">
+          </div>
+        </div>
+      </div>
+
+      <!-- Atreides -->
+      <div class="card atreides">
+        <div class="card-title">House Atreides</div>
+        <div class="form-group">
+          <label>Bot Guild ID <button class="btn secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; border-radius: 6px; float: right;" onclick="openGuildModal(1)">+ New</button></label>
+        <select id="a_guild">
+          <option value="0">None</option>
+        </select>
+        </div>
+        <div class="form-group">
+          <label>Strategy</label>
+          <select id="a_strat" onchange="toggleManualTask('a')">
+            <option value="auto">Auto (Adaptive)</option>
+            <option value="assist">Focus Assist Players</option>
+            <option value="block">Focus Block Enemy</option>
+            <option value="manual">Manual Override</option>
+          </select>
+        </div>
+        <div class="form-group" id="a_task_group" style="display: none;">
+          <label>Target Task</label>
+          <select id="a_task">
+            <option value="0">Select a task...</option>
+          </select>
+        </div>
+        <div class="form-group" id="a_decree_group">
+          <label>Target Decree</label>
+          <select id="a_decree">
+            <option value="-1">Auto Vote (Adaptive)</option>
+            <option value="0">Disabled (Do Not Vote)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+          <label>Current Status</label>
+          <div id="a_status" style="font-size: 0.9rem; margin-bottom: 0.25rem;">Fetching state...</div>
+          <div class="progress-bar"><div id="a_progress_fill" class="progress-fill"></div></div>
+        </div>
+      </div>
+
+      <!-- Harkonnen -->
+      <div class="card harkonnen">
+        <div class="card-title">House Harkonnen</div>
+        <div class="form-group">
+          <label>Bot Guild ID <button class="btn secondary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; border-radius: 6px; float: right;" onclick="openGuildModal(2)">+ New</button></label>
+        <select id="h_guild">
+          <option value="0">None</option>
+        </select>
+        </div>
+        <div class="form-group">
+          <label>Strategy</label>
+          <select id="h_strat" onchange="toggleManualTask('h')">
+            <option value="auto">Auto (Adaptive)</option>
+            <option value="assist">Focus Assist Players</option>
+            <option value="block">Focus Block Enemy</option>
+            <option value="manual">Manual Override</option>
+          </select>
+        </div>
+        <div class="form-group" id="h_task_group" style="display: none;">
+          <label>Target Task</label>
+          <select id="h_task">
+            <option value="0">Select a task...</option>
+          </select>
+        </div>
+        <div class="form-group" id="h_decree_group">
+          <label>Target Decree</label>
+          <select id="h_decree">
+            <option value="-1">Auto Vote (Adaptive)</option>
+            <option value="0">Disabled (Do Not Vote)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+          <label>Current Status</label>
+          <div id="h_status" style="font-size: 0.9rem; margin-bottom: 0.25rem;">Fetching state...</div>
+          <div class="progress-bar"><div id="h_progress_fill" class="progress-fill"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+      <button id="resetBtn" class="btn" style="background: #e74c3c; border-color: #c0392b;" onclick="confirmReset()">Reset Term (Danger)</button>
+      <div style="display: flex; gap: 1rem;">
+        <button class="btn secondary" onclick="loadConfig()">Reload</button>
+        <button class="btn" onclick="saveConfig()">Save Configuration</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toasts"></div>
+
+  <!-- Guild Modal -->
+  <div class="modal-overlay" id="guildModal">
+    <div class="modal">
+      <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">Create NPC Guild</h3>
+      <input type="hidden" id="modal_faction">
+      <div class="form-group">
+        <label>Guild Name</label>
+        <input type="text" id="modal_name" placeholder="E.g. Bene Gesserit Observers">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 2rem;">
+        <button class="btn secondary" onclick="closeGuildModal()">Cancel</button>
+        <button class="btn" onclick="submitGuild()">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:8080/api/v1';
+    let currentConfig = { enabled: false };
+
+    function showToast(msg, isError = false) {
+      const container = document.getElementById('toasts');
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.style.borderLeft = `4px solid ${isError ? 'var(--danger)' : 'var(--success)'}`;
+      t.innerText = msg;
+      container.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    async function req(method, path, body = null) {
+      const opts = { method, headers: {} };
+      if (body) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+      try {
+        const res = await fetch(API_BASE + path, opts);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || res.statusText);
+        }
+        return await res.json();
+      } catch (err) {
+        showToast(err.message, true);
+        throw err;
+      }
+    }
+
+    async function loadGuilds() {
+      try {
+        const guilds = await req('GET', '/guilds');
+        const aSelect = document.getElementById('a_guild');
+        const hSelect = document.getElementById('h_guild');
+        
+        let aHtml = '<option value="0">None</option>';
+        let hHtml = '<option value="0">None</option>';
+        
+        for (const g of guilds) {
+          if (g.faction_id === 1) {
+            aHtml += `<option value="${g.guild_id}">${g.name}</option>`;
+          } else if (g.faction_id === 2) {
+            hHtml += `<option value="${g.guild_id}">${g.name}</option>`;
+          }
+        }
+        
+        aSelect.innerHTML = aHtml;
+        hSelect.innerHTML = hHtml;
+      } catch (e) { console.error('Failed to load guilds', e); }
+    }
+
+    async function loadConfig() {
+      try {
+        await loadGuilds();
+        const cfg = await req('GET', '/landsraad/bot/config');
+        currentConfig = cfg;
+        document.getElementById('progress_rate').value = cfg.progress_rate;
+        document.getElementById('simultaneous_targets').value = cfg.simultaneous_targets;
+        document.getElementById('simultaneous_targets').value = cfg.simultaneous_targets;
+        
+        document.getElementById('tick_interval_seconds').value = cfg.tick_interval_seconds || 300;
+        document.getElementById('tick_jitter_seconds').value = cfg.tick_jitter_seconds || 10;
+        
+        document.getElementById('a_guild').value = cfg.atreides_guild_id || '';
+        document.getElementById('a_strat').value = cfg.atreides_strategy || 'auto';
+        
+        document.getElementById('h_guild').value = cfg.harkonnen_guild_id || '';
+        document.getElementById('h_strat').value = cfg.harkonnen_strategy || 'auto';
+
+        updateToggleUI();
+        await updateStatus(cfg);
+        
+        document.getElementById('a_task').value = cfg.atreides_target_task || 0;
+        document.getElementById('h_task').value = cfg.harkonnen_target_task || 0;
+        document.getElementById('a_decree').value = cfg.atreides_target_decree !== undefined ? cfg.atreides_target_decree : -1;
+        document.getElementById('h_decree').value = cfg.harkonnen_target_decree !== undefined ? cfg.harkonnen_target_decree : -1;
+        
+        toggleManualTask('a');
+        toggleManualTask('h');
+        showToast('Config loaded');
+      } catch (e) { console.error(e); }
+    }
+
+    function toggleManualTask(faction) {
+      const strat = document.getElementById(`${faction}_strat`).value;
+      document.getElementById(`${faction}_task_group`).style.display = strat === 'manual' ? 'flex' : 'none';
+    }
+
+    async function updateStatus(cfg) {
+      try {
+        const ov = await req('GET', '/landsraad');
+        const tasks = ov.tasks || [];
+        const decrees = ov.decrees || [];
+        populateTaskSelects(tasks);
+        populateDecreeSelects(decrees);
+        
+        if (!cfg.enabled) {
+          setStatus('a', 'Bot Disabled', 0);
+          setStatus('h', 'Bot Disabled', 0);
+          return;
+        }
+        
+        updateFactionStatus('a', cfg.atreides_strategy, cfg.atreides_target_task, tasks);
+        updateFactionStatus('h', cfg.harkonnen_strategy, cfg.harkonnen_target_task, tasks);
+      } catch(e) { console.error(e); }
+    }
+
+    function populateTaskSelects(tasks) {
+      ['a', 'h'].forEach(faction => {
+        const sel = document.getElementById(`${faction}_task`);
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="0">Select a task...</option>';
+        tasks.forEach(t => {
+          if (!t.completed || t.id == currentVal) {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = `${t.house} (${t.current_progress}/${t.goal_amount})` + (t.completed ? ' - Completed' : '');
+            sel.appendChild(opt);
+          }
+        });
+        sel.value = currentVal;
+      });
+    }
+
+    function populateDecreeSelects(decrees) {
+      ['a', 'h'].forEach(faction => {
+        const sel = document.getElementById(`${faction}_decree`);
+        const currentVal = sel.value;
+        sel.innerHTML = `
+          <option value="-1">Auto Vote (Adaptive)</option>
+          <option value="0">Disabled (Do Not Vote)</option>
+        `;
+        decrees.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d.id;
+          opt.textContent = `${d.name} (Weight: ${d.weight})` + (d.disabled ? ' [Disabled]' : '');
+          sel.appendChild(opt);
+        });
+        sel.value = currentVal;
+      });
+    }
+
+    function updateFactionStatus(faction, strategy, targetId, tasks) {
+      if (strategy !== 'manual' || !targetId) {
+        // Auto strategies target random uncompleted tasks
+        let totalGoal = 0, totalProg = 0;
+        for (const t of tasks) {
+          if (!t.completed) {
+            totalGoal += t.goal_amount;
+            totalProg += t.current_progress;
+          }
+        }
+        const pct = totalGoal > 0 ? (totalProg / totalGoal) * 100 : 0;
+        setStatus(faction, `Auto Strategy (Impacting random tasks)`, pct);
+      } else {
+        const t = tasks.find(t => t.id === targetId);
+        if (!t) {
+          setStatus(faction, `Manual Target: Unknown Task #${targetId}`, 0);
+        } else if (t.completed) {
+          setStatus(faction, `Manual Target: ${t.house} (Completed!)`, 100);
+        } else {
+          const pct = (t.current_progress / t.goal_amount) * 100;
+          setStatus(faction, `Manual Target: ${t.house} (${t.current_progress} / ${t.goal_amount})`, pct);
+        }
+      }
+    }
+
+    function setStatus(faction, text, pct) {
+      document.getElementById(`${faction}_status`).innerText = text;
+      document.getElementById(`${faction}_progress_fill`).style.width = `${Math.min(100, Math.max(0, pct))}%`;
+    }
+
+    async function saveConfig() {
+      const payload = {
+        enabled: currentConfig.enabled,
+        progress_rate: parseFloat(document.getElementById('progress_rate').value) || 100,
+        simultaneous_targets: parseInt(document.getElementById('simultaneous_targets').value) || 1,
+        simultaneous_targets: parseInt(document.getElementById('simultaneous_targets').value) || 1,
+        
+        tick_interval_seconds: parseInt(document.getElementById('tick_interval_seconds').value) || 300,
+        tick_jitter_seconds: parseInt(document.getElementById('tick_jitter_seconds').value) || 10,
+        atreides_guild_id: parseInt(document.getElementById('a_guild').value) || 0,
+        atreides_strategy: document.getElementById('a_strat').value,
+        harkonnen_guild_id: parseInt(document.getElementById('h_guild').value) || 0,
+        harkonnen_strategy: document.getElementById('h_strat').value,
+        atreides_target_task: parseInt(document.getElementById('a_task').value) || 0,
+        harkonnen_target_task: parseInt(document.getElementById('h_task').value) || 0,
+        atreides_target_decree: parseInt(document.getElementById('a_decree').value) || 0,
+        harkonnen_target_decree: parseInt(document.getElementById('h_decree').value) || 0,
+      };
+      try {
+        currentConfig = await req('PUT', '/landsraad/bot/config', payload);
+        updateToggleUI();
+        showToast('Configuration saved successfully');
+      } catch (e) { console.error(e); }
+    }
+
+    async function toggleBot() {
+      currentConfig.enabled = !currentConfig.enabled;
+      await saveConfig();
+    }
+
+    function updateToggleUI() {
+      const btn = document.getElementById('toggleBtn');
+      if (currentConfig.enabled) {
+        btn.className = 'badge';
+        btn.innerText = 'Enabled (Click to Disable)';
+      } else {
+        btn.className = 'badge disabled';
+        btn.innerText = 'Disabled (Click to Enable)';
+      }
+    }
+
+    function openGuildModal(factionId) {
+      document.getElementById('modal_faction').value = factionId;
+      document.getElementById('modal_name').value = '';
+      document.getElementById('guildModal').classList.add('active');
+    }
+
+    function closeGuildModal() {
+      document.getElementById('guildModal').classList.remove('active');
+    }
+
+    async function submitGuild() {
+      const name = document.getElementById('modal_name').value;
+      const factionId = parseInt(document.getElementById('modal_faction').value);
+      if (!name) return showToast('Name required', true);
+      
+      try {
+        const res = await req('POST', '/guilds', { name, description: 'NPC Auto Guild', faction_id: factionId });
+        showToast(`Guild created! ID: ${res.guild_id}`);
+        closeGuildModal();
+        await loadGuilds();
+        if (factionId === 1) document.getElementById('a_guild').value = res.guild_id;
+        if (factionId === 2) document.getElementById('h_guild').value = res.guild_id;
+        await saveConfig();
+      } catch (e) { console.error(e); }
+    }
+
+    // Init
+    window.addEventListener('DOMContentLoaded', loadConfig);
+    let resetConfirmActive = false;
+    function confirmReset() {
+      const btn = document.getElementById('resetBtn');
+      if (!resetConfirmActive) {
+        resetConfirmActive = true;
+        btn.textContent = "Are you sure? Click again to Reset Term";
+        btn.style.background = "#c0392b";
+        setTimeout(() => {
+          resetConfirmActive = false;
+          btn.textContent = "Reset Term (Danger)";
+          btn.style.background = "#e74c3c";
+        }, 3000);
+      } else {
+        resetLandsraadTerm();
+      }
+    }
+
+    async function resetLandsraadTerm() {
+      try {
+        await req('POST', '/landsraad/reset');
+        alert("Landsraad term successfully ended. Refreshing board...");
+        window.location.reload();
+      } catch (err) {
+        console.error(err);
+        alert('Error resetting landsraad term: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

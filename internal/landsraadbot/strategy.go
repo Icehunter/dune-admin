@@ -39,14 +39,22 @@ var winPaths = [][]int{
 }
 
 func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID int) []ScoredTask {
+	// First fetch the active term ID
+	var activeTermID int64
+	err := i.pool.QueryRow(ctx, "SELECT term_id FROM dune.landsraad_decree_term ORDER BY start_time DESC LIMIT 1").Scan(&activeTermID)
+	if err != nil {
+		return nil
+	}
+
 	query := `
 		SELECT t.id, t.board_index, t.completed, t.winning_faction_id, t.term_id, t.goal_amount,
 		       (COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_guild_contributions WHERE task_id = t.id), 0) +
 		        COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_faction_contributions WHERE task_id = t.id), 0) +
 		        COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_player_contributions WHERE task_id = t.id), 0)) 
 		FROM dune.landsraad_tasks t
+		WHERE t.term_id = $1
 	`
-	rows, err := i.pool.Query(ctx, query)
+	rows, err := i.pool.Query(ctx, query, activeTermID)
 	if err != nil {
 		return nil
 	}

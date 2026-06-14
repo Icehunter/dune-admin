@@ -140,8 +140,8 @@ func (i *Instance) tick(ctx context.Context) {
 		actualTermDays = 7.0 // Safe fallback
 	}
 
-	// Scale the budget so the bot finishes 5 full tasks (a term-winning bingo) perfectly matching the exact length of the term
-	totalTickXP := ((35000.0 * 5) / (actualTermDays * ticksPerDay)) * (cfg.ProgressRate / 100.0)
+	// Scale the budget so the bot finishes 8 full tasks (5 for a winning bingo, plus ~3 buffer tasks for blocking the opponent) over the length of the term
+	totalTickXP := ((35000.0 * 8) / (actualTermDays * ticksPerDay)) * (cfg.ProgressRate / 100.0)
 	
 	if totalTickXP <= 0 {
 		return

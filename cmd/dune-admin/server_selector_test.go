@@ -120,6 +120,74 @@ func TestServerSelectorMiddleware_EmptyRegistry_ServesWithNilCtx(t *testing.T) {
 
 // ── context accessors ───────────────────────────────────────────────────────
 
+func TestControlFromCtx_ReturnsControlFromStashedContext(t *testing.T) {
+	t.Parallel()
+	ctrl := &statusFakeControl{}
+	reg := newServerRegistry(nil)
+	sc := &ServerContext{ID: "srv-c", StoreScope: "srv-c", Control: ctrl}
+	reg.Register(sc)
+
+	var gotCtrl ControlPlane
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCtrl = controlFromCtx(r)
+		w.WriteHeader(http.StatusOK)
+	})
+	h := serverSelectorMiddleware(reg, inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Dune-Server", "srv-c")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	if gotCtrl != ctrl {
+		t.Errorf("controlFromCtx = %v, want %v", gotCtrl, ctrl)
+	}
+}
+
+func TestControlFromCtx_NoCtx_FallsBackToGlobal(t *testing.T) {
+	orig := globalControl
+	t.Cleanup(func() { globalControl = orig })
+	globalControl = &statusFakeControl{}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	if got := controlFromCtx(req); got != globalControl {
+		t.Errorf("controlFromCtx with no stash should return globalControl, got %v", got)
+	}
+}
+
+func TestExecutorFromCtx_ReturnsExecutorFromStashedContext(t *testing.T) {
+	t.Parallel()
+	exec := &localExecutor{}
+	reg := newServerRegistry(nil)
+	sc := &ServerContext{ID: "srv-e", StoreScope: "srv-e", Executor: exec}
+	reg.Register(sc)
+
+	var gotExec Executor
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotExec = executorFromCtx(r)
+		w.WriteHeader(http.StatusOK)
+	})
+	h := serverSelectorMiddleware(reg, inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Dune-Server", "srv-e")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	if gotExec != exec {
+		t.Errorf("executorFromCtx = %v, want %v", gotExec, exec)
+	}
+}
+
+func TestExecutorFromCtx_NoCtx_FallsBackToGlobal(t *testing.T) {
+	orig := globalExecutor
+	t.Cleanup(func() { globalExecutor = orig })
+	globalExecutor = &localExecutor{}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	if got := executorFromCtx(req); got != globalExecutor {
+		t.Errorf("executorFromCtx with no stash should return globalExecutor, got %v", got)
+	}
+}
+
 func TestDBFromCtx_ReturnsPoolFromStashedContext(t *testing.T) {
 	t.Parallel()
 	reg := newServerRegistry(nil)

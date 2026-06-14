@@ -65,6 +65,26 @@ func storeScopeFromCtx(r *http.Request) string {
 	return sc.StoreScope
 }
 
+// controlFromCtx returns the ControlPlane for the request's server context.
+// Falls back to globalControl during the Phase-3 incremental conversion.
+// Phase 6 removes the fallback.
+func controlFromCtx(r *http.Request) ControlPlane {
+	if sc := serverFromCtx(r); sc != nil {
+		return sc.Control
+	}
+	return globalControl
+}
+
+// executorFromCtx returns the Executor for the request's server context.
+// Falls back to globalExecutor during the Phase-3 incremental conversion.
+// Phase 6 removes the fallback.
+func executorFromCtx(r *http.Request) Executor {
+	if sc := serverFromCtx(r); sc != nil {
+		return sc.Executor
+	}
+	return globalExecutor
+}
+
 // ── /api/v1/servers handlers ─────────────────────────────────────────────────
 
 // serverListItem is the JSON shape returned by GET /api/v1/servers.

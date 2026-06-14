@@ -378,7 +378,7 @@ func buildMux() *http.ServeMux {
 	return mux
 }
 
-func startServer(addr string) {
+func startServer(addr string) error {
 	mux := buildMux()
 	initAuthRuntime(loadedConfig)
 
@@ -391,7 +391,9 @@ func startServer(addr string) {
 		IdleTimeout:       60 * time.Second,
 	}
 	log.Printf("dune-admin listening on %s", addr)
-	log.Fatal(srv.ListenAndServe())
+	// Return the error instead of log.Fatal so the deferred cleanup registered
+	// in run() unwinds on shutdown; log.Fatal calls os.Exit, which skips defers.
+	return srv.ListenAndServe()
 }
 
 // spaHandler serves static files from distDir, falling back to index.html

@@ -43,7 +43,7 @@ docs/*
 !docs/amp-direct-connect/
 !docs/adr/
 !docs/plans/
-!docs/superpowers/
+docs/superpowers/
 !docs/docs.go
 !docs/swagger.json
 !docs/swagger.yaml

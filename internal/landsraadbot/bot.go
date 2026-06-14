@@ -125,10 +125,23 @@ func (i *Instance) tick(ctx context.Context) {
 	}
 	ticksPerDay := 86400.0 / float64(interval)
 	
-	totalTickXP := 0.0
-	if cfg.TargetCompletionDays > 0 {
-		totalTickXP = (35000.0 / (cfg.TargetCompletionDays * ticksPerDay)) * (cfg.ProgressRate / 100.0)
+	// Fetch the actual game term start and end times to perfectly pace the progress
+	var termStart time.Time
+	var termEnd time.Time
+	err := i.pool.QueryRow(ctx, "SELECT start_time, end_time FROM dune.landsraad_decree_term ORDER BY start_time DESC LIMIT 1").Scan(&termStart, &termEnd)
+	if err != nil {
+		log.Printf("landsraadbot: failed to fetch active term for pacing calculation: %v", err)
+		return
 	}
+
+	// Calculate the actual total duration of the term in days
+	actualTermDays := termEnd.Sub(termStart).Hours() / 24.0
+	if actualTermDays <= 0 {
+		actualTermDays = 7.0 // Safe fallback
+	}
+
+	// Scale the budget so the bot finishes 5 full tasks (a term-winning bingo) perfectly matching the exact length of the term
+	totalTickXP := ((35000.0 * 5) / (actualTermDays * ticksPerDay)) * (cfg.ProgressRate / 100.0)
 	
 	if totalTickXP <= 0 {
 		return

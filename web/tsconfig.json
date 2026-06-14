@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "compilerOptions": {
+  "compilerOptions": { "noImplicitAny": false,
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",

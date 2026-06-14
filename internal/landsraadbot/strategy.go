@@ -73,32 +73,50 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 
 	scores := make(map[int]float64)
 
-	// 1. Identify primary offensive path deterministically
-	seed := termID + int64(myFactionID)
-	r := rand.New(rand.NewSource(seed))
-	primaryPathIdx := r.Intn(12)
-	primaryPath := winPaths[primaryPathIdx]
+	// 1. Dynamically evaluate all bingo paths to find the best viable primary path
+	var bestPaths [][]int
+	bestFriendlyCount := -1
 
-	// 2. Calculate Offensive Scores
-	myPrimaryCount := 0
-	oppPrimaryCount := 0
-	for _, idx := range primaryPath {
-		t := tasks[idx]
-		if t.Completed {
-			if t.WinningFactionID != nil && *t.WinningFactionID == myFactionID {
-				myPrimaryCount++
-			} else if t.WinningFactionID != nil {
-				oppPrimaryCount++
+	for _, path := range winPaths {
+		friendlyCount := 0
+		enemyCount := 0
+		for _, idx := range path {
+			t := tasks[idx]
+			if t.Completed {
+				if t.WinningFactionID != nil && *t.WinningFactionID == myFactionID {
+					friendlyCount++
+				} else if t.WinningFactionID != nil {
+					enemyCount++
+				}
+			}
+		}
+
+		// We only care about paths that are NOT blocked by the enemy
+		if enemyCount == 0 {
+			if friendlyCount > bestFriendlyCount {
+				bestFriendlyCount = friendlyCount
+				bestPaths = [][]int{path}
+			} else if friendlyCount == bestFriendlyCount {
+				bestPaths = append(bestPaths, path)
 			}
 		}
 	}
 
-	// Only apply offensive bias if path is still winnable
-	if oppPrimaryCount == 0 {
+	var primaryPath []int
+	if len(bestPaths) > 0 {
+		// Tie-breaker: use a deterministic seed to break ties, ensuring the bot doesn't 
+		// frantically bounce between equally valid paths every single tick.
+		seed := termID + int64(myFactionID)
+		r := rand.New(rand.NewSource(seed))
+		primaryPath = bestPaths[r.Intn(len(bestPaths))]
+	}
+
+	// 2. Calculate Offensive Scores
+	if len(primaryPath) > 0 {
 		for _, idx := range primaryPath {
 			if !tasks[idx].Completed {
-				scores[tasks[idx].ID] += 1000.0                       // Base primary path bias
-				scores[tasks[idx].ID] += float64(myPrimaryCount) * 200.0 // Momentum bias
+				scores[tasks[idx].ID] += 1000.0                             // Base primary path bias
+				scores[tasks[idx].ID] += float64(bestFriendlyCount) * 200.0 // Momentum bonus
 			}
 		}
 	}

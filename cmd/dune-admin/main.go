@@ -901,19 +901,27 @@ func immediateModeLabel() string {
 
 func main() {
 	flag.Parse()
+	if err := run(context.Background()); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
 
+// run wires up and starts the server, returning an error instead of calling
+// os.Exit/log.Fatal so that every deferred cleanup below unwinds on every return
+// path — including the server's exit. main() translates a returned error into a
+// non-zero exit code only after run() has fully returned and its defers ran.
+func run(ctx context.Context) error {
 	handled, err := runImmediateModes()
 	if handled {
 		if err != nil {
-			fmt.Fprintln(os.Stderr, immediateModeLabel()+err.Error())
-			os.Exit(1)
+			return fmt.Errorf("%s%w", immediateModeLabel(), err)
 		}
-		return
+		return nil
 	}
 
 	if err := loadRuntimeData(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
 
 	alreadyConnected := setupIfNeeded()
@@ -947,14 +955,31 @@ func main() {
 	globalWelcomeCancel = startWelcomePackageScanner(loadedConfig)
 	defer stopWelcomeScanner()
 
+	startBackgroundServices(ctx)
+
+	applyEventEngine(loadedConfig)
+	defer stopEventEngine()
+
+	applyBattlepassEngine(loadedConfig)
+	defer stopBattlepassEngine()
+
+	return startServer(listenAddr)
+}
+
+// startBackgroundServices launches the process-lifetime schedulers and loads the
+// operator-configured runtime data that has no teardown. The schedulers honour
+// ctx.Done(); today ctx is context.Background() (the process is hard-stopped on
+// signal), but threading ctx keeps this forward-compatible with graceful
+// shutdown without changing current behaviour.
+func startBackgroundServices(ctx context.Context) {
 	// Scheduled restarts (#145): load persisted config + run the scheduler for
 	// the process lifetime (independent of the welcome scanner's lifecycle).
 	loadScheduledRestartConfig()
-	go runRestartScheduler(context.Background())
+	go runRestartScheduler(ctx)
 
 	// Scheduled DB backups (#150): same lifecycle as scheduled restarts.
 	loadScheduledBackupConfig()
-	go runBackupScheduler(context.Background())
+	go runBackupScheduler(ctx)
 
 	// Web interfaces (#155): load the operator-configured Server Health links.
 	loadWebInterfaces()
@@ -963,14 +988,6 @@ func main() {
 	initGivePacksStore()
 	initEventStore()
 	initBattlepassStore()
-
-	applyEventEngine(loadedConfig)
-	defer stopEventEngine()
-
-	applyBattlepassEngine(loadedConfig)
-	defer stopBattlepassEngine()
-
-	startServer(listenAddr)
 }
 
 // initLocationStore opens (or creates) the persistent location store and sets

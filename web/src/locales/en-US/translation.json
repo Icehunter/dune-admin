@@ -779,7 +779,21 @@
         "wipeInventory": "Wipe Inventory",
         "wipeInventoryConfirmDesc": "This will destroy all items in {{player}}'s inventory. This action cannot be undone.",
         "wipeInventoryDesc": "Destroys all items in the player's inventory",
-        "wipeInventoryTitle": "Wipe inventory permanently?"
+        "wipeInventoryTitle": "Wipe inventory permanently?",
+        "deleteCharacter": "Delete Character",
+        "deleteCharacterDesc": "Permanently remove this character from the server.",
+        "deleteCharacterButton": "Delete Character",
+        "deleteCharacterIrreversible": "This permanently deletes the character, their actors, buildings ownership, and account. This cannot be undone.",
+        "deleteCharacterTitle": "Delete character permanently?",
+        "deleteCharacterWarning": "This will permanently delete {{player}} and all associated data: actors, respawn beacons, and account. An audit record is kept. This action cannot be undone.",
+        "deleteCharacterOnlineWarning": "This player appears to be online. Kick them first so the deletion settles cleanly.",
+        "deleteCharacterReasonLabel": "Reason (recorded in the audit log)",
+        "deleteCharacterReasonPlaceholder": "Why is this character being deleted?",
+        "deleteCharacterConfirmLabel": "Type \"{{phrase}}\" to confirm",
+        "deleteCharacterConfirm": "Delete Permanently",
+        "deleteCharacterCountdown": "Wait {{seconds}}s…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Character {{player}} deleted"
       },
       "contracts": {
         "applyContracts_one": "Apply Contract(s) ({{count}})",

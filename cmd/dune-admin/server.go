@@ -173,6 +173,7 @@ func buildMux() *http.ServeMux {
 	handleAPI(mux, "POST /api/v1/players/award-char-xp", capPlayersWrite, handleAwardCharXP)
 	handleAPI(mux, "POST /api/v1/players/award-intel", capPlayersWrite, handleAwardIntel)
 	handleAPI(mux, "POST /api/v1/players/rename", capPlayersWrite, handleRenameCharacter)
+	handleAPI(mux, "POST /api/v1/players/delete", capPlayersDelete, handleDeleteCharacter)
 	handleAPI(mux, "GET /api/v1/players/{id}/tags", capPlayersRead, handleGetPlayerTags)
 	handleAPI(mux, "POST /api/v1/players/update-tags", capPlayersWrite, handleUpdatePlayerTags)
 	handleAPI(mux, "POST /api/v1/players/returning-player-award", capPlayersWrite, handleGrantReturningPlayerAward)

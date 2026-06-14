@@ -14,6 +14,7 @@ type capability string
 const (
 	capPlayersRead      capability = "players:read"
 	capPlayersWrite     capability = "players:write"
+	capPlayersDelete    capability = "players:delete"
 	capWorldRead        capability = "world:read"
 	capWorldWrite       capability = "world:write"
 	capDataExport       capability = "data:export"
@@ -47,6 +48,7 @@ const (
 var allCapabilities = map[capability]string{
 	capPlayersRead:      "View players, guilds, contracts, and progression",
 	capPlayersWrite:     "Modify players: items, currency, XP, teleport, kick, guild edits",
+	capPlayersDelete:    "Permanently delete characters from the server (irreversible)",
 	capWorldRead:        "View storage, blueprints, bases, maps, and locations",
 	capWorldWrite:       "Modify storage contents, import blueprints, edit locations",
 	capDataExport:       "Export characters, blueprints, bases, and battlepass catalogs",

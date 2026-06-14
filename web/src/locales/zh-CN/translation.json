@@ -764,7 +764,21 @@
         "wipeInventory": "清空背包",
         "wipeInventoryConfirmDesc": "这将销毁 {{player}} 背包中的所有物品。此操作无法撤销。",
         "wipeInventoryDesc": "销毁玩家背包中的所有物品",
-        "wipeInventoryTitle": "永久清空背包？"
+        "wipeInventoryTitle": "永久清空背包？",
+        "deleteCharacter": "删除角色",
+        "deleteCharacterDesc": "将此角色从服务器中永久删除。",
+        "deleteCharacterButton": "删除角色",
+        "deleteCharacterIrreversible": "这将永久删除该角色、其参与者、建筑所有权及账户。此操作无法撤销。",
+        "deleteCharacterTitle": "永久删除角色?",
+        "deleteCharacterWarning": "这将永久删除 {{player}} 及所有相关数据:参与者、重生信标和账户。将保留审计记录。此操作无法撤销。",
+        "deleteCharacterOnlineWarning": "该玩家似乎在线。请先将其踢出,以便删除操作顺利完成。",
+        "deleteCharacterReasonLabel": "原因(记录在审计日志中)",
+        "deleteCharacterReasonPlaceholder": "为什么要删除该角色?",
+        "deleteCharacterConfirmLabel": "输入\"{{phrase}}\"以确认",
+        "deleteCharacterConfirm": "永久删除",
+        "deleteCharacterCountdown": "请等待 {{seconds}} 秒…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "角色 {{player}} 已删除"
       },
       "contracts": {
         "applyContracts_one": "应用合约 ({{count}})",

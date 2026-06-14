@@ -771,7 +771,21 @@
         "wipeInventory": "Limpar inventário",
         "wipeInventoryConfirmDesc": "Isso destruirá todos os itens no inventário de {{player}}. Esta ação não pode ser desfeita.",
         "wipeInventoryDesc": "Destrói todos os itens no inventário do jogador",
-        "wipeInventoryTitle": "Limpar inventário permanentemente?"
+        "wipeInventoryTitle": "Limpar inventário permanentemente?",
+        "deleteCharacter": "Excluir personagem",
+        "deleteCharacterDesc": "Remover permanentemente este personagem do servidor.",
+        "deleteCharacterButton": "Excluir personagem",
+        "deleteCharacterIrreversible": "Isto exclui permanentemente o personagem, seus atores, a propriedade de construções e a conta. Não pode ser desfeito.",
+        "deleteCharacterTitle": "Excluir o personagem permanentemente?",
+        "deleteCharacterWarning": "Isto excluirá permanentemente {{player}} e todos os dados associados: atores, balizas de renascimento e a conta. Um registro de auditoria é mantido. Esta ação não pode ser desfeita.",
+        "deleteCharacterOnlineWarning": "Este jogador parece estar online. Expulse-o primeiro para que a exclusão seja concluída corretamente.",
+        "deleteCharacterReasonLabel": "Motivo (registrado no log de auditoria)",
+        "deleteCharacterReasonPlaceholder": "Por que este personagem está sendo excluído?",
+        "deleteCharacterConfirmLabel": "Digite \"{{phrase}}\" para confirmar",
+        "deleteCharacterConfirm": "Excluir permanentemente",
+        "deleteCharacterCountdown": "Aguarde {{seconds}} s…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Personagem {{player}} excluído"
       },
       "contracts": {
         "applyContracts_one": "Aplicar contrato(s) ({{count}})",

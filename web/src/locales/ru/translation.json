@@ -778,7 +778,21 @@
         "wipeInventory": "Очистить инвентарь",
         "wipeInventoryConfirmDesc": "Это уничтожит все предметы в инвентаре {{player}}. Действие нельзя отменить.",
         "wipeInventoryDesc": "Уничтожает все предметы в инвентаре игрока",
-        "wipeInventoryTitle": "Очистить инвентарь навсегда?"
+        "wipeInventoryTitle": "Очистить инвентарь навсегда?",
+        "deleteCharacter": "Удалить персонажа",
+        "deleteCharacterDesc": "Безвозвратно удалить этого персонажа с сервера.",
+        "deleteCharacterButton": "Удалить персонажа",
+        "deleteCharacterIrreversible": "Это безвозвратно удалит персонажа, его акторов, владение постройками и учётную запись. Это действие нельзя отменить.",
+        "deleteCharacterTitle": "Удалить персонажа навсегда?",
+        "deleteCharacterWarning": "Это безвозвратно удалит {{player}} и все связанные данные: акторов, маяки возрождения и учётную запись. Запись аудита сохраняется. Это действие нельзя отменить.",
+        "deleteCharacterOnlineWarning": "Похоже, этот игрок в сети. Сначала отключите его, чтобы удаление прошло корректно.",
+        "deleteCharacterReasonLabel": "Причина (записывается в журнал аудита)",
+        "deleteCharacterReasonPlaceholder": "Почему этот персонаж удаляется?",
+        "deleteCharacterConfirmLabel": "Введите «{{phrase}}» для подтверждения",
+        "deleteCharacterConfirm": "Удалить навсегда",
+        "deleteCharacterCountdown": "Подождите {{seconds}} с…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Персонаж {{player}} удалён"
       },
       "contracts": {
         "applyContracts_one": "Применить контракт(ы) ({{count}})",

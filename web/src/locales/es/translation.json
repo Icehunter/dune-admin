@@ -771,7 +771,21 @@
         "wipeInventory": "Borrar inventario",
         "wipeInventoryConfirmDesc": "Esto destruirá todos los objetos en el inventario de {{player}}. Esta acción no se puede deshacer.",
         "wipeInventoryDesc": "Destruye todos los objetos en el inventario del jugador",
-        "wipeInventoryTitle": "¿Borrar inventario permanentemente?"
+        "wipeInventoryTitle": "¿Borrar inventario permanentemente?",
+        "deleteCharacter": "Eliminar personaje",
+        "deleteCharacterDesc": "Eliminar permanentemente este personaje del servidor.",
+        "deleteCharacterButton": "Eliminar personaje",
+        "deleteCharacterIrreversible": "Esto elimina permanentemente el personaje, sus actores, la propiedad de construcciones y la cuenta. No se puede deshacer.",
+        "deleteCharacterTitle": "¿Eliminar el personaje permanentemente?",
+        "deleteCharacterWarning": "Esto eliminará permanentemente a {{player}} y todos los datos asociados: actores, balizas de reaparición y la cuenta. Se conserva un registro de auditoría. Esta acción no se puede deshacer.",
+        "deleteCharacterOnlineWarning": "Este jugador parece estar conectado. Expúlsalo primero para que la eliminación se complete correctamente.",
+        "deleteCharacterReasonLabel": "Motivo (registrado en el registro de auditoría)",
+        "deleteCharacterReasonPlaceholder": "¿Por qué se elimina este personaje?",
+        "deleteCharacterConfirmLabel": "Escribe «{{phrase}}» para confirmar",
+        "deleteCharacterConfirm": "Eliminar permanentemente",
+        "deleteCharacterCountdown": "Espera {{seconds}} s…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Personaje {{player}} eliminado"
       },
       "contracts": {
         "applyContracts_one": "Aplicar contrato(s) ({{count}})",

@@ -764,7 +764,21 @@
         "wipeInventory": "インベントリを削除",
         "wipeInventoryConfirmDesc": "{{player}} のインベントリ内のすべてのアイテムが破壊されます。この操作は元に戻せません。",
         "wipeInventoryDesc": "プレイヤーのインベントリ内のすべてのアイテムを破壊します",
-        "wipeInventoryTitle": "インベントリを完全に削除しますか？"
+        "wipeInventoryTitle": "インベントリを完全に削除しますか？",
+        "deleteCharacter": "キャラクターを削除",
+        "deleteCharacterDesc": "このキャラクターをサーバーから完全に削除します。",
+        "deleteCharacterButton": "キャラクターを削除",
+        "deleteCharacterIrreversible": "キャラクター、そのアクター、建物の所有権、アカウントが完全に削除されます。この操作は取り消せません。",
+        "deleteCharacterTitle": "キャラクターを完全に削除しますか?",
+        "deleteCharacterWarning": "{{player}} と関連するすべてのデータ(アクター、リスポーンビーコン、アカウント)が完全に削除されます。監査記録は保持されます。この操作は取り消せません。",
+        "deleteCharacterOnlineWarning": "このプレイヤーはオンラインのようです。削除を正常に完了させるため、先にキックしてください。",
+        "deleteCharacterReasonLabel": "理由(監査ログに記録されます)",
+        "deleteCharacterReasonPlaceholder": "このキャラクターを削除する理由は?",
+        "deleteCharacterConfirmLabel": "確認のため「{{phrase}}」と入力してください",
+        "deleteCharacterConfirm": "完全に削除",
+        "deleteCharacterCountdown": "{{seconds}}秒お待ちください…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "キャラクター {{player}} を削除しました"
       },
       "contracts": {
         "applyContracts_one": "コントラクトを適用 ({{count}})",

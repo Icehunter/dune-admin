@@ -775,6 +775,48 @@ func handleRenameCharacter(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"ok": msg.ok})
 }
 
+// @Summary Permanently delete a character
+// @Description Deletes a character via dune.delete_account: removes player
+// @Description actors, respawn beacons, and the account row, writes an audit
+// @Description log entry, and notifies the live server. Irreversible.
+// @Tags players
+// @Accept json
+// @Produce json
+// @Param body body object true "Account ID and reason"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/players/delete [post]
+func handleDeleteCharacter(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AccountID int64  `json:"account_id"`
+		Reason    string `json:"reason"`
+	}
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, err, 400)
+		return
+	}
+	if req.AccountID == 0 {
+		jsonErr(w, fmt.Errorf("account_id required"), 400)
+		return
+	}
+	if strings.TrimSpace(req.Reason) == "" {
+		jsonErr(w, fmt.Errorf("reason required"), 400)
+		return
+	}
+	msg, ok := cmdDeleteCharacter(req.AccountID, req.Reason)().(msgMutate)
+	if !ok {
+		jsonErr(w, fmt.Errorf("internal error"), 500)
+		return
+	}
+	if msg.err != nil {
+		log.Printf("handleDeleteCharacter: %v", msg.err)
+		jsonErr(w, msg.err, 500)
+		return
+	}
+	jsonOK(w, map[string]string{"ok": msg.ok})
+}
+
 // @Summary Get tags assigned to a player account
 // @Tags players
 // @Produce json

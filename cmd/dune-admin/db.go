@@ -1788,6 +1788,78 @@ func cmdRenameCharacter(accountID int64, name string) Cmd {
 	}
 }
 
+// deleteCharacterParams bundles the injectable dependencies for
+// processDeleteCharacter so validation/orchestration can be unit-tested
+// without a live DB.
+type deleteCharacterParams struct {
+	accountID     int64
+	reason        string
+	resolveUser   func(accountID int64) (string, error)
+	deleteAccount func(user, reason string) (bool, error)
+}
+
+// processDeleteCharacter validates input, resolves the accounts."user" FLS id,
+// and invokes dune.delete_account. A false result means the proc matched no
+// account row — treated as an error so the caller surfaces a failure rather
+// than a misleading success.
+func processDeleteCharacter(p deleteCharacterParams) error {
+	if p.accountID == 0 {
+		return fmt.Errorf("account ID required")
+	}
+	reason := strings.TrimSpace(p.reason)
+	if reason == "" {
+		return fmt.Errorf("reason required")
+	}
+	user, err := p.resolveUser(p.accountID)
+	if err != nil {
+		return fmt.Errorf("resolve account %d: %w", p.accountID, err)
+	}
+	if user == "" {
+		return fmt.Errorf("account %d has no FLS user id", p.accountID)
+	}
+	ok, err := p.deleteAccount(user, reason)
+	if err != nil {
+		return fmt.Errorf("delete account %d: %w", p.accountID, err)
+	}
+	if !ok {
+		return fmt.Errorf("no character deleted for account %d", p.accountID)
+	}
+	return nil
+}
+
+// cmdDeleteCharacter permanently deletes a character via the game's native
+// dune.delete_account proc, which deletes the player actors (with row locking),
+// respawn beacons, and account row; writes an account_removal_log audit entry;
+// fires guild/party/ownership cascades; and pg_notifies the live server.
+func cmdDeleteCharacter(accountID int64, reason string) Cmd {
+	return func() Msg {
+		if globalDB == nil {
+			return msgMutate{err: fmt.Errorf("not connected")}
+		}
+		ctx := context.Background()
+		err := processDeleteCharacter(deleteCharacterParams{
+			accountID: accountID,
+			reason:    reason,
+			resolveUser: func(id int64) (string, error) {
+				return rawFuncomID(ctx, id)
+			},
+			deleteAccount: func(user, reason string) (bool, error) {
+				var deleted bool
+				if err := globalDB.QueryRow(ctx,
+					`SELECT dune.delete_account($1, $2)`, user, reason).Scan(&deleted); err != nil {
+					return false, err
+				}
+				return deleted, nil
+			},
+		})
+		if err != nil {
+			return msgMutate{err: err}
+		}
+		invalidateJourneyCache(accountID)
+		return msgMutate{ok: "Character deleted"}
+	}
+}
+
 func cmdGetPlayerTags(accountID int64) Cmd {
 	return func() Msg {
 		if globalDB == nil {

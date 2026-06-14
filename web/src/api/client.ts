@@ -1036,6 +1036,8 @@ export const api = {
     awardIntel: (player_id: number, amount: number) =>
       req<MutateResult>('POST', '/players/award-intel', { player_id, amount }),
     rename: (account_id: number, name: string) => req<MutateResult>('POST', '/players/rename', { account_id, name }),
+    deleteCharacter: (account_id: number, reason: string) =>
+      req<MutateResult>('POST', '/players/delete', { account_id, reason }),
     tags: (account_id: number) => req<string[]>('GET', `/players/${account_id}/tags`),
     updateTags: (account_id: number, add: string[], remove: string[]) => req<MutateResult>('POST', '/players/update-tags', { account_id, add, remove }),
     returningPlayerAward: (account_id: number) => req<MutateResult>('POST', '/players/returning-player-award', { account_id }),

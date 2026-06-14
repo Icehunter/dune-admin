@@ -771,7 +771,21 @@
         "wipeInventory": "Effacer l'inventaire",
         "wipeInventoryConfirmDesc": "Cela détruira tous les objets dans l'inventaire de {{player}}. Cette action est irréversible.",
         "wipeInventoryDesc": "Détruit tous les objets dans l'inventaire du joueur",
-        "wipeInventoryTitle": "Effacer définitivement l'inventaire ?"
+        "wipeInventoryTitle": "Effacer définitivement l'inventaire ?",
+        "deleteCharacter": "Supprimer le personnage",
+        "deleteCharacterDesc": "Supprimer définitivement ce personnage du serveur.",
+        "deleteCharacterButton": "Supprimer le personnage",
+        "deleteCharacterIrreversible": "Cela supprime définitivement le personnage, ses acteurs, la propriété des bâtiments et le compte. Cette action est irréversible.",
+        "deleteCharacterTitle": "Supprimer définitivement le personnage ?",
+        "deleteCharacterWarning": "Cela supprimera définitivement {{player}} et toutes les données associées : acteurs, balises de réapparition et compte. Un enregistrement d’audit est conservé. Cette action est irréversible.",
+        "deleteCharacterOnlineWarning": "Ce joueur semble être en ligne. Expulsez-le d’abord pour que la suppression se termine proprement.",
+        "deleteCharacterReasonLabel": "Motif (enregistré dans le journal d’audit)",
+        "deleteCharacterReasonPlaceholder": "Pourquoi ce personnage est-il supprimé ?",
+        "deleteCharacterConfirmLabel": "Tapez « {{phrase}} » pour confirmer",
+        "deleteCharacterConfirm": "Supprimer définitivement",
+        "deleteCharacterCountdown": "Patientez {{seconds}} s…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Personnage {{player}} supprimé"
       },
       "contracts": {
         "applyContracts_one": "Appliquer les contrats ({{count}})",

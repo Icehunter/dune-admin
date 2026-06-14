@@ -764,7 +764,21 @@
         "wipeInventory": "Inventar löschen",
         "wipeInventoryConfirmDesc": "Dies vernichtet alle Gegenstände im Inventar von {{player}}. Diese Aktion kann nicht rückgängig gemacht werden.",
         "wipeInventoryDesc": "Vernichtet alle Gegenstände im Inventar des Spielers",
-        "wipeInventoryTitle": "Inventar dauerhaft löschen?"
+        "wipeInventoryTitle": "Inventar dauerhaft löschen?",
+        "deleteCharacter": "Charakter löschen",
+        "deleteCharacterDesc": "Diesen Charakter dauerhaft vom Server entfernen.",
+        "deleteCharacterButton": "Charakter löschen",
+        "deleteCharacterIrreversible": "Dies löscht den Charakter, seine Akteure, den Gebäudebesitz und das Konto dauerhaft. Dies kann nicht rückgängig gemacht werden.",
+        "deleteCharacterTitle": "Charakter dauerhaft löschen?",
+        "deleteCharacterWarning": "Dadurch werden {{player}} und alle zugehörigen Daten dauerhaft gelöscht: Akteure, Wiedereinstiegsbaken und das Konto. Ein Prüfeintrag wird gespeichert. Diese Aktion kann nicht rückgängig gemacht werden.",
+        "deleteCharacterOnlineWarning": "Dieser Spieler scheint online zu sein. Werfen Sie ihn zuerst hinaus, damit die Löschung sauber abgeschlossen wird.",
+        "deleteCharacterReasonLabel": "Grund (wird im Prüfprotokoll gespeichert)",
+        "deleteCharacterReasonPlaceholder": "Warum wird dieser Charakter gelöscht?",
+        "deleteCharacterConfirmLabel": "Geben Sie zur Bestätigung „{{phrase}}\" ein",
+        "deleteCharacterConfirm": "Dauerhaft löschen",
+        "deleteCharacterCountdown": "Warten Sie {{seconds}} s…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Charakter {{player}} gelöscht"
       },
       "contracts": {
         "applyContracts_one": "Vertrag/Verträge anwenden ({{count}})",

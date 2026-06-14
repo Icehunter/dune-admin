@@ -778,7 +778,21 @@
         "wipeInventory": "Wyczyść ekwipunek",
         "wipeInventoryConfirmDesc": "Spowoduje to zniszczenie wszystkich przedmiotów w ekwipunku {{player}}. Tej akcji nie można cofnąć.",
         "wipeInventoryDesc": "Niszczy wszystkie przedmioty w ekwipunku gracza",
-        "wipeInventoryTitle": "Trwale wyczyścić ekwipunek?"
+        "wipeInventoryTitle": "Trwale wyczyścić ekwipunek?",
+        "deleteCharacter": "Usuń postać",
+        "deleteCharacterDesc": "Trwale usuń tę postać z serwera.",
+        "deleteCharacterButton": "Usuń postać",
+        "deleteCharacterIrreversible": "Spowoduje to trwałe usunięcie postaci, jej aktorów, własności budynków oraz konta. Tej operacji nie można cofnąć.",
+        "deleteCharacterTitle": "Usunąć postać na stałe?",
+        "deleteCharacterWarning": "Spowoduje to trwałe usunięcie {{player}} oraz wszystkich powiązanych danych: aktorów, znaczników odrodzenia i konta. Zapis audytu zostanie zachowany. Tej operacji nie można cofnąć.",
+        "deleteCharacterOnlineWarning": "Ten gracz wydaje się być online. Najpierw go wyrzuć, aby usunięcie zakończyło się poprawnie.",
+        "deleteCharacterReasonLabel": "Powód (zapisany w dzienniku audytu)",
+        "deleteCharacterReasonPlaceholder": "Dlaczego ta postać jest usuwana?",
+        "deleteCharacterConfirmLabel": "Wpisz „{{phrase}}\", aby potwierdzić",
+        "deleteCharacterConfirm": "Usuń na stałe",
+        "deleteCharacterCountdown": "Poczekaj {{seconds}} s…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Postać {{player}} usunięta"
       },
       "contracts": {
         "applyContracts_one": "Zastosuj kontrakt(y) ({{count}})",

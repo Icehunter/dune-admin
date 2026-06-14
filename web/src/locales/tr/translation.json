@@ -764,7 +764,21 @@
         "wipeInventory": "Envanteri Sil",
         "wipeInventoryConfirmDesc": "Bu işlem {{player}} oyuncusunun envanterindeki tüm eşyaları yok edecek. Bu eylem geri alınamaz.",
         "wipeInventoryDesc": "Oyuncunun envanterindeki tüm eşyaları yok eder",
-        "wipeInventoryTitle": "Envanter kalıcı olarak silinsin mi?"
+        "wipeInventoryTitle": "Envanter kalıcı olarak silinsin mi?",
+        "deleteCharacter": "Karakteri sil",
+        "deleteCharacterDesc": "Bu karakteri sunucudan kalıcı olarak kaldır.",
+        "deleteCharacterButton": "Karakteri sil",
+        "deleteCharacterIrreversible": "Bu işlem karakteri, aktörlerini, bina sahipliğini ve hesabı kalıcı olarak siler. Geri alınamaz.",
+        "deleteCharacterTitle": "Karakter kalıcı olarak silinsin mi?",
+        "deleteCharacterWarning": "Bu işlem {{player}} ve ilişkili tüm verileri kalıcı olarak siler: aktörler, yeniden doğma işaretçileri ve hesap. Bir denetim kaydı tutulur. Bu işlem geri alınamaz.",
+        "deleteCharacterOnlineWarning": "Bu oyuncu çevrimiçi görünüyor. Silme işleminin düzgün tamamlanması için önce oyuncuyu atın.",
+        "deleteCharacterReasonLabel": "Neden (denetim günlüğüne kaydedilir)",
+        "deleteCharacterReasonPlaceholder": "Bu karakter neden siliniyor?",
+        "deleteCharacterConfirmLabel": "Onaylamak için \"{{phrase}}\" yazın",
+        "deleteCharacterConfirm": "Kalıcı olarak sil",
+        "deleteCharacterCountdown": "{{seconds}} sn bekleyin…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Karakter {{player}} silindi"
       },
       "contracts": {
         "applyContracts_one": "Sözleşme(leri) Uygula ({{count}})",

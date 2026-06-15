@@ -36,11 +36,12 @@ default_server: "s2"
 	if len(cfg.Servers) != 2 {
 		t.Fatalf("got %d servers, want 2", len(cfg.Servers))
 	}
-	if cfg.Servers[0].ID != "s1" {
-		t.Errorf("servers[0].ID = %q, want s1", cfg.Servers[0].ID)
+	// YAML ids parse into LegacyID (the numeric ID is DB-assigned on import).
+	if cfg.Servers[0].LegacyID != "s1" {
+		t.Errorf("servers[0].LegacyID = %q, want s1", cfg.Servers[0].LegacyID)
 	}
-	if cfg.Servers[1].ID != "s2" {
-		t.Errorf("servers[1].ID = %q, want s2", cfg.Servers[1].ID)
+	if cfg.Servers[1].LegacyID != "s2" {
+		t.Errorf("servers[1].LegacyID = %q, want s2", cfg.Servers[1].LegacyID)
 	}
 	if cfg.Servers[1].Control != "docker" {
 		t.Errorf("servers[1].Control = %q, want docker", cfg.Servers[1].Control)
@@ -90,9 +91,9 @@ func TestHandleReconnectServer_NotFound(t *testing.T) {
 
 func TestHandleListServers_MultiServer(t *testing.T) {
 	reg := newServerRegistry(nil)
-	reg.Register(&ServerContext{ID: "s1", Name: "Alpha"})
-	reg.Register(&ServerContext{ID: "s2", Name: "Beta"})
-	_ = reg.SetActive("s2")
+	reg.Register(&ServerContext{ID: "1", Name: "Alpha", Cfg: ServerConfig{ID: 1, Name: "Alpha"}})
+	reg.Register(&ServerContext{ID: "2", Name: "Beta", Cfg: ServerConfig{ID: 2, Name: "Beta"}})
+	_ = reg.SetActive("2")
 	orig := globalRegistry
 	globalRegistry = reg
 	defer func() { globalRegistry = orig }()
@@ -111,15 +112,15 @@ func TestHandleListServers_MultiServer(t *testing.T) {
 	if len(items) != 2 {
 		t.Fatalf("got %d items, want 2", len(items))
 	}
-	// active flag must be on s2
+	// active flag must be on server 2
 	var foundActive bool
 	for _, it := range items {
-		if it.ID == "s2" && it.Active {
+		if it.ID == 2 && it.Active {
 			foundActive = true
 		}
 	}
 	if !foundActive {
-		t.Error("expected s2 to be marked active")
+		t.Error("expected server 2 to be marked active")
 	}
 }
 

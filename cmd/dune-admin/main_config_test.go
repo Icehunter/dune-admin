@@ -25,7 +25,7 @@ func TestNeedsSetupConfigured_MultiServer(t *testing.T) {
 	t.Cleanup(func() { loadedConfig = origCfg; dbPass = origPass })
 
 	dbPass = ""
-	loadedConfig = appConfig{Servers: []ServerConfig{{ID: "s1"}}}
+	loadedConfig = appConfig{Servers: []ServerConfig{{ID: 1}}}
 	if needsSetupConfigured() {
 		t.Error("needsSetupConfigured() = true with Servers[]; want false")
 	}

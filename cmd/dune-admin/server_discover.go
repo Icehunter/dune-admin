@@ -105,6 +105,6 @@ func handleDiscoverServer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out := assembleServerDiscovery(exec, ctrl)
-	log.Printf("handleDiscoverServer %q (%s): %s", cfg.ID, ctrl, discoveryMaskForLog(out))
+	log.Printf("handleDiscoverServer %q (%s): %s", cfg.Name, ctrl, discoveryMaskForLog(out))
 	jsonOK(w, out)
 }

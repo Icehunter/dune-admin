@@ -18,7 +18,17 @@ const masked = "••••••••"
 // @Produce json
 // @Success 200 {object} appConfig
 // @Router /api/v1/config [get]
-func handleGetConfig(w http.ResponseWriter, r *http.Request) {
+func handleGetConfig(w http.ResponseWriter, _ *http.Request) {
+	// DB is the source of truth: serve the in-memory config hydrated from the
+	// store at boot (and kept in sync by the save/servers handlers). config.yaml
+	// is only a first-boot import seed and is never read at runtime.
+	if globalSettingsStore != nil {
+		cfg := loadedConfig
+		maskSecrets(&cfg)
+		jsonOK(w, cfg)
+		return
+	}
+	// Legacy fallback (store unavailable): read config.yaml.
 	data, err := os.ReadFile(configPath())
 	if err != nil {
 		jsonOK(w, buildCurrentConfig())
@@ -122,6 +132,16 @@ func preserveMaskedSecrets(
 	}
 }
 
+// persistGlobalSettings saves the global settings to the DB (the source of
+// truth), falling back to config.yaml only when the store is unavailable.
+// config.yaml is otherwise a first-boot import seed and is never written again.
+func persistGlobalSettings(cfg appConfig) error {
+	if globalSettingsStore != nil {
+		return globalSettingsStore.saveSettings(cfg)
+	}
+	return writeConfigFile(cfg)
+}
+
 func writeConfigFile(cfg appConfig) error {
 	if err := os.MkdirAll(configDir(), 0700); err != nil {
 		return fmt.Errorf("create config dir: %w", err)
@@ -165,7 +185,13 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preserveMaskedSecrets(&cfg, os.ReadFile, configPath())
+	// DB is the source of truth: restore masked secrets from the in-memory
+	// config (hydrated from the store), not from a stale config.yaml.
+	readFile := os.ReadFile
+	if globalSettingsStore != nil {
+		readFile = func(string) ([]byte, error) { return nil, os.ErrNotExist }
+	}
+	preserveMaskedSecrets(&cfg, readFile, configPath())
 
 	// Per-server config (Servers[] / default_server) is owned exclusively by the
 	// /api/v1/servers endpoints. A global-settings save must never wipe or mutate
@@ -181,8 +207,9 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	globalScope := r.URL.Query().Get("scope") == "global"
 
 	// The flat-connect path (gap-fill defaults + connectAll) belongs to the
-	// legacy single-server setup only — never a global save, never multi-server.
-	flatConnect := !globalScope && len(cfg.Servers) == 0
+	// legacy single-server setup only — never a global save, never multi-server,
+	// and never when the DB-backed stores are live (servers go through /servers).
+	flatConnect := !globalScope && len(cfg.Servers) == 0 && globalSettingsStore == nil
 	if flatConnect {
 		// Gap-fill blank connection fields with control-plane defaults so leaving
 		// a field empty in the wizard uses the default (mirroring the console
@@ -195,7 +222,14 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := writeConfigFile(cfg); err != nil {
+	// Persist global settings to the DB (source of truth); fall back to
+	// config.yaml only when the store is unavailable.
+	if globalSettingsStore != nil {
+		if err := globalSettingsStore.saveSettings(cfg); err != nil {
+			jsonErr(w, err, 500)
+			return
+		}
+	} else if err := writeConfigFile(cfg); err != nil {
 		jsonErr(w, err, 500)
 		return
 	}
@@ -313,7 +347,10 @@ func handleDiscover(w http.ResponseWriter, r *http.Request) {
 		directorIP = podIPByPattern(pods, "bgd")
 	}
 	cfg := persistDiscoveredConfig(loadedConfig, g, gameIP, adminIP, directorIP)
-	if r.URL.Query().Get("persist") == "true" {
+	// persist=true is a legacy single-server convenience (gap-fills the flat
+	// connection config). In DB-backed multi-server mode discovered values are
+	// returned to the add-server form instead, so skip the file write.
+	if r.URL.Query().Get("persist") == "true" && globalSettingsStore == nil {
 		if err := writeConfigFile(cfg); err != nil {
 			jsonErr(w, fmt.Errorf("write config: %w", err), http.StatusInternalServerError)
 			return

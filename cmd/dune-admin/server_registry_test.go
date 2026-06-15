@@ -263,8 +263,8 @@ func TestLegacyServerFromFlat_SynthesisesDefaultServer(t *testing.T) {
 
 	sc := legacyServerFromFlat(ac)
 
-	if sc.ID != "default" {
-		t.Errorf("ID = %q, want %q", sc.ID, "default")
+	if sc.LegacyID != "default" {
+		t.Errorf("LegacyID = %q, want %q", sc.LegacyID, "default")
 	}
 	if sc.Name != "Default" {
 		t.Errorf("Name = %q, want %q", sc.Name, "Default")
@@ -326,7 +326,7 @@ func TestLegacyServerFromFlat_SSHTriggersKubectl(t *testing.T) {
 // without a DB.
 func TestConnectServer_ControlPlaneSurvivesDBFailure(t *testing.T) {
 	cfg := ServerConfig{
-		ID:       "test-server",
+		ID:       7,
 		Name:     "Test Server",
 		Control:  "local",
 		DBHost:   "127.0.0.1",
@@ -354,11 +354,11 @@ func TestConnectServer_ControlPlaneSurvivesDBFailure(t *testing.T) {
 	if sc.DB != nil {
 		t.Error("DB must be nil when DB connect failed")
 	}
-	if sc.ID != cfg.ID {
-		t.Errorf("ServerContext.ID = %q, want %q", sc.ID, cfg.ID)
+	if sc.ID != serverScope(cfg.ID) {
+		t.Errorf("ServerContext.ID = %q, want %q", sc.ID, serverScope(cfg.ID))
 	}
-	if sc.StoreScope != cfg.ID {
-		t.Errorf("StoreScope = %q, want %q", sc.StoreScope, cfg.ID)
+	if sc.StoreScope != serverScope(cfg.ID) {
+		t.Errorf("StoreScope = %q, want %q", sc.StoreScope, serverScope(cfg.ID))
 	}
 }
 
@@ -366,7 +366,7 @@ func TestConnectServer_ControlPlaneSurvivesDBFailure(t *testing.T) {
 // input ServerConfig's ID and Name correctly.
 func TestConnectServer_IDAndNamePropagated(t *testing.T) {
 	cfg := ServerConfig{
-		ID:      "my-server",
+		ID:      42,
 		Name:    "My Server",
 		Control: "local",
 		DBHost:  "127.0.0.1",
@@ -376,14 +376,14 @@ func TestConnectServer_IDAndNamePropagated(t *testing.T) {
 
 	sc, _ := connectServer(cfg)
 
-	if sc.ID != "my-server" {
-		t.Errorf("ID = %q, want %q", sc.ID, "my-server")
+	if sc.ID != "42" {
+		t.Errorf("ID = %q, want %q", sc.ID, "42")
 	}
 	if sc.Name != "My Server" {
 		t.Errorf("Name = %q, want %q", sc.Name, "My Server")
 	}
-	if sc.StoreScope != "my-server" {
-		t.Errorf("StoreScope = %q, want %q", sc.StoreScope, "my-server")
+	if sc.StoreScope != "42" {
+		t.Errorf("StoreScope = %q, want %q", sc.StoreScope, "42")
 	}
 }
 

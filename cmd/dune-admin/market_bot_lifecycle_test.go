@@ -61,7 +61,7 @@ func TestServerBotPaths_DistinctPerServer(t *testing.T) {
 
 // Enabled toggle off → no bot, not configured.
 func TestStartServerMarketBot_DisabledNoop(t *testing.T) {
-	sc := &ServerContext{ID: "s1", Cfg: ServerConfig{ID: "s1"}} // MarketBotEnabled nil
+	sc := &ServerContext{ID: "1", Cfg: ServerConfig{ID: 1}} // MarketBotEnabled nil
 	startServerMarketBot(sc, appConfig{})
 	if sc.Bot != nil {
 		t.Error("bot should not start when disabled")
@@ -74,7 +74,7 @@ func TestStartServerMarketBot_DisabledNoop(t *testing.T) {
 // Enabled but no DB → do NOT attempt a connection (the fresh-env case), but mark
 // configured so status can report "configured, not running".
 func TestStartServerMarketBot_EnabledNoDB(t *testing.T) {
-	sc := &ServerContext{ID: "s1", Cfg: ServerConfig{ID: "s1", MarketBotEnabled: boolPtr(true)}}
+	sc := &ServerContext{ID: "1", Cfg: ServerConfig{ID: 1, MarketBotEnabled: boolPtr(true)}}
 	startServerMarketBot(sc, appConfig{})
 	if sc.Bot != nil {
 		t.Error("bot must not start without a DB connection (fresh env)")

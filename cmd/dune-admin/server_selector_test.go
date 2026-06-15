@@ -289,10 +289,10 @@ func TestHandleSetActiveServer_Valid(t *testing.T) {
 	t.Cleanup(func() { globalRegistry = origReg })
 
 	globalRegistry = newServerRegistry(nil)
-	globalRegistry.Register(&ServerContext{ID: "alpha", Name: "Alpha", StoreScope: "alpha"})
-	globalRegistry.Register(&ServerContext{ID: "beta", Name: "Beta", StoreScope: "beta"})
+	globalRegistry.Register(&ServerContext{ID: "1", Name: "Alpha", StoreScope: "1"})
+	globalRegistry.Register(&ServerContext{ID: "2", Name: "Beta", StoreScope: "2"})
 
-	body := `{"id":"beta"}`
+	body := `{"id":2}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/servers/active",
 		strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -302,8 +302,8 @@ func TestHandleSetActiveServer_Valid(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 body=%s", rr.Code, rr.Body.String())
 	}
-	if globalRegistry.ActiveID() != "beta" {
-		t.Errorf("ActiveID = %q, want %q", globalRegistry.ActiveID(), "beta")
+	if globalRegistry.ActiveID() != "2" {
+		t.Errorf("ActiveID = %q, want %q", globalRegistry.ActiveID(), "2")
 	}
 }
 
@@ -312,9 +312,9 @@ func TestHandleSetActiveServer_UnknownID_Returns404(t *testing.T) {
 	t.Cleanup(func() { globalRegistry = origReg })
 
 	globalRegistry = newServerRegistry(nil)
-	globalRegistry.Register(&ServerContext{ID: "alpha", Name: "Alpha", StoreScope: "alpha"})
+	globalRegistry.Register(&ServerContext{ID: "1", Name: "Alpha", StoreScope: "1"})
 
-	body := `{"id":"does-not-exist"}`
+	body := `{"id":999}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/servers/active",
 		strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")

@@ -630,7 +630,7 @@ func handleSaveBattlepassConfig(w http.ResponseWriter, r *http.Request) {
 	loadedConfig.BattlepassScanPaceMs = p.ScanPaceMs
 	loadedConfig.BattlepassScanStartDelayMs = p.ScanStartDelayMs
 
-	if err := writeConfigFile(loadedConfig); err != nil {
+	if err := persistGlobalSettings(loadedConfig); err != nil {
 		log.Printf("handleSaveBattlepassConfig: %v", err)
 		jsonErr(w, fmt.Errorf("failed to write config"), http.StatusInternalServerError)
 		return

@@ -9,7 +9,7 @@ import (
 
 // serverHealth is the dashboard health summary for one registered server.
 type serverHealth struct {
-	ID            string `json:"id"`
+	ID            int    `json:"id"`
 	Name          string `json:"name"`
 	Active        bool   `json:"active"`
 	Control       string `json:"control"`
@@ -27,7 +27,7 @@ type serverHealth struct {
 // pool is unavailable). Never panics — failures land in the Error field.
 func assembleServerHealth(ctx context.Context, sc *ServerContext) serverHealth {
 	h := serverHealth{
-		ID:          sc.ID,
+		ID:          sc.Cfg.ID,
 		Name:        sc.Name,
 		Active:      globalRegistry.ActiveID() == sc.ID,
 		Control:     sc.Cfg.Control,

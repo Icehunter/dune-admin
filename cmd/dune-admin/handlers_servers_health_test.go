@@ -21,9 +21,9 @@ func (c *healthFakeControl) GetStatus(context.Context, Executor) (*BattlegroupSt
 
 func TestAssembleServerHealth_RunningWithRows(t *testing.T) {
 	sc := &ServerContext{
-		ID:   "s1",
+		ID:   "1",
 		Name: "One",
-		Cfg:  ServerConfig{ID: "s1", Name: "One", Control: "amp"},
+		Cfg:  ServerConfig{ID: 1, Name: "One", Control: "amp"},
 		Control: &healthFakeControl{status: &BattlegroupStatus{
 			Phase:    "Running",
 			Database: "Connected",
@@ -35,7 +35,7 @@ func TestAssembleServerHealth_RunningWithRows(t *testing.T) {
 	}
 	h := assembleServerHealth(context.Background(), sc)
 
-	if h.ID != "s1" || h.Name != "One" || h.Control != "amp" {
+	if h.ID != 1 || h.Name != "One" || h.Control != "amp" {
 		t.Errorf("identity wrong: %+v", h)
 	}
 	if !h.Running {
@@ -55,9 +55,9 @@ func TestAssembleServerHealth_RunningWithRows(t *testing.T) {
 
 func TestAssembleServerHealth_ControlError(t *testing.T) {
 	sc := &ServerContext{
-		ID:      "s2",
+		ID:      "2",
 		Name:    "Two",
-		Cfg:     ServerConfig{ID: "s2", Control: "local"},
+		Cfg:     ServerConfig{ID: 2, Control: "local"},
 		Control: &healthFakeControl{err: context.DeadlineExceeded},
 	}
 	h := assembleServerHealth(context.Background(), sc)
@@ -70,21 +70,21 @@ func TestAssembleServerHealth_ControlError(t *testing.T) {
 }
 
 func TestAssembleServerHealth_NilControl(t *testing.T) {
-	sc := &ServerContext{ID: "s3", Name: "Three", Cfg: ServerConfig{ID: "s3", Control: "amp"}}
+	sc := &ServerContext{ID: "3", Name: "Three", Cfg: ServerConfig{ID: 3, Control: "amp"}}
 	h := assembleServerHealth(context.Background(), sc)
 	if h.Running {
 		t.Error("Running should be false with no control plane")
 	}
-	if h.ID != "s3" {
-		t.Errorf("ID = %q, want s3", h.ID)
+	if h.ID != 3 {
+		t.Errorf("ID = %d, want 3", h.ID)
 	}
 }
 
 func TestHandleServersHealth_ReturnsArray(t *testing.T) {
 	reg := newServerRegistry(nil)
-	reg.Register(&ServerContext{ID: "a", Name: "A", Cfg: ServerConfig{ID: "a", Control: "local"}})
-	reg.Register(&ServerContext{ID: "b", Name: "B", Cfg: ServerConfig{ID: "b", Control: "amp"}})
-	_ = reg.SetActive("a")
+	reg.Register(&ServerContext{ID: "1", Name: "A", Cfg: ServerConfig{ID: 1, Control: "local"}})
+	reg.Register(&ServerContext{ID: "2", Name: "B", Cfg: ServerConfig{ID: 2, Control: "amp"}})
+	_ = reg.SetActive("1")
 	orig := globalRegistry
 	globalRegistry = reg
 	defer func() { globalRegistry = orig }()
@@ -103,10 +103,10 @@ func TestHandleServersHealth_ReturnsArray(t *testing.T) {
 	if len(out) != 2 {
 		t.Fatalf("len = %d, want 2", len(out))
 	}
-	if out[0].ID != "a" || !out[0].Active {
-		t.Errorf("first entry should be active server a, got %+v", out[0])
+	if out[0].ID != 1 || !out[0].Active {
+		t.Errorf("first entry should be active server 1, got %+v", out[0])
 	}
-	if out[1].ID != "b" || out[1].Active {
-		t.Errorf("second entry should be non-active b, got %+v", out[1])
+	if out[1].ID != 2 || out[1].Active {
+		t.Errorf("second entry should be non-active 2, got %+v", out[1])
 	}
 }

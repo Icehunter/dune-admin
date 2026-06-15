@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"dune-admin/internal/marketbot"
@@ -16,8 +17,15 @@ import (
 // varies between game servers. Global fields (listen_addr, auth_*, market bot,
 // Discord bot, etc.) remain in appConfig and are not duplicated here.
 type ServerConfig struct {
-	ID   string `yaml:"id"   json:"id"`
-	Name string `yaml:"name" json:"name"`
+	// ID is the DB-assigned numeric server id (exposed as a JSON number). It is
+	// NOT read from YAML — legacy config.yaml stored string ids, captured by
+	// LegacyID below for the one-time import remap.
+	ID int `yaml:"-" json:"id"`
+	// LegacyID captures the string id from a legacy config.yaml (e.g. "default"
+	// or a slug) so the first-boot import can remap per-feature server_id data
+	// to the new numeric id. Never sent to the client.
+	LegacyID string `yaml:"id" json:"-"`
+	Name     string `yaml:"name" json:"name"`
 
 	// Transport — SSH fields.
 	SSHHost      string `yaml:"ssh_host"       json:"ssh_host"`
@@ -128,6 +136,16 @@ type serverRegistry struct {
 // with a nil store; initUnifiedStoreOnce wires the store in before connectAll
 // runs (or connectAll updates it lazily).
 var globalRegistry = newServerRegistry(nil)
+
+// serverScope maps a numeric server id to the string key used for the registry,
+// the X-Dune-Server header, and per-feature server_id scoping. id 0 (legacy /
+// pre-import / no-DB fallback) maps to "default" so it matches legacy data.
+func serverScope(id int) string {
+	if id == 0 {
+		return "default"
+	}
+	return strconv.Itoa(id)
+}
 
 // newServerRegistry constructs an empty registry backed by the given SQLite
 // store. store may be nil in tests or before the store is opened.

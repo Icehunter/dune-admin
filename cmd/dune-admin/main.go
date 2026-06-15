@@ -667,9 +667,13 @@ func loadItemData() error {
 // still requires setup, so an unreachable/failed discovery doesn't strand the
 // operator without a wizard path.
 func needsSetupConfigured() bool {
-	// A multi-server install configures each server in Servers[]; the flat db_pass
-	// is irrelevant there. Adding a server via POST /servers must not leave
-	// needs_setup stuck true.
+	// DB is the source of truth: any configured server means no setup needed.
+	if globalServersStore != nil {
+		if has, err := globalServersStore.hasAnyServer(); err == nil {
+			return !has
+		}
+	}
+	// Fallback (store unavailable): the legacy flat-config heuristic.
 	if len(loadedConfig.Servers) > 0 {
 		return false
 	}
@@ -680,7 +684,14 @@ func needsSetupConfigured() bool {
 }
 
 func needsSetup() bool {
-	// config.yaml takes priority over legacy .env.
+	// DB is the source of truth: a server configured in the store means the
+	// install is set up, regardless of whether config.yaml still exists.
+	if globalServersStore != nil {
+		if has, err := globalServersStore.hasAnyServer(); err == nil {
+			return !has
+		}
+	}
+	// Fallback (store unavailable): config.yaml takes priority over legacy .env.
 	if _, err := os.Stat(configPath()); err == nil {
 		return needsSetupConfigured()
 	}
@@ -938,13 +949,18 @@ func run(ctx context.Context) error {
 		return err
 	}
 
+	// Open the unified store BEFORE connecting: servers + global settings now
+	// live in the DB. hydrateConfigFromStore imports config.yaml once (first
+	// boot) and loads servers/settings into loadedConfig so the connect path and
+	// needsSetup() see DB-sourced state.
+	closeStore := initUnifiedStoreOnce()
+	defer closeStore()
+	hydrateConfigFromStore()
+
 	alreadyConnected := setupIfNeeded()
 	defer closeGlobalConnections()
 
 	connectAndPrimeTemplates(alreadyConnected)
-
-	closeStore := initUnifiedStoreOnce()
-	defer closeStore()
 
 	sessionCancel := startSessionTracking()
 	defer sessionCancel()

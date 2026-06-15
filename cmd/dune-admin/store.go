@@ -14,6 +14,12 @@ import (
 // initUnifiedStore and closed when the server shuts down.
 var globalStore *sql.DB
 
+// globalServersStore and globalSettingsStore are the DB-backed sources of truth
+// for the server list and global settings. Nil when the unified store failed to
+// open (legacy config.yaml fallback path).
+var globalServersStore *serversStore
+var globalSettingsStore *settingsStore
+
 // initUnifiedStoreOnce opens the unified SQLite store, runs legacy migrations,
 // sets globalStore, and returns a close func for use with defer. Non-fatal:
 // on error a warning is printed and globalStore stays nil so individual stores
@@ -26,6 +32,8 @@ func initUnifiedStoreOnce() func() {
 	}
 	globalStore = db
 	authUsersDB = newAuthUserStore(db)
+	globalServersStore = newServersStore(db)
+	globalSettingsStore = newSettingsStore(db)
 	if err := migrateLegacyStores(db, defaultLegacySources()); err != nil {
 		fmt.Fprintf(os.Stderr, "unified store: migration warning: %v\n", err)
 	}
@@ -87,6 +95,12 @@ func applyUnifiedSchema(db *sql.DB) error {
 	}
 	if err := initAuthUsersSchema(db); err != nil {
 		return fmt.Errorf("unified store: auth users schema: %w", err)
+	}
+	if err := initServersSchema(db); err != nil {
+		return fmt.Errorf("unified store: servers schema: %w", err)
+	}
+	if err := initSettingsSchema(db); err != nil {
+		return fmt.Errorf("unified store: settings schema: %w", err)
 	}
 	if _, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS meta (

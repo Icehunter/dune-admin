@@ -15,8 +15,11 @@ func TestHandleGetConfig_MasksServerSecrets(t *testing.T) {
 	t.Setenv("DUNE_ADMIN_CONFIG_DIR", t.TempDir())
 
 	cfg := appConfig{Servers: []ServerConfig{
-		{ID: "s1", Name: "One", DBPass: "plaintext-pw", BrokerPass: "bpw", AmpAPIPass: "amp-pw"},
+		{ID: 1, Name: "One", DBPass: "plaintext-pw", BrokerPass: "bpw", AmpAPIPass: "amp-pw"},
 	}}
+	origCfg := loadedConfig
+	loadedConfig = cfg
+	defer func() { loadedConfig = origCfg }()
 	if err := writeConfigFile(cfg); err != nil {
 		t.Fatalf("writeConfigFile: %v", err)
 	}
@@ -86,17 +89,17 @@ func TestHandleSaveConfig_MultiServerPreservesServersAndConnections(t *testing.T
 	t.Setenv("DUNE_ADMIN_CONFIG_DIR", t.TempDir())
 
 	reg := newServerRegistry(nil)
-	s1 := &ServerContext{ID: "s1", Name: "One", StoreScope: "s1"}
+	s1 := &ServerContext{ID: "1", Name: "One", StoreScope: "1"}
 	reg.Register(s1)
-	reg.Register(&ServerContext{ID: "s2", Name: "Two", StoreScope: "s2"})
-	_ = reg.SetActive("s1")
+	reg.Register(&ServerContext{ID: "2", Name: "Two", StoreScope: "2"})
+	_ = reg.SetActive("1")
 	origReg := globalRegistry
 	globalRegistry = reg
 	defer func() { globalRegistry = origReg }()
 
 	origCfg := loadedConfig
 	loadedConfig = appConfig{
-		Servers: []ServerConfig{{ID: "s1", Name: "One"}, {ID: "s2", Name: "Two"}},
+		Servers: []ServerConfig{{ID: 1, Name: "One"}, {ID: 2, Name: "Two"}},
 	}
 	defer func() { loadedConfig = origCfg }()
 
@@ -112,7 +115,7 @@ func TestHandleSaveConfig_MultiServerPreservesServersAndConnections(t *testing.T
 	if len(loadedConfig.Servers) != 2 {
 		t.Fatalf("Servers len = %d after global save, want 2 (preserved)", len(loadedConfig.Servers))
 	}
-	if globalRegistry.Get("s1") != s1 {
+	if globalRegistry.Get("1") != s1 {
 		t.Error("active server context was replaced/torn down by a global-settings save")
 	}
 	if globalRegistry.Get("default") != nil {

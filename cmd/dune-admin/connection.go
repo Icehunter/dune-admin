@@ -211,11 +211,16 @@ func applyAutoDiscovery(cfg *appConfig, exec Executor, ctrl string) {
 		brokerGameAddr, brokerAdminAddr, brokerTLS = cfg.BrokerGameAddr, cfg.BrokerAdminAddr, cfg.BrokerTLS
 	}
 	if discoverWrite {
-		if werr := writeConfigFile(*cfg); werr != nil {
-			log.Printf("connectAll: discover-write: %v", werr)
-		} else {
-			loadedConfig = *cfg
-			log.Printf("connectAll: discover-write persisted config.yaml")
+		loadedConfig = *cfg
+		// In DB-backed mode config.yaml is import-seed-only; discovered values
+		// live in memory and are re-derived on each connect. Only the legacy
+		// (store-unavailable) path persists them back to config.yaml.
+		if globalSettingsStore == nil {
+			if werr := writeConfigFile(*cfg); werr != nil {
+				log.Printf("connectAll: discover-write: %v", werr)
+			} else {
+				log.Printf("connectAll: discover-write persisted config.yaml")
+			}
 		}
 	}
 }
@@ -305,8 +310,8 @@ func legacyServerFromFlat(ac appConfig) ServerConfig {
 		name = "Default"
 	}
 	return ServerConfig{
-		ID:   "default",
-		Name: name,
+		LegacyID: "default",
+		Name:     name,
 		// Transport — read from the flag-globals that connectAll uses.
 		SSHHost:      sshHost,
 		SSHUser:      sshUser,
@@ -499,11 +504,12 @@ func connectServer(cfg ServerConfig) (*ServerContext, error) {
 	// Gap-fill blanks with control-plane defaults so a minimally-configured
 	// server (e.g. AMP with only an SSH key) connects like the console wizard.
 	applyServerConfigDefaults(&cfg)
+	scope := serverScope(cfg.ID)
 	sc := &ServerContext{
-		ID:         cfg.ID,
+		ID:         scope,
 		Name:       cfg.Name,
 		Cfg:        cfg,
-		StoreScope: cfg.ID,
+		StoreScope: scope,
 	}
 
 	ctrl := cfg.Control
@@ -562,7 +568,7 @@ func connectMultiServer(cfg appConfig) error {
 	for _, sc := range cfg.Servers {
 		ctx, err := connectServer(sc)
 		if err != nil {
-			log.Printf("connectMultiServer: server %q: %v", sc.ID, err)
+			log.Printf("connectMultiServer: server %d: %v", sc.ID, err)
 			if firstErr == nil {
 				firstErr = err
 			}
@@ -576,7 +582,7 @@ func connectMultiServer(cfg appConfig) error {
 	// Activate the configured default, or fall through to the first server.
 	activeID := cfg.DefaultServer
 	if activeID == "" && len(cfg.Servers) > 0 {
-		activeID = cfg.Servers[0].ID
+		activeID = serverScope(cfg.Servers[0].ID)
 	}
 	if activeID != "" {
 		if err := globalRegistry.SetActive(activeID); err != nil {

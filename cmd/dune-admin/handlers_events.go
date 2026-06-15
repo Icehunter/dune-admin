@@ -282,7 +282,7 @@ func handleSaveEventsConfig(w http.ResponseWriter, r *http.Request) {
 
 	loadedConfig.EventsEnabled = p.Enabled
 
-	if err := writeConfigFile(loadedConfig); err != nil {
+	if err := persistGlobalSettings(loadedConfig); err != nil {
 		log.Printf("handleSaveEventsConfig: %v", err)
 		jsonErr(w, fmt.Errorf("failed to write config"), http.StatusInternalServerError)
 		return

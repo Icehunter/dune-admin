@@ -6,7 +6,7 @@ import './i18n'
 import { applyTheme, loadTheme, loadAnimations, setAnimations } from './theme'
 import { App } from './App.tsx'
 import { AuthProvider } from './auth/AuthContext'
-import { ActiveServerProvider } from './context/ActiveServerContext'
+import { ActiveServerProvider } from './context/ActiveServerProvider'
 import { ClerkProvider } from '@clerk/react'
 import { dark } from '@clerk/themes'
 

@@ -1,8 +1,8 @@
 import * as React from 'react'
 import { api, getActiveServerID, setActiveServerID } from '../api/client'
 import type { ServerInfo } from '../api/client'
-import { ActiveServerContext } from './activeServerContext'
-import type { ActiveServerContextValue } from './activeServerContext'
+import { ActiveServerContext } from './ActiveServerContext'
+import type { ActiveServerContextValue } from './ActiveServerContext'
 import { AuthContext } from '../auth/context'
 
 export const ActiveServerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

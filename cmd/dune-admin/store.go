@@ -25,7 +25,12 @@ var globalSettingsStore *settingsStore
 // on error a warning is printed and globalStore stays nil so individual stores
 // fall back to their own files.
 func initUnifiedStoreOnce() func() {
-	db, err := openUnifiedStore(resolveStoreDBPath())
+	dbPath := resolveStoreDBPath()
+	// Snapshot the pristine pre-upgrade DB + config.yaml BEFORE applyUnifiedSchema
+	// adds server_id / the config import remaps data — a one-way migration, so
+	// this is the operator's recovery / downgrade path.
+	backupPreMigration(dbPath)
+	db, err := openUnifiedStore(dbPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unified store: open failed: %v — falling back to legacy stores\n", err)
 		return func() {}
@@ -38,6 +43,40 @@ func initUnifiedStoreOnce() func() {
 		fmt.Fprintf(os.Stderr, "unified store: migration warning: %v\n", err)
 	}
 	return func() { _ = globalStore.Close() }
+}
+
+// backupPreMigration makes a one-time snapshot of the pre-upgrade SQLite store
+// and config.yaml the first time a migrating version boots, so an operator can
+// recover or downgrade. Each ".pre-migrate.bak" is its own run-once sentinel:
+// once it exists the source is left untouched, so the pristine pre-migration
+// state is captured exactly once and never overwritten by a later boot.
+func backupPreMigration(dbPath string) {
+	backupFileOnce(dbPath)
+	backupFileOnce(configPath())
+}
+
+// backupFileOnce copies src → src+".pre-migrate.bak" unless that backup already
+// exists or src is missing / in-memory. Best-effort: failures warn, never fatal.
+func backupFileOnce(src string) {
+	if src == "" || src == ":memory:" {
+		return
+	}
+	dst := src + ".pre-migrate.bak"
+	// #nosec G304 G703 -- dst derives from configPath()/DUNE_ADMIN_DB (operator/HOME path), not request input.
+	if _, err := os.Stat(dst); err == nil {
+		return // already snapshotted — never overwrite the pristine backup
+	}
+	// #nosec G304 G703 -- src is configPath()/DUNE_ADMIN_DB (operator/HOME path), not request input.
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return // nothing to back up (fresh install) or unreadable
+	}
+	// #nosec G304 G703 -- dst is derived from the same operator/HOME path, not request input.
+	if err := os.WriteFile(dst, data, 0o600); err != nil {
+		fmt.Fprintf(os.Stderr, "pre-migration backup of %s failed: %v\n", src, err)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "pre-migration backup written: %s\n", dst)
 }
 
 // resolveStoreDBPath returns the path for the unified SQLite database.

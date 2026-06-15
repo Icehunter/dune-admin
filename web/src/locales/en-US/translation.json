@@ -1931,7 +1931,8 @@
     "serverNamePlaceholder": "e.g. Production",
     "nameRequired": "Server name is required",
     "nameInvalid": "Server name must contain letters or numbers",
-    "connectTimeout": "Still not connected — check your settings and try again."
+    "connectTimeout": "Still not connected — check your settings and try again.",
+    "addServerTitle": "Add a server"
   },
   "discovery": {
     "title": "Auto-discovering settings",
@@ -1964,7 +1965,8 @@
     "empty": {
       "title": "No servers yet",
       "body": "Add your first game server to get started. You can also set up auth or Discord below — all optional.",
-      "addServer": "Add your first server"
+      "addServer": "Add your first server",
+      "guestBody": "No servers have been configured yet."
     },
     "onboarding": {
       "auth": {

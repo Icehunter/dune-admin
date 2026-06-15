@@ -14,11 +14,14 @@ import { OnboardingCards } from './OnboardingCards'
 export interface DashboardTabProps {
   onAddServer: () => void
   onOpenSettings: (tab?: string) => void
+  onManageServer: (id: string) => void
   /** Bumped when the settings modal closes, so onboarding state re-syncs. */
   refreshKey?: number
 }
 
-export const DashboardTab: React.FC<DashboardTabProps> = ({ onAddServer, onOpenSettings, refreshKey }) => {
+export const DashboardTab: React.FC<DashboardTabProps> = ({
+  onAddServer, onOpenSettings, onManageServer, refreshKey,
+}) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { servers, setActive, loading: serversLoading } = useActiveServer()
@@ -129,7 +132,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ onAddServer, onOpenS
                       {t('dashboard.view', 'View')}
                     </Button>
                     {canControl && (
-                      <Button size="sm" variant="outline" onPress={() => navigate(`/manage/${encodeURIComponent(s.id)}`)}>
+                      <Button size="sm" variant="outline" onPress={() => onManageServer(s.id)}>
                         <Icon name="settings" />
                         {' '}
                         {t('dashboard.manage', 'Manage')}

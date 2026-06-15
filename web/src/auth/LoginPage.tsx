@@ -63,10 +63,12 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="h-screen flex items-center justify-center bg-background">
-      <Card className="w-full max-w-sm p-8 flex flex-col gap-5">
+      <Card className="w-full max-w-sm p-8 flex flex-col gap-5 dune-lift">
         <div className="flex flex-col items-center gap-2">
-          <img src="/dune-admin-logo-small.svg" alt="Dune Admin" className="size-12" />
-          <h1 className="text-lg font-bold uppercase tracking-[0.2em] text-accent">{t('app.title')}</h1>
+          <div className="bg-primary rounded-full h-12 flex items-center justify-center">
+            <img src="/dune-admin-logo-primary.svg" alt="Dune Admin" className="size-12" />
+            <h1 className="text-lg font-bold uppercase tracking-[0.2em] text-accent">{t('app.title')}</h1>
+          </div>
           <p className="text-sm text-muted">{t('auth.signInSubtitle')}</p>
         </div>
 

@@ -1904,7 +1904,8 @@
     "serverNamePlaceholder": "z. B. Produktion",
     "nameRequired": "Servername ist erforderlich",
     "nameInvalid": "Der Servername muss Buchstaben oder Zahlen enthalten",
-    "connectTimeout": "Immer noch nicht verbunden — überprüfe deine Einstellungen und versuche es erneut."
+    "connectTimeout": "Immer noch nicht verbunden — überprüfe deine Einstellungen und versuche es erneut.",
+    "addServerTitle": "Server hinzufügen"
   },
   "discovery": {
     "title": "Einstellungen werden automatisch erkannt",
@@ -1937,7 +1938,8 @@
     "empty": {
       "title": "Noch keine Server",
       "body": "Füge deinen ersten Spielserver hinzu, um zu starten. Du kannst unten auch Auth oder Discord einrichten — alles optional.",
-      "addServer": "Ersten Server hinzufügen"
+      "addServer": "Ersten Server hinzufügen",
+      "guestBody": "Es wurden noch keine Server konfiguriert."
     },
     "onboarding": {
       "auth": {

@@ -1021,7 +1021,10 @@ export const api = {
   },
   config: {
     get: () => req<AppConfig>('GET', '/config'),
-    save: (cfg: AppConfig) => req<Status>('POST', '/config', cfg),
+    // global=true (Settings modal) persists only global settings and never
+    // touches the connection or creates/reconnects a server.
+    save: (cfg: AppConfig, global = false) =>
+      req<Status>('POST', global ? '/config?scope=global' : '/config', cfg),
     discover: (persist = false) =>
       req<{
         db_user: string

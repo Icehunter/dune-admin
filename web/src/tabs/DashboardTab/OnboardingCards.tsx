@@ -116,7 +116,11 @@ export const OnboardingCards: React.FC<OnboardingCardsProps> = ({
           <Icon name="server" className="size-8 text-muted" />
           <div className="flex flex-col gap-1">
             <span className="text-base font-semibold text-foreground">{t('dashboard.empty.title', 'No servers yet')}</span>
-            <span className="text-sm text-muted">{t('dashboard.empty.body', 'Add your first game server to get started. You can also set up auth or Discord below — all optional.')}</span>
+            <span className="text-sm text-muted">
+              {canControl
+                ? t('dashboard.empty.body', 'Add your first game server to get started. You can also set up auth or Discord below — all optional.')
+                : t('dashboard.empty.guestBody', 'No servers have been configured yet.')}
+            </span>
           </div>
           {canControl && (
             <Button size="sm" onPress={onAddServer}>

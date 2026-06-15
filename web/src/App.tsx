@@ -33,7 +33,7 @@ const EventsTab = React.lazy(() => import('./tabs/EventsTab').then((m) => ({ def
 const BattlepassTab = React.lazy(() => import('./tabs/BattlepassTab').then((m) => ({ default: m.BattlepassTab })))
 const PermissionsTab = React.lazy(() => import('./tabs/PermissionsTab').then((m) => ({ default: m.PermissionsTab })))
 import { Icon } from './dune-ui'
-import { ManageServerPage } from './components/ManageServerPage'
+import { ManageServerModal } from './components/ManageServerModal'
 import { useActiveServer } from './context/useActiveServer'
 import { AuthContext } from './auth/context'
 import { LoginPage } from './auth/LoginPage'
@@ -285,18 +285,16 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
     .filter((g) => g.items.length > 0)
   const firstVisibleTab = visibleNavGroups[0]?.items[0]?.key ?? DEFAULT_TAB
 
-  // /manage/{id} is a standalone per-server page (not a tab); allow it through.
-  const manageServerID = location.pathname.startsWith('/manage/')
-    ? decodeURIComponent(location.pathname.slice('/manage/'.length).split('/')[0])
-    : ''
+  // Manage server is a modal (keyed by id in state, not a route) so the URL
+  // never carries a server id that would look stale after a rename.
+  const [manageServerID, setManageServerID] = React.useState('')
 
   React.useEffect(() => {
-    if (manageServerID) return
     const seg = location.pathname.replace(/^\//, '').split('/')[0]
     if (!seg || !(TAB_IDS as readonly string[]).includes(seg) || !canSeeTab(seg as TabId)) {
       navigate(`/${firstVisibleTab}`, { replace: true })
     }
-  }, [location.pathname, navigate, canSeeTab, firstVisibleTab, manageServerID])
+  }, [location.pathname, navigate, canSeeTab, firstVisibleTab])
 
   const currentTab = currentTabFromPath(location.pathname)
   const pathname = location.pathname
@@ -438,19 +436,8 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
 
   // No forced first-run wizard. A fresh install (no servers) lands on the
   // Dashboard, which surfaces optional onboarding (add server / set up auth /
-  // Discord). The "Add server" wizard is launched on demand from there.
-  if (addingServer) {
-    return (
-      <SetupWizard
-        onDone={() => {
-          setAddingServer(false)
-          void refreshServers()
-          void refreshStatus()
-        }}
-        onCancel={() => setAddingServer(false)}
-      />
-    )
-  }
+  // Discord). The "Add server" wizard is launched on demand as a modal overlay
+  // (rendered below, alongside the Settings modal).
 
   // A single top-level menu item. Sub-sections (Database, Welcome Kits,
   // Battle Pass) live inside their tab via an in-header Segment, so every
@@ -463,10 +450,12 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
       <Sidebar.MenuItem key={key} id={key} href={`/${key}`} isCurrent={pathname === `/${key}`} onAction={() => navigate(`/${key}`)}>
         {icon}
         <Sidebar.MenuLabel className="flex items-center">
-          {label}
-          {BETA_TABS.has(key) && (
-            <Chip size="sm" color="accent" variant="soft" className="ml-1 text-[9px] h-4 px-1 min-w-0 shrink-0 self-center">{t('common.beta')}</Chip>
-          )}
+          <Sidebar.MenuItemContent>
+            {label}
+            {BETA_TABS.has(key) && (
+              <Chip size="sm" color="accent" variant="soft" className="ml-1 text-[9px] h-4 px-1 min-w-0 shrink-0 self-center">{t('common.beta')}</Chip>
+            )}
+          </Sidebar.MenuItemContent>
         </Sidebar.MenuLabel>
       </Sidebar.MenuItem>
     )
@@ -508,9 +497,11 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
       <Navbar.Header>
         <Sidebar.Trigger />
         <div className="flex items-center gap-3">
-          {status?.control && status.control !== 'none' && <span className="text-xs text-muted">{status.control}</span>}
-          {status?.ssh_host && <span className="text-xs text-muted">{status.ssh_host}</span>}
-          {status?.db_host && status.control !== 'kubectl' && (
+          {/* Connection info is meaningless with no servers configured (fresh
+              install / last server deleted) — hide it then. */}
+          {servers.length > 0 && status?.control && status.control !== 'none' && <span className="text-xs text-muted">{status.control}</span>}
+          {servers.length > 0 && status?.ssh_host && <span className="text-xs text-muted">{status.ssh_host}</span>}
+          {servers.length > 0 && status?.db_host && status.control !== 'kubectl' && (
             <span className="text-xs text-muted">{status.db_host}</span>
           )}
           {status?.version && (
@@ -573,7 +564,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
                 variant="ghost"
                 isIconOnly
                 aria-label={t('manage.title', 'Manage server')}
-                onPress={() => navigate(`/manage/${encodeURIComponent(activeID || servers[0]?.id || 'default')}`)}
+                onPress={() => setManageServerID(activeID || servers[0]?.id || 'default')}
               >
                 <Icon name="settings" />
               </Button>
@@ -595,9 +586,11 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
         <Navbar.Spacer />
 
         <Navbar.Content>
-          {status?.executor === 'ssh' && <ConnectionBadge label="SSH" connected={status.ssh_connected} />}
-          <ConnectionBadge label="DB" connected={status?.db_connected ?? false} />
-          {can('server:control') && status && !status.db_connected && (
+          {/* Connection badges + reconnect only make sense with a server
+              configured — hide them on a fresh/empty install. */}
+          {servers.length > 0 && status?.executor === 'ssh' && <ConnectionBadge label="SSH" connected={status.ssh_connected} />}
+          {servers.length > 0 && <ConnectionBadge label="DB" connected={status?.db_connected ?? false} />}
+          {servers.length > 0 && can('server:control') && status && !status.db_connected && (
             <Button
               size="sm"
               variant="outline"
@@ -659,6 +652,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
         <DashboardTab
           onAddServer={() => setAddingServer(true)}
           onOpenSettings={openSettings}
+          onManageServer={(id) => setManageServerID(id)}
           refreshKey={dashboardRefreshKey}
         />
       ))}
@@ -701,15 +695,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
         {/* Keyed by activeID so switching servers remounts every tab — each
             re-fetches its data with the new X-Dune-Server header (no reload). */}
         <div key={activeID} className="h-full flex flex-col p-3 overflow-hidden min-h-0">
-          {manageServerID
-            ? (
-                <ManageServerPage
-                  serverId={manageServerID}
-                  canControl={can('server:control')}
-                  onBack={() => navigate('/dashboard')}
-                />
-              )
-            : tabContent}
+          {tabContent}
         </div>
       </AppLayout>
 
@@ -834,6 +820,39 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
           </Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>
+
+      {/* Add-server wizard — a modal overlay (same size as Settings) over the
+          app, not a full-screen takeover. */}
+      <Modal.Backdrop variant="blur" className="bg-linear-to-t from-(--background)/85 via-(--background)/40 to-transparent" isOpen={addingServer} onOpenChange={(v) => !v && setAddingServer(false)}>
+        <Modal.Container size="cover" scroll="outside">
+          <Modal.Dialog className="p-10 dialog-surface-alt">
+            <Modal.CloseTrigger />
+            <Modal.Header>
+              <Modal.Heading className="text-accent">{t('setup.addServerTitle', 'Add a server')}</Modal.Heading>
+            </Modal.Header>
+            <Modal.Body className="flex flex-col overflow-y-auto h-[80vh] min-h-0 pr-1">
+              {addingServer && (
+                <SetupWizard
+                  onDone={() => {
+                    setAddingServer(false)
+                    void refreshServers()
+                    void refreshStatus()
+                  }}
+                />
+              )}
+            </Modal.Body>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
+
+      {/* Manage server — per-server settings as a modal (keyed by id in state). */}
+      <ManageServerModal
+        open={!!manageServerID}
+        serverId={manageServerID}
+        canControl={can('server:control')}
+        onClose={() => setManageServerID('')}
+        onDeleted={() => void refreshStatus()}
+      />
 
       {/* Update-available prompt — opened from the navbar release widget (#129).
           Reuses the backend update check for the release-notes link + Continue/Cancel. */}

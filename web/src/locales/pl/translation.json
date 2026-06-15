@@ -1950,7 +1950,8 @@
     "serverNamePlaceholder": "np. Produkcja",
     "nameRequired": "Nazwa serwera jest wymagana",
     "nameInvalid": "Nazwa serwera musi zawierać litery lub cyfry",
-    "connectTimeout": "Nadal brak połączenia — sprawdź ustawienia i spróbuj ponownie."
+    "connectTimeout": "Nadal brak połączenia — sprawdź ustawienia i spróbuj ponownie.",
+    "addServerTitle": "Dodaj serwer"
   },
   "discovery": {
     "title": "Automatyczne wykrywanie ustawień",
@@ -1983,7 +1984,8 @@
     "empty": {
       "title": "Brak serwerów",
       "body": "Dodaj pierwszy serwer gry, aby zacząć. Poniżej możesz też skonfigurować auth lub Discord — wszystko opcjonalne.",
-      "addServer": "Dodaj pierwszy serwer"
+      "addServer": "Dodaj pierwszy serwer",
+      "guestBody": "Nie skonfigurowano jeszcze żadnego serwera."
     },
     "onboarding": {
       "auth": {

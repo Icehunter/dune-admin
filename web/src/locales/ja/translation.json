@@ -1904,7 +1904,8 @@
     "serverNamePlaceholder": "例: Production",
     "nameRequired": "サーバー名は必須です",
     "nameInvalid": "サーバー名には英数字を含める必要があります",
-    "connectTimeout": "まだ接続できていません。設定を確認して再試行してください。"
+    "connectTimeout": "まだ接続できていません。設定を確認して再試行してください。",
+    "addServerTitle": "サーバーを追加"
   },
   "discovery": {
     "title": "設定を自動検出しています",
@@ -1937,7 +1938,8 @@
     "empty": {
       "title": "サーバーがまだありません",
       "body": "最初のゲームサーバーを追加して始めましょう。下で認証や Discord も設定できます（すべて任意）。",
-      "addServer": "最初のサーバーを追加"
+      "addServer": "最初のサーバーを追加",
+      "guestBody": "まだサーバーが構成されていません。"
     },
     "onboarding": {
       "auth": {

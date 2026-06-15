@@ -382,9 +382,11 @@ export const SettingsConfigForm: React.FC<SettingsConfigFormProps> = ({
       return
     }
     // Settings (global) scope: save only global fields, preserving everything
-    // else (the flat per-server fields and Servers[] come from the base).
+    // else (the flat per-server fields and Servers[] come from the base). The
+    // scope=global flag stops the backend touching the connection / creating a
+    // server.
     if (globalOnly) {
-      await api.config.save({ ...globalBaseRef.current, ...pickGlobal(cfg) } as AppConfig)
+      await api.config.save({ ...globalBaseRef.current, ...pickGlobal(cfg) } as AppConfig, true)
       return
     }
     // Manage-server (per-server) scope: save only this server's config + name.

@@ -1904,7 +1904,8 @@
     "serverNamePlaceholder": "örn. Production",
     "nameRequired": "Sunucu adı gerekli",
     "nameInvalid": "Sunucu adı harf veya rakam içermelidir",
-    "connectTimeout": "Hâlâ bağlanılamadı — ayarlarınızı kontrol edip tekrar deneyin."
+    "connectTimeout": "Hâlâ bağlanılamadı — ayarlarınızı kontrol edip tekrar deneyin.",
+    "addServerTitle": "Sunucu ekle"
   },
   "discovery": {
     "title": "Ayarlar otomatik algılanıyor",
@@ -1937,7 +1938,8 @@
     "empty": {
       "title": "Henüz sunucu yok",
       "body": "Başlamak için ilk oyun sunucunu ekle. Aşağıdan auth veya Discord da kurabilirsin — hepsi isteğe bağlı.",
-      "addServer": "İlk sunucunu ekle"
+      "addServer": "İlk sunucunu ekle",
+      "guestBody": "Henüz hiçbir sunucu yapılandırılmadı."
     },
     "onboarding": {
       "auth": {

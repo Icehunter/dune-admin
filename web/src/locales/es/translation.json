@@ -1927,7 +1927,8 @@
     "serverNamePlaceholder": "p. ej. Producción",
     "nameRequired": "El nombre del servidor es obligatorio",
     "nameInvalid": "El nombre del servidor debe contener letras o números",
-    "connectTimeout": "Aún sin conexión: revisa tu configuración e inténtalo de nuevo."
+    "connectTimeout": "Aún sin conexión: revisa tu configuración e inténtalo de nuevo.",
+    "addServerTitle": "Agregar un servidor"
   },
   "discovery": {
     "title": "Detectando ajustes automáticamente",
@@ -1960,7 +1961,8 @@
     "empty": {
       "title": "Aún no hay servidores",
       "body": "Agrega tu primer servidor de juego para empezar. También puedes configurar auth o Discord abajo — todo opcional.",
-      "addServer": "Agregar tu primer servidor"
+      "addServer": "Agregar tu primer servidor",
+      "guestBody": "Aún no se ha configurado ningún servidor."
     },
     "onboarding": {
       "auth": {

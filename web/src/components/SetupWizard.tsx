@@ -1,12 +1,10 @@
 import * as React from 'react'
-import { Button, Input, Spinner, Toast } from '@heroui/react'
+import { Button, Input, Spinner } from '@heroui/react'
 import { Stepper } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@heroui/react'
 import { SettingsConfigForm } from './SettingsConfigForm'
 import { DiscoveryModal } from './DiscoveryModal'
-import { ThemeSelector } from './ThemeSelector'
-import { LanguageSelector } from './LanguageSelector'
 import { api } from '../api/client'
 import type { AppConfig } from '../api/client'
 
@@ -34,11 +32,9 @@ const ADD_STEPS = [
 interface SetupWizardProps {
   /** Called after a successful "add server" — return to the main app. */
   onDone?: () => void
-  /** Called when the user cancels an "add server" flow. */
-  onCancel?: () => void
 }
 
-export const SetupWizard: React.FC<SetupWizardProps> = ({ onDone, onCancel }) => {
+export const SetupWizard: React.FC<SetupWizardProps> = ({ onDone }) => {
   const { t } = useTranslation()
   const saveRef = React.useRef<(() => Promise<void>) | null>(null)
   const [step, setStep] = React.useState(0)
@@ -158,8 +154,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onDone, onCancel }) =>
 
   if (reconnecting) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-4 bg-background text-foreground">
-        <Toast.Provider />
+      <div className="h-full flex flex-col items-center justify-center gap-4 text-foreground">
         <Spinner />
         <p className="text-muted">{t('setup.connecting', 'Connecting…')}</p>
         {/* Escape hatch: connecting can hang (e.g. DB unreachable). Don't trap
@@ -172,29 +167,10 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onDone, onCancel }) =>
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground">
-      {/* The wizard renders before the main app layout's Toast.Provider, so it
-          needs its own — otherwise validation/connect toasts are invisible. */}
-      <Toast.Provider />
-      {/* ── Sticky header ─────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 px-6 pt-8 pb-4 border-b border-border">
-        <div className="absolute top-4 right-4 flex items-center gap-2">
-          <ThemeSelector />
-          <LanguageSelector />
-        </div>
-
-        {/* Brand */}
-        <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <div className="flex items-center">
-            <img src="/dune-admin-logo-primary.svg" alt="dune-admin" className="h-12 w-auto" />
-            <span
-              className="text-3xl font-bold uppercase text-accent overflow-hidden whitespace-nowrap"
-            >
-              {t('app.title')}
-            </span>
-          </div>
-        </div>
-
+    // Rendered inside the Add-server modal — fill it, no full-screen chrome.
+    <div className="h-full flex flex-col overflow-hidden text-foreground">
+      {/* ── Stepper header ────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 pb-4 border-b border-border">
         {/* Stepper */}
         <Stepper
           currentStep={step}
@@ -220,7 +196,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onDone, onCancel }) =>
       </div>
 
       {/* ── Scrollable form area ──────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto py-4">
         {discovering
           ? (
               <div className="flex flex-col items-center gap-3 py-16">
@@ -284,7 +260,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onDone, onCancel }) =>
       )}
 
       {/* ── Sticky footer ─────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-t border-border px-6 py-4 flex items-center justify-between">
+      <div className="flex-shrink-0 border-t border-border py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -294,16 +270,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onDone, onCancel }) =>
           >
             {t('common.back', 'Back')}
           </Button>
-          {isAddMode && (
-            <Button
-              variant="ghost"
-              size="sm"
-              isDisabled={saving || discovering}
-              onPress={() => onCancel?.()}
-            >
-              {t('common.cancel', 'Cancel')}
-            </Button>
-          )}
         </div>
 
         <span className="text-xs text-muted">

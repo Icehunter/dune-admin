@@ -1904,7 +1904,8 @@
     "serverNamePlaceholder": "例如 Production",
     "nameRequired": "服务器名称为必填项",
     "nameInvalid": "服务器名称必须包含字母或数字",
-    "connectTimeout": "仍未连接——请检查设置后重试。"
+    "connectTimeout": "仍未连接——请检查设置后重试。",
+    "addServerTitle": "添加服务器"
   },
   "discovery": {
     "title": "正在自动检测设置",
@@ -1937,7 +1938,8 @@
     "empty": {
       "title": "还没有服务器",
       "body": "添加你的第一个游戏服务器即可开始。你也可以在下方设置鉴权或 Discord——全部可选。",
-      "addServer": "添加第一个服务器"
+      "addServer": "添加第一个服务器",
+      "guestBody": "尚未配置任何服务器。"
     },
     "onboarding": {
       "auth": {

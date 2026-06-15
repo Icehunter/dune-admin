@@ -117,6 +117,15 @@ var globalHealthCache *ristrettoCache[serverHealth]
 // health, so the warmer populates both from one fetch.
 var globalBGStatusCache *ristrettoCache[*BattlegroupStatus]
 
+// playersCacheTTL bounds staleness of the cached player list. Operator
+// mutations bust it immediately (see handleAPI); externally-joined characters
+// appear within the TTL (matching the game's own DB-write lag).
+const playersCacheTTL = 20 * time.Second
+
+// globalPlayersCache caches the per-server player list (the biggest single UI
+// read query), busted on any player-write request for that scope.
+var globalPlayersCache *ristrettoCache[[]playerInfo]
+
 // initGlobalCaches builds the process-wide read caches. Called once at startup
 // (before the connect path) from run(). On error the caches stay nil and the
 // handlers serve live data.
@@ -128,7 +137,18 @@ func initGlobalCaches() error {
 	if globalBGStatusCache, err = newRistrettoCache[*BattlegroupStatus]("bgstatus", 256); err != nil {
 		return fmt.Errorf("init bgstatus cache: %w", err)
 	}
+	if globalPlayersCache, err = newRistrettoCache[[]playerInfo]("players", 256); err != nil {
+		return fmt.Errorf("init players cache: %w", err)
+	}
 	return nil
+}
+
+// invalidatePlayersCache drops a server's cached player list so the next read is
+// live. Called after any player-write request for that scope (see handleAPI).
+func invalidatePlayersCache(scope string) {
+	if globalPlayersCache != nil {
+		globalPlayersCache.Delete(cacheKey(scope, "players"))
+	}
 }
 
 // invalidateServerHealth drops a server's cached health AND battlegroup status

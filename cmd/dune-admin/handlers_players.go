@@ -19,20 +19,33 @@ import (
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players [get]
 func handleGetPlayers(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchPlayers(dbFromCtx(r)).(msgPlayers)
-	if !ok {
-		jsonErr(w, fmt.Errorf("internal error"), 500)
+	rows, err := cachedPlayers(r)
+	if err != nil {
+		jsonErr(w, err, 500)
 		return
 	}
-	if msg.err != nil {
-		jsonErr(w, msg.err, 500)
-		return
-	}
-	rows := msg.rows
 	if rows == nil {
 		rows = []playerInfo{}
 	}
 	jsonOK(w, rows)
+}
+
+// cachedPlayers serves the player list from the per-server cache (busted on any
+// player-write — see handleAPI), loading live on a miss. Falls back to a live
+// fetch when there's no server context or the cache is unavailable.
+func cachedPlayers(r *http.Request) ([]playerInfo, error) {
+	load := func(context.Context) ([]playerInfo, error) {
+		msg, ok := cmdFetchPlayers(dbFromCtx(r)).(msgPlayers)
+		if !ok {
+			return nil, fmt.Errorf("internal error")
+		}
+		return msg.rows, msg.err
+	}
+	sc := serverFromCtx(r)
+	if sc == nil || globalPlayersCache == nil {
+		return load(r.Context())
+	}
+	return globalPlayersCache.GetOrLoad(r.Context(), cacheKey(sc.ID, "players"), playersCacheTTL, load)
 }
 
 // summaryTrendDays is the activity-trend window for the Players dashboard (#130).

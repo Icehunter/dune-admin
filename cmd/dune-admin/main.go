@@ -957,6 +957,12 @@ func run(ctx context.Context) error {
 	defer closeStore()
 	hydrateConfigFromStore()
 
+	// Read caches must exist before the connect path / any handler. Non-fatal:
+	// on error the handlers serve live data.
+	if err := initGlobalCaches(); err != nil {
+		log.Printf("init caches: %v (serving live)", err)
+	}
+
 	alreadyConnected := setupIfNeeded()
 	defer closeGlobalConnections()
 

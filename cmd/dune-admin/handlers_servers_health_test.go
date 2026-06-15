@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 )
 
@@ -17,6 +18,58 @@ type healthFakeControl struct {
 
 func (c *healthFakeControl) GetStatus(context.Context, Executor) (*BattlegroupStatus, error) {
 	return c.status, c.err
+}
+
+// countingHealthControl counts GetStatus calls so the cache test can prove the
+// expensive assembly is not recomputed on a cache hit.
+type countingHealthControl struct {
+	stubControlPlane
+	calls  *atomic.Int32
+	status *BattlegroupStatus
+}
+
+func (c *countingHealthControl) GetStatus(context.Context, Executor) (*BattlegroupStatus, error) {
+	c.calls.Add(1)
+	return c.status, nil
+}
+
+func TestHandleServersHealth_CachesAssembly(t *testing.T) {
+	origCache := globalHealthCache
+	c, err := newRistrettoCache[serverHealth]("test-health", 256)
+	if err != nil {
+		t.Fatalf("newRistrettoCache: %v", err)
+	}
+	globalHealthCache = c
+	t.Cleanup(func() { globalHealthCache = origCache })
+
+	var calls atomic.Int32
+	ctrl := &countingHealthControl{calls: &calls, status: &BattlegroupStatus{Phase: "Running", Database: "Connected"}}
+	reg := newServerRegistry(nil)
+	reg.Register(&ServerContext{ID: "1", Name: "One", Cfg: ServerConfig{ID: 1, Control: "amp"}, Control: ctrl})
+	orig := globalRegistry
+	globalRegistry = reg
+	defer func() { globalRegistry = orig }()
+
+	call := func() {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/servers/health", nil)
+		rr := httptest.NewRecorder()
+		handleServersHealth(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200; body = %s", rr.Code, rr.Body.String())
+		}
+	}
+
+	call()
+	call()
+	if calls.Load() != 1 {
+		t.Errorf("GetStatus called %d times, want 1 (second call must hit cache)", calls.Load())
+	}
+
+	invalidateServerHealth("1")
+	call()
+	if calls.Load() != 2 {
+		t.Errorf("after invalidation GetStatus called %d times, want 2 (cache busted)", calls.Load())
+	}
 }
 
 func TestAssembleServerHealth_RunningWithRows(t *testing.T) {

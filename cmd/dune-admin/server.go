@@ -566,5 +566,8 @@ func handleReconnect(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 500)
 		return
 	}
+	if a := globalRegistry.Active(); a != nil {
+		invalidateServerHealth(a.ID) // connections rebuilt → drop stale health
+	}
 	handleStatus(w, r)
 }

@@ -91,7 +91,24 @@ func handleServersHealth(w http.ResponseWriter, r *http.Request) {
 	all := globalRegistry.All()
 	out := make([]serverHealth, 0, len(all))
 	for _, sc := range all {
-		out = append(out, assembleServerHealth(r.Context(), sc))
+		out = append(out, cachedServerHealth(r.Context(), sc))
 	}
 	jsonOK(w, out)
+}
+
+// cachedServerHealth returns a server's health from the cache (re-assembling
+// live on a miss). The expensive control-plane + DB fan-out in
+// assembleServerHealth is what's cached; the cheap Active flag is recomputed on
+// every read so switching the active server is reflected immediately even from
+// a cache hit.
+func cachedServerHealth(ctx context.Context, sc *ServerContext) serverHealth {
+	if globalHealthCache == nil {
+		return assembleServerHealth(ctx, sc)
+	}
+	h, _ := globalHealthCache.GetOrLoad(ctx, cacheKey(sc.ID, "health"), healthCacheTTL,
+		func(ctx context.Context) (serverHealth, error) {
+			return assembleServerHealth(ctx, sc), nil
+		})
+	h.Active = globalRegistry.ActiveID() == sc.ID
+	return h
 }

@@ -202,6 +202,7 @@ func handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 
 	reassignActiveAfterDelete()
 	removeServerFromMirror(id)
+	invalidateServerHealth(scope) // drop the removed server's cached health
 
 	jsonOK(w, map[string]bool{"deleted": true})
 }
@@ -352,6 +353,7 @@ func handleReconnectServer(w http.ResponseWriter, r *http.Request) {
 	}
 	// Now that the DB is (re)connected, start the bot if enabled.
 	startServerMarketBot(newSC, loadedConfig)
+	invalidateServerHealth(id) // status changed → drop stale cached health
 	jsonOK(w, map[string]bool{"connected": true})
 }
 
@@ -459,6 +461,7 @@ func handleUpdateServerConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	// Apply the (possibly changed) per-server market-bot toggle.
 	startServerMarketBot(newSC, loadedConfig)
+	invalidateServerHealth(scope) // config edit may change status → drop stale health
 
 	out := next
 	maskServerSecrets(&out)

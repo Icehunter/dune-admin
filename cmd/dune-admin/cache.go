@@ -100,3 +100,35 @@ func (rc *ristrettoCache[T]) loadAndCache(
 func cacheKey(scope string, parts ...string) string {
 	return scope + ":" + strings.Join(parts, ":")
 }
+
+// ── global caches ─────────────────────────────────────────────────────────────
+
+// healthCacheTTL bounds how stale a dashboard health card can be. The warmer
+// refreshes ahead of this, so the typical staleness window is shorter.
+const healthCacheTTL = 15 * time.Second
+
+// globalHealthCache caches per-server health summaries (the expensive
+// control-plane GetStatus + DB-stats fan-out). Nil when caching is unavailable
+// (the handlers fall back to a live assemble).
+var globalHealthCache *ristrettoCache[serverHealth]
+
+// initGlobalCaches builds the process-wide read caches. Called once at startup
+// (before the connect path) from run(). On error the caches stay nil and the
+// handlers serve live data.
+func initGlobalCaches() error {
+	var err error
+	globalHealthCache, err = newRistrettoCache[serverHealth]("health", 256)
+	if err != nil {
+		return fmt.Errorf("init health cache: %w", err)
+	}
+	return nil
+}
+
+// invalidateServerHealth drops a server's cached health so the next read
+// re-assembles live. Called after mutations that change a server's status
+// (reconnect, config edit, delete).
+func invalidateServerHealth(scope string) {
+	if globalHealthCache != nil {
+		globalHealthCache.Delete(cacheKey(scope, "health"))
+	}
+}

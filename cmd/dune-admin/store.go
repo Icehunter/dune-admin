@@ -60,6 +60,9 @@ func migrateColumnStores(db *sql.DB) {
 	if err := migrateGivePacksColumns(db); err != nil {
 		fmt.Fprintf(os.Stderr, "unified store: give-packs column migration warning: %v\n", err)
 	}
+	if err := migrateWelcomeColumns(db); err != nil {
+		fmt.Fprintf(os.Stderr, "unified store: welcome column migration warning: %v\n", err)
+	}
 }
 
 // backupPreMigration makes a one-time snapshot of the pre-upgrade SQLite store
@@ -136,6 +139,9 @@ func applyUnifiedSchema(db *sql.DB) error {
 	}
 	if err := initWelcomeSchema(db); err != nil {
 		return fmt.Errorf("unified store: welcome schema: %w", err)
+	}
+	if err := initWelcomeColumnsSchema(db); err != nil {
+		return fmt.Errorf("unified store: welcome columns schema: %w", err)
 	}
 	if err := initLocationSchema(db); err != nil {
 		return fmt.Errorf("unified store: location schema: %w", err)

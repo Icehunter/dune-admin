@@ -181,6 +181,9 @@ func initWelcomeSchema(db *sql.DB) error {
 	); err != nil {
 		return fmt.Errorf("migrate welcome_config server_id: %w", err)
 	}
+	if err := initWelcomeColumnsSchema(db); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -371,9 +374,12 @@ func (s *welcomeStore) saveConfig(cfg welcomeConfigRow) error {
 	if len(cfg.ActiveVersions) > 0 {
 		activeVersion = cfg.ActiveVersions[0]
 	}
-	activeVersionsJSON, err := json.Marshal(cfg.ActiveVersions)
+	// Packages and active versions now live in the typed welcome child tables.
+	// The legacy blob columns are written as empty placeholders ('[]' / '') so
+	// the row schema is unchanged but no longer authoritative.
+	packages, err := parseWelcomePackagesJSON(cfg.PackagesJSON)
 	if err != nil {
-		return fmt.Errorf("marshal active_versions: %w", err)
+		return fmt.Errorf("parse packages_json: %w", err)
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	regionChatChannel := cfg.RegionChatChannel
@@ -406,7 +412,7 @@ func (s *welcomeStore) saveConfig(cfg welcomeConfigRow) error {
 			region_leave_template         = excluded.region_leave_template,
 			region_chat_channel           = excluded.region_chat_channel,
 			updated_at                    = excluded.updated_at`,
-		s.serverID, enabled, cfg.ScanSecs, activeVersion, string(activeVersionsJSON), cfg.PackagesJSON,
+		s.serverID, enabled, cfg.ScanSecs, activeVersion, "", "[]",
 		msgEnabled, cfg.WelcomeMessage, cfg.WelcomeWhisperSourcePlayer,
 		motdEnabled, cfg.MotdMessage, cfg.MotdSourcePlayer,
 		regionJoinEnabled, regionLeaveEnabled, cfg.RegionJoinTemplate, cfg.RegionLeaveTemplate,
@@ -414,7 +420,20 @@ func (s *welcomeStore) saveConfig(cfg welcomeConfigRow) error {
 	if err != nil {
 		return fmt.Errorf("save welcome config: %w", err)
 	}
+	if err := saveWelcomePackagesColumns(s.db, s.serverID, packages, cfg.ActiveVersions); err != nil {
+		return fmt.Errorf("save welcome config: %w", err)
+	}
 	return nil
+}
+
+// parseWelcomePackagesJSON decodes a packages_json blob into typed packages,
+// treating "" / "[]" / "null" as an empty library.
+func parseWelcomePackagesJSON(blob string) ([]welcomePackage, error) {
+	var packages []welcomePackage
+	if err := decodeJSONList(blob, &packages); err != nil {
+		return nil, err
+	}
+	return packages, nil
 }
 
 // loadConfig reads the single welcome_config row. Returns (row, true, nil) if
@@ -423,15 +442,14 @@ func (s *welcomeStore) loadConfig() (welcomeConfigRow, bool, error) {
 	var row welcomeConfigRow
 	var enabledInt, msgEnabledInt, motdEnabledInt int
 	var regionJoinEnabledInt, regionLeaveEnabledInt int
-	var activeVersionsJSON string
 	err := s.db.QueryRow(`
-		SELECT enabled, scan_secs, active_version, active_versions_json, packages_json,
+		SELECT enabled, scan_secs, active_version,
 		       welcome_message_enabled, welcome_message, welcome_whisper_source_player,
 		       motd_enabled, motd_message, motd_source_player,
 		       region_join_enabled, region_leave_enabled, region_join_template, region_leave_template,
 		       region_chat_channel
 		FROM welcome_config WHERE server_id = ?`, s.serverID).
-		Scan(&enabledInt, &row.ScanSecs, &row.ActiveVersion, &activeVersionsJSON, &row.PackagesJSON,
+		Scan(&enabledInt, &row.ScanSecs, &row.ActiveVersion,
 			&msgEnabledInt, &row.WelcomeMessage, &row.WelcomeWhisperSourcePlayer,
 			&motdEnabledInt, &row.MotdMessage, &row.MotdSourcePlayer,
 			&regionJoinEnabledInt, &regionLeaveEnabledInt, &row.RegionJoinTemplate, &row.RegionLeaveTemplate,
@@ -447,12 +465,18 @@ func (s *welcomeStore) loadConfig() (welcomeConfigRow, bool, error) {
 	row.MotdEnabled = motdEnabledInt != 0
 	row.RegionJoinEnabled = regionJoinEnabledInt != 0
 	row.RegionLeaveEnabled = regionLeaveEnabledInt != 0
-	// Parse active_versions_json; fall back to promoting active_version for old rows.
-	if activeVersionsJSON != "" && activeVersionsJSON != "null" && activeVersionsJSON != "[]" {
-		if jsonErr := json.Unmarshal([]byte(activeVersionsJSON), &row.ActiveVersions); jsonErr != nil {
-			return welcomeConfigRow{}, false, fmt.Errorf("parse active_versions_json: %w", jsonErr)
-		}
+	// Packages and active versions now come from the typed welcome child tables.
+	packages, activeVersions, err := loadWelcomePackagesColumns(s.db, s.serverID)
+	if err != nil {
+		return welcomeConfigRow{}, false, err
 	}
+	packagesJSON, err := json.Marshal(packages)
+	if err != nil {
+		return welcomeConfigRow{}, false, fmt.Errorf("marshal welcome packages: %w", err)
+	}
+	row.PackagesJSON = string(packagesJSON)
+	row.ActiveVersions = activeVersions
+	// Compat: promote the scalar active_version for old rows with no typed list.
 	if len(row.ActiveVersions) == 0 && row.ActiveVersion != "" {
 		row.ActiveVersions = []string{row.ActiveVersion}
 	}

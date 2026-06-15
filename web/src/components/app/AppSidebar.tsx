@@ -58,7 +58,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ visibleNavGroups, pathna
           </span>
         </Button>
       </Sidebar.Header>
-      <Sidebar.Content>
+      <Sidebar.Content className="pb-2">
         <Sidebar.Menu aria-label={t('nav.menu')}>
           {visibleNavGroups.map((group) => (
             <Sidebar.MenuSection key={group.title}>

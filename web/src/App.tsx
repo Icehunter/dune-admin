@@ -14,7 +14,6 @@ import { LoginPage } from './auth/LoginPage'
 import { usePermissions } from './hooks/usePermissions'
 import { api } from './api/client'
 import type { TabId, AppCoreProps } from './types'
-import { canSeeTabByControlPlane } from './tabNav'
 import {
   addServerOpenAtom,
   dashboardRefreshAtom,
@@ -76,7 +75,7 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   const { t, i18n } = useTranslation()
   const [reconnecting, setReconnecting] = React.useState(false)
   const { can, isOwner, enabled: authEnabled } = usePermissions()
-  const { servers, activeID, refresh: refreshServers } = useActiveServer()
+  const { servers, activeID, refresh: refreshServers, loading: serversLoading } = useActiveServer()
 
   const setAddServerOpen = useSetAtom(addServerOpenAtom)
   const [manageServerID, setManageServerID] = useAtom(manageServerIdAtom)
@@ -108,14 +107,18 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   // auth is disabled. The Dashboard is always visible (it's the home and the
   // empty-state/onboarding surface); when no servers are configured every other
   // tab is hidden so a fresh install shows only the Dashboard.
+  //
+  // Control-plane support is NOT a visibility gate: a tab the session is allowed
+  // to see (e.g. Director) stays enabled regardless of the active control plane.
+  // When the plane doesn't support it, the tab itself renders a friendly
+  // "not supported" notice rather than vanishing from the nav.
   const canSeeTab = React.useCallback((key: TabId) => {
     if (key === 'dashboard') return true
     if (servers.length === 0) return false
-    if (!canSeeTabByControlPlane(key, status?.control)) return false
     const cap = TAB_CAPABILITIES[key]
     if (cap === 'owner') return authEnabled && (isOwner || can('auth:manage'))
     return can(cap)
-  }, [authEnabled, isOwner, can, status?.control, servers.length])
+  }, [authEnabled, isOwner, can, servers.length])
 
   // Re-establish backend connections (DB + control plane) without a service
   // restart — used by the navbar Reconnect button when the DB shows disconnected
@@ -154,10 +157,20 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
 
   React.useEffect(() => {
     const seg = location.pathname.replace(/^\//, '').split('/')[0]
-    if (!seg || !(TAB_IDS as readonly string[]).includes(seg) || !canSeeTab(seg as TabId)) {
+    // Unknown or empty path → resolve to a valid tab immediately (no data needed).
+    if (!seg || !(TAB_IDS as readonly string[]).includes(seg)) {
+      navigate(`/${firstVisibleTab}`, { replace: true })
+      return
+    }
+    // Known path: don't bounce to the Dashboard before we know whether the path
+    // is actually allowed. On a hard refresh the server list and status load
+    // asynchronously; redirecting too early discards the user's deep link.
+    // Best-effort — keep the requested path until we can prove it's disallowed.
+    if (serversLoading || status === null) return
+    if (!canSeeTab(seg as TabId)) {
       navigate(`/${firstVisibleTab}`, { replace: true })
     }
-  }, [location.pathname, navigate, canSeeTab, firstVisibleTab])
+  }, [location.pathname, navigate, canSeeTab, firstVisibleTab, serversLoading, status])
 
   const currentTab = currentTabFromPath(location.pathname)
   const pathname = location.pathname

@@ -54,6 +54,9 @@ func migrateColumnStores(db *sql.DB) {
 	if err := migrateSettingsColumns(db); err != nil {
 		fmt.Fprintf(os.Stderr, "unified store: settings column migration warning: %v\n", err)
 	}
+	if err := migrateServersColumns(db); err != nil {
+		fmt.Fprintf(os.Stderr, "unified store: servers column migration warning: %v\n", err)
+	}
 }
 
 // backupPreMigration makes a one-time snapshot of the pre-upgrade SQLite store
@@ -148,6 +151,9 @@ func applyUnifiedSchema(db *sql.DB) error {
 	}
 	if err := initServersSchema(db); err != nil {
 		return fmt.Errorf("unified store: servers schema: %w", err)
+	}
+	if err := initServersColumnsSchema(db); err != nil {
+		return fmt.Errorf("unified store: servers columns schema: %w", err)
 	}
 	if err := initSettingsSchema(db); err != nil {
 		return fmt.Errorf("unified store: settings schema: %w", err)

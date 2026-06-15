@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -10,8 +9,9 @@ import (
 
 // serversStore persists the list of game servers in the unified SQLite store —
 // the live source of truth (config.yaml is only a first-boot import seed). Each
-// server's full ServerConfig is stored as a JSON blob; the numeric id is the
-// DB-assigned autoincrement primary key.
+// server's ServerConfig is stored across typed columns (see servers_columns.go);
+// the legacy config_json blob is retained as '{}' but no longer authoritative.
+// The numeric id is the DB-assigned autoincrement primary key.
 type serversStore struct{ db *sql.DB }
 
 const serversStoreSchema = `
@@ -34,40 +34,37 @@ func initServersSchema(db *sql.DB) error {
 func newServersStore(db *sql.DB) *serversStore { return &serversStore{db: db} }
 
 // insertServer inserts cfg as a new server row and returns the DB-assigned id.
-// The id inside config_json is irrelevant on read (the column is authoritative).
+// The row is created first (config_json is written as '{}' — no longer
+// authoritative), then the typed columns are populated via writeServerColumns.
 func (s *serversStore) insertServer(cfg ServerConfig, position int) (int, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
-	blob, err := json.Marshal(cfg)
-	if err != nil {
-		return 0, fmt.Errorf("marshal server: %w", err)
-	}
 	res, err := s.db.Exec(
-		`INSERT INTO servers (name, position, config_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		cfg.Name, position, string(blob), now, now)
+		`INSERT INTO servers (name, position, config_json, created_at, updated_at) VALUES (?, ?, '{}', ?, ?)`,
+		cfg.Name, position, now, now)
 	if err != nil {
 		return 0, fmt.Errorf("insert server: %w", err)
 	}
-	id, err := res.LastInsertId()
+	id64, err := res.LastInsertId()
 	if err != nil {
 		return 0, fmt.Errorf("server insert id: %w", err)
 	}
-	return int(id), nil
+	id := int(id64)
+	if err := writeServerColumns(s.db, id, cfg); err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
-// updateServer updates an existing server's name + config (by cfg.ID). Position
-// is left unchanged.
+// updateServer updates an existing server's name + typed columns (by cfg.ID).
+// Position is left unchanged; config_json is reset to '{}' (no longer read).
 func (s *serversStore) updateServer(cfg ServerConfig) error {
 	now := time.Now().UTC().Format(time.RFC3339)
-	blob, err := json.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("marshal server: %w", err)
-	}
 	if _, err := s.db.Exec(
-		`UPDATE servers SET name = ?, config_json = ?, updated_at = ? WHERE id = ?`,
-		cfg.Name, string(blob), now, cfg.ID); err != nil {
+		`UPDATE servers SET name = ?, config_json = '{}', updated_at = ? WHERE id = ?`,
+		cfg.Name, now, cfg.ID); err != nil {
 		return fmt.Errorf("update server %d: %w", cfg.ID, err)
 	}
-	return nil
+	return writeServerColumns(s.db, cfg.ID, cfg)
 }
 
 func (s *serversStore) deleteServer(id int) error {
@@ -77,46 +74,58 @@ func (s *serversStore) deleteServer(id int) error {
 	return nil
 }
 
-// listServers returns all servers in stable (position, id) order, with each
-// row's authoritative numeric id stamped onto the returned ServerConfig.
+// listServers returns all servers in stable (position, id) order, reading each
+// row's typed columns and stamping name + the authoritative numeric id.
 func (s *serversStore) listServers() ([]ServerConfig, error) {
-	rows, err := s.db.Query(`SELECT id, config_json FROM servers ORDER BY position, id`)
+	rows, err := s.db.Query(`SELECT id, name FROM servers ORDER BY position, id`)
 	if err != nil {
 		return nil, fmt.Errorf("list servers: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
-	var out []ServerConfig
+	type idName struct {
+		id   int
+		name string
+	}
+	var ids []idName
 	for rows.Next() {
-		var id int
-		var blob string
-		if err := rows.Scan(&id, &blob); err != nil {
+		var rec idName
+		if err := rows.Scan(&rec.id, &rec.name); err != nil {
 			return nil, fmt.Errorf("scan server: %w", err)
 		}
-		var cfg ServerConfig
-		if err := json.Unmarshal([]byte(blob), &cfg); err != nil {
-			return nil, fmt.Errorf("unmarshal server %d: %w", id, err)
+		ids = append(ids, rec)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	var out []ServerConfig
+	for _, rec := range ids {
+		cfg, err := readServerColumns(s.db, rec.id)
+		if err != nil {
+			return nil, fmt.Errorf("read server %d: %w", rec.id, err)
 		}
-		cfg.ID = id
+		cfg.ID = rec.id
+		cfg.Name = rec.name
 		cfg.LegacyID = ""
 		out = append(out, cfg)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (s *serversStore) getServer(id int) (ServerConfig, bool, error) {
-	var blob string
-	err := s.db.QueryRow(`SELECT config_json FROM servers WHERE id = ?`, id).Scan(&blob)
+	var name string
+	err := s.db.QueryRow(`SELECT name FROM servers WHERE id = ?`, id).Scan(&name)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ServerConfig{}, false, nil
 	}
 	if err != nil {
 		return ServerConfig{}, false, fmt.Errorf("get server %d: %w", id, err)
 	}
-	var cfg ServerConfig
-	if err := json.Unmarshal([]byte(blob), &cfg); err != nil {
-		return ServerConfig{}, false, fmt.Errorf("unmarshal server %d: %w", id, err)
+	cfg, err := readServerColumns(s.db, id)
+	if err != nil {
+		return ServerConfig{}, false, fmt.Errorf("read server %d: %w", id, err)
 	}
 	cfg.ID = id
+	cfg.Name = name
 	cfg.LegacyID = ""
 	return cfg, true, nil
 }

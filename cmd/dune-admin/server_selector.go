@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -127,5 +130,345 @@ func handleSetActiveServer(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, http.StatusNotFound)
 		return
 	}
+	// Update global aliases so background workers and legacy callers see the switch.
+	if active := globalRegistry.Active(); active != nil {
+		globalDB = active.DB
+		globalControl = active.Control
+		globalExecutor = active.Executor
+	}
 	jsonOK(w, map[string]string{"active": body.ID})
+}
+
+// cmdPurgeServerData removes all SQLite rows scoped to serverID across every
+// server-scoped table. Called from handleDeleteServer so that removing a server
+// from the registry also cleans up its stored data.
+func cmdPurgeServerData(ctx context.Context, store *sql.DB, serverID string) error {
+	if store == nil {
+		return nil
+	}
+	tables := []string{
+		"welcome_grants",
+		"welcome_config",
+		"give_packs_config",
+		"event_award_claims",
+		"battlepass_claims",
+		"battlepass_accounts",
+		"battlepass_grant_ledger",
+	}
+	for _, tbl := range tables {
+		if _, err := store.ExecContext(ctx, `DELETE FROM `+tbl+` WHERE server_id = ?`, serverID); err != nil { //nolint:gosec // tbl is a hardcoded constant
+			return fmt.Errorf("purge %s for %s: %w", tbl, serverID, err)
+		}
+	}
+	metaKey := "discord_status_message:" + serverID
+	if _, err := store.ExecContext(ctx, `DELETE FROM meta WHERE key = ?`, metaKey); err != nil {
+		return fmt.Errorf("purge meta for %s: %w", serverID, err)
+	}
+	return nil
+}
+
+// handleDeleteServer removes a server from the registry, purges its stored data,
+// and persists the updated config. Deleting the active server is allowed: the
+// registry reassigns active to the next server (and the global aliases follow).
+// Deleting the last remaining server clears the flat connection config so the
+// SPA returns to the Setup Wizard. The destructive confirm dialog in the UI is
+// the guard against accidental deletion.
+func handleDeleteServer(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	// Stop the server's market bot before removing it so its goroutines and DB
+	// references are released.
+	stopServerMarketBot(globalRegistry.Get(id))
+	if !globalRegistry.Remove(id) {
+		jsonErr(w, fmt.Errorf("server %q not found", id), http.StatusNotFound)
+		return
+	}
+	if err := cmdPurgeServerData(r.Context(), globalStore, id); err != nil {
+		log.Printf("handleDeleteServer: purge store data for %q: %v", id, err)
+	}
+
+	// Re-point the global aliases at the new active server, or tear them down
+	// when no server remains so background workers stop using a dead pool.
+	if active := globalRegistry.Active(); active != nil {
+		globalDB = active.DB
+		globalControl = active.Control
+		globalExecutor = active.Executor
+	} else {
+		resetRuntimeConnections()
+	}
+
+	// Persist: drop the server from Servers[].
+	cfg := loadedConfig
+	filtered := make([]ServerConfig, 0, len(cfg.Servers))
+	for _, sc := range cfg.Servers {
+		if sc.ID != id {
+			filtered = append(filtered, sc)
+		}
+	}
+	cfg.Servers = filtered
+
+	// Last server gone: clear the flat connection config (the legacy "default"
+	// server lives here, not in Servers[]) so needsSetup() flips true. Global
+	// settings (auth, Discord, listen addr, market bot) are preserved.
+	resetToSetup := globalRegistry.ActiveID() == ""
+	if resetToSetup {
+		clearFlatConnectionConfig(&cfg)
+	}
+
+	if err := writeConfigFile(cfg); err != nil {
+		// Config write failed but the in-memory registry is already updated.
+		// Log and continue — the removal is live until restart.
+		log.Printf("handleDeleteServer: persist config: %v", err)
+	} else {
+		loadedConfig = cfg
+		if resetToSetup {
+			// Push the cleared flat fields into the runtime globals so
+			// needsSetup() (which reads dbPass) sees the reset immediately.
+			applyConfig(cfg)
+		}
+	}
+	jsonOK(w, map[string]bool{"deleted": true})
+}
+
+// clearFlatConnectionConfig blanks the top-level connection fields so a
+// configured install reverts to "needs setup" without touching global settings
+// (auth, Discord, listen address, market bot).
+func clearFlatConnectionConfig(cfg *appConfig) {
+	cfg.SSHHost = ""
+	cfg.SSHUser = ""
+	cfg.SSHKey = ""
+	cfg.SSHMode = ""
+	cfg.SSHExtraOpts = ""
+	cfg.AutoDiscover = false
+	cfg.DBHost = ""
+	cfg.DBPort = 0
+	cfg.DBUser = ""
+	cfg.DBPass = ""
+	cfg.DBName = ""
+	cfg.DBSchema = ""
+	cfg.Control = ""
+	cfg.ControlNamespace = ""
+}
+
+// handleAddServer registers a new server from a posted ServerConfig body.
+// The server is connected immediately; the config is persisted on success.
+func handleAddServer(w http.ResponseWriter, r *http.Request) {
+	var cfg ServerConfig
+	if err := decode(r, &cfg); err != nil {
+		jsonErr(w, err, http.StatusBadRequest)
+		return
+	}
+	if cfg.ID == "" {
+		jsonErr(w, fmt.Errorf("id is required"), http.StatusBadRequest)
+		return
+	}
+	if globalRegistry.Get(cfg.ID) != nil {
+		jsonErr(w, fmt.Errorf("server %q already exists", cfg.ID), http.StatusConflict)
+		return
+	}
+	// Apply control-plane defaults to blank fields so the persisted entry matches
+	// what we connect with (and what a console setup would have used).
+	applyServerConfigDefaults(&cfg)
+	sc, err := connectServer(cfg)
+	if err != nil {
+		log.Printf("handleAddServer %q: connect: %v", cfg.ID, err)
+		// Register with what we have — caller can reconnect later.
+		sc = &ServerContext{ID: cfg.ID, Name: cfg.Name, Cfg: cfg, StoreScope: cfg.ID}
+	}
+	globalRegistry.Register(sc)
+	// Start the market bot if this server has it enabled and a live DB.
+	startServerMarketBot(sc, loadedConfig)
+	// Persist
+	appCfg := loadedConfig
+	appCfg.Servers = append(appCfg.Servers, cfg)
+	if werr := writeConfigFile(appCfg); werr != nil {
+		log.Printf("handleAddServer: persist config: %v", werr)
+	} else {
+		loadedConfig = appCfg
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(serverListItem{ID: sc.ID, Name: sc.Name, Active: globalRegistry.ActiveID() == sc.ID})
+}
+
+// handleReconnectServer re-establishes the connection for one server identified
+// by its ID in the path. The reconnected ServerContext replaces the existing
+// registry entry; if it was the active server, the global aliases are updated.
+func handleReconnectServer(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	sc := globalRegistry.Get(id)
+	if sc == nil {
+		jsonErr(w, fmt.Errorf("server %q not found", id), http.StatusNotFound)
+		return
+	}
+	// Stop the old instance's bot before replacing the context.
+	stopServerMarketBot(sc)
+	newSC, err := connectServer(sc.Cfg)
+	if err != nil {
+		log.Printf("handleReconnectServer %q: %v", id, err)
+		jsonErr(w, fmt.Errorf("reconnect failed: %v", err), http.StatusServiceUnavailable)
+		return
+	}
+	globalRegistry.Register(newSC)
+	if globalRegistry.ActiveID() == id {
+		globalDB = newSC.DB
+		globalControl = newSC.Control
+		globalExecutor = newSC.Executor
+	}
+	if newSC.DB != nil {
+		ensureDBSchema(newSC.DB)
+	}
+	// Now that the DB is (re)connected, start the bot if enabled.
+	startServerMarketBot(newSC, loadedConfig)
+	jsonOK(w, map[string]bool{"connected": true})
+}
+
+// ── per-server config (GET/PUT /api/v1/servers/{id}/config) ──────────────────
+
+// maskServerSecrets replaces secret fields with the display placeholder so the
+// real values never leave the backend.
+func maskServerSecrets(c *ServerConfig) {
+	if c.DBPass != "" {
+		c.DBPass = masked
+	}
+	if c.BrokerPass != "" {
+		c.BrokerPass = masked
+	}
+	if c.BrokerJWTSecret != "" {
+		c.BrokerJWTSecret = masked
+	}
+	if c.AmpAPIPass != "" {
+		c.AmpAPIPass = masked
+	}
+}
+
+// preserveServerMaskedSecrets restores real secret values from old when the
+// client echoed back the display placeholder (i.e. left the field unchanged).
+func preserveServerMaskedSecrets(next *ServerConfig, old ServerConfig) {
+	if next.DBPass == masked {
+		next.DBPass = old.DBPass
+	}
+	if next.BrokerPass == masked {
+		next.BrokerPass = old.BrokerPass
+	}
+	if next.BrokerJWTSecret == masked {
+		next.BrokerJWTSecret = old.BrokerJWTSecret
+	}
+	if next.AmpAPIPass == masked {
+		next.AmpAPIPass = old.AmpAPIPass
+	}
+}
+
+// handleGetServerConfig returns one server's ServerConfig with secrets masked.
+// The legacy "default" server is read fresh from the flat config so it reflects
+// any changes applied since connect.
+func handleGetServerConfig(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	sc := globalRegistry.Get(id)
+	if sc == nil {
+		jsonErr(w, fmt.Errorf("server %q not found", id), http.StatusNotFound)
+		return
+	}
+	cfg := sc.Cfg
+	if id == "default" && !serverInList(loadedConfig.Servers, id) {
+		cfg = legacyServerFromFlat(loadedConfig)
+	}
+	maskServerSecrets(&cfg)
+	jsonOK(w, cfg)
+}
+
+// handleUpdateServerConfig persists an edited ServerConfig, reconnects that
+// server, and re-points the global aliases when the edited server is active.
+func handleUpdateServerConfig(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	sc := globalRegistry.Get(id)
+	if sc == nil {
+		jsonErr(w, fmt.Errorf("server %q not found", id), http.StatusNotFound)
+		return
+	}
+	var next ServerConfig
+	if err := decode(r, &next); err != nil {
+		jsonErr(w, err, http.StatusBadRequest)
+		return
+	}
+	next.ID = id // path wins — never let the body rename the server
+	if next.Name == "" {
+		next.Name = sc.Name
+	}
+	preserveServerMaskedSecrets(&next, sc.Cfg)
+	applyServerConfigDefaults(&next)
+
+	if err := persistServerConfig(id, next); err != nil {
+		jsonErr(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// Stop the old instance's bot before replacing the context.
+	stopServerMarketBot(sc)
+
+	// Reconnect with the new config. Best-effort: register a control-plane-only
+	// (or even bare) context on failure so the edit still takes effect.
+	newSC, err := connectServer(next)
+	if err != nil {
+		log.Printf("handleUpdateServerConfig %q: reconnect: %v", id, err)
+	}
+	globalRegistry.Register(newSC)
+	if globalRegistry.ActiveID() == id {
+		globalDB = newSC.DB
+		globalControl = newSC.Control
+		globalExecutor = newSC.Executor
+	}
+	if newSC.DB != nil {
+		ensureDBSchema(newSC.DB)
+	}
+	// Apply the (possibly changed) per-server market-bot toggle.
+	startServerMarketBot(newSC, loadedConfig)
+
+	out := next
+	maskServerSecrets(&out)
+	jsonOK(w, out)
+}
+
+// serverInList reports whether a server with the given id is present in list.
+func serverInList(list []ServerConfig, id string) bool {
+	for _, s := range list {
+		if s.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// persistServerConfig writes the updated per-server config to config.yaml and
+// updates loadedConfig. The legacy "default" server is mapped back onto the
+// flat top-level fields (and applied to the runtime globals); every other
+// server updates its matching entry in Servers[].
+func persistServerConfig(id string, sc ServerConfig) error {
+	cfg := loadedConfig
+	isDefaultFlat := id == "default" && !serverInList(cfg.Servers, id)
+	if isDefaultFlat {
+		cfg = serverCfgToAppConfig(sc) // preserves global-only fields
+	} else {
+		updated := make([]ServerConfig, 0, len(cfg.Servers)+1)
+		found := false
+		for _, e := range cfg.Servers {
+			if e.ID == id {
+				updated = append(updated, sc)
+				found = true
+			} else {
+				updated = append(updated, e)
+			}
+		}
+		if !found {
+			updated = append(updated, sc)
+		}
+		cfg.Servers = updated
+	}
+	if err := writeConfigFile(cfg); err != nil {
+		return fmt.Errorf("persist config: %w", err)
+	}
+	loadedConfig = cfg
+	if isDefaultFlat {
+		applyConfig(cfg) // push flat fields into the runtime globals
+	}
+	return nil
 }

@@ -24,6 +24,29 @@ var (
 	globalControl  ControlPlane
 )
 
+// resolveDBPort returns port if non-zero, otherwise the standard dune-admin
+// default of 15432 (the port AMP exposes PostgreSQL on via pgBouncer). This
+// matches the -dbport flag default so that a zero-valued ServerConfig.DBPort
+// (wizard left blank) behaves the same as the flat-config path.
+func resolveDBPort(port int) int {
+	if port == 0 {
+		return 15432
+	}
+	return port
+}
+
+// resolveDBHost returns host if non-empty, otherwise "127.0.0.1".
+// pgx v5's key-value DSN parser reads "host= port=N" as host="port=N" because it
+// skips the space after the equals sign and reads the next token as the value.
+// An empty host always means localhost, so substituting 127.0.0.1 avoids the
+// parse ambiguity without changing behaviour.
+func resolveDBHost(host string) string {
+	if host == "" {
+		return "127.0.0.1"
+	}
+	return host
+}
+
 // resolveControl returns the effective control plane name based on config,
 // defaulting to "kubectl" when SSH is configured and "local" otherwise.
 func resolveControl() string {
@@ -210,7 +233,7 @@ func cmdConnect() Msg {
 func connectDBDirect(ctx context.Context, cfg appConfig) (*pgxpool.Pool, error) {
 	connStr := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPass, cfg.DBName)
+		resolveDBHost(cfg.DBHost), cfg.DBPort, cfg.DBUser, cfg.DBPass, cfg.DBName)
 	poolCfg, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
 		return nil, err
@@ -220,7 +243,7 @@ func connectDBDirect(ctx context.Context, cfg appConfig) (*pgxpool.Pool, error) 
 		return err
 	}
 	if globalExecutor != nil {
-		addr := fmt.Sprintf("%s:%d", cfg.DBHost, cfg.DBPort)
+		addr := fmt.Sprintf("%s:%d", resolveDBHost(cfg.DBHost), cfg.DBPort)
 		poolCfg.ConnConfig.DialFunc = func(ctx context.Context, _, _ string) (net.Conn, error) {
 			return globalExecutor.Dial("tcp", addr)
 		}
@@ -335,6 +358,9 @@ func legacyServerFromFlat(ac appConfig) ServerConfig {
 		AmpBackupDir:        ac.AmpBackupDir,
 		// Director proxy
 		DirectorURL: ac.DirectorURL,
+		// Migrate the legacy global market-bot toggle onto the default server so
+		// existing installs keep their enabled/disabled choice.
+		MarketBotEnabled: ac.MarketBotEnabled,
 	}
 }
 
@@ -390,6 +416,7 @@ func serverCfgToAppConfig(sc ServerConfig) appConfig {
 	ac.AmpPgLib = sc.AmpPgLib
 	ac.AmpBackupDir = sc.AmpBackupDir
 	ac.DirectorURL = sc.DirectorURL
+	ac.MarketBotEnabled = sc.MarketBotEnabled
 	return ac
 }
 
@@ -399,7 +426,7 @@ func serverCfgToAppConfig(sc ServerConfig) appConfig {
 func connectDBDirectWithExecutor(ctx context.Context, exec Executor, cfg ServerConfig) (*pgxpool.Pool, error) {
 	connStr := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPass, cfg.DBName)
+		resolveDBHost(cfg.DBHost), resolveDBPort(cfg.DBPort), cfg.DBUser, cfg.DBPass, cfg.DBName)
 	poolCfg, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
 		return nil, err
@@ -409,7 +436,7 @@ func connectDBDirectWithExecutor(ctx context.Context, exec Executor, cfg ServerC
 		return err
 	}
 	if exec != nil {
-		addr := fmt.Sprintf("%s:%d", cfg.DBHost, cfg.DBPort)
+		addr := fmt.Sprintf("%s:%d", resolveDBHost(cfg.DBHost), resolveDBPort(cfg.DBPort))
 		poolCfg.ConnConfig.DialFunc = func(ctx context.Context, _, _ string) (net.Conn, error) {
 			return exec.Dial("tcp", addr)
 		}
@@ -431,7 +458,7 @@ func connectDBDirectWithExecutor(ctx context.Context, exec Executor, cfg ServerC
 func connectDBViaSSH(ctx context.Context, exec Executor, podIP string, cfg ServerConfig) (*pgxpool.Pool, error) {
 	connStr := fmt.Sprintf(
 		"host=127.0.0.1 port=%d user=%s password=%s dbname=%s sslmode=disable",
-		cfg.DBPort, cfg.DBUser, cfg.DBPass, cfg.DBName)
+		resolveDBPort(cfg.DBPort), cfg.DBUser, cfg.DBPass, cfg.DBName)
 	poolCfg, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
 		return nil, err
@@ -447,7 +474,7 @@ func connectDBViaSSH(ctx context.Context, exec Executor, podIP string, cfg Serve
 		return nil, fmt.Errorf("cannot connect to DB: executor is nil")
 	}
 	poolCfg.ConnConfig.DialFunc = func(_ context.Context, _, _ string) (net.Conn, error) {
-		return exec.Dial("tcp", fmt.Sprintf("%s:%d", podIP, cfg.DBPort))
+		return exec.Dial("tcp", fmt.Sprintf("%s:%d", podIP, resolveDBPort(cfg.DBPort)))
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
@@ -465,6 +492,9 @@ func connectDBViaSSH(ctx context.Context, exec Executor, podIP string, cfg Serve
 // *ServerContext is never nil: the control plane is established even when the DB
 // connect fails, so callers retain control-plane access while the DB is down.
 func connectServer(cfg ServerConfig) (*ServerContext, error) {
+	// Gap-fill blanks with control-plane defaults so a minimally-configured
+	// server (e.g. AMP with only an SSH key) connects like the console wizard.
+	applyServerConfigDefaults(&cfg)
 	sc := &ServerContext{
 		ID:         cfg.ID,
 		Name:       cfg.Name,
@@ -518,4 +548,43 @@ func connectServer(cfg ServerConfig) (*ServerContext, error) {
 	}
 	sc.DB = pool
 	return sc, nil
+}
+
+// connectMultiServer connects all servers listed in cfg.Servers, registers them
+// in globalRegistry, and aliases the active server's pool/control/executor to
+// the process-wide globals for backward compatibility.
+func connectMultiServer(cfg appConfig) error {
+	var firstErr error
+	for _, sc := range cfg.Servers {
+		ctx, err := connectServer(sc)
+		if err != nil {
+			log.Printf("connectMultiServer: server %q: %v", sc.ID, err)
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+		globalRegistry.Register(ctx)
+		if ctx.DB != nil {
+			ensureDBSchema(ctx.DB)
+		}
+	}
+
+	// Activate the configured default, or fall through to the first server.
+	activeID := cfg.DefaultServer
+	if activeID == "" && len(cfg.Servers) > 0 {
+		activeID = cfg.Servers[0].ID
+	}
+	if activeID != "" {
+		if err := globalRegistry.SetActive(activeID); err != nil {
+			log.Printf("connectMultiServer: set active %q: %v", activeID, err)
+		}
+	}
+
+	// Alias globals from the active server so existing single-server code keeps working.
+	if active := globalRegistry.Active(); active != nil {
+		globalDB = active.DB
+		globalControl = active.Control
+		globalExecutor = active.Executor
+	}
+	return firstErr
 }

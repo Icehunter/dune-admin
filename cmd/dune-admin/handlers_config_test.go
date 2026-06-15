@@ -1,111 +1,111 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"dune-admin/internal/marketbot"
 )
 
-// TestApplyMarketBotConfig_StopClearsBot verifies that when wantEnabled=false,
-// applyMarketBotConfig cancels the running bot and sets embeddedBot to nil.
-func TestApplyMarketBotConfig_StopClearsBot(t *testing.T) {
-	// Not parallel: mutates package-level embeddedBot / globalBotCancel.
-	origBot := embeddedBot
-	origCancel := globalBotCancel
-	t.Cleanup(func() { embeddedBot = origBot; globalBotCancel = origCancel })
+// handleGetConfig must mask per-server secrets in Servers[] — not just the
+// top-level flat fields — so plaintext passwords never reach the client.
+func TestHandleGetConfig_MasksServerSecrets(t *testing.T) {
+	t.Setenv("DUNE_ADMIN_CONFIG_DIR", t.TempDir())
 
-	cancelled := false
-	globalBotCancel = func() { cancelled = true }
-	// Provide a non-nil embeddedBot instance so the running-check passes.
-	embeddedBot = new(marketbot.Instance)
-
-	disabled := false
-	cfg := appConfig{MarketBotEnabled: &disabled}
-	applyMarketBotConfig(cfg)
-
-	if embeddedBot != nil {
-		t.Error("embeddedBot should be nil after disabling")
+	cfg := appConfig{Servers: []ServerConfig{
+		{ID: "s1", Name: "One", DBPass: "plaintext-pw", BrokerPass: "bpw", AmpAPIPass: "amp-pw"},
+	}}
+	if err := writeConfigFile(cfg); err != nil {
+		t.Fatalf("writeConfigFile: %v", err)
 	}
-	if globalBotCancel != nil {
-		t.Error("globalBotCancel should be nil after disabling")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/config", nil)
+	rr := httptest.NewRecorder()
+	handleGetConfig(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body = %s", rr.Code, rr.Body.String())
 	}
-	if !cancelled {
-		t.Error("cancel function should have been called")
+	var got appConfig
+	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
 	}
-}
-
-// TestApplyMarketBotConfig_StartRequiresDB verifies that applyMarketBotConfig
-// does NOT attempt to start the embedded bot when globalDB is nil. This
-// enforces the ordering contract: applyMarketBotConfig must only be called
-// AFTER connectAll() has established globalDB.
-func TestApplyMarketBotConfig_StartRequiresDB(t *testing.T) {
-	// Not parallel: mutates package-level embeddedBot / globalDB.
-	origBot := embeddedBot
-	origCancel := globalBotCancel
-	origDB := globalDB
-	t.Cleanup(func() { embeddedBot = origBot; globalBotCancel = origCancel; globalDB = origDB })
-
-	embeddedBot = nil
-	globalBotCancel = nil
-	globalDB = nil // simulate pre-connectAll state
-
-	enabled := true
-	cfg := appConfig{MarketBotEnabled: &enabled}
-	applyMarketBotConfig(cfg)
-
-	// With globalDB nil, startEmbeddedMarketBotIfEnabled should fail and
-	// embeddedBot should remain nil rather than holding a broken instance.
-	if embeddedBot != nil {
-		t.Error("embeddedBot should remain nil when globalDB is nil (connectAll not yet called)")
+	if len(got.Servers) != 1 {
+		t.Fatalf("Servers len = %d, want 1", len(got.Servers))
+	}
+	for name, v := range map[string]string{
+		"DBPass":     got.Servers[0].DBPass,
+		"BrokerPass": got.Servers[0].BrokerPass,
+		"AmpAPIPass": got.Servers[0].AmpAPIPass,
+	} {
+		if v != masked {
+			t.Errorf("Servers[0].%s = %q, want masked (no plaintext leak)", name, v)
+		}
 	}
 }
 
-// TestStopEmbeddedMarketBot_CancelsAndClearsGlobals verifies that
-// stopEmbeddedMarketBot cancels the running bot's goroutines and clears both
-// embeddedBot and globalBotCancel so the old (closed) DB pool is released.
-// This is the prerequisite step before resetRuntimeConnections in handleSaveConfig.
-func TestStopEmbeddedMarketBot_CancelsAndClearsGlobals(t *testing.T) {
-	// Not parallel: mutates package-level embeddedBot / globalBotCancel.
-	origBot := embeddedBot
-	origCancel := globalBotCancel
-	t.Cleanup(func() { embeddedBot = origBot; globalBotCancel = origCancel })
+// A global-settings save in a multi-server install must NOT wipe Servers[],
+// tear down the active server's live connection, or register a spurious
+// "default" server. Per-server config is owned by the /servers endpoints.
+func TestHandleSaveConfig_MultiServerPreservesServersAndConnections(t *testing.T) {
+	t.Setenv("DUNE_ADMIN_CONFIG_DIR", t.TempDir())
 
-	cancelled := false
-	globalBotCancel = func() { cancelled = true }
-	embeddedBot = new(marketbot.Instance)
+	reg := newServerRegistry(nil)
+	s1 := &ServerContext{ID: "s1", Name: "One", StoreScope: "s1"}
+	reg.Register(s1)
+	reg.Register(&ServerContext{ID: "s2", Name: "Two", StoreScope: "s2"})
+	_ = reg.SetActive("s1")
+	origReg := globalRegistry
+	globalRegistry = reg
+	defer func() { globalRegistry = origReg }()
 
-	stopEmbeddedMarketBot()
-
-	if !cancelled {
-		t.Error("stopEmbeddedMarketBot should call globalBotCancel")
+	origCfg := loadedConfig
+	loadedConfig = appConfig{
+		Servers: []ServerConfig{{ID: "s1", Name: "One"}, {ID: "s2", Name: "Two"}},
 	}
-	if embeddedBot != nil {
-		t.Error("stopEmbeddedMarketBot should set embeddedBot = nil")
+	defer func() { loadedConfig = origCfg }()
+
+	// Global-only payload (omits Servers[]) toggling a global field.
+	body, _ := json.Marshal(appConfig{ListenAddr: ":9090"})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/config", bytes.NewReader(body))
+	rr := httptest.NewRecorder()
+	handleSaveConfig(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body = %s", rr.Code, rr.Body.String())
 	}
-	if globalBotCancel != nil {
-		t.Error("stopEmbeddedMarketBot should set globalBotCancel = nil")
+	if len(loadedConfig.Servers) != 2 {
+		t.Fatalf("Servers len = %d after global save, want 2 (preserved)", len(loadedConfig.Servers))
+	}
+	if globalRegistry.Get("s1") != s1 {
+		t.Error("active server context was replaced/torn down by a global-settings save")
+	}
+	if globalRegistry.Get("default") != nil {
+		t.Error("global save registered a spurious 'default' server in multi-server mode")
+	}
+	if loadedConfig.ListenAddr != ":9090" {
+		t.Errorf("ListenAddr = %q, want :9090 (global field applied)", loadedConfig.ListenAddr)
 	}
 }
 
-// TestStopEmbeddedMarketBot_NoopWhenNotRunning verifies that stopEmbeddedMarketBot
-// is safe to call when no bot is running (nil embeddedBot).
-func TestStopEmbeddedMarketBot_NoopWhenNotRunning(t *testing.T) {
-	// Not parallel: mutates package-level embeddedBot / globalBotCancel.
-	origBot := embeddedBot
-	origCancel := globalBotCancel
-	t.Cleanup(func() { embeddedBot = origBot; globalBotCancel = origCancel })
+// TestApplyMarketBotConfig_RemoteProxy verifies applyMarketBotConfig now only
+// manages the remote-bot proxy (the embedded bots are per-server). Setting a URL
+// installs the proxy; clearing it removes the proxy.
+func TestApplyMarketBotConfig_RemoteProxy(t *testing.T) {
+	orig := remoteBotProxy
+	t.Cleanup(func() { remoteBotProxy = orig })
 
-	embeddedBot = nil
-	globalBotCancel = nil
+	remoteBotProxy = nil
+	applyMarketBotConfig(appConfig{MarketBotRemoteURL: "http://bot.example:9000", MarketBotRemoteToken: "tok"})
+	if remoteBotProxy == nil {
+		t.Fatal("remoteBotProxy should be set when MarketBotRemoteURL is provided")
+	}
 
-	// Should not panic.
-	stopEmbeddedMarketBot()
-
-	if embeddedBot != nil {
-		t.Error("embeddedBot should remain nil")
+	applyMarketBotConfig(appConfig{MarketBotRemoteURL: ""})
+	if remoteBotProxy != nil {
+		t.Error("remoteBotProxy should be cleared when MarketBotRemoteURL is empty")
 	}
 }
 

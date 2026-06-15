@@ -22,7 +22,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 	_ "time/tzdata" // embed the IANA tz database so time.LoadLocation works on
 	// minimal containers without the OS tzdata package (#204: scheduled restart
 	// rejected valid zones like "Europe/London").
@@ -31,6 +30,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"dune-admin/internal/marketbot"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // AppVersion is the release version shown to users.
@@ -309,6 +309,13 @@ type appConfig struct {
 	BattlepassPollSeconds      int   `yaml:"battlepass_poll_seconds"       json:"battlepass_poll_seconds"`
 	BattlepassScanPaceMs       int   `yaml:"battlepass_scan_pace_ms"       json:"battlepass_scan_pace_ms"`
 	BattlepassScanStartDelayMs int   `yaml:"battlepass_scan_start_delay_ms" json:"battlepass_scan_start_delay_ms"`
+
+	// Multi-server: when Servers is non-empty, connectAll is replaced by
+	// connectMultiServer which calls connectServer for each entry. DefaultServer
+	// names the initially-active server; if blank the first entry is used.
+	// Existing flat-config installs (no servers: key) are unaffected.
+	Servers       []ServerConfig `yaml:"servers"        json:"servers,omitempty"`
+	DefaultServer string         `yaml:"default_server" json:"default_server,omitempty"`
 }
 
 // marketBotEnabled returns the effective bot-enabled flag. Missing yaml key →
@@ -523,6 +530,14 @@ func resolveKeyPath() string {
 	if sshKeyPath != "" {
 		return sshKeyPath
 	}
+	return discoverSSHKeyPath()
+}
+
+// discoverSSHKeyPath searches the standard locations (config dir, next to the
+// binary, the working directory) for an "sshKey" file and returns the first hit.
+// When none exists it returns the config-dir path so callers have a stable
+// default. Independent of the sshKeyPath global so it works for per-server config.
+func discoverSSHKeyPath() string {
 	home, _ := os.UserHomeDir()
 	exe, _ := os.Executable()
 	exeDir := filepath.Dir(exe)
@@ -753,18 +768,24 @@ func loadRuntimeData() error {
 }
 
 func setupIfNeeded() bool {
-	// Auto-run setup wizard when no config exists — setup leaves us connected.
-	if !needsSetup() {
-		return false
-	}
-	runSetup()
-	fmt.Println()
-	fmt.Printf("Starting server on %s...\n", listenAddr)
-	return true
+	// When setup is needed, skip the connect step — the web wizard handles
+	// initial configuration via POST /api/v1/config + POST /api/v1/reconnect.
+	// The terminal wizard is still available via --setup / make setup.
+	return needsSetup()
 }
 
 func closeGlobalConnections() {
-	if globalDB != nil {
+	// Close all per-server pools (dedup by pointer so aliased pools close once).
+	seen := make(map[*pgxpool.Pool]bool)
+	for _, sc := range globalRegistry.All() {
+		if sc.DB != nil && !seen[sc.DB] {
+			seen[sc.DB] = true
+			sc.DB.Close()
+		}
+	}
+	// Fallback for the legacy path where globalDB may not be in the registry
+	// (connect failed before registration, or the registry is empty).
+	if globalDB != nil && !seen[globalDB] {
 		globalDB.Close()
 	}
 	// Close the active executor so command-mode tears down its ControlMaster
@@ -792,11 +813,19 @@ func connectAndPrimeTemplates(alreadyConnected bool) {
 		refreshItemTemplates()
 		return
 	}
-	// Connect synchronously (SSH + DB).
-	if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
-		fmt.Fprintln(os.Stderr, "connect:", msg.err)
-		fmt.Fprintln(os.Stderr, "Starting server anyway — use /api/v1/reconnect to retry")
-		return
+	if len(loadedConfig.Servers) > 0 {
+		// Multi-server path: connect each server from the servers: list.
+		if err := connectMultiServer(loadedConfig); err != nil {
+			fmt.Fprintln(os.Stderr, "connect:", err)
+			fmt.Fprintln(os.Stderr, "Starting server anyway — use /api/v1/servers/{id}/reconnect to retry")
+		}
+	} else {
+		// Legacy flat-config path.
+		if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
+			fmt.Fprintln(os.Stderr, "connect:", msg.err)
+			fmt.Fprintln(os.Stderr, "Starting server anyway — use /api/v1/reconnect to retry")
+			return
+		}
 	}
 	refreshItemTemplates()
 }
@@ -854,39 +883,6 @@ func usableItemDataPath(configured string) string {
 	return configured
 }
 
-func startEmbeddedMarketBotIfEnabled(cfg appConfig) context.CancelFunc {
-	if !marketBotEnabled(cfg) {
-		return nil
-	}
-	embeddedBotConfigured = true
-	botCtx, botCancel := context.WithCancel(context.Background())
-	cacheDB, itemDataForBot, statePath := resolveEmbeddedMarketBotPaths(cfg, itemDataPath)
-	itemDataForBot = usableItemDataPath(itemDataForBot)
-	inst, err := marketbot.Run(botCtx, marketbot.BotConfig{
-		DBPool:       globalDB,
-		DBHost:       dbHost,
-		DBPort:       dbPort,
-		DBUser:       dbUser,
-		DBPass:       dbPass,
-		DBName:       dbName,
-		DBSchema:     dbSchema,
-		CacheDB:      cacheDB,
-		StatePath:    statePath,
-		ItemDataPath: itemDataForBot,
-		BuyInterval:  parseDurString(cfg.MarketBotBuyInt, 5*time.Minute),
-		ListInterval: parseDurString(cfg.MarketBotListInt, 30*time.Minute),
-		BuyThreshold: cfg.MarketBotThresh,
-		MaxBuys:      cfg.MarketBotMaxBuys,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "market-bot: startup failed: %v\n", err)
-		botCancel()
-		return nil
-	}
-	embeddedBot = inst
-	return botCancel
-}
-
 // immediateModeLabel returns the error prefix for immediate-mode failures
 // (render-k8s, clean-market) so the logged error is clearly attributed.
 func immediateModeLabel() string {
@@ -927,14 +923,11 @@ func main() {
 	sessionCancel := startSessionTracking()
 	defer sessionCancel()
 
-	if cancel := startEmbeddedMarketBotIfEnabled(loadedConfig); cancel != nil {
-		globalBotCancel = cancel
-		defer func() {
-			if globalBotCancel != nil {
-				globalBotCancel()
-			}
-		}()
-	}
+	// Start one market bot per enabled server that has a live DB. Servers with
+	// the toggle off, or with no DB yet (fresh/unconfigured env), don't start a
+	// bot — so a brand-new install no longer spams "market-bot startup failed".
+	restartAllServerMarketBots(loadedConfig)
+	defer stopAllServerMarketBots()
 
 	if loadedConfig.MarketBotRemoteURL != "" {
 		remoteBotProxy = newRemoteBotClient(loadedConfig.MarketBotRemoteURL, loadedConfig.MarketBotRemoteToken)
@@ -1065,18 +1058,7 @@ func stopWelcomeScanner() {
 	}
 }
 
-// embeddedBot holds the live market bot instance when market_bot_enabled=true.
-// Nil when bot is disabled.
-var embeddedBot *marketbot.Instance
-
-// embeddedBotConfigured is true whenever the server config has market_bot_enabled=true,
-// regardless of whether the bot instance is currently running. Never reset to false.
-var embeddedBotConfigured bool
-
-// globalBotCancel cancels the embedded bot's context, stopping it cleanly.
-// Set by startEmbeddedMarketBotIfEnabled; nil when no bot is running.
-var globalBotCancel context.CancelFunc
-
-// remoteBotProxy forwards /api/v1/market-bot/* to a remote bot when set.
-// Takes precedence when embeddedBot is nil.
+// remoteBotProxy forwards /api/v1/market-bot/* to a remote bot when set, and is
+// the fallback when no per-server embedded bot is running. The embedded bots are
+// per-server (ServerContext.Bot).
 var remoteBotProxy *remoteBotClient

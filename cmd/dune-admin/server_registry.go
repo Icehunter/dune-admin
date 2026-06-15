@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"sync"
+
+	"dune-admin/internal/marketbot"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/ssh"
@@ -79,6 +82,11 @@ type ServerConfig struct {
 
 	// Director proxy.
 	DirectorURL string `yaml:"director_url" json:"director_url"`
+
+	// Market bot enable toggle — PER SERVER. The rest of the market-bot config
+	// (intervals, thresholds, cache base, item data) is global/shared in
+	// appConfig. nil means "not set" → OFF (explicit opt-in per server).
+	MarketBotEnabled *bool `yaml:"market_bot_enabled" json:"market_bot_enabled"`
 }
 
 // ServerContext is the fully-connected runtime for one game server. It is the
@@ -96,6 +104,13 @@ type ServerContext struct {
 	Pod        string
 	SSH        *ssh.Client
 	StoreScope string // == ID; scopes every SQLite query for this server
+
+	// Per-server embedded market bot. Bot is nil unless the server's toggle is
+	// on AND it has a live DB. BotConfigured records that the toggle is on even
+	// when the bot isn't running (e.g. DB down) so status can report it.
+	Bot           *marketbot.Instance
+	BotCancel     context.CancelFunc
+	BotConfigured bool
 }
 
 // serverRegistry holds all connected ServerContexts and tracks the active one.
@@ -171,6 +186,34 @@ func (r *serverRegistry) SetActive(id string) error {
 	}
 	r.active = id
 	return nil
+}
+
+// Remove deletes the server with the given id from the registry. If the
+// removed server was the active one, active is reassigned to the next server
+// in registration order (or cleared if the registry is now empty).
+// Returns false when no server with that id exists.
+func (r *serverRegistry) Remove(id string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.servers[id]; !ok {
+		return false
+	}
+	delete(r.servers, id)
+	newOrder := r.order[:0]
+	for _, oid := range r.order {
+		if oid != id {
+			newOrder = append(newOrder, oid)
+		}
+	}
+	r.order = newOrder
+	if r.active == id {
+		if len(r.order) > 0 {
+			r.active = r.order[0]
+		} else {
+			r.active = ""
+		}
+	}
+	return true
 }
 
 // All returns all registered ServerContexts in registration order. The

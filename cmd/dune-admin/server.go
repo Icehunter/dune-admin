@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ var allowedOrigins []string
 
 func init() {
 	raw := envOr("ALLOWED_ORIGINS", "https://dune-admin.layout.tools,http://localhost:5173")
-	for _, o := range strings.Split(raw, ",") {
+	for o := range strings.SplitSeq(raw, ",") {
 		if o = strings.TrimSpace(o); o != "" {
 			allowedOrigins = append(allowedOrigins, o)
 		}
@@ -27,12 +28,7 @@ func init() {
 }
 
 func originAllowed(origin string) bool {
-	for _, o := range allowedOrigins {
-		if o == origin {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowedOrigins, origin)
 }
 
 // newDirectorProxy builds the /director/ reverse-proxy handler for target. It
@@ -109,7 +105,13 @@ func buildMux() *http.ServeMux {
 
 	// ── servers registry ──────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/servers", capServerRead, handleListServers)
+	handleAPI(mux, "POST /api/v1/servers", capServerControl, handleAddServer)
+	handleAPI(mux, "POST /api/v1/servers/discover", capServerControl, handleDiscoverServer)
 	handleAPI(mux, "PUT /api/v1/servers/active", capServerControl, handleSetActiveServer)
+	handleAPI(mux, "DELETE /api/v1/servers/{id}", capServerControl, handleDeleteServer)
+	handleAPI(mux, "POST /api/v1/servers/{id}/reconnect", capServerControl, handleReconnectServer)
+	handleAPI(mux, "GET /api/v1/servers/{id}/config", capServerRead, handleGetServerConfig)
+	handleAPI(mux, "PUT /api/v1/servers/{id}/config", capServerControl, handleUpdateServerConfig)
 
 	// ── status ────────────────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/status", capServerRead, handleStatus)
@@ -533,6 +535,7 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 		"listen_addr":      loadedConfig.ListenAddr,
 		"shutdown_pending": shutdownPending,
 		"shutdown_at":      shutdownAt,
+		"needs_setup":      needsSetup(),
 	})
 }
 

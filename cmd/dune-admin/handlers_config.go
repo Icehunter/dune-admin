@@ -59,6 +59,11 @@ func maskSecrets(cfg *appConfig) {
 	if cfg.AuthLocalPasswordHash != "" {
 		cfg.AuthLocalPasswordHash = masked
 	}
+	// Per-server entries carry their own secrets — mask them too so plaintext
+	// passwords never reach the client.
+	for i := range cfg.Servers {
+		maskServerSecrets(&cfg.Servers[i])
+	}
 }
 
 // preserveMaskedSecrets restores real secret values when the client sent back
@@ -131,20 +136,6 @@ func writeConfigFile(cfg appConfig) error {
 	return nil
 }
 
-// stopEmbeddedMarketBot cancels the running embedded bot (if any) and clears
-// embeddedBot and globalBotCancel. Call this before resetRuntimeConnections so
-// the bot releases its reference to the old (about-to-be-closed) globalDB pool.
-func stopEmbeddedMarketBot() {
-	if embeddedBot == nil {
-		return
-	}
-	if globalBotCancel != nil {
-		globalBotCancel()
-		globalBotCancel = nil
-	}
-	embeddedBot = nil
-}
-
 func resetRuntimeConnections() {
 	if globalDB != nil {
 		globalDB.Close()
@@ -176,6 +167,20 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 
 	preserveMaskedSecrets(&cfg, os.ReadFile, configPath())
 
+	// Per-server config (Servers[] / default_server) is owned exclusively by the
+	// /api/v1/servers endpoints. A global-settings save must never wipe or mutate
+	// it — the POST /config payload carries only global + flat fields.
+	cfg.Servers = loadedConfig.Servers
+	cfg.DefaultServer = loadedConfig.DefaultServer
+
+	// Fresh-setup / legacy single-server path: gap-fill blank connection fields
+	// with control-plane defaults so leaving a field empty in the wizard uses the
+	// default (mirroring the console wizard) instead of wiping it via applyConfig.
+	// Multi-server installs don't use the flat connection fields, so skip them.
+	if len(cfg.Servers) == 0 {
+		applyFlatConnectionDefaults(&cfg)
+	}
+
 	if err := applyNewLocalPassword(&cfg); err != nil {
 		jsonErr(w, err, 500)
 		return
@@ -190,6 +195,13 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	// so we can force a clean slate when it is toggled.
 	wasAuthEnabled := authEnabled(loadedConfig)
 
+	// Multi-server installs keep their per-server DB/control connections in the
+	// registry (managed by the /servers endpoints). Reconnecting here would close
+	// the active server's pool — which is aliased to globalDB — leaving the
+	// registry holding a dead pool, and would register a spurious flat "default"
+	// server. So only the legacy flat install reconnects on a global save.
+	multiServer := len(cfg.Servers) > 0
+
 	applyConfig(cfg)
 
 	// Re-initialize auth state so enabling auth (or adding Discord login)
@@ -197,23 +209,26 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	// honored immediately too — the middleware checks loadedConfig per request.
 	initAuthRuntime(cfg)
 
-	// Stop the running bot (if any) before closing the DB pool.
-	// A running bot holds a reference to globalDB; if we close the pool first
-	// the bot's next tick will use a closed pool and panic or error.
-	stopEmbeddedMarketBot()
+	if !multiServer {
+		// Stop the running bots before closing the DB pool. A running bot holds a
+		// reference to the pool; if we close it first the bot's next tick would
+		// use a closed pool.
+		stopAllServerMarketBots()
 
-	resetRuntimeConnections()
+		resetRuntimeConnections()
 
-	// Reconnect is best-effort — config is already written to disk.
-	// If reconnect fails (e.g. SSH not yet reachable), the file is still
-	// saved and will take effect on the next restart or manual reconnect.
-	if err := connectAll(); err != nil {
-		log.Printf("handleSaveConfig: reconnect after save: %v", err)
+		// Reconnect is best-effort — config is already written to disk.
+		// If reconnect fails (e.g. SSH not yet reachable), the file is still
+		// saved and will take effect on the next restart or manual reconnect.
+		if err := connectAll(); err != nil {
+			log.Printf("handleSaveConfig: reconnect after save: %v", err)
+		}
 	}
 
-	// Apply the market bot config AFTER connectAll so the bot gets the
-	// freshly-established globalDB rather than the old (closed) pool.
-	// applyMarketBotConfig will restart the bot (if enabled) with the new pool.
+	// Restart every server's market bot AFTER reconnect so each picks up the new
+	// global tuning (intervals/thresholds) against its live pool. Then refresh
+	// the remote-bot proxy from the new config.
+	restartAllServerMarketBots(loadedConfig)
 	applyMarketBotConfig(cfg)
 	// Discord connects outbound (no dependency on globalDB) so restart it last
 	// to pick up any token/guild/role changes without requiring a process restart.
@@ -237,6 +252,10 @@ func clearSessionOnAuthToggle(w http.ResponseWriter, r *http.Request, wasEnabled
 
 // buildCurrentConfig constructs an appConfig from the current global vars.
 func buildCurrentConfig() appConfig {
+	dbPassOut := ""
+	if dbPass != "" {
+		dbPassOut = masked
+	}
 	return appConfig{
 		SSHHost:          sshHost,
 		SSHUser:          sshUser,
@@ -244,7 +263,7 @@ func buildCurrentConfig() appConfig {
 		DBHost:           dbHost,
 		DBPort:           dbPort,
 		DBUser:           dbUser,
-		DBPass:           masked,
+		DBPass:           dbPassOut,
 		DBName:           dbName,
 		DBSchema:         dbSchema,
 		Control:          controlPlane,
@@ -258,29 +277,10 @@ func buildCurrentConfig() appConfig {
 	}
 }
 
-// applyMarketBotConfig stops or starts the embedded market bot to match the
-// new config. Called after applyConfig so loadedConfig is already updated.
+// applyMarketBotConfig refreshes the remote-bot proxy from the new global config.
+// The embedded bots themselves are per-server and (re)started via
+// restartAllServerMarketBots / the /servers endpoints, not here.
 func applyMarketBotConfig(cfg appConfig) {
-	wantEnabled := marketBotEnabled(cfg)
-	botRunning := embeddedBot != nil
-
-	if botRunning && !wantEnabled {
-		log.Printf("config: market_bot_enabled set to false — stopping embedded bot")
-		if globalBotCancel != nil {
-			globalBotCancel()
-			globalBotCancel = nil
-		}
-		embeddedBot = nil
-	}
-
-	if !botRunning && wantEnabled {
-		log.Printf("config: market_bot_enabled set to true — starting embedded bot")
-		if cancel := startEmbeddedMarketBotIfEnabled(cfg); cancel != nil {
-			globalBotCancel = cancel
-		}
-	}
-
-	// Update remote proxy from new config.
 	if cfg.MarketBotRemoteURL != "" {
 		remoteBotProxy = newRemoteBotClient(cfg.MarketBotRemoteURL, cfg.MarketBotRemoteToken)
 	} else {

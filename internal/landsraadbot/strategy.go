@@ -48,13 +48,11 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 
 	query := `
 		SELECT t.id, t.board_index, t.completed, t.winning_faction_id, t.term_id, t.goal_amount,
-		       (COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_guild_contributions WHERE task_id = t.id), 0) +
-		        COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_faction_contributions WHERE task_id = t.id), 0) +
-		        COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_player_contributions WHERE task_id = t.id), 0)) 
+		       COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_faction_contributions WHERE task_id = t.id AND faction_id = $2), 0) 
 		FROM dune.landsraad_tasks t
 		WHERE t.term_id = $1
 	`
-	rows, err := i.pool.Query(ctx, query, activeTermID)
+	rows, err := i.pool.Query(ctx, query, activeTermID, myFactionID)
 	if err != nil {
 		return nil
 	}

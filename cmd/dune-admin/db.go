@@ -695,9 +695,7 @@ func fetchLandsraadDecrees(ctx context.Context, pool *pgxpool.Pool) ([]landsraad
 const landsraadTasksSQL = `
 	SELECT t.id, t.board_index, t.house_name, t.completed,
 	       COALESCE(wf.name, ''), t.sysselraad, t.goal_amount,
-	       (COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_guild_contributions WHERE task_id = t.id), 0) +
-	        COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_faction_contributions WHERE task_id = t.id), 0) +
-	        COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_player_contributions WHERE task_id = t.id), 0))::int AS current_progress
+	       COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_faction_contributions WHERE task_id = t.id), 0)::int AS current_progress
 	FROM dune.landsraad_tasks t
 	LEFT JOIN dune.factions wf ON wf.id = t.winning_faction_id
 	WHERE t.term_id = $1

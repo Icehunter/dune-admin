@@ -257,9 +257,9 @@ func handleMarketCatalog(w http.ResponseWriter, r *http.Request) {
 		seen[strings.ToLower(tmpl)] = true
 		items = append(items, entry{TemplateID: tmpl, DisplayName: name})
 	}
-	for tmpl, name := range itemData.Names {
-		if !seen[strings.ToLower(tmpl)] {
-			items = append(items, entry{TemplateID: tmpl, DisplayName: name})
+	for tmpl, origTmpl := range itemData.OriginalNames {
+		if !seen[tmpl] { // tmpl is already lowercased here
+			items = append(items, entry{TemplateID: origTmpl, DisplayName: itemData.Names[tmpl]})
 		}
 	}
 	jsonOK(w, items)

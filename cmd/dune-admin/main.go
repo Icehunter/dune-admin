@@ -631,7 +631,12 @@ var itemData itemDataFile
 func loadItemData() error {
 	path := resolveItemDataPath()
 	if path == "" {
-		return fmt.Errorf("item-data.json not found — item grant features will be broken")
+		componentLog("main").Warn().Msg("item-data.json not found — using raw names for autocomplete")
+		itemData = itemDataFile{
+			Names: make(map[string]string),
+			Items: make(map[string]itemRule),
+		}
+		return nil
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -647,10 +652,14 @@ func loadItemData() error {
 	}
 	parsed.Items = normalizedItems
 	normalizedNames := make(map[string]string, len(parsed.Names))
+	originalNames := make(map[string]string, len(parsed.Names))
 	for k, v := range parsed.Names {
-		normalizedNames[strings.ToLower(k)] = v
+		lk := strings.ToLower(k)
+		normalizedNames[lk] = v
+		originalNames[lk] = k
 	}
 	parsed.Names = normalizedNames
+	parsed.OriginalNames = originalNames
 	itemData = parsed
 	return nil
 }

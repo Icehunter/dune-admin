@@ -112,6 +112,7 @@ type itemDataFile struct {
 	DefaultStackMax int64               `json:"default_stack_max"`
 	DefaultVolume   float64             `json:"default_volume"`
 	Names           map[string]string   `json:"names"`
+	OriginalNames   map[string]string   `json:"-"`
 	Items           map[string]itemRule `json:"items"`
 }
 

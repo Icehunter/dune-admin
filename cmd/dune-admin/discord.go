@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -116,10 +118,11 @@ func discordConnect(ctx context.Context, cfg appConfig) {
 	dg.Identify.Intents = discordgo.IntentsGuilds
 
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		if i.Type != discordgo.InteractionApplicationCommand {
-			return
+		if i.Type == discordgo.InteractionApplicationCommand {
+			handleDiscordInteraction(s, i)
+		} else if i.Type == discordgo.InteractionApplicationCommandAutocomplete {
+			handleDiscordAutocomplete(s, i)
 		}
-		handleDiscordInteraction(s, i)
 	})
 
 	if err := dg.Open(); err != nil {
@@ -286,6 +289,43 @@ func handleDiscordInteraction(s *discordgo.Session, i *discordgo.InteractionCrea
 	sendDiscordReply(s, i, reply)
 }
 
+func handleDiscordAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	data := i.ApplicationCommandData()
+	if data.Name != "market" {
+		return
+	}
+
+	var focused string
+	for _, opt := range data.Options {
+		if opt.Focused {
+			focused = strings.ToLower(opt.StringValue())
+			break
+		}
+	}
+
+	var choices []*discordgo.ApplicationCommandOptionChoice
+	count := 0
+	for tmpl, name := range itemData.Names {
+		if focused == "" || strings.Contains(strings.ToLower(name), focused) || strings.Contains(strings.ToLower(tmpl), focused) {
+			choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
+				Name:  name,
+				Value: tmpl,
+			})
+			count++
+			if count >= 25 { // Discord API limits choices to 25
+				break
+			}
+		}
+	}
+
+	_ = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionApplicationCommandAutocompleteResult,
+		Data: &discordgo.InteractionResponseData{
+			Choices: choices,
+		},
+	})
+}
+
 // serverForChannel resolves the server + guild that owns channelID (its announce
 // or status channel), via the unified store. ok=false on no store, no match, or
 // a lookup error (logged).
@@ -365,6 +405,19 @@ func buildDiscordDeps(serverID int) discordDeps {
 				return nil, fmt.Errorf("server %d not connected", serverID)
 			}
 			return cmdFetchPlayerInventoryCtx(ctx, pool, actorID)
+		},
+		marketStats: func(ctx context.Context, templateID string) (int64, int64, error) {
+			pool := poolForServer(serverID)
+			if pool == nil {
+				return 0, 0, fmt.Errorf("server %d not connected", serverID)
+			}
+			var t string
+			var minPrice, avgPrice int64
+			err := pool.QueryRow(ctx, "SELECT * FROM dune.dune_exchange_get_item_price_stats(ARRAY[$1::text])", templateID).Scan(&t, &minPrice, &avgPrice)
+			if err == pgx.ErrNoRows {
+				return 0, 0, nil
+			}
+			return minPrice, avgPrice, err
 		},
 	}
 }
@@ -487,6 +540,19 @@ func registerDiscordCommands(dg *discordgo.Session, guildID string) error {
 		{
 			Name:        "myinventory",
 			Description: "Show your current inventory",
+		},
+		{
+			Name:        "market",
+			Description: "Look up market prices for an item",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:         discordgo.ApplicationCommandOptionString,
+					Name:         "item",
+					Description:  "The item name to search for",
+					Required:     true,
+					Autocomplete: true,
+				},
+			},
 		},
 	}
 

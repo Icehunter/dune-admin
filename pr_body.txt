@@ -1,0 +1,10 @@
+This PR implements the /market Discord command, including handling edge cases and multi-server architecture support.
+
+### Key Features
+- **Viewer Role:** The command is scoped under the Viewer role, making it accessible as read-only.
+- **Dynamic Pretty Names:** It actively checks for item-data.json. If present, it utilizes the map to provide auto-complete options and friendly display names.
+- **Graceful Fallback:** If item-data.json is missing from the working/config directories, the bot will not fail/crash. It gracefully bypasses the autocomplete and defaults to the internal database template IDs for both queries and final display output.
+- **Original Casing Preserved:** To align with Postgres's strict ILIKE requirements, itemData now stores an OriginalNames map to reverse lowercase search payloads back into valid CamelCase DB parameters.
+- **Multi-Server Compatible:** Automatically pulls the appropriate Postgres connection pool directly via poolForServer(serverID), where serverID is mapped from the invoking Discord channel, matching our multi-server architecture.
+
+Ready for review!

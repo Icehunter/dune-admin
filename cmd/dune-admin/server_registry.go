@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 
+	"dune-admin/internal/landsraadbot"
 	"dune-admin/internal/marketbot"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -119,6 +120,10 @@ type ServerContext struct {
 	Bot           *marketbot.Instance
 	BotCancel     context.CancelFunc
 	BotConfigured bool
+
+	LandsraadBot           *landsraadbot.Instance
+	LandsraadBotCancel     context.CancelFunc
+	LandsraadBotConfigured bool
 }
 
 // serverRegistry holds all connected ServerContexts and tracks the active one.

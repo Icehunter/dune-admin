@@ -43,7 +43,7 @@ func handleCreateGuild(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := cmdCreateGuild(r.Context(), globalDB, req.Name, req.Description, req.FactionID)
 	if err != nil {
-		log.Printf("handleCreateGuild: %v", err)
+		componentLog("handlers").Error().Err(err).Msg("handleCreateGuild failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}

@@ -2,28 +2,47 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"os"
+	"encoding/json"
 
 	"dune-admin/internal/landsraadbot"
 )
 
-var globalLandsraadBot *landsraadbot.Instance
-
-func startEmbeddedLandsraadBotIfEnabled() {
-	if globalStore == nil || globalDB == nil {
-		return
+// serverLandsraadBotEnabled reports whether the bot is enabled for the server.
+func serverLandsraadBotEnabled(sc *ServerContext) bool {
+	if sc == nil || sc.DB == nil {
+		return false
 	}
-	cfg, err := getLandsraadBotConfig(globalStore)
+	cfg, err := getLandsraadBotConfig(globalStore, sc.StoreScope)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "landsraadbot: config load failed: %v\n", err)
+		componentLog("landsraadbot").Error().Err(err).Msgf("failed to get config for server %s", sc.ID)
+		return false
+	}
+	return cfg.Enabled
+}
+
+// startServerLandsraadBot starts sc's embedded landsraad bot when its per-server toggle
+// is enabled and it has a live DB connection.
+func startServerLandsraadBot(sc *ServerContext) {
+	if sc == nil {
 		return
 	}
+	if sc.DB == nil {
+		return
+	}
+	
+	cfg, err := getLandsraadBotConfig(globalStore, sc.StoreScope)
+	if err != nil {
+		componentLog("landsraadbot").Error().Err(err).Msgf("failed to load bot config for server %s", sc.ID)
+		return
+	}
+	sc.LandsraadBotConfigured = cfg.Enabled
+	
 	if !cfg.Enabled {
 		return
 	}
 	
-	// Create bot config mapped from DB
+	botCtx, botCancel := context.WithCancel(context.Background())
+	
 	botCfg := landsraadbot.BotConfig{
 		Enabled:              cfg.Enabled,
 		ProgressRate:         cfg.ProgressRate,
@@ -37,18 +56,72 @@ func startEmbeddedLandsraadBotIfEnabled() {
 		HarkonnenTargetTask:  cfg.HarkonnenTargetTask,
 		AtreidesTargetDecree: cfg.AtreidesTargetDecree,
 		HarkonnenTargetDecree: cfg.HarkonnenTargetDecree,
+		TickIntervalSeconds:   cfg.TickIntervalSeconds,
+		TickJitterSeconds:     cfg.TickJitterSeconds,
+		AtreidesTargets:       cfg.AtreidesTargets,
+		HarkonnenTargets:      cfg.HarkonnenTargets,
+		SaveTargets: func(ctx context.Context, atreides []int, harkonnen []int) {
+			bAtreides, _ := json.Marshal(atreides)
+			bHarkonnen, _ := json.Marshal(harkonnen)
+			if bAtreides == nil {
+				bAtreides = []byte("[]")
+			}
+			if bHarkonnen == nil {
+				bHarkonnen = []byte("[]")
+			}
+			_, err := globalStore.ExecContext(ctx, `
+				UPDATE landsraad_bot_config 
+				SET atreides_targets = $1, harkonnen_targets = $2 
+				WHERE server_id = $3
+			`, string(bAtreides), string(bHarkonnen), sc.StoreScope)
+			if err != nil {
+				componentLog("landsraadbot").Error().Err(err).Msgf("failed to save targets for server %s", sc.ID)
+			}
+		},
 	}
 
-	inst, err := landsraadbot.Run(context.Background(), globalDB, botCfg)
+	inst, err := landsraadbot.Run(botCtx, sc.DB, botCfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "landsraadbot: startup failed: %v\n", err)
+		componentLog("landsraadbot").Error().Err(err).Msgf("failed to start bot for server %s", sc.ID)
+		botCancel()
 		return
 	}
-	globalLandsraadBot = inst
+	
+	sc.LandsraadBot = inst
+	sc.LandsraadBotCancel = botCancel
 }
 
-func stopLandsraadBot() {
-	if globalLandsraadBot != nil {
-		globalLandsraadBot.Stop()
+// stopServerLandsraadBot cancels sc's bot goroutines and clears its bot fields.
+func stopServerLandsraadBot(sc *ServerContext) {
+	if sc == nil {
+		return
+	}
+	if sc.LandsraadBotCancel != nil {
+		sc.LandsraadBotCancel()
+		sc.LandsraadBotCancel = nil
+	}
+	if sc.LandsraadBot != nil {
+		sc.LandsraadBot.Stop()
+		sc.LandsraadBot = nil
+	}
+}
+
+// restartServerLandsraadBot stops then (re)starts sc's bot.
+func restartServerLandsraadBot(sc *ServerContext) {
+	stopServerLandsraadBot(sc)
+	startServerLandsraadBot(sc)
+}
+
+// restartAllServerLandsraadBots restarts every registered server's bot.
+func restartAllServerLandsraadBots() {
+	for _, sc := range globalRegistry.All() {
+		restartServerLandsraadBot(sc)
+	}
+}
+
+// stopAllServerLandsraadBots stops every registered server's bot.
+func stopAllServerLandsraadBots() {
+	for _, sc := range globalRegistry.All() {
+		stopServerLandsraadBot(sc)
 	}
 }

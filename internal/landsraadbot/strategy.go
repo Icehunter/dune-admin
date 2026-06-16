@@ -14,6 +14,7 @@ type landsraadTaskData struct {
 	TermID           int64
 	CurrentProgress  float64
 	GoalAmount       float64
+	Revealed         bool
 }
 
 type ScoredTask struct {
@@ -48,8 +49,10 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 
 	query := `
 		SELECT t.id, t.board_index, t.completed, t.winning_faction_id, t.term_id, t.goal_amount,
-		       COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_faction_contributions WHERE task_id = t.id AND faction_id = $2), 0) 
+		       COALESCE((SELECT SUM(amount) FROM dune.landsraad_task_faction_contributions WHERE task_id = t.id AND faction_id = $2), 0),
+		       COALESCE(r.revealed, false)
 		FROM dune.landsraad_tasks t
+		LEFT JOIN dune.landsraad_task_reveal_state r ON t.id = r.task_id AND r.faction_id = $2
 		WHERE t.term_id = $1
 	`
 	rows, err := i.pool.Query(ctx, query, activeTermID, myFactionID)
@@ -62,7 +65,7 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 	var termID int64
 	for rows.Next() {
 		var t landsraadTaskData
-		err := rows.Scan(&t.ID, &t.BoardIndex, &t.Completed, &t.WinningFactionID, &t.TermID, &t.GoalAmount, &t.CurrentProgress)
+		err := rows.Scan(&t.ID, &t.BoardIndex, &t.Completed, &t.WinningFactionID, &t.TermID, &t.GoalAmount, &t.CurrentProgress, &t.Revealed)
 		if err == nil {
 			tasks[t.BoardIndex] = t
 			termID = t.TermID
@@ -73,11 +76,13 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 
 	// 1. Dynamically evaluate all bingo paths to find the best viable primary path
 	var bestPaths [][]int
+	bestPathScore := -1
 	bestFriendlyCount := -1
 
 	for _, path := range winPaths {
 		friendlyCount := 0
 		enemyCount := 0
+		revealedCount := 0
 		for _, idx := range path {
 			t := tasks[idx]
 			if t.Completed {
@@ -86,15 +91,19 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 				} else if t.WinningFactionID != nil {
 					enemyCount++
 				}
+			} else if t.Revealed {
+				revealedCount++
 			}
 		}
 
 		// We only care about paths that are NOT blocked by the enemy
 		if enemyCount == 0 {
-			if friendlyCount > bestFriendlyCount {
+			pathScore := friendlyCount*100 + revealedCount*10
+			if pathScore > bestPathScore {
+				bestPathScore = pathScore
 				bestFriendlyCount = friendlyCount
 				bestPaths = [][]int{path}
-			} else if friendlyCount == bestFriendlyCount {
+			} else if pathScore == bestPathScore {
 				bestPaths = append(bestPaths, path)
 			}
 		}
@@ -159,7 +168,7 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 	// 4. Bandwagon Bias & Final Assembly
 	var scoredTasks []ScoredTask
 	for _, t := range tasks {
-		if t.Completed {
+		if t.Completed || !t.Revealed {
 			continue
 		}
 

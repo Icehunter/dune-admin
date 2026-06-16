@@ -19,6 +19,7 @@ export const TAB_IDS = [
   'events',
   'battlepass',
   'permissions',
+  'diagnostics',
 ] as const
 
 export const DEFAULT_TAB: TabId = 'dashboard'
@@ -48,6 +49,7 @@ export const TAB_ICONS: Record<TabId, string> = {
   events: 'calendar-clock',
   battlepass: 'medal',
   permissions: 'lock',
+  diagnostics: 'stethoscope',
 }
 
 // Read-level capability required to see each tab when backend auth is on.
@@ -72,6 +74,7 @@ export const TAB_CAPABILITIES: Record<TabId, string> = {
   events: 'events:read',
   battlepass: 'battlepass:track',
   permissions: 'owner',
+  diagnostics: 'owner',
 }
 
 export const BETA_TABS = new Set<TabId>(['events', 'battlepass'])

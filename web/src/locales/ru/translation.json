@@ -700,7 +700,8 @@
     "menu": "Навигация",
     "battlepass": "Боевой пропуск",
     "permissions": "Права доступа",
-    "dashboard": "Панель"
+    "dashboard": "Панель",
+    "diagnostics": "Diagnostics"
   },
   "players": {
     "actions": {
@@ -2088,5 +2089,17 @@
     "selectGuild": "Поиск гильдий…",
     "selectChannel": "Поиск каналов…",
     "guildExists": "Эта гильдия уже настроена."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "subtitle": "Runtime environment and live server logs",
+    "failedToLoad": "Failed to load diagnostics: {{message}}",
+    "version": "Version",
+    "controlPlane": "Control plane",
+    "osArch": "OS / Arch",
+    "activeServers": "Active servers",
+    "live": "Live",
+    "disconnected": "Disconnected",
+    "reportIssue": "Report an issue"
   }
 }

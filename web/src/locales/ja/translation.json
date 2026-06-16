@@ -686,7 +686,8 @@
     "menu": "ナビゲーション",
     "battlepass": "バトルパス",
     "permissions": "権限",
-    "dashboard": "ダッシュボード"
+    "dashboard": "ダッシュボード",
+    "diagnostics": "Diagnostics"
   },
   "players": {
     "actions": {
@@ -2042,5 +2043,17 @@
     "selectGuild": "ギルドを検索…",
     "selectChannel": "チャンネルを検索…",
     "guildExists": "そのギルドは既に設定されています。"
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "subtitle": "Runtime environment and live server logs",
+    "failedToLoad": "Failed to load diagnostics: {{message}}",
+    "version": "Version",
+    "controlPlane": "Control plane",
+    "osArch": "OS / Arch",
+    "activeServers": "Active servers",
+    "live": "Live",
+    "disconnected": "Disconnected",
+    "reportIssue": "Report an issue"
   }
 }

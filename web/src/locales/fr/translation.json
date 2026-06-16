@@ -693,7 +693,8 @@
     "menu": "Navigation",
     "battlepass": "Passe de combat",
     "permissions": "Permissions",
-    "dashboard": "Tableau de bord"
+    "dashboard": "Tableau de bord",
+    "diagnostics": "Diagnostics"
   },
   "players": {
     "actions": {
@@ -2065,5 +2066,17 @@
     "selectGuild": "Rechercher des guildes…",
     "selectChannel": "Rechercher des salons…",
     "guildExists": "Cette guilde est déjà configurée."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "subtitle": "Runtime environment and live server logs",
+    "failedToLoad": "Failed to load diagnostics: {{message}}",
+    "version": "Version",
+    "controlPlane": "Control plane",
+    "osArch": "OS / Arch",
+    "activeServers": "Active servers",
+    "live": "Live",
+    "disconnected": "Disconnected",
+    "reportIssue": "Report an issue"
   }
 }

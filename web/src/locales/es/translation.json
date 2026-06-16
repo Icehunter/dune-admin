@@ -693,7 +693,8 @@
     "menu": "Navegación",
     "battlepass": "Pase de batalla",
     "permissions": "Permisos",
-    "dashboard": "Panel"
+    "dashboard": "Panel",
+    "diagnostics": "Diagnostics"
   },
   "players": {
     "actions": {
@@ -2065,5 +2066,17 @@
     "selectGuild": "Buscar gremios…",
     "selectChannel": "Buscar canales…",
     "guildExists": "Ese gremio ya está configurado."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "subtitle": "Runtime environment and live server logs",
+    "failedToLoad": "Failed to load diagnostics: {{message}}",
+    "version": "Version",
+    "controlPlane": "Control plane",
+    "osArch": "OS / Arch",
+    "activeServers": "Active servers",
+    "live": "Live",
+    "disconnected": "Disconnected",
+    "reportIssue": "Report an issue"
   }
 }

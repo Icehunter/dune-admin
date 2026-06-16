@@ -686,7 +686,8 @@
     "menu": "导航",
     "battlepass": "战斗通行证",
     "permissions": "权限",
-    "dashboard": "仪表板"
+    "dashboard": "仪表板",
+    "diagnostics": "Diagnostics"
   },
   "players": {
     "actions": {
@@ -2042,5 +2043,17 @@
     "selectGuild": "搜索公会…",
     "selectChannel": "搜索频道…",
     "guildExists": "该公会已配置。"
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "subtitle": "Runtime environment and live server logs",
+    "failedToLoad": "Failed to load diagnostics: {{message}}",
+    "version": "Version",
+    "controlPlane": "Control plane",
+    "osArch": "OS / Arch",
+    "activeServers": "Active servers",
+    "live": "Live",
+    "disconnected": "Disconnected",
+    "reportIssue": "Report an issue"
   }
 }

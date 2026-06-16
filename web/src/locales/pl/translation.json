@@ -700,7 +700,8 @@
     "menu": "Nawigacja",
     "battlepass": "Battlepass",
     "permissions": "Uprawnienia",
-    "dashboard": "Pulpit"
+    "dashboard": "Pulpit",
+    "diagnostics": "Diagnostics"
   },
   "players": {
     "actions": {
@@ -2088,5 +2089,17 @@
     "selectGuild": "Szukaj gildii…",
     "selectChannel": "Szukaj kanałów…",
     "guildExists": "Ta gildia jest już skonfigurowana."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "subtitle": "Runtime environment and live server logs",
+    "failedToLoad": "Failed to load diagnostics: {{message}}",
+    "version": "Version",
+    "controlPlane": "Control plane",
+    "osArch": "OS / Arch",
+    "activeServers": "Active servers",
+    "live": "Live",
+    "disconnected": "Disconnected",
+    "reportIssue": "Report an issue"
   }
 }

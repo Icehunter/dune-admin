@@ -686,7 +686,8 @@
     "menu": "Gezinti",
     "battlepass": "Savaş Geçişi",
     "permissions": "İzinler",
-    "dashboard": "Panel"
+    "dashboard": "Panel",
+    "diagnostics": "Diagnostics"
   },
   "players": {
     "actions": {
@@ -2042,5 +2043,17 @@
     "selectGuild": "Loncaları ara…",
     "selectChannel": "Kanalları ara…",
     "guildExists": "Bu lonca zaten yapılandırılmış."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "subtitle": "Runtime environment and live server logs",
+    "failedToLoad": "Failed to load diagnostics: {{message}}",
+    "version": "Version",
+    "controlPlane": "Control plane",
+    "osArch": "OS / Arch",
+    "activeServers": "Active servers",
+    "live": "Live",
+    "disconnected": "Disconnected",
+    "reportIssue": "Report an issue"
   }
 }

@@ -21,8 +21,8 @@ func TestWebInterfacesFromAddresses(t *testing.T) {
 			director: "207.216.171.194:31592",
 			files:    "207.216.171.194:18888",
 			want: []webInterface{
-				{Label: "Battlegroup Director", URL: "http://192.168.0.67:31592/"},
-				{Label: "File Browser", URL: "http://192.168.0.67:18888/"},
+				{Label: "Battlegroup Director", URL: "http://192.168.0.67:31592/", Target: "207.216.171.194:31592"},
+				{Label: "File Browser", URL: "http://192.168.0.67:18888/", Target: "207.216.171.194:18888"},
 			},
 		},
 		{
@@ -30,14 +30,14 @@ func TestWebInterfacesFromAddresses(t *testing.T) {
 			vmHost:   "192.168.0.67",
 			director: "",
 			files:    "207.216.171.194:18888",
-			want:     []webInterface{{Label: "File Browser", URL: "http://192.168.0.67:18888/"}},
+			want:     []webInterface{{Label: "File Browser", URL: "http://192.168.0.67:18888/", Target: "207.216.171.194:18888"}},
 		},
 		{
 			name:     "no vmHost (local executor) falls back to the reported host",
 			vmHost:   "",
 			director: "207.216.171.194:31592",
 			files:    "",
-			want:     []webInterface{{Label: "Battlegroup Director", URL: "http://207.216.171.194:31592/"}},
+			want:     []webInterface{{Label: "Battlegroup Director", URL: "http://207.216.171.194:31592/", Target: "207.216.171.194:31592"}},
 		},
 		{
 			name:     "neither (none discovered)",

@@ -1010,6 +1010,7 @@ func run(ctx context.Context) error {
 	defer stopWelcomeScanner()
 
 	startBackgroundServices(ctx)
+	defer globalWebProxy.shutdown()
 
 	applyEventEngine(loadedConfig)
 	defer stopEventEngine()
@@ -1036,6 +1037,14 @@ func startBackgroundServices(ctx context.Context) {
 
 	// Web interfaces (#155): load the operator-configured Server Health links.
 	loadWebInterfaces()
+
+	// Mesh web proxy: serve the active server's discovered/configured web
+	// interfaces from local ports over its executor tunnel, so the operator's
+	// browser reaches them without resolving the game host or routing into the
+	// mesh. Rebuilt on every active-server switch. NOTE: no defer teardown here —
+	// startBackgroundServices returns immediately, so a defer would stop the
+	// proxies at once; run() owns the teardown (defer globalWebProxy.shutdown()).
+	rebuildWebProxiesForActive()
 
 	initLocationStore()
 	initGivePacksStore()

@@ -34,10 +34,18 @@ func discoveredWebInterfaces(ctx context.Context, ctrl ControlPlane, exec Execut
 // @Router /api/v1/web-interfaces [get]
 func handleGetWebInterfaces(w http.ResponseWriter, r *http.Request) {
 	// interfaces are operator-defined (editable, persisted); discovered are
-	// control-plane-derived (read-only) and never written back.
+	// control-plane-derived (read-only) and never written back. Each entry is
+	// enriched with its mesh-proxy port (0/omitted when not proxied) so the SPA
+	// can open it via dune-admin's own host instead of an unreachable game-side URL.
+	ifaces := getWebInterfaces()
+	discovered := discoveredWebInterfaces(r.Context(), controlFromCtx(r), executorFromCtx(r))
+	// Ports come from the running proxy set for the active server (single source
+	// of truth). When the request's server is the active one, the discovered dial
+	// addresses match and each entry gets its proxy port; otherwise proxyPort is 0.
+	targets := globalWebProxy.currentTargets()
 	jsonOK(w, map[string]any{
-		"interfaces": getWebInterfaces(),
-		"discovered": discoveredWebInterfaces(r.Context(), controlFromCtx(r), executorFromCtx(r)),
+		"interfaces": withProxyPorts(ifaces, targets),
+		"discovered": withProxyPorts(discovered, targets),
 	})
 }
 

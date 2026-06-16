@@ -149,6 +149,9 @@ func handleSetActiveServer(w http.ResponseWriter, r *http.Request) {
 		globalExecutor = active.Executor
 	}
 	persistActiveServer(scope)
+	// Rebuild the mesh web proxies for the newly active server so they tunnel
+	// through its executor (the previous server's proxies are torn down).
+	rebuildWebProxiesForActive()
 	jsonOK(w, map[string]int{"active": body.ID})
 }
 
@@ -183,6 +186,8 @@ func handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reassignActiveAfterDelete()
+	// Rebuild proxies for the new active server (or tear them down if none remain).
+	rebuildWebProxiesForActive()
 	removeServerFromMirror(id)
 	invalidateServerHealth(scope) // drop the removed server's cached health
 
@@ -334,6 +339,10 @@ func handleReconnectServer(w http.ResponseWriter, r *http.Request) {
 		globalDB = newSC.DB
 		globalControl = newSC.Control
 		globalExecutor = newSC.Executor
+		// The active server's executor/control changed — rebuild its mesh web
+		// proxies so they tunnel through the reconnected executor (and appear once
+		// discovery works again after a DB/namespace fix).
+		rebuildWebProxiesForActive()
 	}
 	if newSC.DB != nil {
 		ensureDBSchema(newSC.DB)

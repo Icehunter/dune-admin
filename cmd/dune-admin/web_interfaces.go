@@ -19,6 +19,11 @@ import (
 type webInterface struct {
 	Label string `json:"label"`
 	URL   string `json:"url"`
+	// Target is the raw host:port dune-admin can Dial through the executor to
+	// reach the service (the address before any host rewrite). Set for
+	// control-plane-discovered entries; empty for hand-configured links. Not
+	// persisted — recomputed on discovery. Enables the mesh web proxy.
+	Target string `json:"-"`
 }
 
 const (

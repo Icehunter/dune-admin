@@ -551,6 +551,21 @@ export type CheatEntry = {
   event_time: string
   character_name: string
 }
+export interface DiagnosticsEnvironment {
+  version: string
+  go_version: string
+  os: string
+  arch: string
+  control_plane: string
+  auth_enabled: boolean
+  market_bot_enabled: boolean
+  active_server_count: number
+}
+export interface DiagnosticsReport {
+  title: string
+  body: string
+  repo: string
+}
 export type GameEvent = {
   actor_id: number
   universe_time: string
@@ -1305,6 +1320,13 @@ export const api = {
   logs: {
     pods: () => req<LogPod[]>('GET', '/logs/pods'),
     cheats: () => req<CheatEntry[]>('GET', '/logs/cheats'),
+  },
+
+  diagnostics: {
+    environment: () => req<DiagnosticsEnvironment>('GET', '/diagnostics/environment'),
+    report: () => req<DiagnosticsReport>('GET', '/diagnostics/report'),
+    bundleUrl: () => `${apiBase}/diagnostics/bundle`,
+    streamUrl: () => `${getWsBase()}/diagnostics/logs/stream`,
   },
 
   storage: {

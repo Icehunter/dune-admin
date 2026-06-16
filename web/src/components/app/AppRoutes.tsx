@@ -27,6 +27,7 @@ const WelcomePackageTab = React.lazy(() => import('../../tabs/WelcomePackageTab'
 const EventsTab = React.lazy(() => import('../../tabs/EventsTab').then((m) => ({ default: m.EventsTab })))
 const BattlepassTab = React.lazy(() => import('../../tabs/BattlepassTab').then((m) => ({ default: m.BattlepassTab })))
 const PermissionsTab = React.lazy(() => import('../../tabs/PermissionsTab').then((m) => ({ default: m.PermissionsTab })))
+const DiagnosticsTab = React.lazy(() => import('../../tabs/DiagnosticsTab').then((m) => ({ default: m.DiagnosticsTab })))
 
 interface AppRoutesProps {
   currentTab: TabId
@@ -79,6 +80,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ currentTab, status, isSign
       {renderTab('events', <EventsTab />)}
       {renderTab('battlepass', <BattlepassTab />)}
       {canSeeTab('permissions') && renderTab('permissions', <PermissionsTab />)}
+      {canSeeTab('diagnostics') && renderTab('diagnostics', <DiagnosticsTab />)}
     </main>
   )
 }

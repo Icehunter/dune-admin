@@ -36,6 +36,30 @@ func setDiscordState(s *discordgo.Session, guildID string) {
 	globalDiscordGuildID = guildID
 }
 
+// hasConfiguredGuild reports whether any Discord guild is configured — either the
+// legacy single guild_id (app_config_discord table, seeded from config.yaml on
+// first boot) or at least one guild saved via the "Manage server" UI (the
+// discord_guilds / discord_servers tables). The gateway connection only needs the
+// token, so starting without a legacy guild_id is safe as long as one exists
+// somewhere in the DB.
+func hasConfiguredGuild(cfg appConfig) bool {
+	if cfg.DiscordGuildID != "" {
+		return true
+	}
+	if len(listConfiguredGuilds()) > 0 {
+		return true
+	}
+	if globalDiscordGuildsStore != nil {
+		links, err := globalDiscordGuildsStore.listServerLinks()
+		if err != nil {
+			componentLog("discord").Warn().Err(err).Msg("list server links failed")
+		} else if len(links) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // discordBotEnabled returns the effective bot-enabled flag.
 // Missing yaml key → default off (Discord is opt-in unlike the market bot).
 func discordBotEnabled(cfg appConfig) bool {
@@ -60,8 +84,8 @@ func startEmbeddedDiscordBotIfEnabled(cfg appConfig) context.CancelFunc {
 		componentLog("discord").Info().Msg("bot enabled but discord_bot_token is not set — skipping")
 		return nil
 	}
-	if cfg.DiscordGuildID == "" {
-		componentLog("discord").Info().Msg("bot enabled but discord_guild_id is not set — skipping")
+	if !hasConfiguredGuild(cfg) {
+		componentLog("discord").Info().Msg("bot enabled but no Discord guild is configured (set one in Manage Server or via config) — skipping")
 		return nil
 	}
 

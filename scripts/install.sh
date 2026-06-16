@@ -178,6 +178,25 @@ fi
 ok "systemd unit installed (Restart=always)"
 log ""
 
+# ── Seed minimal config.yaml (listen address only) ────────────────────────────
+SERVICE_HOME="$(getent passwd "$SERVICE_USER" | cut -d: -f6)"
+CONFIG_DIR="$SERVICE_HOME/.dune-admin"
+CONFIG_FILE="$CONFIG_DIR/config.yaml"
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  sudo -u "$SERVICE_USER" mkdir -p "$CONFIG_DIR"
+  sudo -u "$SERVICE_USER" tee "$CONFIG_FILE" >/dev/null <<YAML
+# Minimal bootstrap config — dune-admin imports this once into its DB on first
+# boot, then reads everything from the DB. Run './dune-admin -setup' to fill
+# in the remaining fields (DB, AMP, broker, etc.) before starting the service.
+listen_addr: :18080
+YAML
+  ok "wrote $CONFIG_FILE (listen_addr: :18080)"
+  log "  Run './dune-admin -setup' before starting the service to complete configuration."
+else
+  log "existing $CONFIG_FILE found — skipping seed"
+fi
+log ""
+
 # ── Next steps ────────────────────────────────────────────────────────────────
 cat <<EOF
 
@@ -207,7 +226,7 @@ cat <<EOF
       sudo systemctl enable --now dune-admin
       sudo journalctl -u dune-admin -f       # tail logs
 
-    Browse to http://<this-host>:9090 (or whatever listen_addr you chose).
+    Browse to http://<this-host>:18080 (or whatever listen_addr you chose in -setup).
 
     NOTE: the unit is written with Restart=always, which is required for
     in-app self-update (Settings → Check for Updates) to restart cleanly.

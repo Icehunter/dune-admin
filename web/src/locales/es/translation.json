@@ -220,6 +220,21 @@
       "targetLabel": "Backend configurado",
       "title": "No se puede conectar con el backend de dune-admin",
       "urlLabel": "Reemplazar URL del backend (dejar en blanco para detección automática)"
+    },
+    "disableAnimations": "Desactivar animaciones",
+    "enableAnimations": "Activar animaciones",
+    "updateProgress": {
+      "title": "Aplicando actualización",
+      "dismiss": "Cerrar",
+      "downloading": "Descargando actualización…",
+      "verifying": "Verificando suma de comprobación…",
+      "extracting": "Extrayendo binario…",
+      "restarting": "Reiniciando servidor…",
+      "waiting": "Esperando que el servidor vuelva…",
+      "waitingLong": "El servidor tarda más de lo esperado — seguimos esperando…",
+      "ready": "¡Actualización completada! Recargando…",
+      "error": "Error en la actualización",
+      "timeout": "El servidor no respondió en el tiempo previsto. Es posible que aún esté reiniciando — la página se recargará cuando esté lista."
     }
   },
   "bases": {
@@ -693,7 +708,8 @@
     "menu": "Navegación",
     "battlepass": "Pase de batalla",
     "permissions": "Permisos",
-    "dashboard": "Panel"
+    "dashboard": "Panel",
+    "diagnostics": "Diagnóstico"
   },
   "players": {
     "actions": {
@@ -1105,7 +1121,8 @@
       "quality": "Calidad",
       "searchTemplates": "Buscar plantillas...",
       "selectTemplate": "Seleccionar una plantilla",
-      "skipped": "✕ {{template}} omitido: {{reason}}"
+      "skipped": "✕ {{template}} omitido: {{reason}}",
+      "qualityWarning": "Los objetos con calidad superior a 0 se escriben en la base de datos, pero solo aparecen tras el siguiente inicio de sesión del jugador y pueden colocarse fuera de los espacios de inventario libre. Los objetos de calidad 0 se añaden de forma inmediata."
     },
     "givePacks": {
       "addItem": "Añadir objeto",
@@ -1343,7 +1360,9 @@
       "control": "Control",
       "discord": "Discord",
       "auth": "Auth",
-      "guilds": "Gremios"
+      "guilds": "Gremios",
+      "ssh": "SSH",
+      "server": "Servidor y broker"
     },
     "discord": {
       "hint": "Crea un bot en discord.com/developers/applications, actívalo, copia el token e invítalo a tu servidor con el scope applications.commands.",
@@ -1550,7 +1569,13 @@
       "leaveEnabledLabel": "Anunciar cuando un jugador sale de una región",
       "leaveEnabledHint": "Se susurra a todos los que siguen en esa región en cuanto un jugador se marcha.",
       "leaveTemplateLabel": "Mensaje de salida",
-      "leaveTemplatePlaceholder": "{player} ha salido de {region}."
+      "leaveTemplatePlaceholder": "{player} ha salido de {region}.",
+      "introMap": "dune-admin publica este aviso en el canal de mapa de la región cuando alguien entra o sale. Usa {player} para el nombre del jugador y {region} para el nombre de la región.",
+      "channelLabel": "Canal de entrega",
+      "channelWhisper": "Susurro (privado, por jugador)",
+      "channelWhisperHint": "Cada jugador de la región recibe un susurro privado. Requiere una cuenta de jugador de origen.",
+      "channelMap": "Chat de mapa (canal regional)",
+      "channelMapHint": "Una publicación llega a todo el chat de mapa de la región. Usa la identidad del GM — no se necesita jugador de origen."
     }
   },
   "events": {
@@ -1820,7 +1845,8 @@
       "status": "Estado",
       "earnedAt": "Ganado",
       "grantedAt": "Otorgado",
-      "lastError": "Último Error"
+      "lastError": "Último Error",
+      "items": "objetos"
     },
     "importDialog": {
       "title": "¿Reemplazar catálogo?",
@@ -1912,7 +1938,9 @@
   "playerSearch": {
     "placeholder": "Buscar jugadores…",
     "loadFailed": "Error al cargar jugadores: {{message}}",
-    "loading": "Cargando jugadores…"
+    "loading": "Cargando jugadores…",
+    "noResults": "No se encontraron jugadores",
+    "hint": "top {{limit}} · escribe para filtrar"
   },
   "servers": {
     "removeTitle": "Eliminar servidor",
@@ -2065,5 +2093,17 @@
     "selectGuild": "Buscar gremios…",
     "selectChannel": "Buscar canales…",
     "guildExists": "Ese gremio ya está configurado."
+  },
+  "diagnostics": {
+    "title": "Diagnóstico",
+    "subtitle": "Entorno de ejecución y registros del servidor en vivo",
+    "failedToLoad": "Error al cargar el diagnóstico: {{message}}",
+    "version": "Versión",
+    "controlPlane": "Plano de control",
+    "osArch": "OS / Arch",
+    "activeServers": "Servidores activos",
+    "live": "En línea",
+    "disconnected": "Desconectado",
+    "reportIssue": "Reportar un problema"
   }
 }

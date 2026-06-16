@@ -268,6 +268,7 @@ func applyUnifiedSchema(db *sql.DB) error {
 		{"session", initSessionSchema},
 		{"welcome", initWelcomeSchema},
 		{"welcome columns", initWelcomeColumnsSchema},
+		{"welcome integer repair", repairWelcomeConfigIntegerColumns},
 		{"location", initLocationSchema},
 		{"give-packs", initGivePacksSchema},
 		{"give-packs columns", initGivePacksColumnsSchema},

@@ -41,6 +41,7 @@ const (
 	capBackupsRead      capability = "backups:read"
 	capBackupsManage    capability = "backups:manage"
 	capAuthManage       capability = "auth:manage"
+	capDiagnosticsRead  capability = "diagnostics:read"
 )
 
 // allCapabilities is the authoritative capability set, used to validate the
@@ -75,6 +76,7 @@ var allCapabilities = map[capability]string{
 	capBackupsRead:      "List and download backups",
 	capBackupsManage:    "Create, restore, and delete backups",
 	capAuthManage:       "Manage the permissions matrix and local users",
+	capDiagnosticsRead:  "View dune-admin's own logs and report an issue",
 }
 
 // Pseudo-role keys usable in the permissions matrix alongside Discord role

@@ -93,6 +93,7 @@ var (
 	dbName          string
 	dbSchema        string
 	listenAddr      string
+	addrFlagSet     bool // true iff -addr was explicitly passed on the CLI
 	controlPlane    string
 	controlNS       string
 	brokerGameAddr  string
@@ -423,7 +424,10 @@ func loadConfig() {
 			if cfg.ScripCurrency != 0 {
 				setEnvIfMissing("SCRIP_CURRENCY", strconv.Itoa(cfg.ScripCurrency))
 			}
-			setEnvIfMissing("LISTEN_ADDR", cfg.ListenAddr)
+			// LISTEN_ADDR is intentionally NOT seeded from config.yaml here.
+			// After the one-time import the DB is the authoritative source for the
+			// listen address; resolveListenAddr() reads it at bind time so the
+			// process survives config.yaml deletion without reverting to :8080.
 			setEnvIfMissing("CONTROL", cfg.Control)
 			setEnvIfMissing("CONTROL_NAMESPACE", cfg.ControlNamespace)
 			setEnvIfMissing("BROKER_GAME_ADDR", cfg.BrokerGameAddr)
@@ -543,6 +547,28 @@ func resolveKeyPath() string {
 		return sshKeyPath
 	}
 	return discoverSSHKeyPath()
+}
+
+// effectiveListenAddr resolves the HTTP bind address. Precedence:
+//  1. explicit -addr CLI flag or LISTEN_ADDR env var (operator override)
+//  2. DB-persisted value (dbAddr) — source of truth after first-boot import;
+//     survives config.yaml deletion without reverting to the :8080 default
+//  3. built-in default carried in flagAddr (":8080" from the flag definition)
+func effectiveListenAddr(flagAddr string, explicit bool, dbAddr string) string {
+	if explicit {
+		return flagAddr
+	}
+	if dbAddr != "" {
+		return dbAddr
+	}
+	return flagAddr
+}
+
+// resolveListenAddr returns the address to bind the HTTP server to.
+// Called at startup after hydrateConfigFromStore() has populated loadedConfig.ListenAddr.
+func resolveListenAddr() string {
+	_, envSet := os.LookupEnv("LISTEN_ADDR")
+	return effectiveListenAddr(listenAddr, addrFlagSet || envSet, loadedConfig.ListenAddr)
 }
 
 // discoverSSHKeyPath searches the standard locations (config dir, next to the
@@ -938,6 +964,11 @@ func immediateModeLabel() string {
 
 func main() {
 	flag.Parse()
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "addr" {
+			addrFlagSet = true
+		}
+	})
 	if err := run(context.Background()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -1032,7 +1063,7 @@ func run(ctx context.Context) error {
 	restartAllServerLandsraadBots()
 	defer stopAllServerLandsraadBots()
 
-	return startServer(listenAddr)
+	return startServer(resolveListenAddr())
 }
 
 // startBackgroundServices launches the process-lifetime schedulers and loads the

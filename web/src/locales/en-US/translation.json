@@ -701,7 +701,8 @@
     "battlepass": "Battlepass",
     "menu": "Navigation",
     "permissions": "Permissions",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "diagnostics": "Diagnostics"
   },
   "players": {
     "actions": {
@@ -2069,5 +2070,17 @@
     "selectGuild": "Search guilds…",
     "selectChannel": "Search channels…",
     "guildExists": "That guild is already configured."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "subtitle": "Runtime environment and live server logs",
+    "failedToLoad": "Failed to load diagnostics: {{message}}",
+    "version": "Version",
+    "controlPlane": "Control plane",
+    "osArch": "OS / Arch",
+    "activeServers": "Active servers",
+    "live": "Live",
+    "disconnected": "Disconnected",
+    "reportIssue": "Report an issue"
   }
 }

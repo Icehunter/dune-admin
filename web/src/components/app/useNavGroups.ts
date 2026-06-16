@@ -12,6 +12,7 @@ export const useNavGroups = (): NavGroup[] => {
       title: t('nav.groups.dashboard', 'Home'),
       items: [
         { key: 'dashboard' as TabId, label: t('nav.dashboard', 'Dashboard') },
+        { key: 'diagnostics' as TabId, label: t('nav.diagnostics') },
       ],
     },
     {

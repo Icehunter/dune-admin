@@ -114,7 +114,9 @@ const AppCore: React.FC<AppCoreProps> = ({ isSignedIn }) => {
   // "not supported" notice rather than vanishing from the nav.
   const canSeeTab = React.useCallback((key: TabId) => {
     if (key === 'dashboard') return true
-    if (servers.length === 0) return false
+    // Diagnostics is about dune-admin itself, not a specific game server, so it
+    // stays visible even when no server is configured.
+    if (servers.length === 0 && key !== 'diagnostics') return false
     const cap = TAB_CAPABILITIES[key]
     if (cap === 'owner') return authEnabled && (isOwner || can('auth:manage'))
     return can(cap)

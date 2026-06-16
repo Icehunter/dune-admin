@@ -220,6 +220,21 @@
       "targetLabel": "Backend configuré",
       "title": "Impossible de joindre le backend dune-admin",
       "urlLabel": "Remplacer l'URL du backend (laisser vide pour la détection automatique)"
+    },
+    "disableAnimations": "Désactiver les animations",
+    "enableAnimations": "Activer les animations",
+    "updateProgress": {
+      "title": "Application de la mise à jour",
+      "dismiss": "Fermer",
+      "downloading": "Téléchargement de la mise à jour…",
+      "verifying": "Vérification du checksum…",
+      "extracting": "Extraction du binaire…",
+      "restarting": "Redémarrage du serveur…",
+      "waiting": "En attente du retour du serveur…",
+      "waitingLong": "Le serveur prend plus de temps que prévu — toujours en attente…",
+      "ready": "Mise à jour terminée ! Rechargement…",
+      "error": "Échec de la mise à jour",
+      "timeout": "Le serveur n'est pas revenu dans le délai imparti. Il est peut-être encore en cours de redémarrage — la page se rechargera quand il sera prêt."
     }
   },
   "bases": {
@@ -693,7 +708,8 @@
     "menu": "Navigation",
     "battlepass": "Passe de combat",
     "permissions": "Permissions",
-    "dashboard": "Tableau de bord"
+    "dashboard": "Tableau de bord",
+    "diagnostics": "Diagnostics"
   },
   "players": {
     "actions": {
@@ -1105,7 +1121,8 @@
       "quality": "Qualité",
       "searchTemplates": "Rechercher des modèles...",
       "selectTemplate": "Sélectionner un modèle",
-      "skipped": "✕ {{template}} ignoré : {{reason}}"
+      "skipped": "✕ {{template}} ignoré : {{reason}}",
+      "qualityWarning": "Les objets de qualité supérieure à 0 sont enregistrés en base de données mais n'apparaissent qu'après la reconnexion du joueur, et peuvent être placés en dehors de ses emplacements d'inventaire libres. Les objets de qualité 0 sont ajoutés instantanément."
     },
     "givePacks": {
       "addItem": "Ajouter un objet",
@@ -1343,7 +1360,9 @@
       "control": "Contrôle",
       "discord": "Discord",
       "auth": "Auth",
-      "guilds": "Guildes"
+      "guilds": "Guildes",
+      "ssh": "SSH",
+      "server": "Serveur & Broker"
     },
     "discord": {
       "hint": "Créez un bot sur discord.com/developers/applications, activez-le, copiez le token et invitez-le sur votre serveur avec le scope applications.commands.",
@@ -1550,7 +1569,13 @@
       "leaveEnabledLabel": "Annoncer lorsqu'un joueur quitte une région",
       "leaveEnabledHint": "Chuchoté à tous ceux encore présents dans la région dès qu'un joueur part.",
       "leaveTemplateLabel": "Message de départ",
-      "leaveTemplatePlaceholder": "{player} a quitté {region}."
+      "leaveTemplatePlaceholder": "{player} a quitté {region}.",
+      "introMap": "dune-admin publie cette annonce dans le canal de chat cartographique de la région lorsqu'un joueur rejoint ou quitte. Utilisez {player} pour le nom du joueur et {region} pour le nom de la région.",
+      "channelLabel": "Canal de diffusion",
+      "channelWhisper": "Chuchotement (privé, par joueur)",
+      "channelWhisperHint": "Chaque joueur de la région reçoit un message privé. Nécessite un compte joueur source.",
+      "channelMap": "Chat cartographique (canal régional)",
+      "channelMapHint": "Une publication atteint l'ensemble du chat cartographique de la région. Utilise l'identité MJ — aucun joueur source requis."
     }
   },
   "events": {
@@ -1820,7 +1845,8 @@
       "status": "Statut",
       "earnedAt": "Gagné le",
       "grantedAt": "Accordé le",
-      "lastError": "Dernière Erreur"
+      "lastError": "Dernière Erreur",
+      "items": "objets"
     },
     "importDialog": {
       "title": "Remplacer le catalogue ?",
@@ -1912,7 +1938,9 @@
   "playerSearch": {
     "placeholder": "Rechercher des joueurs…",
     "loadFailed": "Échec du chargement des joueurs : {{message}}",
-    "loading": "Chargement des joueurs…"
+    "loading": "Chargement des joueurs…",
+    "noResults": "Aucun joueur trouvé",
+    "hint": "top {{limit}} · saisir pour filtrer"
   },
   "servers": {
     "removeTitle": "Supprimer le serveur",
@@ -2065,5 +2093,17 @@
     "selectGuild": "Rechercher des guildes…",
     "selectChannel": "Rechercher des salons…",
     "guildExists": "Cette guilde est déjà configurée."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "subtitle": "Environnement d'exécution et journaux serveur en direct",
+    "failedToLoad": "Échec du chargement des diagnostics : {{message}}",
+    "version": "Version",
+    "controlPlane": "Plan de contrôle",
+    "osArch": "OS / Arch",
+    "activeServers": "Serveurs actifs",
+    "live": "En ligne",
+    "disconnected": "Déconnecté",
+    "reportIssue": "Signaler un problème"
   }
 }

@@ -1,5 +1,123 @@
 basePath: /
 definitions:
+  main.ServerConfig:
+    properties:
+      amp_api_pass:
+        type: string
+      amp_api_port:
+        type: integer
+      amp_api_user:
+        type: string
+      amp_backup_dir:
+        type: string
+      amp_container:
+        type: string
+      amp_container_runtime:
+        type: string
+      amp_data_root:
+        type: string
+      amp_instance:
+        description: AMP-specific.
+        type: string
+      amp_log_path:
+        type: string
+      amp_pg_bin:
+        type: string
+      amp_pg_lib:
+        type: string
+      amp_use_container:
+        type: boolean
+      amp_user:
+        type: string
+      auto_discover:
+        type: boolean
+      backup_dir:
+        description: Paths.
+        type: string
+      broker_admin_addr:
+        type: string
+      broker_exec_prefix:
+        type: string
+      broker_game_addr:
+        description: Broker — RabbitMQ for capture / notification.
+        type: string
+      broker_jwt_secret:
+        type: string
+      broker_pass:
+        type: string
+      broker_tls:
+        type: boolean
+      broker_user:
+        type: string
+      cmd_restart:
+        type: string
+      cmd_start:
+        description: local-specific shell commands.
+        type: string
+      cmd_status:
+        type: string
+      cmd_stop:
+        type: string
+      control:
+        description: Control plane.
+        type: string
+      control_namespace:
+        type: string
+      db_host:
+        description: Database — always required per server.
+        type: string
+      db_name:
+        type: string
+      db_pass:
+        type: string
+      db_port:
+        type: integer
+      db_schema:
+        type: string
+      db_user:
+        type: string
+      default_ini_dir:
+        type: string
+      director_url:
+        description: Director proxy.
+        type: string
+      docker_broker_admin:
+        type: string
+      docker_broker_game:
+        type: string
+      docker_db:
+        type: string
+      docker_gameserver:
+        description: docker-specific container names.
+        type: string
+      id:
+        description: |-
+          ID is the DB-assigned numeric server id (exposed as a JSON number). It is
+          NOT read from YAML — legacy config.yaml stored string ids, captured by
+          LegacyID below for the one-time import remap.
+        type: integer
+      market_bot_enabled:
+        description: |-
+          Market bot enable toggle — PER SERVER. The rest of the market-bot config
+          (intervals, thresholds, cache base, item data) is global/shared in
+          appConfig. nil means "not set" → OFF (explicit opt-in per server).
+        type: boolean
+      name:
+        type: string
+      server_ini_dir:
+        type: string
+      ssh_extra_opts:
+        type: string
+      ssh_host:
+        description: Transport — SSH fields.
+        type: string
+      ssh_key:
+        type: string
+      ssh_mode:
+        type: string
+      ssh_user:
+        type: string
+    type: object
   main.activityPoint:
     properties:
       count:
@@ -103,9 +221,16 @@ definitions:
         type: string
       auth_session_ttl_hours:
         type: integer
+      auto_discover:
+        description: |-
+          AutoDiscover: when true, fill empty DB/RMQ/Director fields from the
+          running game-server process args at connect time (command-mode + kubectl).
+        type: boolean
       backup_dir:
         description: Backups — optional path accessed via the executor.
         type: string
+      battlepass_auto_grant:
+        type: boolean
       battlepass_award_past:
         type: boolean
       battlepass_enabled:
@@ -123,6 +248,10 @@ definitions:
           0 disables pacing; negative → default 75ms; max 5000ms.
           BattlepassScanStartDelayMs is the delay (ms) before the boot scan so the
           server and DB pool finish warming; 0 is immediate; negative → 3000ms.
+          BattlepassAutoGrant (default off) records each newly-earned tier into a
+          deferred-grant ledger and delivers it automatically — to online AND
+          offline players — retrying with backoff up to deferredGrantMaxAttempts.
+          After exhaustion the tier reverts to manual-grant only.
         type: boolean
       battlepass_poll_seconds:
         type: integer
@@ -186,6 +315,13 @@ definitions:
           DefaultIniDir is a local or remote path that contains DefaultGame.ini and
           DefaultEngine.ini — the base layer of the INI hierarchy.
         type: string
+      default_server:
+        type: string
+      default_server_name:
+        description: |-
+          DefaultServerName is the display name of the legacy flat "default" server,
+          so single-server installs can rename it. Blank → "Default".
+        type: string
       director_url:
         type: string
       discord_announce_channel_id:
@@ -207,6 +343,18 @@ definitions:
       discord_roles_viewer:
         description: Comma-separated Discord role IDs for each capability tier.
         type: string
+      discord_status_channel_id:
+        type: string
+      discord_status_enabled:
+        description: |-
+          ── Discord status embed (#188) ────────────────────────────────────────
+          A persistent, auto-updating embed posted to one channel that the bot edits
+          in place every interval. Pointer so "unset" (default-off) is distinct from
+          explicit false. The posted message ID is persisted in the unified SQLite
+          store (meta table) so restarts edit the same message instead of re-posting.
+        type: boolean
+      discord_status_interval_seconds:
+        type: integer
       docker_broker_admin:
         type: string
       docker_broker_game:
@@ -253,12 +401,29 @@ definitions:
       server_ini_dir:
         description: ServerIniDir is the directory containing UserGame.ini and UserOverrides.ini.
         type: string
+      servers:
+        description: |-
+          Multi-server: when Servers is non-empty, connectAll is replaced by
+          connectMultiServer which calls connectServer for each entry. DefaultServer
+          names the initially-active server; if blank the first entry is used.
+          Existing flat-config installs (no servers: key) are unaffected.
+        items:
+          $ref: '#/definitions/main.ServerConfig'
+        type: array
+      ssh_extra_opts:
+        type: string
       ssh_host:
         description: |-
           Transport — SSH fields. If ssh_host is set all commands + TCP connections
           tunnel through SSH. If omitted everything runs/connects locally.
         type: string
       ssh_key:
+        type: string
+      ssh_mode:
+        description: |-
+          SSHMode selects the SSH transport: "" / "library" uses golang.org/x/crypto/ssh
+          (default); "command" shells out to the OS ssh client (honours ~/.ssh/config,
+          ProxyJump, ssh-agent; never reads a private key).
         type: string
       ssh_user:
         type: string
@@ -689,10 +854,6 @@ definitions:
         items:
           $ref: '#/definitions/main.capabilityInfo'
         type: array
-      defaults:
-        items:
-          type: string
-        type: array
       guild_roles:
         items:
           $ref: '#/definitions/main.discordRoleRow'
@@ -703,6 +864,14 @@ definitions:
             type: string
           type: array
         type: object
+      seed_defaults:
+        description: |-
+          SeedDefaults is the standard read-only baseline the "Reset" button in
+          the UI restores the Default row to. Sourced from defaultSeedCaps so the
+          UI never hardcodes it.
+        items:
+          type: string
+        type: array
     type: object
   main.permissionsUpdateRequest:
     properties:
@@ -737,6 +906,29 @@ definitions:
         type: string
       online_status:
         type: string
+    type: object
+  main.serverHealth:
+    properties:
+      active:
+        type: boolean
+      control:
+        type: string
+      db_connected:
+        type: boolean
+      error:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      phase:
+        type: string
+      players_online:
+        type: integer
+      running:
+        type: boolean
+      uptime_seconds:
+        type: integer
     type: object
   main.serverSummary:
     properties:
@@ -851,6 +1043,17 @@ definitions:
         items:
           $ref: '#/definitions/main.welcomePackage'
         type: array
+      region_chat_channel:
+        description: '"whisper" | "map"'
+        type: string
+      region_join_enabled:
+        type: boolean
+      region_join_template:
+        type: string
+      region_leave_enabled:
+        type: boolean
+      region_leave_template:
+        type: string
       scan_interval_secs:
         type: integer
       welcome_message:
@@ -3462,6 +3665,45 @@ paths:
       summary: List currency balances for all players
       tags:
       - players
+  /api/v1/players/delete:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Deletes a character via dune.delete_account: removes player
+        actors, respawn beacons, and the account row, writes an audit
+        log entry, and notifies the live server. Irreversible.
+      parameters:
+      - description: Account ID and reason
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Permanently delete a character
+      tags:
+      - players
   /api/v1/players/delete-account:
     post:
       consumes:
@@ -4299,41 +4541,6 @@ paths:
       summary: Unlock a progression preset for a player
       tags:
       - progression
-  /api/v1/players/refuel-vehicle:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: player_id, vehicle_id
-        in: body
-        name: body
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Refuel a player's vehicle to full fuel
-      tags:
-      - players
   /api/v1/players/rename:
     post:
       consumes:
@@ -4436,40 +4643,6 @@ paths:
               type: string
             type: object
       summary: Repair a single inventory item to full durability
-      tags:
-      - players
-  /api/v1/players/repair-vehicle:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: player_id, vehicle_id
-        in: body
-        name: body
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Repair a player's vehicle to full durability
       tags:
       - players
   /api/v1/players/reset-all-keystones:
@@ -5223,6 +5396,48 @@ paths:
       summary: Replace a raw INI section (array lines included)
       tags:
       - server-settings
+  /api/v1/servers/discover:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Connection settings to probe
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/main.ServerConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Discover connection values for a new server (no persistence)
+      tags:
+      - servers
+  /api/v1/servers/health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.serverHealth'
+            type: array
+      summary: Per-server health summary for the dashboard
+      tags:
+      - servers
   /api/v1/status:
     get:
       produces:
@@ -5586,6 +5801,47 @@ paths:
               type: string
             type: object
       summary: List welcome-package grant ledger rows
+      tags:
+      - welcome-package
+  /api/v1/welcome-package/override:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: account_id, package_version
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Manually grant a package to a chosen player, bypassing the already-granted
+        guard
       tags:
       - welcome-package
   /api/v1/welcome-package/retry:

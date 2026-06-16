@@ -72,7 +72,23 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 		}
 	}
 
+	// Build a reverse map: task ID -> board index (needed for cheapest-block lookup)
+	taskIDToIdx := make(map[int]int)
+	for idx, t := range tasks {
+		taskIDToIdx[t.ID] = idx
+	}
+
 	scores := make(map[int]float64)
+
+	// Fix #1: Board-state-aware hash so the tie-breaker naturally re-rolls when
+	// the board changes (e.g. a task completes), but stays stable between
+	// identical ticks.
+	boardHash := int64(0)
+	for _, t := range tasks {
+		if t.Completed && t.WinningFactionID != nil {
+			boardHash += int64(t.BoardIndex) * int64(*t.WinningFactionID)
+		}
+	}
 
 	// 1. Dynamically evaluate all bingo paths to find the best viable primary path
 	var bestPaths [][]int
@@ -83,6 +99,7 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 		friendlyCount := 0
 		enemyCount := 0
 		revealedCount := 0
+		hiddenCount := 0
 		for _, idx := range path {
 			t := tasks[idx]
 			if t.Completed {
@@ -93,12 +110,18 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 				}
 			} else if t.Revealed {
 				revealedCount++
+			} else {
+				hiddenCount++
 			}
 		}
 
-		// We only care about paths that are NOT blocked by the enemy
+		// All strategies require fully unblocked paths (zero enemy completions).
+		// focus_aggressive focuses on finishing own tasks fastest, not contesting
+		// enemy territory.
 		if enemyCount == 0 {
-			pathScore := friendlyCount*100 + revealedCount*10
+			// Fix #2: Penalize paths with unrevealed tasks — the bot can't
+			// actually contribute to hidden squares yet, so prefer actionable paths.
+			pathScore := friendlyCount*100 + revealedCount*10 - hiddenCount*20
 			if pathScore > bestPathScore {
 				bestPathScore = pathScore
 				bestFriendlyCount = friendlyCount
@@ -111,9 +134,9 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 
 	var primaryPath []int
 	if len(bestPaths) > 0 {
-		// Tie-breaker: use a deterministic seed to break ties, ensuring the bot doesn't 
-		// frantically bounce between equally valid paths every single tick.
-		seed := termID + int64(myFactionID)
+		// Tie-breaker: deterministic but board-state-aware so the bot naturally
+		// pivots when the board materially changes (Fix #1).
+		seed := termID + int64(myFactionID) + boardHash
 		r := rand.New(rand.NewSource(seed))
 		primaryPath = bestPaths[r.Intn(len(bestPaths))]
 	}
@@ -123,12 +146,33 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 		if len(primaryPath) > 0 {
 			for _, idx := range primaryPath {
 				if !tasks[idx].Completed {
-					scores[tasks[idx].ID] += 1000.0                             // Base primary path bias
+					scores[tasks[idx].ID] += 1000.0 // Base primary path bias
 					if strategy == "focus_aggressive" {
 						scores[tasks[idx].ID] += float64(bestFriendlyCount) * 400.0 // Aggressive momentum bonus (double)
 					} else {
 						scores[tasks[idx].ID] += float64(bestFriendlyCount) * 200.0 // Momentum bonus
 					}
+				}
+			}
+		}
+
+		// Fix #5: "Close it out" bonus — if ANY path (not just the primary) has
+		// 4/5 friendly completions, the remaining task gets a massive bonus so
+		// the bot doesn't miss an easy bingo win.
+		for _, path := range winPaths {
+			friendlyCount := 0
+			var remainingIDs []int
+			for _, idx := range path {
+				t := tasks[idx]
+				if t.Completed && t.WinningFactionID != nil && *t.WinningFactionID == myFactionID {
+					friendlyCount++
+				} else if !t.Completed && t.Revealed {
+					remainingIDs = append(remainingIDs, t.ID)
+				}
+			}
+			if friendlyCount == 4 && len(remainingIDs) > 0 {
+				for _, id := range remainingIDs {
+					scores[id] += 50000.0 // Close-it-out bonus: one task away from bingo
 				}
 			}
 		}
@@ -169,9 +213,51 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 					blockScore *= 10.0 // Massive multiplier to prioritize any threat immediately
 				}
 
-				// Apply block score to all uncompleted tasks in that path
-				for _, id := range uncompletedIDs {
-					scores[id] += blockScore
+				// Fix #3: When the enemy has a serious threat (≥3), concentrate
+				// ALL block effort on the single cheapest task to complete. The
+				// bot only needs to finish ONE task to break their line — spending
+				// any XP on the others is wasteful.
+				if oppCount >= 3 && len(uncompletedIDs) > 1 && blockScore > 0 {
+					cheapestID := uncompletedIDs[0]
+					cheapestReq := tasks[taskIDToIdx[cheapestID]].GoalAmount - tasks[taskIDToIdx[cheapestID]].CurrentProgress
+
+					for _, id := range uncompletedIDs[1:] {
+						idx := taskIDToIdx[id]
+						req := tasks[idx].GoalAmount - tasks[idx].CurrentProgress
+						if req < cheapestReq {
+							cheapestReq = req
+							cheapestID = id
+						}
+					}
+
+					// Only the cheapest task gets block score — zero for the rest
+					scores[cheapestID] += blockScore * 2.0
+				} else {
+					// Standard: apply block score evenly to all uncompleted tasks in that path
+					for _, id := range uncompletedIDs {
+						scores[id] += blockScore
+					}
+				}
+			}
+		}
+	}
+
+	// Fix #7: If focus_blocking produced no blocking scores (enemy has zero
+	// progress on any path), fall back to auto offensive logic so the bot
+	// doesn't wander aimlessly.
+	if strategy == "focus_blocking" {
+		hasBlockScores := false
+		for _, s := range scores {
+			if s > 0 {
+				hasBlockScores = true
+				break
+			}
+		}
+		if !hasBlockScores && len(primaryPath) > 0 {
+			for _, idx := range primaryPath {
+				if !tasks[idx].Completed {
+					scores[tasks[idx].ID] += 1000.0                             // Base primary path bias
+					scores[tasks[idx].ID] += float64(bestFriendlyCount) * 200.0 // Momentum bonus (auto-level)
 				}
 			}
 		}
@@ -185,12 +271,18 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 		}
 
 		score := scores[t.ID]
-		// Add bandwagon bias (0 to 500) based on completion percentage
+		// Add bandwagon bias based on completion percentage.
+		// Fix #4: Scale down bandwagon for focus_blocking so it doesn't
+		// accidentally make the bot finish its own tasks instead of blocking.
 		pct := t.CurrentProgress / t.GoalAmount
 		if pct > 1.0 {
 			pct = 1.0
 		}
-		score += pct * 500.0
+		if strategy == "focus_blocking" {
+			score += pct * 50.0 // Minimal bandwagon to break ties only
+		} else {
+			score += pct * 500.0
+		}
 
 		// Add a tiny random jitter (0 to 10) to break ties organically
 		score += rand.Float64() * 10.0

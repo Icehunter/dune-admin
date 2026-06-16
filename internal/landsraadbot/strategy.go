@@ -133,7 +133,8 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 	}
 
 	var primaryPath []int
-	if len(bestPaths) > 0 {
+	bingoViable := len(bestPaths) > 0
+	if bingoViable {
 		// Tie-breaker: deterministic but board-state-aware so the bot naturally
 		// pivots when the board materially changes (Fix #1).
 		seed := termID + int64(myFactionID) + boardHash
@@ -143,7 +144,8 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 
 	// 2. Calculate Offensive Scores
 	if strategy != "focus_blocking" {
-		if len(primaryPath) > 0 {
+		if bingoViable && len(primaryPath) > 0 {
+			// Standard bingo-path offense
 			for _, idx := range primaryPath {
 				if !tasks[idx].Completed {
 					scores[tasks[idx].ID] += 1000.0 // Base primary path bias
@@ -151,6 +153,25 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 						scores[tasks[idx].ID] += float64(bestFriendlyCount) * 400.0 // Aggressive momentum bonus (double)
 					} else {
 						scores[tasks[idx].ID] += float64(bestFriendlyCount) * 200.0 // Momentum bonus
+					}
+				}
+			}
+		} else if !bingoViable {
+			// Tile-majority fallback: no bingo path is achievable (all lines
+			// are blocked by the enemy). Switch to capturing as many tiles as
+			// possible to win by total tile count.
+			for _, t := range tasks {
+				if !t.Completed && t.Revealed {
+					// Base score for every capturable tile
+					scores[t.ID] += 500.0
+
+					// Prefer tiles that are cheaper to capture (closer to completion)
+					reqXP := t.GoalAmount - t.CurrentProgress
+					if reqXP < 0 {
+						reqXP = 0
+					}
+					if t.GoalAmount > 0 {
+						scores[t.ID] += (1.0 - reqXP/t.GoalAmount) * 300.0 // Efficiency bonus
 					}
 				}
 			}
@@ -243,8 +264,8 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 	}
 
 	// Fix #7: If focus_blocking produced no blocking scores (enemy has zero
-	// progress on any path), fall back to auto offensive logic so the bot
-	// doesn't wander aimlessly.
+	// progress on any path), or no bingo is viable, fall back to offensive
+	// logic so the bot doesn't wander aimlessly.
 	if strategy == "focus_blocking" {
 		hasBlockScores := false
 		for _, s := range scores {
@@ -253,11 +274,28 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 				break
 			}
 		}
-		if !hasBlockScores && len(primaryPath) > 0 {
-			for _, idx := range primaryPath {
-				if !tasks[idx].Completed {
-					scores[tasks[idx].ID] += 1000.0                             // Base primary path bias
-					scores[tasks[idx].ID] += float64(bestFriendlyCount) * 200.0 // Momentum bonus (auto-level)
+		if !hasBlockScores {
+			if bingoViable && len(primaryPath) > 0 {
+				// Fall back to auto offense on primary path
+				for _, idx := range primaryPath {
+					if !tasks[idx].Completed {
+						scores[tasks[idx].ID] += 1000.0                             // Base primary path bias
+						scores[tasks[idx].ID] += float64(bestFriendlyCount) * 200.0 // Momentum bonus (auto-level)
+					}
+				}
+			} else {
+				// Tile-majority fallback: capture as many tiles as possible
+				for _, t := range tasks {
+					if !t.Completed && t.Revealed {
+						scores[t.ID] += 500.0
+						reqXP := t.GoalAmount - t.CurrentProgress
+						if reqXP < 0 {
+							reqXP = 0
+						}
+						if t.GoalAmount > 0 {
+							scores[t.ID] += (1.0 - reqXP/t.GoalAmount) * 300.0
+						}
+					}
 				}
 			}
 		}

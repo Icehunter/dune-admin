@@ -205,7 +205,7 @@
     "signIn": "Giriş Yap",
     "switchToSidenav": "Yan gezintiye geç",
     "switchToTopnav": "Üst gezintiye geç",
-    "title": "DUNE ADMIN",
+    "title": "UNE ADMIN",
     "updateAvailable": "Güncelleme mevcut",
     "updateAvailableBody": "Yeni bir sürüm mevcut: v{{current}} → v{{latest}}.",
     "updated": "{{version}} sürümüne güncellendi. Sunucu yeniden başlatılıyor…",
@@ -369,7 +369,9 @@
     "deleteSelected": "Seçilenleri sil",
     "clearSelection": "Seçimi temizle",
     "noItems": "Henüz öğe yok.",
-    "beta": "Beta"
+    "beta": "Beta",
+    "back": "Geri",
+    "dismiss": "Kapat"
   },
   "database": {
     "columnColumn": "Sütun",
@@ -670,7 +672,8 @@
     "groups": {
       "economy": "Ekonomi",
       "operations": "Operasyonlar",
-      "playerWorld": "Oyuncu Dünyası"
+      "playerWorld": "Oyuncu Dünyası",
+      "dashboard": "Ana sayfa"
     },
     "liveMap": "Canlı Harita",
     "logs": "Kayıtlar",
@@ -682,7 +685,8 @@
     "events": "Canlı Etkinlikler",
     "menu": "Gezinti",
     "battlepass": "Savaş Geçişi",
-    "permissions": "İzinler"
+    "permissions": "İzinler",
+    "dashboard": "Panel"
   },
   "players": {
     "actions": {
@@ -764,7 +768,21 @@
         "wipeInventory": "Envanteri Sil",
         "wipeInventoryConfirmDesc": "Bu işlem {{player}} oyuncusunun envanterindeki tüm eşyaları yok edecek. Bu eylem geri alınamaz.",
         "wipeInventoryDesc": "Oyuncunun envanterindeki tüm eşyaları yok eder",
-        "wipeInventoryTitle": "Envanter kalıcı olarak silinsin mi?"
+        "wipeInventoryTitle": "Envanter kalıcı olarak silinsin mi?",
+        "deleteCharacter": "Karakteri sil",
+        "deleteCharacterDesc": "Bu karakteri sunucudan kalıcı olarak kaldır.",
+        "deleteCharacterButton": "Karakteri sil",
+        "deleteCharacterIrreversible": "Bu işlem karakteri, aktörlerini, bina sahipliğini ve hesabı kalıcı olarak siler. Geri alınamaz.",
+        "deleteCharacterTitle": "Karakter kalıcı olarak silinsin mi?",
+        "deleteCharacterWarning": "Bu işlem {{player}} ve ilişkili tüm verileri kalıcı olarak siler: aktörler, yeniden doğma işaretçileri ve hesap. Bir denetim kaydı tutulur. Bu işlem geri alınamaz.",
+        "deleteCharacterOnlineWarning": "Bu oyuncu çevrimiçi görünüyor. Silme işleminin düzgün tamamlanması için önce oyuncuyu atın.",
+        "deleteCharacterReasonLabel": "Neden (denetim günlüğüne kaydedilir)",
+        "deleteCharacterReasonPlaceholder": "Bu karakter neden siliniyor?",
+        "deleteCharacterConfirmLabel": "Onaylamak için \"{{phrase}}\" yazın",
+        "deleteCharacterConfirm": "Kalıcı olarak sil",
+        "deleteCharacterCountdown": "{{seconds}} sn bekleyin…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Karakter {{player}} silindi"
       },
       "contracts": {
         "applyContracts_one": "Sözleşme(leri) Uygula ({{count}})",
@@ -1199,7 +1217,11 @@
       "serverIniDir": "Sunucu INI dizini",
       "serverIniDirHint": "UserGame.ini konumu",
       "url": "URL",
-      "urlHint": "tarayıcıda saklanır, sunucuda değil"
+      "urlHint": "tarayıcıda saklanır, sunucuda değil",
+      "dangerZone": "Tehlikeli Bölge",
+      "deleteServer": "Sunucuyu sil",
+      "deleteServerNamed": "\"{{name}}\" sunucusunu sil",
+      "deleteServerHint": "Bu sunucuyu ve depolanan tüm verilerini kalıcı olarak kaldırın. Bu işlem geri alınamaz."
     },
     "amp": {
       "containerName": "Konteyner adı",
@@ -1282,7 +1304,9 @@
       "authDashboard": "Panel girişi",
       "authDiscord": "Discord girişi (OAuth)",
       "authOwners": "Sahipler",
-      "discordStatus": "Durum Gömme"
+      "discordStatus": "Durum Gömme",
+      "marketBot": "Pazar Botu",
+      "discordGuilds": "Discord Loncaları"
     },
     "ssh": {
       "hostPort": "Ana Bilgisayar : port",
@@ -1297,7 +1321,8 @@
       "connection": "Bağlantı",
       "control": "Kontrol",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Loncalar"
     },
     "discord": {
       "hint": "discord.com/developers/applications adresinde bir bot oluşturun, botu etkinleştirin, tokenı kopyalayın ve applications.commands kapsamıyla sunucunuza davet edin.",
@@ -1327,7 +1352,8 @@
       "statusChannel": "Durum kanalı kimliği",
       "statusChannelHint": "Kanala sağ tıklayın → Kanal kimliğini kopyala (Geliştirici Modu gerekir).",
       "statusInterval": "Güncelleme aralığı (saniye)",
-      "statusIntervalHint": "Gömmenin ne sıklıkta yenileneceği. En az 30 saniye; varsayılan 60."
+      "statusIntervalHint": "Gömmenin ne sıklıkta yenileneceği. En az 30 saniye; varsayılan 60.",
+      "perGuildMoved": "Lonca başına yapılandırma — yetki rolleri ve her loncanın izlediği sunucular (kanallarıyla birlikte) — Loncalar sekmesinde yönetilir."
     },
     "auth": {
       "hint": "Panel ve API için giriş zorunlu kıl. dune-admin LAN dışından erişilebilir olduğunda önerilir.",
@@ -1362,6 +1388,14 @@
       "cookieStrictDesc": "Çerez hiçbir siteler arası istekte gönderilmez — en güçlü CSRF koruması. Discord girişiyle uyumsuz (OAuth yönlendirmesi onu taşıyamaz); yalnızca yerel hesaplarla kullanın.",
       "cookieNone": "None (yok)",
       "cookieNoneDesc": "Çerez, çapraz kaynak dahil tüm isteklerde gönderilir. Yalnızca UI ve arka uç farklı alan adlarında sunulduğunda gereklidir (örn. CDN ayrımı). HTTPS gerektirir."
+    },
+    "scope": {
+      "server": "Sunucu",
+      "admin": "DuneAdmin"
+    },
+    "marketBot": {
+      "enabled": "Bu sunucu için pazar botunu etkinleştir",
+      "enabledHint": "Bu sunucuda gömülü pazar botunu çalıştırır. İnce ayarlar sunucular arasında paylaşılır ve Pazar sekmesinde bulunur."
     }
   },
   "storage": {
@@ -1588,7 +1622,8 @@
       "config": "Yapılandırma",
       "factionScrip": "Fraksiyon Fişi",
       "rewards": "Ödüller",
-      "solari": "Solari"
+      "solari": "Solari",
+      "currencyXp": "Para Birimi ve XP"
     },
     "signals": {
       "level": "Karakter Seviyesi",
@@ -1855,5 +1890,157 @@
     "placeholder": "Oyuncu ara…",
     "loadFailed": "Oyuncular yüklenemedi: {{message}}",
     "loading": "Oyuncular yükleniyor…"
+  },
+  "servers": {
+    "removeTitle": "Sunucuyu Kaldır",
+    "removeDesc": "\"{{name}}\" ve depolanan tüm verileri kalıcı olarak kaldırılsın mı? Bu işlem geri alınamaz.",
+    "removeConfirm": "Kaldır",
+    "removeFailed": "Kaldırma başarısız",
+    "removeWarning": "\"{{name}}\" sunucusunu ve tüm kayıtlı verilerini kalıcı olarak kaldır. Bu işlem geri alınamaz.",
+    "removeConfirmLabel": "Onaylamak için {{name}} yazın",
+    "removeCountdown": "{{seconds}} sn bekleyin…"
+  },
+  "setup": {
+    "discovering": "Sunucu ayarları otomatik olarak keşfediliyor…",
+    "connecting": "Bağlanılıyor…",
+    "saveAndConnect": "Kaydet ve Bağlan",
+    "serverName": "Sunucu adı",
+    "serverNamePlaceholder": "örn. Production",
+    "nameRequired": "Sunucu adı gerekli",
+    "nameInvalid": "Sunucu adı harf veya rakam içermelidir",
+    "connectTimeout": "Hâlâ bağlanılamadı — ayarlarınızı kontrol edip tekrar deneyin.",
+    "addServerTitle": "Sunucu ekle"
+  },
+  "discovery": {
+    "title": "Ayarlar otomatik algılanıyor",
+    "subtitle": "Sunucunuzdan değerler okunuyor…",
+    "failed": "Otomatik algılanamadı — değerleri elle girin.",
+    "steps": {
+      "connect": "SSH ile bağlanılıyor",
+      "namespace": "Ad alanı algılanıyor",
+      "dbPod": "Veritabanı podu bulunuyor",
+      "dbCreds": "Veritabanı kimlik bilgileri okunuyor",
+      "brokers": "Broker podları bulunuyor",
+      "gameProc": "Oyun sunucusu süreci bulunuyor",
+      "containers": "Konteynerler inceleniyor",
+      "finalize": "Tamamlanıyor"
+    }
+  },
+  "manage": {
+    "title": "Sunucuyu yönet",
+    "serverName": "Sunucu adı"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "subtitle": "Sunucular ve kurulum bir bakışta",
+    "loadFailed": "Sunucu durumu yüklenemedi: {{message}}",
+    "running": "Çalışıyor",
+    "offline": "Çevrimdışı",
+    "playersOnline": "{{count}} çevrimiçi",
+    "view": "Görüntüle",
+    "manage": "Yönet",
+    "empty": {
+      "title": "Henüz sunucu yok",
+      "body": "Başlamak için ilk oyun sunucunu ekle. Aşağıdan auth veya Discord da kurabilirsin — hepsi isteğe bağlı.",
+      "addServer": "İlk sunucunu ekle",
+      "guestBody": "Henüz hiçbir sunucu yapılandırılmadı."
+    },
+    "onboarding": {
+      "auth": {
+        "title": "Giriş / auth kur",
+        "body": "Panele erişim için giriş iste. İsteğe bağlı — güvenilir bir yerel ağda kapalı bırak.",
+        "cta": "Auth kur"
+      },
+      "discord": {
+        "title": "Discord botu bağla",
+        "body": "Bildirim gönder ve rolleri izinlere eşle. İsteğe bağlı.",
+        "cta": "Discord bağla"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Discord Loncaları",
+    "subtitle": "Her Discord loncasının yetki rollerini yapılandırın. Tek bir bot anahtarı tüm loncalara hizmet verir; sunucular kendi Discord sekmelerinden bir loncaya bağlanır.",
+    "ariaLabel": "Discord loncaları",
+    "add": "Lonca ekle",
+    "addTitle": "Lonca ekle",
+    "editTitle": "Loncayı düzenle",
+    "empty": "Henüz yapılandırılmış Discord loncası yok.",
+    "on": "Açık",
+    "off": "Kapalı",
+    "loadRoles": "Rolleri yükle",
+    "guildId": "Lonca kimliği",
+    "guildIdHint": "Sunucu simgesine sağ tıkla → Sunucu kimliğini kopyala (Geliştirici Modu gerekir)",
+    "guildIdRequired": "Lonca kimliği gerekli",
+    "serverRequired": "İzlenen her sunucu seçilmelidir",
+    "roleCount": "{{count}} rol",
+    "addServer": "Sunucu ekle",
+    "server": "Sunucu",
+    "serverHint": "Bu loncanın izlediği oyun sunucusu",
+    "selectServer": "Bir sunucu seçin…",
+    "noServers": "Bu lonca henüz hiçbir sunucuyu izlemiyor.",
+    "watchedServersHint": "İzlenen her sunucu, durum/duyuru gömülerini aşağıdaki kanallara gönderir.",
+    "announceChannel": "Duyuru kanalı kimliği",
+    "announceChannelHint": "Sunucu duyuruları için kanal (yeniden başlatmalar, etkinlikler)",
+    "statusEnabled": "Kalıcı durum gömüsü",
+    "statusEnabledHint": "Bir kanalda canlı durum gömüsünü güncel tutar",
+    "statusChannel": "Durum kanalı kimliği",
+    "statusChannelHint": "Durum gömüsünün gönderildiği kanal",
+    "statusInterval": "Durum aralığı (saniye)",
+    "statusIntervalHint": "Gömünün ne sıklıkta yenileneceği. En az 30 saniye; varsayılan 60.",
+    "rolesHint": "Bu loncada her yetki düzeyini veren Discord rolleri. Bir lonca kimliği girdikten sonra rolleri yükleyin.",
+    "rolesViewer": "İzleyici rolleri",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Ekonomi rolleri",
+    "rolesEconomyHint": "pazar ve ekonomi komutları",
+    "rolesAdmin": "Yönetici rolleri",
+    "rolesAdminHint": "yönetim komutları",
+    "saved": "Lonca kaydedildi",
+    "saveFailed": "Kaydetme başarısız: {{message}}",
+    "loadFailed": "Loncalar yüklenemedi: {{message}}",
+    "removed": "Lonca kaldırıldı",
+    "removeFailed": "Kaldırma başarısız: {{message}}",
+    "removeTitle": "Loncayı kaldır",
+    "removeConfirm": "{{guild}} loncası kaldırılsın mı? Bot, bu loncaya ve izlediği sunuculara hizmet vermeyi durduracak.",
+    "columns": {
+      "guildId": "Lonca kimliği",
+      "servers": "İzlenen sunucular",
+      "roles": "Roller"
+    },
+    "sections": {
+      "guild": "Lonca",
+      "roles": "Yetki rolleri",
+      "watchedServers": "İzlenen sunucular"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Bu sunucuyu bir Discord loncasına bağlayın ve duyuru ile durum kanallarını ayarlayın. O loncanın yetki rolleri Ayarlar → Loncalar bölümünde ayarlanır.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Bu sunucunun Discord loncasıyla bağlantısını kaldırılsın mı? Kanalları temizlenir; lonca ve rolleri korunur.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
+      },
+      "noGuilds": "Henüz lonca eklenmedi — Ayarlar → Loncalar bölümünden bir tane ekleyin, sonra burada seçin."
+    },
+    "selectGuild": "Loncaları ara…",
+    "selectChannel": "Kanalları ara…",
+    "guildExists": "Bu lonca zaten yapılandırılmış."
   }
 }

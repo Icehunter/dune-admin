@@ -1,72 +1,86 @@
-<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">Fremen Level Progression Icon</title>
-  <desc id="desc">Three stacked upward chevrons in deep navy, cyan, and electric blue on a transparent background.</desc>
-
-  <defs>
-    <linearGradient id="chevronFill" x1="128" y1="22" x2="128" y2="234" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#06356F"/>
-      <stop offset="0.46" stop-color="#021A3E"/>
-      <stop offset="1" stop-color="#000814"/>
-    </linearGradient>
-
-    <linearGradient id="leftFacet" x1="48" y1="48" x2="128" y2="128" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#00E5FF"/>
-      <stop offset="0.2" stop-color="#0077FF"/>
-      <stop offset="1" stop-color="#000814"/>
-    </linearGradient>
-
-    <linearGradient id="rightFacet" x1="208" y1="48" x2="128" y2="128" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#006BFF"/>
-      <stop offset="0.35" stop-color="#003A91"/>
-      <stop offset="1" stop-color="#000814"/>
-    </linearGradient>
-
-    <linearGradient id="edgeGlow" x1="128" y1="28" x2="128" y2="228" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#16F4FF"/>
-      <stop offset="0.48" stop-color="#00A6FF"/>
-      <stop offset="1" stop-color="#005BFF"/>
-    </linearGradient>
-
-    <filter id="softGlow" x="-24" y="-24" width="304" height="304" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="2.25" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0  0 0 0 0 0.72  0 0 0 0 1  0 0 0 0.55 0" result="glow"/>
-      <feMerge>
-        <feMergeNode in="glow"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-
-    <path id="chevron" d="M128 0L208 76L195 88L128 25L61 88L48 76L128 0Z"/>
-    <clipPath id="chevronClip">
-      <use href="#chevron"/>
-    </clipPath>
-  </defs>
-
-  <!-- Transparent background by design: no background rect. -->
-
-  <g filter="url(#softGlow)">
-    <g transform="translate(0 28)">
-      <use href="#chevron" fill="url(#edgeGlow)"/>
-      <path d="M128 8L199 75L191 82L128 22L65 82L57 75L128 8Z" fill="url(#chevronFill)"/>
-      <path d="M128 8L57 75L65 82L128 22V8Z" fill="url(#leftFacet)" opacity="0.56"/>
-      <path d="M128 8L199 75L191 82L128 22V8Z" fill="url(#rightFacet)" opacity="0.62"/>
-      <path d="M128 8L199 75L191 82L128 22L65 82L57 75L128 8Z" stroke="#1EF7FF" stroke-width="1.5" stroke-linejoin="round" opacity="0.78"/>
-    </g>
-
-    <g transform="translate(0 86)">
-      <use href="#chevron" fill="url(#edgeGlow)"/>
-      <path d="M128 8L199 75L191 82L128 22L65 82L57 75L128 8Z" fill="url(#chevronFill)"/>
-      <path d="M128 8L57 75L65 82L128 22V8Z" fill="url(#leftFacet)" opacity="0.56"/>
-      <path d="M128 8L199 75L191 82L128 22V8Z" fill="url(#rightFacet)" opacity="0.62"/>
-      <path d="M128 8L199 75L191 82L128 22L65 82L57 75L128 8Z" stroke="#1EF7FF" stroke-width="1.5" stroke-linejoin="round" opacity="0.78"/>
-    </g>
-
-    <g transform="translate(0 144)">
-      <use href="#chevron" fill="url(#edgeGlow)"/>
-      <path d="M128 8L199 75L191 82L128 22L65 82L57 75L128 8Z" fill="url(#chevronFill)"/>
-      <path d="M128 8L57 75L65 82L128 22V8Z" fill="url(#leftFacet)" opacity="0.56"/>
-      <path d="M128 8L199 75L191 82L128 22V8Z" fill="url(#rightFacet)" opacity="0.62"/>
-      <path d="M128 8L199 75L191 82L128 22L65 82L57 75L128 8Z" stroke="#1EF7FF" stroke-width="1.5" stroke-linejoin="round" opacity="0.78"/>
-    </g>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  fill="none"
+  aria-labelledby="title desc"
+  viewBox="0 0 256 256"
+><title>Fremen Level Progression Icon</title><desc
+  >Three stacked upward chevrons in deep navy, cyan, and electric blue on a transparent background.</desc><defs
+  ><linearGradient id="e" x1="128" x2="128" y1="22" y2="234" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#06356f"
+      /><stop offset=".46" stop-color="#021a3e" /><stop
+        offset="1"
+        stop-color="#000814"
+      /></linearGradient><linearGradient id="f" x1="48" x2="128" y1="48" y2="128" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#00e5ff"
+      /><stop offset=".2" stop-color="#07f" /><stop offset="1" stop-color="#000814" /></linearGradient><linearGradient
+      id="g"
+      x1="208"
+      x2="128"
+      y1="48"
+      y2="128"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#006bff" /><stop offset=".35" stop-color="#003a91" /><stop
+        offset="1"
+        stop-color="#000814"
+      /></linearGradient><linearGradient id="c" x1="128" x2="128" y1="28" y2="228" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#16f4ff"
+      /><stop offset=".48" stop-color="#00a6ff" /><stop offset="1" stop-color="#005bff" /></linearGradient><filter
+      id="a"
+      width="304"
+      height="304"
+      x="-24"
+      y="-24"
+      color-interpolation-filters="sRGB"
+      filterUnits="userSpaceOnUse"
+    ><feGaussianBlur result="blur" stdDeviation="2.25" /><feColorMatrix
+        in="blur"
+        result="glow"
+        values="0 0 0 0 0 0 0 0 0 0.72 0 0 0 0 1 0 0 0 0.55 0"
+      /><feMerge><feMergeNode in="glow" /><feMergeNode in="SourceGraphic" /></feMerge></filter><path
+      id="d"
+      d="m128 0 80 76-13 12-67-63-67 63-13-12z"
+    /></defs><g filter="url(#a)"><g transform="translate(0 28)"><use fill="url(#c)" href="#d" /><path
+        fill="url(#e)"
+        d="m128 8 71 67-8 7-63-60-63 60-8-7z"
+      /><path fill="url(#f)" d="M128 8 57 75l8 7 63-60z" opacity=".56" /><path
+        fill="url(#g)"
+        d="m128 8 71 67-8 7-63-60z"
+        opacity=".62"
+      /><path
+        stroke="#1ef7ff"
+        stroke-linejoin="round"
+        stroke-width="1.5"
+        d="m128 8 71 67-8 7-63-60-63 60-8-7z"
+        opacity=".78"
+      /></g><g transform="translate(0 86)"><use fill="url(#c)" href="#d" /><path
+        fill="url(#e)"
+        d="m128 8 71 67-8 7-63-60-63 60-8-7z"
+      /><path fill="url(#f)" d="M128 8 57 75l8 7 63-60z" opacity=".56" /><path
+        fill="url(#g)"
+        d="m128 8 71 67-8 7-63-60z"
+        opacity=".62"
+      /><path
+        stroke="#1ef7ff"
+        stroke-linejoin="round"
+        stroke-width="1.5"
+        d="m128 8 71 67-8 7-63-60-63 60-8-7z"
+        opacity=".78"
+      /></g><g transform="translate(0 144)"><use fill="url(#c)" href="#d" /><path
+        fill="url(#e)"
+        d="m128 8 71 67-8 7-63-60-63 60-8-7z"
+      /><path fill="url(#f)" d="M128 8 57 75l8 7 63-60z" opacity=".56" /><path
+        fill="url(#g)"
+        d="m128 8 71 67-8 7-63-60z"
+        opacity=".62"
+      /><path
+        stroke="#1ef7ff"
+        stroke-linejoin="round"
+        stroke-width="1.5"
+        d="m128 8 71 67-8 7-63-60-63 60-8-7z"
+        opacity=".78"
+      /></g></g></svg>

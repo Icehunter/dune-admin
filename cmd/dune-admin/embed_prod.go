@@ -5,7 +5,6 @@ package main
 import (
 	"embed"
 	"io/fs"
-	"log"
 	"net/http"
 )
 
@@ -15,7 +14,7 @@ var embeddedDist embed.FS
 func embeddedSPAFS() http.FileSystem {
 	sub, err := fs.Sub(embeddedDist, "dist")
 	if err != nil {
-		log.Fatal("embedded dist is malformed:", err)
+		componentLog("embed").Fatal().Err(err).Msg("embedded dist is malformed")
 	}
 	return http.FS(sub)
 }

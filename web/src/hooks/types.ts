@@ -8,4 +8,6 @@ export type ConnState = 'loading' | 'connected' | 'error'
 export interface StatusResult {
   status: Status | null
   state: ConnState
+  /** Force an immediate status re-fetch (after server switch/delete/setup). */
+  refresh: () => Promise<void>
 }

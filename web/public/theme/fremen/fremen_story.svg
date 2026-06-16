@@ -1,88 +1,99 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
-  <defs>
-    <linearGradient id="navy" x1="44" y1="62" x2="206" y2="222" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#06162f"/>
-      <stop offset="0.55" stop-color="#020918"/>
-      <stop offset="1" stop-color="#081f46"/>
-    </linearGradient>
-    <linearGradient id="blue" x1="128" y1="36" x2="128" y2="232" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#6eeeff"/>
-      <stop offset="0.45" stop-color="#0097ff"/>
-      <stop offset="1" stop-color="#003f91"/>
-    </linearGradient>
-    <linearGradient id="pageGlow" x1="70" y1="84" x2="184" y2="194" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0b61ca" stop-opacity="0.1"/>
-      <stop offset="0.55" stop-color="#27dfff" stop-opacity="0.42"/>
-      <stop offset="1" stop-color="#004bba" stop-opacity="0.18"/>
-    </linearGradient>
-    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%">
-      <feGaussianBlur stdDeviation="2.2" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-
-  <!-- transparent background intentionally omitted -->
-
-  <!-- sacred orbit marks -->
-  <g opacity="0.85" stroke="url(#blue)" stroke-linecap="round" filter="url(#glow)">
-    <path d="M83 65c-21 12-34 34-34 59" stroke-width="2"/>
-    <path d="M173 65c21 12 34 34 34 59" stroke-width="2"/>
-    <path d="M72 207c12 15 32 24 56 24" stroke-width="2" opacity="0.55"/>
-    <path d="M184 207c-12 15-32 24-56 24" stroke-width="2" opacity="0.55"/>
-  </g>
-
-  <!-- central water discipline glyph -->
-  <g filter="url(#glow)">
-    <path d="M128 24l4 23-4 6-4-6 4-23z" fill="url(#blue)"/>
-    <path d="M128 52v68" stroke="url(#blue)" stroke-width="4" stroke-linecap="round"/>
-    <path d="M128 72l9 9-9 9-9-9 9-9z" fill="url(#blue)"/>
-    <path d="M128 102c11 16 18 27 18 39 0 11-8 19-18 19s-18-8-18-19c0-12 7-23 18-39z" fill="url(#blue)"/>
-    <path d="M128 132c5 8 8 13 8 18 0 6-4 10-8 10s-8-4-8-10c0-5 3-10 8-18z" fill="#baffff" opacity="0.75"/>
-    <circle cx="128" cy="61" r="3" fill="#51eaff"/>
-    <circle cx="102" cy="80" r="3" fill="#19aaff"/>
-    <circle cx="154" cy="80" r="3" fill="#19aaff"/>
-    <path d="M99 111a29 29 0 0 1 18-27" stroke="#2edcff" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
-    <path d="M157 84a29 29 0 0 1 18 27" stroke="#2edcff" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
-  </g>
-
-  <!-- outer layered book pages -->
-  <path d="M24 89l83 58 21 55-89-26-15-87z" fill="#031432"/>
-  <path d="M232 89l-83 58-21 55 89-26 15-87z" fill="#031432"/>
-  <path d="M36 70l78 57 14 75-82-33-10-99z" fill="#06295d" stroke="#17cfff" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M220 70l-78 57-14 75 82-33 10-99z" fill="#06295d" stroke="#17cfff" stroke-width="4" stroke-linejoin="round"/>
-
-  <!-- main open book pages -->
-  <path d="M50 75c33 17 60 38 78 69v69c-18-29-48-44-83-55L50 75z" fill="url(#navy)" stroke="#42e7ff" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M206 75c-33 17-60 38-78 69v69c18-29 48-44 83-55l-5-83z" fill="url(#navy)" stroke="#42e7ff" stroke-width="3" stroke-linejoin="round"/>
-
-  <!-- spine and page valley -->
-  <path d="M128 142v88" stroke="#5ff4ff" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
-  <path d="M128 211l-18-30-48-20c26 5 48 17 66 50z" fill="url(#pageGlow)"/>
-  <path d="M128 211l18-30 48-20c-26 5-48 17-66 50z" fill="url(#pageGlow)"/>
-
-  <!-- dune lines inside book -->
-  <g stroke-linecap="round" stroke-linejoin="round">
-    <path d="M66 136c22 3 38 14 53 31" stroke="#1788ff" stroke-width="3" opacity="0.75"/>
-    <path d="M190 136c-22 3-38 14-53 31" stroke="#1788ff" stroke-width="3" opacity="0.75"/>
-    <path d="M72 112c23 6 42 23 50 46" stroke="#49e8ff" stroke-width="2" opacity="0.85"/>
-    <path d="M184 112c-23 6-42 23-50 46" stroke="#49e8ff" stroke-width="2" opacity="0.85"/>
-  </g>
-
-  <!-- minimal page markers -->
-  <g stroke="#79efff" stroke-width="2.5" stroke-linecap="round" opacity="0.85">
-    <circle cx="83" cy="129" r="5" fill="none"/>
-    <path d="M83 137v18"/>
-    <circle cx="173" cy="129" r="5" fill="none"/>
-    <path d="M173 137v18"/>
-  </g>
-
-  <!-- bottom sacred geometry -->
-  <g filter="url(#glow)">
-    <path d="M128 213l13 15-13 14-13-14 13-15z" fill="#061634" stroke="#2bdfff" stroke-width="2"/>
-    <path d="M128 242v-14" stroke="url(#blue)" stroke-width="3" stroke-linecap="round"/>
-    <path d="M128 242l5 9h-10l5-9z" fill="url(#blue)"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" fill="none" viewBox="0 0 256 256"><defs><linearGradient
+      id="c"
+      x1="44"
+      x2="206"
+      y1="62"
+      y2="222"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#06162f" /><stop offset=".55" stop-color="#020918" /><stop
+        offset="1"
+        stop-color="#081f46"
+      /></linearGradient><linearGradient id="a" x1="128" x2="128" y1="36" y2="232" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#6eeeff"
+      /><stop offset=".45" stop-color="#0097ff" /><stop
+        offset="1"
+        stop-color="#003f91"
+      /></linearGradient><linearGradient id="d" x1="70" x2="184" y1="84" y2="194" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#0b61ca"
+        stop-opacity=".1"
+      /><stop offset=".55" stop-color="#27dfff" stop-opacity=".42" /><stop
+        offset="1"
+        stop-color="#004bba"
+        stop-opacity=".18"
+      /></linearGradient><filter id="b" width="150%" height="150%" x="-25%" y="-25%"><feGaussianBlur
+        result="blur"
+        stdDeviation="2.2"
+      /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs><g
+    stroke="url(#a)"
+    stroke-linecap="round"
+    stroke-width="2"
+    filter="url(#b)"
+    opacity=".85"
+  ><path d="M83 65c-21 12-34 34-34 59" /><path d="M173 65c21 12 34 34 34 59" /><path
+      d="M72 207c12 15 32 24 56 24"
+      opacity=".55"
+    /><path d="M184 207c-12 15-32 24-56 24" opacity=".55" /></g><g filter="url(#b)"><path
+      fill="url(#a)"
+      d="m128 24 4 23-4 6-4-6z"
+    /><path stroke="url(#a)" stroke-linecap="round" stroke-width="4" d="M128 52v68" /><path
+      fill="url(#a)"
+      d="m128 72 9 9-9 9-9-9z"
+    /><path fill="url(#a)" d="M128 102c11 16 18 27 18 39 0 11-8 19-18 19s-18-8-18-19c0-12 7-23 18-39" /><path
+      fill="#baffff"
+      d="M128 132c5 8 8 13 8 18 0 6-4 10-8 10s-8-4-8-10c0-5 3-10 8-18"
+      opacity=".75"
+    /><circle cx="128" cy="61" r="3" fill="#51eaff" /><circle cx="102" cy="80" r="3" fill="#19aaff" /><circle
+      cx="154"
+      cy="80"
+      r="3"
+      fill="#19aaff"
+    /><path
+      stroke="#2edcff"
+      stroke-linecap="round"
+      stroke-width="3"
+      d="M99 111a29 29 0 0 1 18-27m40 0a29 29 0 0 1 18 27"
+      opacity=".9"
+    /></g><path fill="#031432" d="m24 89 83 58 21 55-89-26zm208 0-83 58-21 55 89-26z" /><path
+    fill="#06295d"
+    stroke="#17cfff"
+    stroke-linejoin="round"
+    stroke-width="4"
+    d="m36 70 78 57 14 75-82-33zm184 0-78 57-14 75 82-33z"
+  /><path
+    fill="url(#c)"
+    stroke="#42e7ff"
+    stroke-linejoin="round"
+    stroke-width="3"
+    d="M50 75c33 17 60 38 78 69v69c-18-29-48-44-83-55z"
+  /><path
+    fill="url(#c)"
+    stroke="#42e7ff"
+    stroke-linejoin="round"
+    stroke-width="3"
+    d="M206 75c-33 17-60 38-78 69v69c18-29 48-44 83-55z"
+  /><path stroke="#5ff4ff" stroke-linecap="round" stroke-width="4" d="M128 142v88" filter="url(#b)" /><path
+    fill="url(#d)"
+    d="m128 211-18-30-48-20c26 5 48 17 66 50"
+  /><path fill="url(#d)" d="m128 211 18-30 48-20c-26 5-48 17-66 50" /><g
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  ><path stroke="#1788ff" stroke-width="3" d="M66 136c22 3 38 14 53 31m71-31c-22 3-38 14-53 31" opacity=".75" /><path
+      stroke="#49e8ff"
+      stroke-width="2"
+      d="M72 112c23 6 42 23 50 46m62-46c-23 6-42 23-50 46"
+      opacity=".85"
+    /></g><g stroke="#79efff" stroke-linecap="round" stroke-width="2.5" opacity=".85"><circle
+      cx="83"
+      cy="129"
+      r="5"
+    /><path d="M83 137v18" /><circle cx="173" cy="129" r="5" /><path d="M173 137v18" /></g><g filter="url(#b)"><path
+      fill="#061634"
+      stroke="#2bdfff"
+      stroke-width="2"
+      d="m128 213 13 15-13 14-13-14z"
+    /><path stroke="url(#a)" stroke-linecap="round" stroke-width="3" d="M128 242v-14" /><path
+      fill="url(#a)"
+      d="m128 242 5 9h-10z"
+    /></g></svg>

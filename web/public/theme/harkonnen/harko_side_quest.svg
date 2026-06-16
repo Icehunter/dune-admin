@@ -1,85 +1,65 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Sci-fi side quest map pin icon">
-  <defs>
-    <linearGradient id="blackMetal" x1="42" y1="18" x2="206" y2="238" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#202020"/>
-      <stop offset="0.45" stop-color="#070707"/>
-      <stop offset="1" stop-color="#151515"/>
-    </linearGradient>
-    <linearGradient id="crimson" x1="65" y1="34" x2="185" y2="216" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#5b0004"/>
-      <stop offset="0.45" stop-color="#b0000c"/>
-      <stop offset="1" stop-color="#610006"/>
-    </linearGradient>
-    <filter id="hardShadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="2" stdDeviation="1.6" flood-color="#000000" flood-opacity="0.45"/>
-    </filter>
-  </defs>
-
-  <!-- transparent background intentionally omitted -->
-
-  <g filter="url(#hardShadow)" stroke-linejoin="miter" stroke-linecap="butt">
-    <!-- Outer brutalist map-pin shell -->
-    <path d="M122 7
-             C82 29 47 60 35 102
-             C24 140 45 177 72 207
-             L128 249
-             L184 207
-             C211 177 232 140 221 102
-             C209 60 174 29 134 7
-             L134 38
-             C167 56 193 83 202 113
-             C211 143 194 174 172 199
-             L128 232
-             L84 199
-             C62 174 45 143 54 113
-             C63 83 89 56 122 38
-             Z" fill="url(#blackMetal)"/>
-
-    <!-- Angular top split armor facets -->
-    <path d="M122 7 L122 38 L106 50 L100 31 Z" fill="#111111" opacity="0.96"/>
-    <path d="M134 7 L156 31 L150 50 L134 38 Z" fill="#111111" opacity="0.96"/>
-
-    <!-- Crimson inset pin band -->
-    <path d="M111 49
-             C85 66 66 90 60 116
-             C53 147 69 178 91 202
-             L106 213
-             L99 194
-             C80 172 69 145 75 120
-             C81 98 96 80 116 67
-             Z" fill="url(#crimson)"/>
-    <path d="M145 49
-             C171 66 190 90 196 116
-             C203 147 187 178 165 202
-             L150 213
-             L157 194
-             C176 172 187 145 181 120
-             C175 98 160 80 140 67
-             Z" fill="url(#crimson)"/>
-
-    <!-- Side serrated armor cuts -->
-    <path d="M34 113 L53 136 L48 146 L30 129 Z" fill="#0a0a0a" stroke="#d8d8d8" stroke-width="1.4" opacity="0.95"/>
-    <path d="M222 113 L203 136 L208 146 L226 129 Z" fill="#0a0a0a" stroke="#d8d8d8" stroke-width="1.4" opacity="0.95"/>
-
-    <!-- Inner spear / side quest shard marker -->
-    <path d="M128 47 L143 116 L128 134 L113 116 Z" fill="url(#blackMetal)" stroke="#e0e0e0" stroke-width="1.4"/>
-    <path d="M83 110 L111 82 L98 132 L128 196 L107 154 Z" fill="url(#blackMetal)" stroke="#e0e0e0" stroke-width="1.4"/>
-    <path d="M173 110 L145 82 L158 132 L128 196 L149 154 Z" fill="url(#blackMetal)" stroke="#e0e0e0" stroke-width="1.4"/>
-
-    <!-- Crimson mission core -->
-    <path d="M107 123 L128 135 L128 179 L113 149 Z" fill="url(#crimson)" stroke="#f2f2f2" stroke-width="1.2"/>
-    <path d="M149 123 L128 135 L128 179 L143 149 Z" fill="url(#crimson)" stroke="#f2f2f2" stroke-width="1.2"/>
-
-    <!-- Lower blade / pin-point reinforcement -->
-    <path d="M96 137 L128 198 L160 137 L128 225 Z" fill="#0a0a0a" stroke="#e0e0e0" stroke-width="1.2" opacity="0.98"/>
-
-    <!-- Central split lines -->
-    <path d="M128 48 L128 225" stroke="#ffffff" stroke-width="1.1" opacity="0.85"/>
-    <path d="M122 7 L122 38 M134 7 L134 38" stroke="#ffffff" stroke-width="1" opacity="0.45"/>
-
-    <!-- Thin brutalist highlights -->
-    <path d="M54 113 C63 83 89 56 122 38" fill="none" stroke="#ffffff" stroke-width="1.2" opacity="0.65"/>
-    <path d="M202 113 C193 83 167 56 134 38" fill="none" stroke="#ffffff" stroke-width="1.2" opacity="0.65"/>
-    <path d="M84 199 L128 232 L172 199" fill="none" stroke="#ffffff" stroke-width="1.1" opacity="0.5"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Sci-fi side quest map pin icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="b" x1="42" x2="206" y1="18" y2="238" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#202020"
+      /><stop offset=".45" stop-color="#070707" /><stop
+        offset="1"
+        stop-color="#151515"
+      /></linearGradient><linearGradient id="c" x1="65" x2="185" y1="34" y2="216" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#5b0004"
+      /><stop offset=".45" stop-color="#b0000c" /><stop offset="1" stop-color="#610006" /></linearGradient><filter
+      id="a"
+      width="120%"
+      height="120%"
+      x="-10%"
+      y="-10%"
+    ><feDropShadow dx="0" dy="2" flood-color="#000" flood-opacity=".45" stdDeviation="1.6" /></filter></defs><g
+    filter="url(#a)"
+  ><path
+      fill="url(#b)"
+      d="M122 7c-40 22-75 53-87 95-11 38 10 75 37 105l56 42 56-42c27-30 48-67 37-105-12-42-47-73-87-95v31c33 18 59 45 68 75s-8 61-30 86l-44 33-44-33c-22-25-39-56-30-86s35-57 68-75Z"
+    /><path fill="#111" d="M122 7v31l-16 12-6-19Zm12 0 22 24-6 19-16-12Z" opacity=".96" /><path
+      fill="url(#c)"
+      d="M111 49c-26 17-45 41-51 67-7 31 9 62 31 86l15 11-7-19c-19-22-30-49-24-74 6-22 21-40 41-53Z"
+    /><path
+      fill="url(#c)"
+      d="M145 49c26 17 45 41 51 67 7 31-9 62-31 86l-15 11 7-19c19-22 30-49 24-74-6-22-21-40-41-53Z"
+    /><path
+      fill="#0a0a0a"
+      stroke="#d8d8d8"
+      stroke-width="1.4"
+      d="m34 113 19 23-5 10-18-17Zm188 0-19 23 5 10 18-17Z"
+      opacity=".95"
+    /><path fill="url(#b)" stroke="#e0e0e0" stroke-width="1.4" d="m128 47 15 69-15 18-15-18Z" /><path
+      fill="url(#b)"
+      stroke="#e0e0e0"
+      stroke-width="1.4"
+      d="m83 110 28-28-13 50 30 64-21-42Z"
+    /><path fill="url(#b)" stroke="#e0e0e0" stroke-width="1.4" d="m173 110-28-28 13 50-30 64 21-42Z" /><path
+      fill="url(#c)"
+      stroke="#f2f2f2"
+      stroke-width="1.2"
+      d="m107 123 21 12v44l-15-30Z"
+    /><path fill="url(#c)" stroke="#f2f2f2" stroke-width="1.2" d="m149 123-21 12v44l15-30Z" /><path
+      fill="#0a0a0a"
+      stroke="#e0e0e0"
+      stroke-width="1.2"
+      d="m96 137 32 61 32-61-32 88Z"
+      opacity=".98"
+    /><path stroke="#fff" stroke-width="1.1" d="M128 48v177" opacity=".85" /><path
+      stroke="#fff"
+      d="M122 7v31m12-31v31"
+      opacity=".45"
+    /><path
+      fill="none"
+      stroke="#fff"
+      stroke-width="1.2"
+      d="M54 113c9-30 35-57 68-75m80 75c-9-30-35-57-68-75"
+      opacity=".65"
+    /><path fill="none" stroke="#fff" stroke-width="1.1" d="m84 199 44 33 44-33" opacity=".5" /></g></svg>

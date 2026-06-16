@@ -47,7 +47,7 @@ func TestGameWritePath_AMPUsesOverrides(t *testing.T) {
 	t.Cleanup(func() { globalControl = orig })
 
 	dir := "/srv/state/ue5-saved/UserSettings"
-	got := gameWritePath(dir)
+	got := gameWritePath(dir, globalControl)
 	want := "/srv/state/UserOverrides.ini"
 	if got != want {
 		t.Errorf("gameWritePath = %q, want %q", got, want)
@@ -63,7 +63,7 @@ func TestGameWritePath_NonAMPWritesUserGame(t *testing.T) {
 	dir := "/k8s/config"
 	for _, ctrl := range []ControlPlane{&localControl{}, &kubectlControl{}, nil} {
 		globalControl = ctrl
-		got := gameWritePath(dir)
+		got := gameWritePath(dir, globalControl)
 		want := dir + "/UserGame.ini"
 		if got != want {
 			t.Errorf("control %T: gameWritePath = %q, want %q", ctrl, got, want)

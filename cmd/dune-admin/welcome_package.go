@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // welcomePackageItem is one configured grant in the welcome package. It maps
@@ -161,8 +162,11 @@ func whisperAccount(ctx context.Context, acc welcomeAccount, msgVersion string, 
 // welcomeGrantViaGiveItems is the production grant function: it reuses the exact
 // shipped give-items path (live RMQ for online players, DB-write fallback
 // otherwise) and returns "template: reason" strings for any skipped items.
-func welcomeGrantViaGiveItems(ctx context.Context, pawnID int64, flsID string, items []welcomePackageItem) ([]string, error) {
-	online, resolvedFls := resolveGiveItemsOnlinePath(ctx, pawnID, checkPlayerOffline, flsIDFromActorID)
+func welcomeGrantViaGiveItems(ctx context.Context, pool *pgxpool.Pool, pawnID int64, flsID string, items []welcomePackageItem) ([]string, error) {
+	online, resolvedFls := resolveGiveItemsOnlinePath(ctx, pawnID,
+		func(ctx context.Context, id int64) error { return checkPlayerOfflinePool(ctx, pool, id) },
+		func(ctx context.Context, id int64) (string, error) { return flsIDFromActorIDPool(ctx, pool, id) },
+	)
 	if resolvedFls == "" {
 		resolvedFls = flsID
 	}
@@ -171,10 +175,12 @@ func welcomeGrantViaGiveItems(ctx context.Context, pawnID int64, flsID string, i
 		req.Items = append(req.Items, giveItemInput(it))
 	}
 	_, skipped := processGiveItems(ctx, req, online, resolvedFls, giveItemsDeps{
-		checkCapacity: checkInventoryCapacity,
-		rmqAdd:        rmqAddItemToInventory,
+		checkCapacity: func(ctx context.Context, playerID int64, template string, qty int64) error {
+			return checkInventoryCapacityPool(ctx, pool, playerID, template, qty)
+		},
+		rmqAdd: rmqAddItemToInventory,
 		dbGive: func(playerID int64, template string, qty, quality int64) (msgMutate, bool) {
-			msg, ok := cmdGiveItem(playerID, template, qty, quality)().(msgMutate)
+			msg, ok := cmdGiveItem(pool, playerID, template, qty, quality)().(msgMutate)
 			return msg, ok
 		},
 		needsDBPath: itemNeedsDBPath,
@@ -357,7 +363,9 @@ func runWelcomePackageScanner(ctx context.Context) {
 	t := time.NewTicker(interval)
 	defer t.Stop()
 	for {
-		welcomePackageScanTick(ctx)
+		for _, sc := range globalRegistry.All() {
+			welcomePackageScanTick(ctx, sc, resolveWelcomeStore(sc))
+		}
 		select {
 		case <-ctx.Done():
 			return
@@ -366,12 +374,21 @@ func runWelcomePackageScanner(ctx context.Context) {
 	}
 }
 
-func welcomePackageScanTick(ctx context.Context) {
+// resolveWelcomeStore returns the welcome store scoped to sc's server ID. Falls
+// back to the legacy welcomeStoreDB when globalStore is unavailable.
+func resolveWelcomeStore(sc *ServerContext) *welcomeStore {
+	if sc != nil && globalStore != nil {
+		return newWelcomeStore(globalStore, sc.StoreScope)
+	}
+	return welcomeStoreDB
+}
+
+func welcomePackageScanTick(ctx context.Context, sc *ServerContext, store *welcomeStore) {
 	rt := getWelcomeRuntime()
 	motdActive := rt.motdEnabled && strings.TrimSpace(rt.motdMessage) != ""
 	regionActive := regionBroadcastActive(rt)
 	presenceActive := motdActive || regionActive
-	pkgActive := rt.enabled && welcomeStoreDB != nil && len(rt.activePackages()) > 0
+	pkgActive := rt.enabled && store != nil && len(rt.activePackages()) > 0
 
 	// Keep the join/leave-detection baseline fresh only while a presence-driven
 	// feature (MOTD or region broadcast) is active. When both are off, reset so
@@ -385,14 +402,20 @@ func welcomePackageScanTick(ctx context.Context) {
 	}
 
 	// MOTD, region broadcast, and package grants all consume the current online
-	// set — fetch once.
-	online, err := listWelcomeOnlineAccounts(ctx)
+	// set — fetch once using the server's Postgres pool.
+	var pool *pgxpool.Pool
+	if sc != nil {
+		pool = sc.DB
+	}
+	online, err := cmdListWelcomeOnlineAccounts(ctx, pool)
 	if err != nil {
-		log.Printf("welcome: list online accounts: %v", err)
+		componentLog("welcome").Error().Err(err).Msg("list online accounts failed")
 		return
 	}
 	if pkgActive {
-		runWelcomePackageGrants(ctx, rt, online)
+		runWelcomePackageGrants(ctx, rt, online, store, func(ctx context.Context, pawnID int64, flsID string, items []welcomePackageItem) ([]string, error) {
+			return welcomeGrantViaGiveItems(ctx, pool, pawnID, flsID, items)
+		})
 	}
 	if presenceActive {
 		runPresenceWhispers(ctx, rt, online, motdActive, regionActive)
@@ -416,7 +439,7 @@ func runPresenceWhispers(ctx context.Context, rt welcomePackageRuntime, online [
 	if motdActive {
 		for _, m := range motdWhispersForJoins(joins, rt.motdEnabled, rt.motdMessage, rt.motdSourcePlayer) {
 			if err := sendWelcomeWhisper(ctx, m.accountID, m.sourcePlayer, m.message); err != nil {
-				log.Printf("motd: whisper to account %d failed: %v", m.accountID, err)
+				componentLog("welcome").Error().Err(err).Int64("account_id", m.accountID).Msg("motd whisper failed")
 			}
 		}
 	}
@@ -437,8 +460,9 @@ func runPresenceWhispers(ctx context.Context, rt welcomePackageRuntime, online [
 
 // runWelcomePackageGrants grants the active package(s) to eligible accounts in
 // the given online snapshot, sending the package's companion welcome message
-// (once per version) when configured.
-func runWelcomePackageGrants(ctx context.Context, rt welcomePackageRuntime, online []welcomeAccount) {
+// (once per version) when configured. store and grantFn are explicit so the
+// caller can scope grants to the right server and tests can stub the grant path.
+func runWelcomePackageGrants(ctx context.Context, rt welcomePackageRuntime, online []welcomeAccount, store *welcomeStore, grantFn func(context.Context, int64, string, []welcomePackageItem) ([]string, error)) {
 	var whisperFn func(context.Context, int64, string, string) error
 	if rt.welcomeMessageEnabled && strings.TrimSpace(rt.welcomeMessage) != "" {
 		msg := rt.welcomeMessage
@@ -454,16 +478,16 @@ func runWelcomePackageGrants(ctx context.Context, rt welcomePackageRuntime, onli
 		}
 		g, f, _, err := welcomePackageScanOnce(ctx, pkg.Version, pkg.Items, welcomeScanDeps{
 			listAccounts: listOnline,
-			grant:        welcomeGrantViaGiveItems,
+			grant:        grantFn,
 			whisper:      whisperFn,
-			store:        welcomeStoreDB,
+			store:        store,
 		})
 		if err != nil {
-			log.Printf("welcome-package: scan error (version=%q): %v", pkg.Version, err)
+			componentLog("welcome").Error().Err(err).Str("version", pkg.Version).Msg("welcome-package scan error")
 			continue
 		}
 		if g > 0 || f > 0 {
-			log.Printf("welcome-package: granted=%d failed=%d version=%q", g, f, pkg.Version)
+			componentLog("welcome").Info().Int("granted", g).Int("failed", f).Str("version", pkg.Version).Msg("welcome-package grants applied")
 		}
 	}
 }

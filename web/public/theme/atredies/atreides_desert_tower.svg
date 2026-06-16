@@ -1,85 +1,149 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Atreides desert tower icon">
-  <defs>
-    <linearGradient id="greenMain" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1f3f2e"/>
-      <stop offset="0.52" stop-color="#2f553d"/>
-      <stop offset="1" stop-color="#14281f"/>
-    </linearGradient>
-    <linearGradient id="sage" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8b9870"/>
-      <stop offset="1" stop-color="#5f6f4e"/>
-    </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f1dc86"/>
-      <stop offset="0.48" stop-color="#b99b3d"/>
-      <stop offset="1" stop-color="#725d22"/>
-    </linearGradient>
-    <linearGradient id="darkGold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#d7bd63"/>
-      <stop offset="1" stop-color="#80671f"/>
-    </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#07120d" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-
-  <!-- transparent background intentionally omitted -->
-
-  <g filter="url(#softShadow)">
-    <!-- sage crescent halo -->
-    <path d="M74 119C71 79 94 43 128 28C101 56 95 94 107 129C117 158 139 179 170 188C126 193 84 166 74 119Z" fill="url(#sage)" opacity="0.88"/>
-    <path d="M182 119C185 79 162 43 128 28C155 56 161 94 149 129C139 158 117 179 86 188C130 193 172 166 182 119Z" fill="url(#sage)" opacity="0.88"/>
-
-    <!-- outer heraldic wings -->
-    <path d="M30 87L55 185L103 225L67 161Z" fill="url(#greenMain)" stroke="url(#gold)" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M226 87L201 185L153 225L189 161Z" fill="url(#greenMain)" stroke="url(#gold)" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M41 151L75 195L111 224L82 176Z" fill="#1b3729" stroke="url(#darkGold)" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M215 151L181 195L145 224L174 176Z" fill="#1b3729" stroke="url(#darkGold)" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M55 184L101 224" stroke="#d6be64" stroke-width="3" stroke-linecap="round"/>
-    <path d="M201 184L155 224" stroke="#d6be64" stroke-width="3" stroke-linecap="round"/>
-
-    <!-- fortress base -->
-    <path d="M72 131H184L176 202L128 236L80 202Z" fill="url(#greenMain)" stroke="url(#gold)" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M88 126H111V196H88Z" fill="#263f30" stroke="#a9913d" stroke-width="2"/>
-    <path d="M145 126H168V196H145Z" fill="#263f30" stroke="#a9913d" stroke-width="2"/>
-    <path d="M63 148H91V202H63Z" fill="#314b37" stroke="#967d30" stroke-width="2"/>
-    <path d="M165 148H193V202H165Z" fill="#314b37" stroke="#967d30" stroke-width="2"/>
-
-    <!-- central tower -->
-    <path d="M105 56L128 23L151 56V186H105Z" fill="url(#greenMain)" stroke="url(#gold)" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M116 33L128 18L140 33V57H116Z" fill="#2d563e" stroke="url(#gold)" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M121 17L128 3L135 17V91H121Z" fill="url(#gold)" opacity="0.92"/>
-    <path d="M128 3L135 17V91L128 82Z" fill="#f4dd86" opacity="0.62"/>
-    <path d="M105 73L92 85V133H105Z" fill="#213e2d" stroke="#8d7730" stroke-width="2"/>
-    <path d="M151 73L164 85V133H151Z" fill="#213e2d" stroke="#8d7730" stroke-width="2"/>
-
-    <!-- front banner / shield -->
-    <path d="M97 102H159V176L128 202L97 176Z" fill="#244331" stroke="url(#gold)" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M104 110H152" stroke="#e6d383" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
-
-    <!-- gates and slits -->
-    <path d="M116 191V172C116 165 122 159 128 159C134 159 140 165 140 172V191Z" fill="#14271e" stroke="#d0b458" stroke-width="3"/>
-    <rect x="124" y="70" width="8" height="26" rx="2" fill="#0d1c16" stroke="#c6a84d" stroke-width="2"/>
-    <rect x="122" y="105" width="4" height="16" rx="1" fill="#0d1c16"/>
-    <rect x="132" y="105" width="4" height="16" rx="1" fill="#0d1c16"/>
-    <rect x="83" y="160" width="4" height="14" rx="1" fill="#102319"/>
-    <rect x="169" y="160" width="4" height="14" rx="1" fill="#102319"/>
-    <rect x="96" y="143" width="4" height="13" rx="1" fill="#102319"/>
-    <rect x="156" y="143" width="4" height="13" rx="1" fill="#102319"/>
-
-    <!-- Atreides-inspired noble bird/crest mark -->
-    <path d="M128 129L132 137L128 144L124 137Z" fill="url(#gold)"/>
-    <path d="M128 144L118 128V140L128 153Z" fill="url(#gold)"/>
-    <path d="M128 144L138 128V140L128 153Z" fill="url(#gold)"/>
-    <path d="M118 128L104 119V130L121 143Z" fill="url(#gold)"/>
-    <path d="M138 128L152 119V130L135 143Z" fill="url(#gold)"/>
-    <path d="M112 139L124 151L112 148Z" fill="#d9bf63"/>
-    <path d="M144 139L132 151L144 148Z" fill="#d9bf63"/>
-    <path d="M128 153L120 166H136Z" fill="url(#gold)"/>
-
-    <!-- lower jewel and point -->
-    <path d="M128 203L142 224L128 244L114 224Z" fill="url(#gold)" stroke="#f0d97a" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M128 203V244L142 224Z" fill="#8b6f25" opacity="0.45"/>
-    <path d="M80 201L128 244L176 201" fill="none" stroke="#d6bd60" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Atreides desert tower icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="c" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#1f3f2e" /><stop
+        offset=".52"
+        stop-color="#2f553d"
+      /><stop offset="1" stop-color="#14281f" /></linearGradient><linearGradient
+      id="b"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#8b9870" /><stop offset="1" stop-color="#5f6f4e" /></linearGradient><linearGradient
+      id="d"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#f1dc86" /><stop offset=".48" stop-color="#b99b3d" /><stop
+        offset="1"
+        stop-color="#725d22"
+      /></linearGradient><linearGradient id="e" x1="0" x2="1" y1="0" y2="1"><stop
+        offset="0"
+        stop-color="#d7bd63"
+      /><stop offset="1" stop-color="#80671f" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="3" flood-color="#07120d" flood-opacity=".35" stdDeviation="2" /></filter></defs><g
+    filter="url(#a)"
+  ><path
+      fill="url(#b)"
+      d="M74 119c-3-40 20-76 54-91-27 28-33 66-21 101 10 29 32 50 63 59-44 5-86-22-96-69"
+      opacity=".88"
+    /><path
+      fill="url(#b)"
+      d="M182 119c3-40-20-76-54-91 27 28 33 66 21 101-10 29-32 50-63 59 44 5 86-22 96-69"
+      opacity=".88"
+    /><path
+      fill="url(#c)"
+      stroke="url(#d)"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="m30 87 25 98 48 40-36-64Z"
+    /><path
+      fill="url(#c)"
+      stroke="url(#d)"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="m226 87-25 98-48 40 36-64Z"
+    /><path
+      fill="#1b3729"
+      stroke="url(#e)"
+      stroke-linejoin="round"
+      stroke-width="3"
+      d="m41 151 34 44 36 29-29-48Z"
+    /><path
+      fill="#1b3729"
+      stroke="url(#e)"
+      stroke-linejoin="round"
+      stroke-width="3"
+      d="m215 151-34 44-36 29 29-48Z"
+    /><path stroke="#d6be64" stroke-linecap="round" stroke-width="3" d="m55 184 46 40m100-40-46 40" /><path
+      fill="url(#c)"
+      stroke="url(#d)"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="M72 131h112l-8 71-48 34-48-34Z"
+    /><path fill="#263f30" stroke="#a9913d" stroke-width="2" d="M88 126h23v70H88Zm57 0h23v70h-23Z" /><path
+      fill="#314b37"
+      stroke="#967d30"
+      stroke-width="2"
+      d="M63 148h28v54H63Zm102 0h28v54h-28Z"
+    /><path
+      fill="url(#c)"
+      stroke="url(#d)"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="m105 56 23-33 23 33v130h-46Z"
+    /><path
+      fill="#2d563e"
+      stroke="url(#d)"
+      stroke-linejoin="round"
+      stroke-width="3"
+      d="m116 33 12-15 12 15v24h-24Z"
+    /><path fill="url(#d)" d="m121 17 7-14 7 14v74h-14Z" opacity=".92" /><path
+      fill="#f4dd86"
+      d="m128 3 7 14v74l-7-9Z"
+      opacity=".62"
+    /><path fill="#213e2d" stroke="#8d7730" stroke-width="2" d="M105 73 92 85v48h13Zm46 0 13 12v48h-13Z" /><path
+      fill="#244331"
+      stroke="url(#d)"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="M97 102h62v74l-31 26-31-26Z"
+    /><path stroke="#e6d383" stroke-linecap="round" stroke-width="3" d="M104 110h48" opacity=".7" /><path
+      fill="#14271e"
+      stroke="#d0b458"
+      stroke-width="3"
+      d="M116 191v-19c0-7 6-13 12-13s12 6 12 13v19Z"
+    /><rect width="8" height="26" x="124" y="70" fill="#0d1c16" stroke="#c6a84d" stroke-width="2" rx="2" /><rect
+      width="4"
+      height="16"
+      x="122"
+      y="105"
+      fill="#0d1c16"
+      rx="1"
+    /><rect width="4" height="16" x="132" y="105" fill="#0d1c16" rx="1" /><rect
+      width="4"
+      height="14"
+      x="83"
+      y="160"
+      fill="#102319"
+      rx="1"
+    /><rect width="4" height="14" x="169" y="160" fill="#102319" rx="1" /><rect
+      width="4"
+      height="13"
+      x="96"
+      y="143"
+      fill="#102319"
+      rx="1"
+    /><rect width="4" height="13" x="156" y="143" fill="#102319" rx="1" /><path
+      fill="url(#d)"
+      d="m128 129 4 8-4 7-4-7Z"
+    /><path fill="url(#d)" d="m128 144-10-16v12l10 13Z" /><path fill="url(#d)" d="m128 144 10-16v12l-10 13Z" /><path
+      fill="url(#d)"
+      d="m118 128-14-9v11l17 13Z"
+    /><path fill="url(#d)" d="m138 128 14-9v11l-17 13Z" /><path
+      fill="#d9bf63"
+      d="m112 139 12 12-12-3Zm32 0-12 12 12-3Z"
+    /><path fill="url(#d)" d="m128 153-8 13h16Z" /><path
+      fill="url(#d)"
+      stroke="#f0d97a"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="m128 203 14 21-14 20-14-20Z"
+    /><path fill="#8b6f25" d="M128 203v41l14-20Z" opacity=".45" /><path
+      fill="none"
+      stroke="#d6bd60"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="m80 201 48 43 48-43"
+    /></g></svg>

@@ -27,8 +27,8 @@ func TestArtifactName(t *testing.T) {
 	}{
 		{"linux", "amd64", "dune-admin_linux_amd64.tar.gz"},
 		{"linux", "arm64", "dune-admin_linux_arm64.tar.gz"},
-		{"darwin", "amd64", "dune-admin_darwin_universal.tar.gz"},
-		{"darwin", "arm64", "dune-admin_darwin_universal.tar.gz"},
+		{"darwin", "amd64", "dune-admin_darwin_all.tar.gz"},
+		{"darwin", "arm64", "dune-admin_darwin_all.tar.gz"},
 		{"windows", "amd64", "dune-admin_windows_amd64.zip"},
 	}
 	for _, tt := range tests {
@@ -42,14 +42,14 @@ func TestArtifactName(t *testing.T) {
 }
 
 func TestParseChecksums(t *testing.T) {
-	content := "abc123  dune-admin_linux_amd64.tar.gz\ndef456  dune-admin_darwin_universal.tar.gz\n"
+	content := "abc123  dune-admin_linux_amd64.tar.gz\ndef456  dune-admin_darwin_all.tar.gz\n"
 	tests := []struct {
 		artifact string
 		want     string
 		wantErr  bool
 	}{
 		{"dune-admin_linux_amd64.tar.gz", "abc123", false},
-		{"dune-admin_darwin_universal.tar.gz", "def456", false},
+		{"dune-admin_darwin_all.tar.gz", "def456", false},
 		{"dune-admin_windows_amd64.zip", "", true},
 	}
 	for _, tt := range tests {
@@ -357,6 +357,46 @@ func TestApplyUpdate(t *testing.T) {
 	}
 	if _, err := os.Stat(currentBin + ".prev"); os.IsNotExist(err) {
 		t.Error(".prev backup should exist after update")
+	}
+}
+
+func TestApplyUpdate_ExistingPrev(t *testing.T) {
+	fakeBinary := []byte("new binary v2")
+	archive := buildFakeTarGz(t, "dune-admin", fakeBinary)
+	h := sha256.Sum256(archive)
+	checksum := hex.EncodeToString(h[:])
+	artifact := artifactName("linux", "amd64")
+	checksumsTxt := checksum + "  " + artifact + "\n"
+
+	dir := t.TempDir()
+	currentBin := filepath.Join(dir, "dune-admin")
+	prevBin := currentBin + ".prev"
+
+	if err := os.WriteFile(currentBin, []byte("old binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a stale .prev from a previous update (the Windows failure case).
+	if err := os.WriteFile(prevBin, []byte("even older binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	fetcher := func(url string) ([]byte, error) {
+		if strings.Contains(url, "checksums.txt") {
+			return []byte(checksumsTxt), nil
+		}
+		return archive, nil
+	}
+
+	if err := applyUpdate("v0.16.0", "linux", "amd64", currentBin, fetcher); err != nil {
+		t.Fatalf("applyUpdate with existing .prev failed: %v", err)
+	}
+
+	got, err := os.ReadFile(currentBin)
+	if err != nil {
+		t.Fatalf("read new binary: %v", err)
+	}
+	if !bytes.Equal(got, fakeBinary) {
+		t.Errorf("binary content = %q, want %q", got, fakeBinary)
 	}
 }
 

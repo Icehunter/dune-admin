@@ -6,12 +6,13 @@ import { phaseColor } from './helpers'
 import { formatUptime } from './uptime'
 import { getServerColumns, type ServerRow, type ServerSortKey, type ServersTableProps } from './types'
 
-export const ServersTable: React.FC<ServersTableProps> = ({ servers, isInitializing, emptyMessage }) => {
+export const ServersTable: React.FC<ServersTableProps> = ({ servers, isInitializing, loading, emptyMessage }) => {
   const { t } = useTranslation()
   return (
     <DataTable<ServerRow, ServerSortKey>
       aria-label={t('nav.battlegroup')}
       className="min-h-0 max-h-full"
+      loading={loading}
       columns={getServerColumns(t)}
       rows={servers}
       rowId={(s) => `${s.map}-${s.dimension}-${s.partition}`}

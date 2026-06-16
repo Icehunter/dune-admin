@@ -1,46 +1,86 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Spice level progression icon">
-  <defs>
-    <linearGradient id="sandPanel" x1="64" y1="40" x2="192" y2="220" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFE08A"/>
-      <stop offset="0.48" stop-color="#D98A28"/>
-      <stop offset="1" stop-color="#8F3F13"/>
-    </linearGradient>
-    <linearGradient id="edgeMetal" x1="48" y1="32" x2="208" y2="224" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFD06A"/>
-      <stop offset="0.42" stop-color="#C76516"/>
-      <stop offset="1" stop-color="#5B230C"/>
-    </linearGradient>
-    <linearGradient id="innerGlow" x1="96" y1="40" x2="160" y2="216" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFF1B5" stop-opacity="0.75"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="turquoise" x1="120" y1="0" x2="136" y2="34" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#6FFFE9"/>
-      <stop offset="0.6" stop-color="#12C6BE"/>
-      <stop offset="1" stop-color="#047078"/>
-    </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="4" stdDeviation="2" flood-color="#3B1607" flood-opacity="0.45"/>
-    </filter>
-
-    <symbol id="chevron" viewBox="0 0 176 58">
-      <path d="M88 4 L172 48 L156 56 L88 22 L20 56 L4 48 Z" fill="url(#edgeMetal)"/>
-      <path d="M88 11 L154 46 L143 51 L88 24 L33 51 L22 46 Z" fill="url(#sandPanel)"/>
-      <path d="M88 11 L154 46 L143 51 L88 24 L33 51 L22 46 Z" fill="url(#innerGlow)" opacity="0.55"/>
-      <path d="M88 4 L172 48 L156 56 L88 22 L20 56 L4 48 Z" fill="none" stroke="#FFB329" stroke-width="2" stroke-linejoin="round"/>
-      <path d="M88 14 L88 31" stroke="#6A2B0C" stroke-width="4" stroke-linecap="round"/>
-      <path d="M88 13 L94 21 L94 36 L88 43 L82 36 L82 21 Z" fill="#633017" opacity="0.85"/>
-      <path d="M88 17 L92 23 L92 34 L88 39 L84 34 L84 23 Z" fill="url(#turquoise)"/>
-      <path d="M43 45 L60 36 M116 36 L133 45" stroke="#7A3510" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
-      <path d="M35 48 h3 M42 48 h3 M49 48 h3 M124 48 h3 M131 48 h3 M138 48 h3" stroke="#5E270C" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>
-      <path d="M57 42 L81 30 M95 30 L119 42" stroke="#FFD77A" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
-    </symbol>
-  </defs>
-
-  <rect width="256" height="256" fill="none"/>
-  <g filter="url(#softShadow)">
-    <use href="#chevron" x="40" y="28" width="176" height="58"/>
-    <use href="#chevron" x="40" y="94" width="176" height="58"/>
-    <use href="#chevron" x="40" y="160" width="176" height="58"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Spice level progression icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="b" x1="64" x2="192" y1="40" y2="220" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#ffe08a"
+      /><stop offset=".48" stop-color="#d98a28" /><stop
+        offset="1"
+        stop-color="#8f3f13"
+      /></linearGradient><linearGradient id="a" x1="48" x2="208" y1="32" y2="224" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#ffd06a"
+      /><stop offset=".42" stop-color="#c76516" /><stop
+        offset="1"
+        stop-color="#5b230c"
+      /></linearGradient><linearGradient id="c" x1="96" x2="160" y1="40" y2="216" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#fff1b5"
+        stop-opacity=".75"
+      /><stop offset="1" stop-color="#fff" stop-opacity="0" /></linearGradient><linearGradient
+      id="d"
+      x1="120"
+      x2="136"
+      y1="0"
+      y2="34"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#6fffe9" /><stop offset=".6" stop-color="#12c6be" /><stop
+        offset="1"
+        stop-color="#047078"
+      /></linearGradient><symbol id="f" viewBox="0 0 176 58"><path
+        fill="url(#a)"
+        d="m88 4 84 44-16 8-68-34-68 34-16-8Z"
+      /><path fill="url(#b)" d="m88 11 66 35-11 5-55-27-55 27-11-5Z" /><path
+        fill="url(#c)"
+        d="m88 11 66 35-11 5-55-27-55 27-11-5Z"
+        opacity=".55"
+      /><path
+        fill="none"
+        stroke="#ffb329"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="m88 4 84 44-16 8-68-34-68 34-16-8Z"
+      /><path stroke="#6a2b0c" stroke-linecap="round" stroke-width="4" d="M88 14v17" /><path
+        fill="#633017"
+        d="m88 13 6 8v15l-6 7-6-7V21Z"
+        opacity=".85"
+      /><path fill="url(#d)" d="m88 17 4 6v11l-4 5-4-5V23Z" /><path
+        stroke="#7a3510"
+        stroke-linecap="round"
+        stroke-width="2"
+        d="m43 45 17-9m56 0 17 9"
+        opacity=".7"
+      /><path
+        stroke="#5e270c"
+        stroke-linecap="round"
+        stroke-width="2.5"
+        d="M35 48h3m4 0h3m4 0h3m72 0h3m4 0h3m4 0h3"
+        opacity=".85"
+      /><path
+        stroke="#ffd77a"
+        stroke-linecap="round"
+        stroke-width="1.5"
+        d="m57 42 24-12m14 0 24 12"
+        opacity=".8"
+      /></symbol><filter id="e" width="140%" height="150%" x="-20%" y="-20%"><feDropShadow
+        dx="0"
+        dy="4"
+        flood-color="#3b1607"
+        flood-opacity=".45"
+        stdDeviation="2"
+      /></filter></defs><path fill="none" d="M0 0h256v256H0z" /><g filter="url(#e)"><use
+      width="176"
+      height="58"
+      x="40"
+      y="28"
+      href="#f"
+    /><use width="176" height="58" x="40" y="94" href="#f" /><use
+      width="176"
+      height="58"
+      x="40"
+      y="160"
+      href="#f"
+    /></g></svg>

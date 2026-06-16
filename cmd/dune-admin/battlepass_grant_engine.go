@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 )
 
@@ -43,10 +42,10 @@ func attemptBattlepassGrant(ctx context.Context, store *battlepassStore, deps ba
 	// Intel landed: flip the claim and seal the ledger before delivering items.
 	// Items are best-effort (a failure here must not re-pay intel on retry).
 	if err := store.markGrantedForTier(accountID, tierKey); err != nil {
-		log.Printf("battlepass: intel granted but claim update failed %d/%s: %v", accountID, tierKey, err)
+		componentLog("battlepass").Error().Int64("account_id", accountID).Str("tier_key", tierKey).Err(err).Msg("intel granted but claim update failed")
 	}
 	if err := store.recordGrantLedgerSuccess(tierKey, accountID); err != nil {
-		log.Printf("battlepass: record grant success %d/%s: %v", accountID, tierKey, err)
+		componentLog("battlepass").Error().Int64("account_id", accountID).Str("tier_key", tierKey).Err(err).Msg("record grant success failed")
 	}
 	deliverBattlepassTierItems(ctx, deps, tier, pawnID)
 	return nil
@@ -56,7 +55,7 @@ func attemptBattlepassGrant(ctx context.Context, store *battlepassStore, deps ba
 // (but not surfacing) a ledger write error.
 func recordBattlepassGrantFailure(store *battlepassStore, tierKey string, accountID int64, cause error) {
 	if recErr := store.recordGrantLedgerFailure(tierKey, accountID, cause.Error()); recErr != nil {
-		log.Printf("battlepass: record grant failure %d/%s: %v", accountID, tierKey, recErr)
+		componentLog("battlepass").Error().Int64("account_id", accountID).Str("tier_key", tierKey).Err(recErr).Msg("record grant failure failed")
 	}
 }
 
@@ -68,12 +67,12 @@ func deliverBattlepassTierItems(ctx context.Context, deps battlepassGrantDeps, t
 	}
 	var items []rewardItem
 	if err := json.Unmarshal([]byte(tier.RewardItems), &items); err != nil {
-		log.Printf("battlepass: tier %s reward_items: %v", tier.TierKey, err)
+		componentLog("battlepass").Error().Str("tier_key", tier.TierKey).Err(err).Msg("parse tier reward_items failed")
 		return
 	}
 	for _, item := range items {
 		if err := deps.giveItem(ctx, pawnID, item.Template, item.Qty, item.Quality); err != nil {
-			log.Printf("battlepass: give item %q for tier %s: %v", item.Template, tier.TierKey, err)
+			componentLog("battlepass").Error().Str("template", item.Template).Str("tier_key", tier.TierKey).Err(err).Msg("give item failed")
 		}
 	}
 }

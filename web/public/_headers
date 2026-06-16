@@ -1,0 +1,28 @@
+# Vite-hashed JS/CSS bundles — immutable, 1 year
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Static art / theme SVGs — long-lived (never change filenames)
+/art/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/theme/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fonts
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Root SVGs / PNGs (logo, favicon, icons sprite) — 7-day cache
+/*.svg
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+/*.png
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+# HTML shell — always revalidate so new deploys are picked up immediately
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate

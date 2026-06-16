@@ -1,71 +1,113 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title desc">
-  <title id="title">Atreides Level Icon</title>
-  <desc id="desc">Three stacked upward chevrons in muted gold over a deep green heraldic shield with sage laurel elements, on a transparent background.</desc>
-  <defs>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fff0a8"/>
-      <stop offset="0.22" stop-color="#d8b95b"/>
-      <stop offset="0.5" stop-color="#9f8235"/>
-      <stop offset="0.76" stop-color="#e7cd72"/>
-      <stop offset="1" stop-color="#7c6126"/>
-    </linearGradient>
-    <linearGradient id="green" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#173f2c"/>
-      <stop offset="0.54" stop-color="#0f3526"/>
-      <stop offset="1" stop-color="#082319"/>
-    </linearGradient>
-    <linearGradient id="sage" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#9dad78"/>
-      <stop offset="0.55" stop-color="#66784e"/>
-      <stop offset="1" stop-color="#324b34"/>
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="145%">
-      <feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#03130d" flood-opacity="0.5"/>
-    </filter>
-    <filter id="softShadow" x="-25%" y="-25%" width="150%" height="150%">
-      <feDropShadow dx="0" dy="2" stdDeviation="1.4" flood-color="#03130d" flood-opacity="0.4"/>
-    </filter>
-  </defs>
-
-  <!-- transparent background intentionally omitted -->
-
-  <g filter="url(#shadow)">
-    <!-- sage laurel / military heraldry accents -->
-    <g opacity="0.94">
-      <path d="M64 185 C38 171 28 143 36 112 C56 134 67 155 64 185 Z" fill="url(#sage)" stroke="url(#gold)" stroke-width="3"/>
-      <path d="M50 196 C28 188 18 166 20 140 C42 155 55 174 50 196 Z" fill="url(#sage)" stroke="url(#gold)" stroke-width="2.5"/>
-      <path d="M192 185 C218 171 228 143 220 112 C200 134 189 155 192 185 Z" fill="url(#sage)" stroke="url(#gold)" stroke-width="3"/>
-      <path d="M206 196 C228 188 238 166 236 140 C214 155 201 174 206 196 Z" fill="url(#sage)" stroke="url(#gold)" stroke-width="2.5"/>
-      <path d="M64 181 C52 157 44 136 38 115" fill="none" stroke="#d5bd65" stroke-width="1.2" opacity="0.65"/>
-      <path d="M50 191 C40 173 31 157 22 143" fill="none" stroke="#d5bd65" stroke-width="1.1" opacity="0.58"/>
-      <path d="M192 181 C204 157 212 136 218 115" fill="none" stroke="#d5bd65" stroke-width="1.2" opacity="0.65"/>
-      <path d="M206 191 C216 173 225 157 234 143" fill="none" stroke="#d5bd65" stroke-width="1.1" opacity="0.58"/>
-    </g>
-
-    <!-- central shield -->
-    <path d="M128 13 L149 56 L190 51 L181 91 L205 121 L177 151 L166 205 L128 241 L90 205 L79 151 L51 121 L75 91 L66 51 L107 56 Z"
-          fill="url(#green)" stroke="url(#gold)" stroke-width="5" stroke-linejoin="round"/>
-    <path d="M128 24 L145 62 L180 59 L171 93 L194 121 L168 148 L158 199 L128 228 L98 199 L88 148 L62 121 L85 93 L76 59 L111 62 Z"
-          fill="none" stroke="#2b6746" stroke-width="2.2" opacity="0.7"/>
-    <path d="M128 17 L128 233" stroke="#dfc56b" stroke-width="1.4" opacity="0.35"/>
-
-    <!-- top and bottom Atreides-like spear ornaments -->
-    <path d="M128 27 L135 67 L128 83 L121 67 Z" fill="url(#gold)" stroke="#6f5722" stroke-width="1.5"/>
-    <path d="M128 58 C115 55 110 50 105 43 C119 44 125 50 128 60 Z" fill="url(#gold)" stroke="#6f5722" stroke-width="1.3"/>
-    <path d="M128 58 C141 55 146 50 151 43 C137 44 131 50 128 60 Z" fill="url(#gold)" stroke="#6f5722" stroke-width="1.3"/>
-    <path d="M128 229 L120 202 L128 180 L136 202 Z" fill="url(#gold)" stroke="#6f5722" stroke-width="1.4"/>
-    <path d="M128 209 C115 210 107 216 101 225 C116 226 125 220 128 209 Z" fill="url(#gold)" stroke="#6f5722" stroke-width="1.2"/>
-    <path d="M128 209 C141 210 149 216 155 225 C140 226 131 220 128 209 Z" fill="url(#gold)" stroke="#6f5722" stroke-width="1.2"/>
-
-    <!-- chevrons -->
-    <g filter="url(#softShadow)" stroke-linejoin="round">
-      <path d="M54 131 L128 57 L202 131 L182 151 L128 98 L74 151 Z" fill="url(#gold)" stroke="#5f4a1d" stroke-width="3"/>
-      <path d="M71 132 L128 75 L185 132" fill="none" stroke="#fff0a8" stroke-width="2" opacity="0.8"/>
-      <path d="M54 171 L128 97 L202 171 L182 191 L128 138 L74 191 Z" fill="url(#gold)" stroke="#5f4a1d" stroke-width="3"/>
-      <path d="M71 172 L128 115 L185 172" fill="none" stroke="#fff0a8" stroke-width="2" opacity="0.78"/>
-      <path d="M54 211 L128 137 L202 211 L182 231 L128 178 L74 231 Z" fill="url(#gold)" stroke="#5f4a1d" stroke-width="3"/>
-      <path d="M71 212 L128 155 L185 212" fill="none" stroke="#fff0a8" stroke-width="2" opacity="0.76"/>
-      <path d="M128 59 L128 228" stroke="#fff7c4" stroke-width="1" opacity="0.36"/>
-    </g>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-labelledby="title desc"
+  viewBox="0 0 256 256"
+><title>Atreides Level Icon</title><desc
+  >Three stacked upward chevrons in muted gold over a deep green heraldic shield with sage laurel elements, on a transparent background.</desc><defs
+  ><linearGradient id="c" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff0a8" /><stop
+        offset=".22"
+        stop-color="#d8b95b"
+      /><stop offset=".5" stop-color="#9f8235" /><stop offset=".76" stop-color="#e7cd72" /><stop
+        offset="1"
+        stop-color="#7c6126"
+      /></linearGradient><linearGradient id="d" x1="0" x2="0" y1="0" y2="1"><stop
+        offset="0"
+        stop-color="#173f2c"
+      /><stop offset=".54" stop-color="#0f3526" /><stop
+        offset="1"
+        stop-color="#082319"
+      /></linearGradient><linearGradient id="b" x1="0" x2="1" y1="0" y2="1"><stop
+        offset="0"
+        stop-color="#9dad78"
+      /><stop offset=".55" stop-color="#66784e" /><stop offset="1" stop-color="#324b34" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="145%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="3" flood-color="#03130d" flood-opacity=".5" stdDeviation="2.2" /></filter><filter
+      id="e"
+      width="150%"
+      height="150%"
+      x="-25%"
+      y="-25%"
+    ><feDropShadow dx="0" dy="2" flood-color="#03130d" flood-opacity=".4" stdDeviation="1.4" /></filter></defs><g
+    filter="url(#a)"
+  ><g opacity=".94"><path
+        fill="url(#b)"
+        stroke="url(#c)"
+        stroke-width="3"
+        d="M64 185c-26-14-36-42-28-73 20 22 31 43 28 73Z"
+      /><path
+        fill="url(#b)"
+        stroke="url(#c)"
+        stroke-width="2.5"
+        d="M50 196c-22-8-32-30-30-56 22 15 35 34 30 56Z"
+      /><path fill="url(#b)" stroke="url(#c)" stroke-width="3" d="M192 185c26-14 36-42 28-73-20 22-31 43-28 73Z" /><path
+        fill="url(#b)"
+        stroke="url(#c)"
+        stroke-width="2.5"
+        d="M206 196c22-8 32-30 30-56-22 15-35 34-30 56Z"
+      /><path fill="none" stroke="#d5bd65" stroke-width="1.2" d="M64 181c-12-24-20-45-26-66" opacity=".65" /><path
+        fill="none"
+        stroke="#d5bd65"
+        stroke-width="1.1"
+        d="M50 191c-10-18-19-34-28-48"
+        opacity=".58"
+      /><path fill="none" stroke="#d5bd65" stroke-width="1.2" d="M192 181c12-24 20-45 26-66" opacity=".65" /><path
+        fill="none"
+        stroke="#d5bd65"
+        stroke-width="1.1"
+        d="M206 191c10-18 19-34 28-48"
+        opacity=".58"
+      /></g><path
+      fill="url(#d)"
+      stroke="url(#c)"
+      stroke-linejoin="round"
+      stroke-width="5"
+      d="m128 13 21 43 41-5-9 40 24 30-28 30-11 54-38 36-38-36-11-54-28-30 24-30-9-40 41 5Z"
+    /><path
+      fill="none"
+      stroke="#2b6746"
+      stroke-width="2.2"
+      d="m128 24 17 38 35-3-9 34 23 28-26 27-10 51-30 29-30-29-10-51-26-27 23-28-9-34 35 3Z"
+      opacity=".7"
+    /><path stroke="#dfc56b" stroke-width="1.4" d="M128 17v216" opacity=".35" /><path
+      fill="url(#c)"
+      stroke="#6f5722"
+      stroke-width="1.5"
+      d="m128 27 7 40-7 16-7-16Z"
+    /><path fill="url(#c)" stroke="#6f5722" stroke-width="1.3" d="M128 58c-13-3-18-8-23-15 14 1 20 7 23 17Z" /><path
+      fill="url(#c)"
+      stroke="#6f5722"
+      stroke-width="1.3"
+      d="M128 58c13-3 18-8 23-15-14 1-20 7-23 17Z"
+    /><path fill="url(#c)" stroke="#6f5722" stroke-width="1.4" d="m128 229-8-27 8-22 8 22Z" /><path
+      fill="url(#c)"
+      stroke="#6f5722"
+      stroke-width="1.2"
+      d="M128 209c-13 1-21 7-27 16 15 1 24-5 27-16Z"
+    /><path fill="url(#c)" stroke="#6f5722" stroke-width="1.2" d="M128 209c13 1 21 7 27 16-15 1-24-5-27-16Z" /><g
+      stroke-linejoin="round"
+      filter="url(#e)"
+    ><path fill="url(#c)" stroke="#5f4a1d" stroke-width="3" d="m54 131 74-74 74 74-20 20-54-53-54 53Z" /><path
+        fill="none"
+        stroke="#fff0a8"
+        stroke-width="2"
+        d="m71 132 57-57 57 57"
+        opacity=".8"
+      /><path fill="url(#c)" stroke="#5f4a1d" stroke-width="3" d="m54 171 74-74 74 74-20 20-54-53-54 53Z" /><path
+        fill="none"
+        stroke="#fff0a8"
+        stroke-width="2"
+        d="m71 172 57-57 57 57"
+        opacity=".78"
+      /><path fill="url(#c)" stroke="#5f4a1d" stroke-width="3" d="m54 211 74-74 74 74-20 20-54-53-54 53Z" /><path
+        fill="none"
+        stroke="#fff0a8"
+        stroke-width="2"
+        d="m71 212 57-57 57 57"
+        opacity=".76"
+      /><path stroke="#fff7c4" d="M128 59v169" opacity=".36" /></g></g></svg>

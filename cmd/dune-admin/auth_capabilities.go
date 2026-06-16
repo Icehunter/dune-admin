@@ -14,6 +14,7 @@ type capability string
 const (
 	capPlayersRead      capability = "players:read"
 	capPlayersWrite     capability = "players:write"
+	capPlayersDelete    capability = "players:delete"
 	capWorldRead        capability = "world:read"
 	capWorldWrite       capability = "world:write"
 	capDataExport       capability = "data:export"
@@ -47,6 +48,7 @@ const (
 var allCapabilities = map[capability]string{
 	capPlayersRead:      "View players, guilds, contracts, and progression",
 	capPlayersWrite:     "Modify players: items, currency, XP, teleport, kick, guild edits",
+	capPlayersDelete:    "Permanently delete characters from the server (irreversible)",
 	capWorldRead:        "View storage, blueprints, bases, maps, and locations",
 	capWorldWrite:       "Modify storage contents, import blueprints, edit locations",
 	capDataExport:       "Export characters, blueprints, bases, and battlepass catalogs",
@@ -107,7 +109,26 @@ func handleAPI(mux *http.ServeMux, pattern string, cap capability, h http.Handle
 	}
 	routeCapabilities[pattern] = cap
 	routeCapabilitiesMu.Unlock()
+
+	// Player-write routes bust the request scope's cached player list after they
+	// run, so operator mutations reflect on the next read without per-handler
+	// invalidation. Busting after a failed write is harmless (the next read just
+	// reloads the same data).
+	if cap == capPlayersWrite || cap == capPlayersDelete {
+		h = bustPlayersCacheAfter(h)
+	}
 	mux.HandleFunc(pattern, h)
+}
+
+// bustPlayersCacheAfter wraps a handler to drop the request scope's player-list
+// cache once it returns.
+func bustPlayersCacheAfter(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		h(w, r)
+		if sc := serverFromCtx(r); sc != nil {
+			invalidatePlayersCache(sc.ID)
+		}
+	}
 }
 
 // capabilityForRequest resolves the capability required for a request by

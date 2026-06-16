@@ -35,11 +35,12 @@ func isValidK8sName(name string) bool {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/logs/pods [get]
 func handleLogPods(w http.ResponseWriter, r *http.Request) {
-	if globalControl == nil {
+	ctrl := controlFromCtx(r)
+	if ctrl == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
-	sources, err := globalControl.ListLogSources(r.Context(), globalExecutor)
+	sources, err := ctrl.ListLogSources(r.Context(), executorFromCtx(r))
 	if err != nil {
 		jsonErr(w, err, 500)
 		return
@@ -76,7 +77,8 @@ func handleLogStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if globalControl == nil {
+	ctrl := controlFromCtx(r)
+	if ctrl == nil {
 		http.Error(w, "not connected", http.StatusServiceUnavailable)
 		return
 	}
@@ -88,7 +90,7 @@ func handleLogStream(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = conn.Close() }()
 	_ = conn.SetWriteDeadline(time.Time{})
 
-	ch, cancel, err := globalControl.StreamLog(r.Context(), globalExecutor, ns, pod)
+	ch, cancel, err := ctrl.StreamLog(r.Context(), executorFromCtx(r), ns, pod)
 	if err != nil {
 		conn.WriteMessage(websocket.TextMessage, []byte("error: "+err.Error())) //nolint:errcheck
 		return
@@ -113,7 +115,7 @@ func splitLines(s string) []string {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/logs/cheats [get]
 func handleGetCheatLog(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchCheatLog()().(msgCheatLog)
+	msg, ok := cmdFetchCheatLog(dbFromCtx(r))().(msgCheatLog)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return

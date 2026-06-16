@@ -205,7 +205,7 @@
     "signIn": "Iniciar sesión",
     "switchToSidenav": "Cambiar a navegación lateral",
     "switchToTopnav": "Cambiar a navegación superior",
-    "title": "DUNE ADMIN",
+    "title": "UNE ADMIN",
     "updateAvailable": "Actualización disponible",
     "updateAvailableBody": "Hay una nueva versión disponible: v{{current}} → v{{latest}}.",
     "updated": "Actualizado a {{version}}. El servidor se está reiniciando…",
@@ -371,7 +371,9 @@
     "deleteSelected": "Eliminar seleccionados",
     "clearSelection": "Limpiar selección",
     "noItems": "Aún no hay objetos.",
-    "beta": "Beta"
+    "beta": "Beta",
+    "back": "Atrás",
+    "dismiss": "Descartar"
   },
   "database": {
     "columnColumn": "Columna",
@@ -677,7 +679,8 @@
     "groups": {
       "economy": "Economía",
       "operations": "Operaciones",
-      "playerWorld": "Mundo del jugador"
+      "playerWorld": "Mundo del jugador",
+      "dashboard": "Inicio"
     },
     "liveMap": "Mapa en vivo",
     "logs": "Registros",
@@ -689,7 +692,8 @@
     "events": "Eventos en vivo",
     "menu": "Navegación",
     "battlepass": "Pase de batalla",
-    "permissions": "Permisos"
+    "permissions": "Permisos",
+    "dashboard": "Panel"
   },
   "players": {
     "actions": {
@@ -771,7 +775,21 @@
         "wipeInventory": "Borrar inventario",
         "wipeInventoryConfirmDesc": "Esto destruirá todos los objetos en el inventario de {{player}}. Esta acción no se puede deshacer.",
         "wipeInventoryDesc": "Destruye todos los objetos en el inventario del jugador",
-        "wipeInventoryTitle": "¿Borrar inventario permanentemente?"
+        "wipeInventoryTitle": "¿Borrar inventario permanentemente?",
+        "deleteCharacter": "Eliminar personaje",
+        "deleteCharacterDesc": "Eliminar permanentemente este personaje del servidor.",
+        "deleteCharacterButton": "Eliminar personaje",
+        "deleteCharacterIrreversible": "Esto elimina permanentemente el personaje, sus actores, la propiedad de construcciones y la cuenta. No se puede deshacer.",
+        "deleteCharacterTitle": "¿Eliminar el personaje permanentemente?",
+        "deleteCharacterWarning": "Esto eliminará permanentemente a {{player}} y todos los datos asociados: actores, balizas de reaparición y la cuenta. Se conserva un registro de auditoría. Esta acción no se puede deshacer.",
+        "deleteCharacterOnlineWarning": "Este jugador parece estar conectado. Expúlsalo primero para que la eliminación se complete correctamente.",
+        "deleteCharacterReasonLabel": "Motivo (registrado en el registro de auditoría)",
+        "deleteCharacterReasonPlaceholder": "¿Por qué se elimina este personaje?",
+        "deleteCharacterConfirmLabel": "Escribe «{{phrase}}» para confirmar",
+        "deleteCharacterConfirm": "Eliminar permanentemente",
+        "deleteCharacterCountdown": "Espera {{seconds}} s…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Personaje {{player}} eliminado"
       },
       "contracts": {
         "applyContracts_one": "Aplicar contrato(s) ({{count}})",
@@ -1220,7 +1238,11 @@
       "serverIniDir": "Directorio INI del servidor",
       "serverIniDirHint": "ubicación de UserGame.ini",
       "url": "URL",
-      "urlHint": "almacenada en el navegador, no en el servidor"
+      "urlHint": "almacenada en el navegador, no en el servidor",
+      "dangerZone": "Zona de peligro",
+      "deleteServer": "Eliminar servidor",
+      "deleteServerNamed": "Eliminar el servidor \"{{name}}\"",
+      "deleteServerHint": "Elimina permanentemente este servidor y todos sus datos almacenados. Esto no se puede deshacer."
     },
     "amp": {
       "containerName": "Nombre de contenedor",
@@ -1303,7 +1325,9 @@
       "authDashboard": "Inicio de sesión del panel",
       "authDiscord": "Inicio de sesión con Discord (OAuth)",
       "authOwners": "Propietarios",
-      "discordStatus": "Embed de estado"
+      "discordStatus": "Embed de estado",
+      "marketBot": "Bot de mercado",
+      "discordGuilds": "Gremios de Discord"
     },
     "ssh": {
       "hostPort": "Host : puerto",
@@ -1318,7 +1342,8 @@
       "connection": "Conexión",
       "control": "Control",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Gremios"
     },
     "discord": {
       "hint": "Crea un bot en discord.com/developers/applications, actívalo, copia el token e invítalo a tu servidor con el scope applications.commands.",
@@ -1348,7 +1373,8 @@
       "statusChannel": "ID del canal de estado",
       "statusChannelHint": "Clic derecho en el canal → Copiar ID del canal (requiere el Modo de desarrollador).",
       "statusInterval": "Intervalo de actualización (segundos)",
-      "statusIntervalHint": "Con qué frecuencia se actualiza el embed. Mínimo 30 segundos; predeterminado 60."
+      "statusIntervalHint": "Con qué frecuencia se actualiza el embed. Mínimo 30 segundos; predeterminado 60.",
+      "perGuildMoved": "La configuración por gremio — roles de capacidad y los servidores que vigila cada gremio (con sus canales) — se gestiona en la pestaña Gremios."
     },
     "auth": {
       "hint": "Requerir inicio de sesión para el panel y la API. Recomendado siempre que dune-admin sea accesible desde fuera de tu LAN.",
@@ -1383,6 +1409,14 @@
       "cookieStrictDesc": "La cookie nunca se envía en ninguna solicitud entre sitios: la máxima protección CSRF. Incompatible con el inicio de sesión de Discord (la redirección OAuth no puede llevarla); úsalo solo con cuentas locales.",
       "cookieNone": "Ninguno",
       "cookieNoneDesc": "La cookie se envía en todas las solicitudes, incluso de origen cruzado. Solo se necesita cuando la UI y el backend están en dominios distintos (p. ej. separación CDN). Requiere HTTPS."
+    },
+    "scope": {
+      "server": "Servidor",
+      "admin": "DuneAdmin"
+    },
+    "marketBot": {
+      "enabled": "Activar el bot de mercado para este servidor",
+      "enabledHint": "Ejecuta el bot de mercado integrado en este servidor. Los ajustes se comparten entre servidores y están en la pestaña Mercado."
     }
   },
   "storage": {
@@ -1611,7 +1645,8 @@
       "config": "Configuración",
       "factionScrip": "Vales de facción",
       "rewards": "Recompensas",
-      "solari": "Solari"
+      "solari": "Solari",
+      "currencyXp": "Moneda y XP"
     },
     "signals": {
       "level": "Nivel de personaje",
@@ -1878,5 +1913,157 @@
     "placeholder": "Buscar jugadores…",
     "loadFailed": "Error al cargar jugadores: {{message}}",
     "loading": "Cargando jugadores…"
+  },
+  "servers": {
+    "removeTitle": "Eliminar servidor",
+    "removeDesc": "¿Eliminar permanentemente \"{{name}}\" y todos sus datos almacenados? Esto no se puede deshacer.",
+    "removeConfirm": "Eliminar",
+    "removeFailed": "Error al eliminar",
+    "removeWarning": "Eliminar permanentemente \"{{name}}\" y todos sus datos almacenados. Esto no se puede deshacer.",
+    "removeConfirmLabel": "Escribe {{name}} para confirmar",
+    "removeCountdown": "Espera {{seconds}}s…"
+  },
+  "setup": {
+    "discovering": "Detectando automáticamente la configuración del servidor…",
+    "connecting": "Conectando…",
+    "saveAndConnect": "Guardar y conectar",
+    "serverName": "Nombre del servidor",
+    "serverNamePlaceholder": "p. ej. Producción",
+    "nameRequired": "El nombre del servidor es obligatorio",
+    "nameInvalid": "El nombre del servidor debe contener letras o números",
+    "connectTimeout": "Aún sin conexión: revisa tu configuración e inténtalo de nuevo.",
+    "addServerTitle": "Agregar un servidor"
+  },
+  "discovery": {
+    "title": "Detectando ajustes automáticamente",
+    "subtitle": "Leyendo valores del servidor…",
+    "failed": "No se pudo detectar automáticamente: introduce los valores manualmente.",
+    "steps": {
+      "connect": "Conectando por SSH",
+      "namespace": "Detectando espacio de nombres",
+      "dbPod": "Localizando pod de base de datos",
+      "dbCreds": "Leyendo credenciales de base de datos",
+      "brokers": "Localizando pods de broker",
+      "gameProc": "Localizando proceso del servidor de juego",
+      "containers": "Inspeccionando contenedores",
+      "finalize": "Finalizando"
+    }
+  },
+  "manage": {
+    "title": "Administrar servidor",
+    "serverName": "Nombre del servidor"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "subtitle": "Servidores y configuración de un vistazo",
+    "loadFailed": "No se pudo cargar el estado del servidor: {{message}}",
+    "running": "En ejecución",
+    "offline": "Desconectado",
+    "playersOnline": "{{count}} en línea",
+    "view": "Ver",
+    "manage": "Administrar",
+    "empty": {
+      "title": "Aún no hay servidores",
+      "body": "Agrega tu primer servidor de juego para empezar. También puedes configurar auth o Discord abajo — todo opcional.",
+      "addServer": "Agregar tu primer servidor",
+      "guestBody": "Aún no se ha configurado ningún servidor."
+    },
+    "onboarding": {
+      "auth": {
+        "title": "Configurar inicio de sesión / auth",
+        "body": "Exigir inicio de sesión para acceder al panel. Opcional — déjalo desactivado en una red local de confianza.",
+        "cta": "Configurar auth"
+      },
+      "discord": {
+        "title": "Conectar un bot de Discord",
+        "body": "Envía notificaciones y asigna roles a permisos. Opcional.",
+        "cta": "Conectar Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Gremios de Discord",
+    "subtitle": "Configura los roles de capacidad de cada gremio de Discord. Un solo token de bot sirve a todos los gremios; los servidores se vinculan a un gremio desde su propia pestaña de Discord.",
+    "ariaLabel": "Gremios de Discord",
+    "add": "Añadir gremio",
+    "addTitle": "Añadir gremio",
+    "editTitle": "Editar gremio",
+    "empty": "Aún no hay gremios de Discord configurados.",
+    "on": "Activado",
+    "off": "Desactivado",
+    "loadRoles": "Cargar roles",
+    "guildId": "ID del gremio",
+    "guildIdHint": "Clic derecho en el icono del servidor → Copiar ID del servidor (requiere Modo desarrollador)",
+    "guildIdRequired": "Se requiere el ID del gremio",
+    "serverRequired": "Cada servidor vigilado debe estar seleccionado",
+    "roleCount": "{{count}} roles",
+    "addServer": "Añadir servidor",
+    "server": "Servidor",
+    "serverHint": "El servidor de juego que vigila este gremio",
+    "selectServer": "Selecciona un servidor…",
+    "noServers": "Este gremio aún no vigila ningún servidor.",
+    "watchedServersHint": "Cada servidor vigilado publica sus embeds de estado/anuncios en los canales indicados abajo.",
+    "announceChannel": "ID del canal de anuncios",
+    "announceChannelHint": "Canal para anuncios del servidor (reinicios, eventos)",
+    "statusEnabled": "Embed de estado persistente",
+    "statusEnabledHint": "Mantiene actualizado un embed de estado en vivo en un canal",
+    "statusChannel": "ID del canal de estado",
+    "statusChannelHint": "Canal donde se publica el embed de estado",
+    "statusInterval": "Intervalo de estado (segundos)",
+    "statusIntervalHint": "Con qué frecuencia se actualiza el embed. Mínimo 30 segundos; por defecto 60.",
+    "rolesHint": "Roles de Discord que otorgan cada nivel de capacidad en este gremio. Carga los roles tras introducir un ID de gremio.",
+    "rolesViewer": "Roles de visor",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Roles de economía",
+    "rolesEconomyHint": "comandos de mercado y economía",
+    "rolesAdmin": "Roles de administrador",
+    "rolesAdminHint": "comandos administrativos",
+    "saved": "Gremio guardado",
+    "saveFailed": "Error al guardar: {{message}}",
+    "loadFailed": "No se pudieron cargar los gremios: {{message}}",
+    "removed": "Gremio eliminado",
+    "removeFailed": "Error al eliminar: {{message}}",
+    "removeTitle": "Eliminar gremio",
+    "removeConfirm": "¿Eliminar el gremio {{guild}}? El bot dejará de servirlo a él y a sus servidores vigilados.",
+    "columns": {
+      "guildId": "ID del gremio",
+      "servers": "Servidores vigilados",
+      "roles": "Roles"
+    },
+    "sections": {
+      "guild": "Gremio",
+      "roles": "Roles de capacidad",
+      "watchedServers": "Servidores vigilados"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Vincula este servidor a un gremio de Discord y define sus canales de anuncios y estado. Los roles de capacidad de ese gremio se configuran en Ajustes → Gremios.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "¿Desvincular este servidor de su gremio de Discord? Se borran sus canales; el gremio y sus roles permanecen intactos.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
+      },
+      "noGuilds": "Aún no hay gremios añadidos: añade uno en Configuración → Gremios y luego selecciónalo aquí."
+    },
+    "selectGuild": "Buscar gremios…",
+    "selectChannel": "Buscar canales…",
+    "guildExists": "Ese gremio ya está configurado."
   }
 }

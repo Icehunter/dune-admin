@@ -44,8 +44,3 @@ export interface RolePickerProps {
   label: string
   hint?: string
 }
-
-export interface SettingsConfigFormProps {
-  saveRef?: React.MutableRefObject<(() => Promise<void>) | null>
-  onSavingChange?: (saving: boolean) => void
-}

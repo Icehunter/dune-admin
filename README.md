@@ -411,3 +411,7 @@ For design rationale and trade-offs, see the architecture decision records in [`
 - [0006 - Replace per-project k8s manifests with one unified manifest](docs/adr/0006-unified-k8s-manifest.md)
 - [0007 - Persistent volume for SQLite market-bot cache](docs/adr/0007-sqlite-cache-storage.md)
 - [0008 - Extend config.yaml for embedded-bot settings](docs/adr/0008-config-yaml-extensions.md)
+
+## Guides
+
+- [Discord topologies](docs/discord-topologies.md) — how game servers, Discord guilds, channels, and per-server characters map together (single guild, shared guild, guild-per-server, and mixed).

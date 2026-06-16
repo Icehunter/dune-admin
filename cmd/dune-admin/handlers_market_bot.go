@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"dune-admin/internal/marketbot"
 
 	"github.com/gorilla/websocket"
 )
@@ -77,15 +78,16 @@ func (r *remoteBotClient) wsURL(path string) string {
 // @Success 200 {object} map[string]any
 // @Router /api/v1/market-bot/status [get]
 func handleMarketBotStatus(w http.ResponseWriter, r *http.Request) {
-	if embeddedBot != nil {
-		snap := embeddedBot.StatusSnapshot()
+	bot := activeBot(r)
+	if bot != nil {
+		snap := bot.StatusSnapshot()
 		m, _ := json.Marshal(snap)
 		var out map[string]any
 		_ = json.Unmarshal(m, &out)
 		if out == nil {
 			out = map[string]any{}
 		}
-		running := embeddedBot.Enabled()
+		running := bot.Enabled()
 		out["running"] = running
 		out["enabled"] = running
 		out["mode"] = "embedded"
@@ -125,15 +127,16 @@ func handleMarketBotStatus(w http.ResponseWriter, r *http.Request) {
 		jsonOK(w, out)
 		return
 	}
-	errMsg := "market bot not configured; set market_bot_enabled: true or market_bot_remote_url"
-	if embeddedBotConfigured {
-		errMsg = "market bot configured but not running; check server logs"
+	configured := botConfiguredFor(r)
+	errMsg := "market bot not configured; enable it for this server or set market_bot_remote_url"
+	if configured {
+		errMsg = "market bot enabled but not running; check the server's DB connection and logs"
 	}
 	jsonOK(w, map[string]any{
 		"running":    false,
 		"enabled":    false,
 		"mode":       "none",
-		"configured": embeddedBotConfigured,
+		"configured": configured,
 		"error":      errMsg,
 	})
 }
@@ -157,8 +160,8 @@ func handleMarketBotStatus(w http.ResponseWriter, r *http.Request) {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/market-bot/config [put]
 func handleMarketBotConfig(w http.ResponseWriter, r *http.Request) {
-	if embeddedBot != nil {
-		handleEmbeddedBotConfig(w, r)
+	if bot := activeBot(r); bot != nil {
+		handleEmbeddedBotConfig(bot, w, r)
 		return
 	}
 	if remoteBotProxy != nil {
@@ -175,10 +178,10 @@ func handleMarketBotConfig(w http.ResponseWriter, r *http.Request) {
 	jsonErr(w, fmt.Errorf("market bot not configured"), http.StatusServiceUnavailable)
 }
 
-func handleEmbeddedBotConfig(w http.ResponseWriter, r *http.Request) {
+func handleEmbeddedBotConfig(bot *marketbot.Instance, w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		data, err := embeddedBot.ConfigJSON()
+		data, err := bot.ConfigJSON()
 		if err != nil {
 			jsonErr(w, err, 500)
 			return
@@ -191,11 +194,11 @@ func handleEmbeddedBotConfig(w http.ResponseWriter, r *http.Request) {
 			jsonErr(w, err, 400)
 			return
 		}
-		if err := embeddedBot.ApplyConfig(patch); err != nil {
+		if err := bot.ApplyConfig(patch); err != nil {
 			jsonErr(w, err, 400)
 			return
 		}
-		data, err := embeddedBot.ConfigJSON()
+		data, err := bot.ConfigJSON()
 		if err != nil {
 			jsonErr(w, err, 500)
 			return
@@ -235,17 +238,17 @@ func handleMarketBotExec(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if embeddedBot != nil {
+	if bot := activeBot(r); bot != nil {
 		output := "ok"
 		switch req.Cmd {
 		case "start":
-			embeddedBot.Resume()
+			bot.Resume()
 			output = "resumed"
 		case "stop":
-			embeddedBot.Pause()
+			bot.Pause()
 			output = "paused"
 		case "restart":
-			if err := embeddedBot.Restart(r.Context()); err != nil {
+			if err := bot.Restart(r.Context()); err != nil {
 				jsonErr(w, err, 500)
 				return
 			}
@@ -271,8 +274,8 @@ func handleMarketBotExec(w http.ResponseWriter, r *http.Request) {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/market-bot/cleanup [post]
 func handleMarketBotCleanup(w http.ResponseWriter, r *http.Request) {
-	if embeddedBot != nil {
-		orders, items, err := embeddedBot.CleanupListings(r.Context())
+	if bot := activeBot(r); bot != nil {
+		orders, items, err := bot.CleanupListings(r.Context())
 		if err != nil {
 			jsonErr(w, err, 500)
 			return
@@ -297,8 +300,8 @@ func handleMarketBotCleanup(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Success 200 {object} map[string]any
 // @Router /api/v1/market-bot/logs-ready [get]
-func handleMarketBotLogsReady(w http.ResponseWriter, _ *http.Request) {
-	if embeddedBot != nil {
+func handleMarketBotLogsReady(w http.ResponseWriter, r *http.Request) {
+	if activeBot(r) != nil {
 		jsonOK(w, map[string]any{"ready": true, "mode": "embedded"})
 		return
 	}
@@ -316,8 +319,8 @@ func handleMarketBotLogsReady(w http.ResponseWriter, _ *http.Request) {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/market-bot/logs [get]
 func handleMarketBotLogs(w http.ResponseWriter, r *http.Request) {
-	if embeddedBot != nil {
-		streamEmbeddedBotLogs(w, r)
+	if bot := activeBot(r); bot != nil {
+		streamEmbeddedBotLogs(bot, w, r)
 		return
 	}
 	if remoteBotProxy != nil {
@@ -327,7 +330,7 @@ func handleMarketBotLogs(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "market bot not configured", http.StatusServiceUnavailable)
 }
 
-func streamEmbeddedBotLogs(w http.ResponseWriter, r *http.Request) {
+func streamEmbeddedBotLogs(bot *marketbot.Instance, w http.ResponseWriter, r *http.Request) {
 	conn, err := wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -335,8 +338,8 @@ func streamEmbeddedBotLogs(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = conn.Close() }()
 	_ = conn.SetWriteDeadline(time.Time{})
 
-	ch := embeddedBot.Sink.Subscribe()
-	defer embeddedBot.Sink.Unsubscribe(ch)
+	ch := bot.Sink.Subscribe()
+	defer bot.Sink.Unsubscribe(ch)
 	for {
 		select {
 		case line, ok := <-ch:
@@ -367,7 +370,7 @@ func proxyBotLogsWS(w http.ResponseWriter, r *http.Request, proxy *remoteBotClie
 	}
 	remoteConn, _, err := websocket.DefaultDialer.DialContext(r.Context(), proxy.wsURL("/logs"), hdr)
 	if err != nil {
-		log.Printf("remote bot ws dial: %v", err)
+		componentLog("market_bot").Error().Err(err).Msg("remote bot ws dial failed")
 		_ = clientConn.WriteMessage(websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "remote unavailable"))
 		return

@@ -35,11 +35,13 @@ var bgCmdAllowlist = map[string]bool{
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/battlegroup/status [get]
 func handleBGStatus(w http.ResponseWriter, r *http.Request) {
-	if globalControl == nil {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
+	if ctrl == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
-	status, err := globalControl.GetStatus(r.Context(), globalExecutor)
+	status, err := cachedBGStatus(r, ctrl, exec)
 	if err != nil {
 		jsonErr(w, err, 500)
 		return
@@ -50,6 +52,20 @@ func handleBGStatus(w http.ResponseWriter, r *http.Request) {
 		"phase":    status.Phase,
 		"database": status.Database,
 	}, "servers": status.Servers})
+}
+
+// cachedBGStatus serves the battlegroup status from the per-server cache (keyed
+// by the request's server scope), loading live on a miss. Falls back to a direct
+// GetStatus when the request has no server context or the cache is unavailable.
+func cachedBGStatus(r *http.Request, ctrl ControlPlane, exec Executor) (*BattlegroupStatus, error) {
+	sc := serverFromCtx(r)
+	if sc == nil || globalBGStatusCache == nil {
+		return ctrl.GetStatus(r.Context(), exec)
+	}
+	return globalBGStatusCache.GetOrLoad(r.Context(), cacheKey(sc.ID, "bgstatus"), healthCacheTTL,
+		func(ctx context.Context) (*BattlegroupStatus, error) {
+			return ctrl.GetStatus(ctx, exec)
+		})
 }
 
 func safeIdx(s []string, i int) string {
@@ -69,6 +85,8 @@ func safeIdx(s []string, i int) string {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/battlegroup/exec [post]
 func handleBGExec(w http.ResponseWriter, r *http.Request) {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
 	var req struct {
 		Cmd string `json:"cmd"`
 	}
@@ -76,14 +94,14 @@ func handleBGExec(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	if globalControl == nil {
+	if ctrl == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
 	// backup is dispatched to the db-backup provider when one is active (AMP),
 	// otherwise to ExecCommand("backup") (kubectl). It is NOT in bgCmdAllowlist.
 	if req.Cmd == "backup" {
-		out, err := dispatchBackup(r.Context())
+		out, err := dispatchBackup(r.Context(), ctrl, exec)
 		if err != nil {
 			jsonErr(w, fmt.Errorf("backup: %w — output: %s", err, out), 500)
 			return
@@ -95,10 +113,15 @@ func handleBGExec(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("unknown command %q", req.Cmd), 400)
 		return
 	}
-	out, err := globalControl.ExecCommand(r.Context(), globalExecutor, req.Cmd)
+	out, err := ctrl.ExecCommand(r.Context(), exec, req.Cmd)
 	if err != nil {
 		jsonErr(w, fmt.Errorf("exec: %w — output: %s", err, out), 500)
 		return
+	}
+	// A lifecycle command (start/stop/restart) changes status — drop the cached
+	// health + battlegroup status so the UI reflects it on the next poll.
+	if sc := serverFromCtx(r); sc != nil {
+		invalidateServerHealth(sc.ID)
 	}
 	jsonOK(w, map[string]string{"output": out})
 }
@@ -110,11 +133,13 @@ func handleBGExec(w http.ResponseWriter, r *http.Request) {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/battlegroup/pods [get]
 func handleBGPods(w http.ResponseWriter, r *http.Request) {
-	if globalControl == nil {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
+	if ctrl == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
-	procs, ns, err := globalControl.ListProcesses(r.Context(), globalExecutor)
+	procs, ns, err := ctrl.ListProcesses(r.Context(), exec)
 	if err != nil {
 		jsonErr(w, err, 500)
 		return
@@ -127,17 +152,19 @@ func handleBGPods(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]any{"pods": lines, "namespace": ns})
 }
 
-func activeBackupDir() (string, error) {
+func activeBackupDir(ctrl ControlPlane, exec Executor) (string, error) {
 	if backupDir != "" {
 		return backupDir, nil
 	}
-	if loadedConfig.BackupDir != "" {
-		return loadedConfig.BackupDir, nil
+	// backup_dir is per-server (servers table) after the remodel; the global
+	// loadedConfig field is cleared, so resolve from the active server.
+	if d := activeServerCfg().BackupDir; d != "" {
+		return d, nil
 	}
 	ns := firstNonEmpty(controlNS, loadedConfig.ControlNamespace, globalPodNS)
 	bg := strings.TrimPrefix(ns, "funcom-seabass-")
-	if globalControl != nil && globalControl.Name() == "local" && ns != "" && globalExecutor != nil {
-		pod, err := discoverK8sBackupPod(ns)
+	if ctrl != nil && ctrl.Name() == "local" && ns != "" && exec != nil {
+		pod, err := discoverK8sBackupPod(ns, exec)
 		if err == nil && pod != "" && bg != "" {
 			return fmt.Sprintf("k8s://%s/%s/home/dune/artifacts/database-dumps/%s", ns, pod, bg), nil
 		}
@@ -163,19 +190,19 @@ func parseK8sBackupDir(dir string) (ns, pod, inPodDir string, ok bool) {
 	return ns, pod, inPodDir, true
 }
 
-func discoverK8sBackupPod(ns string) (string, error) {
-	if globalExecutor == nil {
+func discoverK8sBackupPod(ns string, exec Executor) (string, error) {
+	if exec == nil {
 		return "", fmt.Errorf("not connected")
 	}
-	kctl := kubectlCLI(globalExecutor)
-	out, err := globalExecutor.Exec(fmt.Sprintf(
+	kctl := kubectlCLI(exec)
+	out, err := exec.Exec(fmt.Sprintf(
 		"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep -- '-sg-' | head -1",
 		kctl, shellQuote(ns),
 	))
 	if err == nil && strings.TrimSpace(out) != "" {
 		return strings.TrimSpace(out), nil
 	}
-	out, err = globalExecutor.Exec(fmt.Sprintf(
+	out, err = exec.Exec(fmt.Sprintf(
 		"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep bgd | head -1",
 		kctl, shellQuote(ns),
 	))
@@ -185,13 +212,13 @@ func discoverK8sBackupPod(ns string) (string, error) {
 	return "", fmt.Errorf("could not discover backup pod in namespace %s", ns)
 }
 
-func ensureBackupDir(dir string) error {
-	if globalExecutor == nil {
+func ensureBackupDir(dir string, exec Executor) error {
+	if exec == nil {
 		return fmt.Errorf("not connected")
 	}
 	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
-		kctl := kubectlCLI(globalExecutor)
-		out, err := globalExecutor.Exec(fmt.Sprintf(
+		kctl := kubectlCLI(exec)
+		out, err := exec.Exec(fmt.Sprintf(
 			"%s exec -n %s %s -- mkdir -p %s 2>&1",
 			kctl, shellQuote(ns), shellQuote(pod), shellQuote(inPodDir),
 		))
@@ -200,7 +227,7 @@ func ensureBackupDir(dir string) error {
 		}
 		return nil
 	}
-	out, err := globalExecutor.Exec(fmt.Sprintf(
+	out, err := exec.Exec(fmt.Sprintf(
 		"mkdir -p %s 2>/dev/null || sudo mkdir -p %s 2>&1",
 		shellQuote(dir), shellQuote(dir),
 	))
@@ -210,14 +237,14 @@ func ensureBackupDir(dir string) error {
 	return nil
 }
 
-func listBackupDir(dir string) (string, string, error) {
-	if globalExecutor == nil {
+func listBackupDir(dir string, exec Executor) (string, string, error) {
+	if exec == nil {
 		return "", "", fmt.Errorf("not connected")
 	}
 	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
-		kctl := kubectlCLI(globalExecutor)
+		kctl := kubectlCLI(exec)
 		listCmd := fmt.Sprintf(`ls -lt %s/ 2>/dev/null | awk '/\.backup$/{print $NF"|"$5"|"$6" "$7" "$8}'`, inPodDir)
-		out, err := globalExecutor.Exec(fmt.Sprintf(
+		out, err := exec.Exec(fmt.Sprintf(
 			"%s exec -n %s %s -- sh -lc %s 2>&1",
 			kctl, shellQuote(ns), shellQuote(pod), shellQuote(listCmd),
 		))
@@ -225,7 +252,7 @@ func listBackupDir(dir string) (string, string, error) {
 			return "", "", fmt.Errorf("list backups: %w (%s)", err, strings.TrimSpace(out))
 		}
 		yamlCmd := fmt.Sprintf(`ls %s/*.backup.yaml 2>/dev/null | xargs -r -I{} basename {} .yaml`, inPodDir)
-		yamlOut, err := globalExecutor.Exec(fmt.Sprintf(
+		yamlOut, err := exec.Exec(fmt.Sprintf(
 			"%s exec -n %s %s -- sh -lc %s 2>&1",
 			kctl, shellQuote(ns), shellQuote(pod), shellQuote(yamlCmd),
 		))
@@ -234,22 +261,22 @@ func listBackupDir(dir string) (string, string, error) {
 		}
 		return out, yamlOut, nil
 	}
-	out, err := globalExecutor.Exec(fmt.Sprintf(
+	out, err := exec.Exec(fmt.Sprintf(
 		`ls -lt %s/ 2>/dev/null | awk '/\.backup$/{print $NF"|"$5"|"$6" "$7" "$8}'`,
 		dir))
 	if err != nil {
-		out, err = globalExecutor.Exec(fmt.Sprintf(
+		out, err = exec.Exec(fmt.Sprintf(
 			`sudo ls -lt %s/ 2>/dev/null | awk '/\.backup$/{print $NF"|"$5"|"$6" "$7" "$8}'`,
 			dir))
 		if err != nil {
 			return "", "", fmt.Errorf("list backups: %w (%s)", err, strings.TrimSpace(out))
 		}
 	}
-	yamlOut, err := globalExecutor.Exec(fmt.Sprintf(
+	yamlOut, err := exec.Exec(fmt.Sprintf(
 		`ls %s/*.backup.yaml 2>/dev/null | xargs -r -I{} basename {} .yaml`,
 		dir))
 	if err != nil {
-		yamlOut, err = globalExecutor.Exec(fmt.Sprintf(
+		yamlOut, err = exec.Exec(fmt.Sprintf(
 			`sudo ls %s/*.backup.yaml 2>/dev/null | xargs -r -I{} basename {} .yaml`,
 			dir))
 		if err != nil {
@@ -259,14 +286,14 @@ func listBackupDir(dir string) (string, string, error) {
 	return out, yamlOut, nil
 }
 
-func backupFileExists(dir, name string) bool {
-	if globalExecutor == nil {
+func backupFileExists(dir, name string, exec Executor) bool {
+	if exec == nil {
 		return false
 	}
 	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
-		kctl := kubectlCLI(globalExecutor)
+		kctl := kubectlCLI(exec)
 		remotePath := strings.TrimRight(inPodDir, "/") + "/" + name
-		out, _ := globalExecutor.Exec(fmt.Sprintf(
+		out, _ := exec.Exec(fmt.Sprintf(
 			"%s exec -n %s %s -- sh -lc %s 2>/dev/null",
 			kctl, shellQuote(ns), shellQuote(pod),
 			shellQuote(fmt.Sprintf("test -f %s && echo yes || echo no", shellQuote(remotePath))),
@@ -274,17 +301,17 @@ func backupFileExists(dir, name string) bool {
 		return strings.TrimSpace(out) == "yes"
 	}
 	path := strings.TrimRight(dir, "/") + "/" + name
-	out, _ := globalExecutor.Exec(fmt.Sprintf("test -f %s && echo yes || echo no", shellQuote(path)))
+	out, _ := exec.Exec(fmt.Sprintf("test -f %s && echo yes || echo no", shellQuote(path)))
 	if strings.TrimSpace(out) == "yes" {
 		return true
 	}
-	out, _ = globalExecutor.Exec(fmt.Sprintf("sudo test -f %s && echo yes || echo no", shellQuote(path)))
+	out, _ = exec.Exec(fmt.Sprintf("sudo test -f %s && echo yes || echo no", shellQuote(path)))
 	return strings.TrimSpace(out) == "yes"
 }
 
-func backupReadCmd(dir, name string) string {
+func backupReadCmd(dir, name string, exec Executor) string {
 	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
-		kctl := kubectlCLI(globalExecutor)
+		kctl := kubectlCLI(exec)
 		remotePath := strings.TrimRight(inPodDir, "/") + "/" + name
 		return fmt.Sprintf("%s exec -n %s %s -- cat %s", kctl, shellQuote(ns), shellQuote(pod), shellQuote(remotePath))
 	}
@@ -292,25 +319,25 @@ func backupReadCmd(dir, name string) string {
 	return fmt.Sprintf("cat %s 2>/dev/null || sudo cat %s", shellQuote(path), shellQuote(path))
 }
 
-func writeBackupFile(dir, name string, src io.Reader) error {
-	if globalExecutor == nil {
+func writeBackupFile(dir, name string, src io.Reader, exec Executor) error {
+	if exec == nil {
 		return fmt.Errorf("not connected")
 	}
-	if err := ensureBackupDir(dir); err != nil {
+	if err := ensureBackupDir(dir, exec); err != nil {
 		return err
 	}
 	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
 		tmp := fmt.Sprintf("/tmp/dune-admin-backup-%d.tmp", time.Now().UnixNano())
-		if err := globalExecutor.WriteFile(tmp, src); err != nil {
+		if err := exec.WriteFile(tmp, src); err != nil {
 			return fmt.Errorf("stage upload: %w", err)
 		}
 		defer func() {
-			_, _ = globalExecutor.Exec(fmt.Sprintf("rm -f %s 2>/dev/null || sudo rm -f %s 2>/dev/null || true",
+			_, _ = exec.Exec(fmt.Sprintf("rm -f %s 2>/dev/null || sudo rm -f %s 2>/dev/null || true",
 				shellQuote(tmp), shellQuote(tmp)))
 		}()
-		kctl := kubectlCLI(globalExecutor)
+		kctl := kubectlCLI(exec)
 		remotePath := strings.TrimRight(inPodDir, "/") + "/" + name
-		out, err := globalExecutor.Exec(fmt.Sprintf(
+		out, err := exec.Exec(fmt.Sprintf(
 			"%s cp %s %s/%s:%s 2>&1",
 			kctl, shellQuote(tmp), shellQuote(ns), shellQuote(pod), shellQuote(remotePath),
 		))
@@ -324,7 +351,7 @@ func writeBackupFile(dir, name string, src io.Reader) error {
 	if !strings.HasPrefix(destPath, cleanDir+string(filepath.Separator)) {
 		return fmt.Errorf("backup entry %q escapes target directory", name)
 	}
-	return globalExecutor.WriteFile(destPath, src)
+	return exec.WriteFile(destPath, src)
 }
 
 // @Summary List available database backup files in the backup directory
@@ -334,13 +361,15 @@ func writeBackupFile(dir, name string, src io.Reader) error {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/battlegroup/backup-files [get]
 func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
-	if globalExecutor == nil {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
+	if exec == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
 	// When a db-backup provider is active (AMP), the battlegroup page shares the
 	// same .dump store as the Database page (issue #169).
-	if _, ok := globalControl.(dbBackupProvider); ok {
+	if _, ok := ctrl.(dbBackupProvider); ok {
 		files, err := listDBBackupsAsBGFiles()
 		if err != nil {
 			jsonErr(w, err, 500)
@@ -349,16 +378,16 @@ func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
 		jsonOK(w, files)
 		return
 	}
-	dir, err := activeBackupDir()
+	dir, err := activeBackupDir(ctrl, exec)
 	if err != nil {
 		jsonErr(w, err, 500)
 		return
 	}
-	if err := ensureBackupDir(dir); err != nil {
+	if err := ensureBackupDir(dir, exec); err != nil {
 		jsonErr(w, err, 500)
 		return
 	}
-	out, yamlOut, err := listBackupDir(dir)
+	out, yamlOut, err := listBackupDir(dir, exec)
 	if err != nil {
 		jsonErr(w, err, 500)
 		return
@@ -399,13 +428,14 @@ func parseHostBackupListing(out, yamlOut string) []backupFile {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/battlegroup/backup-files/download [get]
 func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
-	if globalExecutor == nil {
+	exec := executorFromCtx(r)
+	if exec == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
 	// Under a db-backup provider (AMP) the store holds .dump files served from
 	// the host dir — reuse the Database-page download path (issue #169).
-	if _, ok := globalControl.(dbBackupProvider); ok {
+	if _, ok := controlFromCtx(r).(dbBackupProvider); ok {
 		handleDBBackupDownload(w, r)
 		return
 	}
@@ -415,7 +445,7 @@ func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	baseName := strings.TrimSuffix(filename, ".backup")
-	dir, err := activeBackupDir()
+	dir, err := activeBackupDir(controlFromCtx(r), exec)
 	if err != nil {
 		jsonErr(w, err, 500)
 		return
@@ -427,14 +457,14 @@ func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 	zw := zip.NewWriter(w)
 	for _, ext := range []string{".backup", ".backup.yaml"} {
 		name := baseName + ext
-		if !backupFileExists(dir, name) {
+		if !backupFileExists(dir, name, exec) {
 			continue
 		}
 		fw, err := zw.Create(name)
 		if err != nil {
 			continue
 		}
-		if err := globalExecutor.PipeToWriter(backupReadCmd(dir, name), fw); err != nil {
+		if err := exec.PipeToWriter(backupReadCmd(dir, name, exec), fw); err != nil {
 			fmt.Printf("zip entry %s: %v\n", name, err)
 		}
 	}
@@ -453,7 +483,9 @@ func handleBGBackupDownload(w http.ResponseWriter, r *http.Request) {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/battlegroup/restore [post]
 func handleBGRestore(w http.ResponseWriter, r *http.Request) {
-	if globalControl == nil || globalExecutor == nil {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
+	if ctrl == nil || exec == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
@@ -464,7 +496,7 @@ func handleBGRestore(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	out, err := dispatchRestore(r.Context(), req.File)
+	out, err := dispatchRestore(r.Context(), ctrl, exec, req.File)
 	if err != nil {
 		jsonErr(w, fmt.Errorf("restore failed: %w\n%s", err, out), 500)
 		return
@@ -483,7 +515,7 @@ func allowedBackupArchiveEntry(entryName string) (string, bool) {
 	return "", false
 }
 
-func writeBackupArchiveEntries(dir string, zr *zip.Reader) (string, error) {
+func writeBackupArchiveEntries(dir string, zr *zip.Reader, exec Executor) (string, error) {
 	var backupName string
 	for _, zf := range zr.File {
 		name, ok := allowedBackupArchiveEntry(zf.Name)
@@ -494,7 +526,7 @@ func writeBackupArchiveEntries(dir string, zr *zip.Reader) (string, error) {
 		if err != nil {
 			continue
 		}
-		if err := writeBackupFile(dir, name, rc); err != nil {
+		if err := writeBackupFile(dir, name, rc, exec); err != nil {
 			_ = rc.Close()
 			return "", fmt.Errorf("upload failed for %s: %w", name, err)
 		}
@@ -508,7 +540,7 @@ func writeBackupArchiveEntries(dir string, zr *zip.Reader) (string, error) {
 	return backupName, nil
 }
 
-func uploadBackupArchive(dir string, file multipart.File) (string, int, error) {
+func uploadBackupArchive(dir string, file multipart.File, exec Executor) (string, int, error) {
 	data, err := io.ReadAll(file)
 	if err != nil {
 		return "", 400, fmt.Errorf("read zip: %w", err)
@@ -517,7 +549,7 @@ func uploadBackupArchive(dir string, file multipart.File) (string, int, error) {
 	if err != nil {
 		return "", 400, fmt.Errorf("invalid zip: %w", err)
 	}
-	backupName, err := writeBackupArchiveEntries(dir, zr)
+	backupName, err := writeBackupArchiveEntries(dir, zr, exec)
 	if err != nil {
 		return "", 500, err
 	}
@@ -541,7 +573,8 @@ func isDirectBackupUpload(filename string) bool {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/battlegroup/backup-files/upload [post]
 func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
-	if globalExecutor == nil {
+	exec := executorFromCtx(r)
+	if exec == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
@@ -558,18 +591,18 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = file.Close() }()
 
 	filename := header.Filename
-	dir, err := activeBackupDir()
+	dir, err := activeBackupDir(controlFromCtx(r), exec)
 	if err != nil {
 		jsonErr(w, err, 500)
 		return
 	}
-	if err := ensureBackupDir(dir); err != nil {
+	if err := ensureBackupDir(dir, exec); err != nil {
 		jsonErr(w, err, 500)
 		return
 	}
 
 	if strings.HasSuffix(filename, ".zip") {
-		backupName, status, err := uploadBackupArchive(dir, file)
+		backupName, status, err := uploadBackupArchive(dir, file, exec)
 		if err != nil {
 			jsonErr(w, err, status)
 			return
@@ -579,7 +612,7 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if isDirectBackupUpload(filename) {
-		if err := writeBackupFile(dir, filename, file); err != nil {
+		if err := writeBackupFile(dir, filename, file, exec); err != nil {
 			jsonErr(w, fmt.Errorf("upload failed: %w", err), 500)
 			return
 		}
@@ -593,25 +626,25 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 // restoreViaControl runs a restore command appropriate for the active control plane.
 // Called by handleBGRestore — kept separate so the restore logic per-provider
 // can be extended without touching the HTTP handler.
-func restoreViaControl(ctx context.Context, filename string) (string, error) {
+func restoreViaControl(ctx context.Context, ctrl ControlPlane, exec Executor, filename string) (string, error) {
 	// kubectl uses the battlegroup.sh import script.
 	// TODO: NEVER run battlegroup.sh with sudo — see ExecCommand in control_kubectl.go.
-	if globalControl != nil && globalControl.Name() == "kubectl" {
-		return globalExecutor.Exec(fmt.Sprintf(
+	if ctrl != nil && ctrl.Name() == "kubectl" {
+		return exec.Exec(fmt.Sprintf(
 			`echo yes | ~/.dune/download/scripts/battlegroup.sh import %s 2>&1`,
 			shellQuote(filename)))
 	}
 	// docker / local: pg_restore from the backup directory.
-	dir, err := activeBackupDir()
+	dir, err := activeBackupDir(ctrl, exec)
 	if err != nil {
 		return "", err
 	}
 	path := strings.TrimRight(dir, "/") + "/" + filename
 	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
-		kctl := kubectlCLI(globalExecutor)
+		kctl := kubectlCLI(exec)
 		tmp := fmt.Sprintf("/tmp/dune-admin-restore-%d.backup", time.Now().UnixNano())
 		remotePath := strings.TrimRight(inPodDir, "/") + "/" + filename
-		copyOut, copyErr := globalExecutor.Exec(fmt.Sprintf(
+		copyOut, copyErr := exec.Exec(fmt.Sprintf(
 			"%s cp %s/%s:%s %s 2>&1",
 			kctl, shellQuote(ns), shellQuote(pod), shellQuote(remotePath), shellQuote(tmp),
 		))
@@ -619,12 +652,12 @@ func restoreViaControl(ctx context.Context, filename string) (string, error) {
 			return copyOut, fmt.Errorf("copy backup to local restore path: %w", copyErr)
 		}
 		defer func() {
-			_, _ = globalExecutor.Exec(fmt.Sprintf("rm -f %s 2>/dev/null || sudo rm -f %s 2>/dev/null || true",
+			_, _ = exec.Exec(fmt.Sprintf("rm -f %s 2>/dev/null || sudo rm -f %s 2>/dev/null || true",
 				shellQuote(tmp), shellQuote(tmp)))
 		}()
 		path = tmp
 	}
-	return globalExecutor.Exec(fmt.Sprintf(
+	return exec.Exec(fmt.Sprintf(
 		`PGPASSWORD=%s pg_restore --no-password --clean --if-exists -h %s -p %d -U %s -d %s %s 2>&1`,
 		shellQuote(dbPass), dbHost, dbPort, dbUser, dbName, shellQuote(path)))
 }
@@ -635,18 +668,18 @@ func restoreViaControl(ctx context.Context, filename string) (string, error) {
 // one .dump store (issue #169). Otherwise it falls back to ExecCommand("backup")
 // (kubectl runs battlegroup.sh backup). The returned string is human-facing
 // output forwarded to the command-output modal.
-func dispatchBackup(ctx context.Context) (string, error) {
-	if globalControl == nil {
+func dispatchBackup(ctx context.Context, ctrl ControlPlane, exec Executor) (string, error) {
+	if ctrl == nil {
 		return "", fmt.Errorf("not connected")
 	}
-	if prov, ok := globalControl.(dbBackupProvider); ok {
-		name, size, err := createDBBackup(prov)
+	if prov, ok := ctrl.(dbBackupProvider); ok {
+		name, size, err := createDBBackup(prov, exec)
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("database backup created: %s (%d bytes)", name, size), nil
 	}
-	return globalControl.ExecCommand(ctx, globalExecutor, "backup")
+	return ctrl.ExecCommand(ctx, exec, "backup")
 }
 
 // dispatchRestore restores a named backup against the active control plane.
@@ -654,20 +687,20 @@ func dispatchBackup(ctx context.Context) (string, error) {
 // via pg_restore (issue #169); otherwise it is a .backup restored via
 // restoreViaControl (kubectl battlegroup.sh import / docker / local pg_restore).
 // Filename validation branches on the active store's extension.
-func dispatchRestore(ctx context.Context, filename string) (string, error) {
-	if globalControl == nil || globalExecutor == nil {
+func dispatchRestore(ctx context.Context, ctrl ControlPlane, exec Executor, filename string) (string, error) {
+	if ctrl == nil || exec == nil {
 		return "", fmt.Errorf("not connected")
 	}
-	if prov, ok := globalControl.(dbBackupProvider); ok {
+	if prov, ok := ctrl.(dbBackupProvider); ok {
 		if err := validateBackupName(filename); err != nil {
 			return "", err
 		}
-		return restoreDBBackupFile(prov, filename)
+		return restoreDBBackupFile(prov, filename, exec)
 	}
 	if filename == "" || strings.ContainsAny(filename, `/\`) || !strings.HasSuffix(filename, ".backup") {
 		return "", fmt.Errorf("invalid filename")
 	}
-	return restoreViaControl(ctx, filename)
+	return restoreViaControl(ctx, ctrl, exec, filename)
 }
 
 // listDBBackupsAsBGFiles adapts the Database-page .dump listing into the

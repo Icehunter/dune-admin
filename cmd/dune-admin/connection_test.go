@@ -73,6 +73,61 @@ func TestConnectAll_ControlPlaneSurvivesDBFailure(t *testing.T) {
 	}
 }
 
+func TestResolveDBPort(t *testing.T) {
+	tests := []struct {
+		input int
+		want  int
+	}{
+		{0, 15432},
+		{5432, 5432},
+		{15432, 15432},
+		{1234, 1234},
+	}
+	for _, tt := range tests {
+		got := resolveDBPort(tt.input)
+		if got != tt.want {
+			t.Errorf("resolveDBPort(%d) = %d, want %d", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestBuildCurrentConfig_MasksOnlyNonEmptyPassword(t *testing.T) {
+	origPass := dbPass
+	t.Cleanup(func() { dbPass = origPass })
+
+	dbPass = ""
+	cfg := buildCurrentConfig()
+	if cfg.DBPass != "" {
+		t.Errorf("buildCurrentConfig with empty dbPass: DBPass = %q, want %q", cfg.DBPass, "")
+	}
+
+	dbPass = "secret"
+	cfg = buildCurrentConfig()
+	if cfg.DBPass != masked {
+		t.Errorf("buildCurrentConfig with non-empty dbPass: DBPass = %q, want %q", cfg.DBPass, masked)
+	}
+}
+
+func TestResolveDBHost(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"", "127.0.0.1"},
+		{"127.0.0.1", "127.0.0.1"},
+		{"192.168.0.59", "192.168.0.59"},
+		{"db.example.com", "db.example.com"},
+	}
+	for _, tt := range tests {
+		t.Run("input_"+tt.input, func(t *testing.T) {
+			got := resolveDBHost(tt.input)
+			if got != tt.want {
+				t.Errorf("resolveDBHost(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestResolveControl(t *testing.T) {
 	origControlPlane := controlPlane
 	origSSHHost := sshHost

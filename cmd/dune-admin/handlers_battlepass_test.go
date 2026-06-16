@@ -920,3 +920,13 @@ func TestHandleGetBattlepassPending_tierFormat(t *testing.T) {
 		}
 	}
 }
+
+// TestProductionBattlepassGrantDeps_NilPoolErrors verifies that when a nil pool
+// is passed, resolveGrantTarget returns an error rather than panicking.
+func TestProductionBattlepassGrantDeps_NilPoolErrors(t *testing.T) {
+	deps := productionBattlepassGrantDeps(nil)
+	_, err := deps.resolveGrantTarget(context.Background(), 1)
+	if err == nil {
+		t.Error("expected error when pool is nil")
+	}
+}

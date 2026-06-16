@@ -1,118 +1,117 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Fremen inspired tribal faction crest">
-  <defs>
-    <linearGradient id="navy" x1="64" y1="20" x2="192" y2="236" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#071629"/>
-      <stop offset="0.55" stop-color="#020815"/>
-      <stop offset="1" stop-color="#0a2a50"/>
-    </linearGradient>
-    <linearGradient id="blue" x1="80" y1="30" x2="180" y2="222" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#5ffcff"/>
-      <stop offset="0.5" stop-color="#22c8ff"/>
-      <stop offset="1" stop-color="#126dff"/>
-    </linearGradient>
-    <linearGradient id="darkBlue" x1="42" y1="80" x2="214" y2="212" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#061325"/>
-      <stop offset="1" stop-color="#0b3567"/>
-    </linearGradient>
-    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="1.35" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-
-  <!-- transparent background intentionally omitted -->
-
-  <!-- Outer tribal crest silhouette -->
-  <path fill="url(#navy)" d="M128 14
-    C105 25 94 45 90 72
-    C85 88 72 106 52 118
-    C64 125 75 127 88 121
-    C72 139 48 150 28 150
-    C39 170 54 187 74 199
-    C91 210 105 221 128 242
-    C151 221 165 210 182 199
-    C202 187 217 170 228 150
-    C208 150 184 139 168 121
-    C181 127 192 125 204 118
-    C184 106 171 88 166 72
-    C162 45 151 25 128 14Z"/>
-
-  <!-- Hood / central veil -->
-  <path fill="#020814" d="M128 20
-    C109 31 100 50 99 75
-    C98 92 107 114 119 142
-    L128 166 L137 142
-    C149 114 158 92 157 75
-    C156 50 147 31 128 20Z"/>
-
-  <!-- Side cloak facets -->
-  <path fill="url(#darkBlue)" d="M91 81 C77 103 65 123 51 135 C70 135 91 125 107 111 C101 100 96 90 91 81Z"/>
-  <path fill="url(#darkBlue)" d="M165 81 C179 103 191 123 205 135 C186 135 165 125 149 111 C155 100 160 90 165 81Z"/>
-  <path fill="#031124" d="M68 151 C52 157 43 166 35 181 C55 188 73 187 91 174 C82 168 75 160 68 151Z"/>
-  <path fill="#031124" d="M188 151 C204 157 213 166 221 181 C201 188 183 187 165 174 C174 168 181 160 188 151Z"/>
-
-  <!-- Electric crescent wings -->
-  <path fill="url(#blue)" d="M42 89 C30 113 28 142 38 164 C39 135 49 112 61 96 C55 98 49 96 42 89Z" opacity="0.95"/>
-  <path fill="url(#blue)" d="M214 89 C226 113 228 142 218 164 C217 135 207 112 195 96 C201 98 207 96 214 89Z" opacity="0.95"/>
-  <path fill="#071428" d="M42 127 C33 147 34 170 45 190 C54 176 62 165 76 157 C62 151 51 141 42 127Z"/>
-  <path fill="#071428" d="M214 127 C223 147 222 170 211 190 C202 176 194 165 180 157 C194 151 205 141 214 127Z"/>
-
-  <!-- White/negative sacred cuts approximated with transparent strokes -->
-  <path d="M86 93 C100 122 113 144 121 172" fill="none" stroke="#e9fbff" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
-  <path d="M170 93 C156 122 143 144 135 172" fill="none" stroke="#e9fbff" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
-  <path d="M50 132 C67 144 84 146 103 134" fill="none" stroke="#e9fbff" stroke-width="5" stroke-linecap="round" opacity="0.9"/>
-  <path d="M206 132 C189 144 172 146 153 134" fill="none" stroke="#e9fbff" stroke-width="5" stroke-linecap="round" opacity="0.9"/>
-
-  <!-- Central vertical water-discipline axis -->
-  <g filter="url(#softGlow)" fill="none" stroke="url(#blue)" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M128 18 V44" stroke-width="2.5"/>
-    <path d="M128 73 V215" stroke-width="3"/>
-    <circle cx="128" cy="28" r="5" fill="#55f7ff" stroke="none"/>
-    <circle cx="128" cy="60" r="2.5" fill="#55f7ff" stroke="none"/>
-    <circle cx="128" cy="107" r="5" fill="#22d6ff" stroke="none"/>
-    <circle cx="128" cy="150" r="6" fill="#23caff" stroke="none"/>
-    <circle cx="128" cy="150" r="11" stroke-width="4"/>
-    <circle cx="128" cy="218" r="6" fill="#55f7ff" stroke="none"/>
-  </g>
-
-  <!-- Upper sacred water mark -->
-  <g filter="url(#softGlow)">
-    <path d="M108 67 A20 20 0 1 1 148 67" fill="none" stroke="url(#blue)" stroke-width="6" stroke-linecap="round"/>
-    <path d="M97 67 A31 31 0 0 1 111 42" fill="none" stroke="#64fcff" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
-    <path d="M159 67 A31 31 0 0 0 145 42" fill="none" stroke="#64fcff" stroke-width="4" stroke-linecap="round" opacity="0.9"/>
-    <path fill="url(#blue)" d="M128 48 C137 59 142 67 142 75 C142 84 136 91 128 91 C120 91 114 84 114 75 C114 67 119 59 128 48Z"/>
-  </g>
-
-  <!-- Stealth eyes -->
-  <g fill="url(#blue)" filter="url(#softGlow)">
-    <path d="M92 88 C102 90 111 95 117 102 C105 101 97 98 88 92Z"/>
-    <path d="M164 88 C154 90 145 95 139 102 C151 101 159 98 168 92Z"/>
-  </g>
-
-  <!-- Lower water reservoir emblem -->
-  <g filter="url(#softGlow)">
-    <path d="M103 181 A25 25 0 0 0 153 181" fill="none" stroke="url(#blue)" stroke-width="8" stroke-linecap="round"/>
-    <path d="M104 177 H152 M109 186 H147 M115 194 H141 M121 202 H135" stroke="url(#blue)" stroke-width="3" stroke-linecap="round"/>
-  </g>
-
-  <!-- Cyan inner contour lines -->
-  <g fill="none" stroke="url(#blue)" stroke-width="2.4" stroke-linecap="round" opacity="0.9">
-    <path d="M101 111 C88 126 80 145 77 169"/>
-    <path d="M155 111 C168 126 176 145 179 169"/>
-    <path d="M62 171 C77 176 88 173 99 163"/>
-    <path d="M194 171 C179 176 168 173 157 163"/>
-    <path d="M48 160 C61 166 72 166 84 161"/>
-    <path d="M208 160 C195 166 184 166 172 161"/>
-  </g>
-
-  <!-- Side tally marks -->
-  <g stroke="#25cfff" stroke-width="3" stroke-linecap="round" opacity="0.9">
-    <path d="M73 137 L70 146"/>
-    <path d="M84 139 L82 150"/>
-    <path d="M183 137 L186 146"/>
-    <path d="M172 139 L174 150"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Fremen inspired tribal faction crest"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="a" x1="64" x2="192" y1="20" y2="236" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#071629"
+      /><stop offset=".55" stop-color="#020815" /><stop
+        offset="1"
+        stop-color="#0a2a50"
+      /></linearGradient><linearGradient id="c" x1="80" x2="180" y1="30" y2="222" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#5ffcff"
+      /><stop offset=".5" stop-color="#22c8ff" /><stop
+        offset="1"
+        stop-color="#126dff"
+      /></linearGradient><linearGradient id="b" x1="42" x2="214" y1="80" y2="212" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#061325"
+      /><stop offset="1" stop-color="#0b3567" /></linearGradient><filter
+      id="d"
+      width="160%"
+      height="160%"
+      x="-30%"
+      y="-30%"
+    ><feGaussianBlur result="blur" stdDeviation="1.35" /><feMerge><feMergeNode in="blur" /><feMergeNode
+          in="SourceGraphic"
+        /></feMerge></filter></defs><path
+    fill="url(#a)"
+    d="M128 14c-23 11-34 31-38 58-5 16-18 34-38 46 12 7 23 9 36 3-16 18-40 29-60 29 11 20 26 37 46 49 17 11 31 22 54 43 23-21 37-32 54-43 20-12 35-29 46-49-20 0-44-11-60-29 13 6 24 4 36-3-20-12-33-30-38-46-4-27-15-47-38-58"
+  /><path
+    fill="#020814"
+    d="M128 20c-19 11-28 30-29 55-1 17 8 39 20 67l9 24 9-24c12-28 21-50 20-67-1-25-10-44-29-55"
+  /><path fill="url(#b)" d="M91 81c-14 22-26 42-40 54 19 0 40-10 56-24-6-11-11-21-16-30" /><path
+    fill="url(#b)"
+    d="M165 81c14 22 26 42 40 54-19 0-40-10-56-24 6-11 11-21 16-30"
+  /><path
+    fill="#031124"
+    d="M68 151c-16 6-25 15-33 30 20 7 38 6 56-7-9-6-16-14-23-23m120 0c16 6 25 15 33 30-20 7-38 6-56-7 9-6 16-14 23-23"
+  /><path fill="url(#c)" d="M42 89c-12 24-14 53-4 75 1-29 11-52 23-68-6 2-12 0-19-7" opacity=".95" /><path
+    fill="url(#c)"
+    d="M214 89c12 24 14 53 4 75-1-29-11-52-23-68 6 2 12 0 19-7"
+    opacity=".95"
+  /><path
+    fill="#071428"
+    d="M42 127c-9 20-8 43 3 63 9-14 17-25 31-33-14-6-25-16-34-30m172 0c9 20 8 43-3 63-9-14-17-25-31-33 14-6 25-16 34-30"
+  /><path
+    fill="none"
+    stroke="#e9fbff"
+    stroke-linecap="round"
+    stroke-width="4"
+    d="M86 93c14 29 27 51 35 79m49-79c-14 29-27 51-35 79"
+    opacity=".9"
+  /><path
+    fill="none"
+    stroke="#e9fbff"
+    stroke-linecap="round"
+    stroke-width="5"
+    d="M50 132c17 12 34 14 53 2m103-2c-17 12-34 14-53 2"
+    opacity=".9"
+  /><g fill="none" stroke="url(#c)" stroke-linecap="round" stroke-linejoin="round" filter="url(#d)"><path
+      stroke-width="2.5"
+      d="M128 18v26"
+    /><path stroke-width="3" d="M128 73v142" /><circle cx="128" cy="28" r="5" fill="#55f7ff" stroke="none" /><circle
+      cx="128"
+      cy="60"
+      r="2.5"
+      fill="#55f7ff"
+      stroke="none"
+    /><circle cx="128" cy="107" r="5" fill="#22d6ff" stroke="none" /><circle
+      cx="128"
+      cy="150"
+      r="6"
+      fill="#23caff"
+      stroke="none"
+    /><circle cx="128" cy="150" r="11" stroke-width="4" /><circle
+      cx="128"
+      cy="218"
+      r="6"
+      fill="#55f7ff"
+      stroke="none"
+    /></g><g filter="url(#d)"><path
+      fill="none"
+      stroke="url(#c)"
+      stroke-linecap="round"
+      stroke-width="6"
+      d="M108 67a20 20 0 1 1 40 0"
+    /><path
+      fill="none"
+      stroke="#64fcff"
+      stroke-linecap="round"
+      stroke-width="4"
+      d="M97 67a31 31 0 0 1 14-25m48 25a31 31 0 0 0-14-25"
+      opacity=".9"
+    /><path fill="url(#c)" d="M128 48c9 11 14 19 14 27 0 9-6 16-14 16s-14-7-14-16c0-8 5-16 14-27" /></g><g
+    fill="url(#c)"
+    filter="url(#d)"
+  ><path d="M92 88c10 2 19 7 25 14-12-1-20-4-29-10Z" /><path d="M164 88c-10 2-19 7-25 14 12-1 20-4 29-10Z" /></g><g
+    stroke="url(#c)"
+    stroke-linecap="round"
+    filter="url(#d)"
+  ><path fill="none" stroke-width="8" d="M103 181a25 25 0 0 0 50 0" /><path
+      stroke-width="3"
+      d="M104 177h48m-43 9h38m-32 8h26m-20 8h14"
+    /></g><g fill="none" stroke="url(#c)" stroke-linecap="round" stroke-width="2.4" opacity=".9"><path
+      d="M101 111c-13 15-21 34-24 58"
+    /><path d="M155 111c13 15 21 34 24 58" /><path d="M62 171c15 5 26 2 37-8" /><path
+      d="M194 171c-15 5-26 2-37-8"
+    /><path d="M48 160c13 6 24 6 36 1" /><path d="M208 160c-13 6-24 6-36 1" /></g><path
+    stroke="#25cfff"
+    stroke-linecap="round"
+    stroke-width="3"
+    d="m73 137-3 9m14-7-2 11m101-13 3 9m-14-7 2 11"
+    opacity=".9"
+  /></svg>

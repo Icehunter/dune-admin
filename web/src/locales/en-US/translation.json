@@ -207,12 +207,25 @@
     "signIn": "Sign In",
     "switchToSidenav": "Switch to side navigation",
     "switchToTopnav": "Switch to top navigation",
-    "title": "DUNE ADMIN",
+    "title": "UNE ADMIN",
     "updateAvailable": "Update available",
     "updateAvailableBody": "A new version is available: v{{current}} → v{{latest}}.",
     "updated": "Updated to {{version}}. Server is restarting…",
     "updateFailed": "Update failed: {{message}}",
     "updateNow": "Update now",
+    "updateProgress": {
+      "title": "Applying Update",
+      "dismiss": "Dismiss",
+      "downloading": "Downloading update…",
+      "verifying": "Verifying checksum…",
+      "extracting": "Extracting binary…",
+      "restarting": "Restarting server…",
+      "waiting": "Waiting for server to come back…",
+      "waitingLong": "Server is taking longer than expected — still waiting…",
+      "ready": "Update complete! Reloading…",
+      "error": "Update failed",
+      "timeout": "Server did not come back within the expected time. It may still be restarting — the page will reload when it's ready."
+    },
     "viewReleaseNotes": "View release notes",
     "backendUnreachable": {
       "body": "The web app loaded, but it couldn't connect to the dune-admin backend. Make sure the dune-admin executable is running and reachable from this browser.",
@@ -371,7 +384,9 @@
     "deleteSelected": "Delete selected",
     "clearSelection": "Clear selection",
     "noItems": "No items yet.",
-    "beta": "Beta"
+    "beta": "Beta",
+    "back": "Back",
+    "dismiss": "Dismiss"
   },
   "database": {
     "columnColumn": "Column",
@@ -672,7 +687,8 @@
     "groups": {
       "economy": "Economy",
       "operations": "Operations",
-      "playerWorld": "Player World"
+      "playerWorld": "Player World",
+      "dashboard": "Home"
     },
     "liveMap": "Live Map",
     "logs": "Logs",
@@ -684,7 +700,8 @@
     "events": "Live Events",
     "battlepass": "Battlepass",
     "menu": "Navigation",
-    "permissions": "Permissions"
+    "permissions": "Permissions",
+    "dashboard": "Dashboard"
   },
   "players": {
     "actions": {
@@ -766,7 +783,21 @@
         "wipeInventory": "Wipe Inventory",
         "wipeInventoryConfirmDesc": "This will destroy all items in {{player}}'s inventory. This action cannot be undone.",
         "wipeInventoryDesc": "Destroys all items in the player's inventory",
-        "wipeInventoryTitle": "Wipe inventory permanently?"
+        "wipeInventoryTitle": "Wipe inventory permanently?",
+        "deleteCharacter": "Delete Character",
+        "deleteCharacterDesc": "Permanently remove this character from the server.",
+        "deleteCharacterButton": "Delete Character",
+        "deleteCharacterIrreversible": "This permanently deletes the character, their actors, buildings ownership, and account. This cannot be undone.",
+        "deleteCharacterTitle": "Delete character permanently?",
+        "deleteCharacterWarning": "This will permanently delete {{player}} and all associated data: actors, respawn beacons, and account. An audit record is kept. This action cannot be undone.",
+        "deleteCharacterOnlineWarning": "This player appears to be online. Kick them first so the deletion settles cleanly.",
+        "deleteCharacterReasonLabel": "Reason (recorded in the audit log)",
+        "deleteCharacterReasonPlaceholder": "Why is this character being deleted?",
+        "deleteCharacterConfirmLabel": "Type \"{{phrase}}\" to confirm",
+        "deleteCharacterConfirm": "Delete Permanently",
+        "deleteCharacterCountdown": "Wait {{seconds}}s…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Character {{player}} deleted"
       },
       "contracts": {
         "applyContracts_one": "Apply Contract(s) ({{count}})",
@@ -1191,6 +1222,10 @@
       "applyReload": "Apply & Reload",
       "backendUrlHint": "Only needed when the UI is served from a different host (SSH tunnel, CDN). Leave blank for single-binary setup.",
       "backupDir": "Backup directory",
+      "dangerZone": "Danger Zone",
+      "deleteServer": "Delete server",
+      "deleteServerNamed": "Delete server \"{{name}}\"",
+      "deleteServerHint": "Permanently remove this server and all of its stored data. This cannot be undone.",
       "defaultIniDir": "Default INI directory",
       "defaultIniDirHint": "DefaultGame.ini base layer",
       "directorUrl": "Director URL",
@@ -1285,7 +1320,9 @@
       "authDashboard": "Dashboard login",
       "authDiscord": "Discord login (OAuth)",
       "authOwners": "Owners",
-      "discordStatus": "Status Embed"
+      "discordStatus": "Status Embed",
+      "marketBot": "Market Bot",
+      "discordGuilds": "Discord Guilds"
     },
     "ssh": {
       "hostPort": "Host : port",
@@ -1300,7 +1337,14 @@
       "connection": "Connection",
       "control": "Control",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "ssh": "SSH",
+      "server": "Server & Broker",
+      "guilds": "Guilds"
+    },
+    "scope": {
+      "server": "Server",
+      "admin": "DuneAdmin"
     },
     "discord": {
       "hint": "Follow these steps to create and connect your Discord bot:",
@@ -1330,7 +1374,8 @@
       "statusChannel": "Status channel ID",
       "statusChannelHint": "Right-click the channel → Copy Channel ID (requires Developer Mode).",
       "statusInterval": "Update interval (seconds)",
-      "statusIntervalHint": "How often the embed refreshes. Minimum 30 seconds; defaults to 60."
+      "statusIntervalHint": "How often the embed refreshes. Minimum 30 seconds; defaults to 60.",
+      "perGuildMoved": "Per-guild config — capability roles and the servers each guild watches (with their channels) — is managed in the Guilds tab."
     },
     "auth": {
       "hint": "Require login for the dashboard and API. Recommended whenever dune-admin is reachable from outside your LAN.",
@@ -1365,6 +1410,10 @@
       "cookieStrictDesc": "The cookie is never sent on any cross-site request — the strongest CSRF protection. Incompatible with Discord login (the OAuth redirect can't carry it); use only with local username/password accounts.",
       "cookieNone": "None",
       "cookieNoneDesc": "The cookie is sent on all requests, including cross-origin. Only needed when the dashboard UI and backend are served from different domains (e.g. a CDN split). Requires HTTPS."
+    },
+    "marketBot": {
+      "enabled": "Enable market bot for this server",
+      "enabledHint": "Runs the embedded market bot against this server. Tuning is shared across servers and lives in the Market tab."
     }
   },
   "storage": {
@@ -1775,7 +1824,8 @@
       "solari": "Solari",
       "factionScrip": "Faction Scrip",
       "config": "Config",
-      "rewards": "Rewards"
+      "rewards": "Rewards",
+      "currencyXp": "Currency & XP"
     },
     "config": {
       "title": "Engine Settings",
@@ -1867,5 +1917,157 @@
     "cascadeHint": "Every signed-in user inherits the Default row; Guests and each Discord role add to it. An empty grant is denied.",
     "inherited": "(inherited)",
     "resetDefaults": "Reset to defaults"
+  },
+  "servers": {
+    "removeTitle": "Remove Server",
+    "removeDesc": "Permanently remove \"{{name}}\" and all its stored data? This cannot be undone.",
+    "removeConfirm": "Remove",
+    "removeFailed": "Remove failed",
+    "removeWarning": "Permanently remove \"{{name}}\" and all of its stored data. This cannot be undone.",
+    "removeConfirmLabel": "Type {{name}} to confirm",
+    "removeCountdown": "Wait {{seconds}}s…"
+  },
+  "setup": {
+    "connecting": "Connecting…",
+    "discovering": "Auto-discovering server settings…",
+    "saveAndConnect": "Save & Connect",
+    "serverName": "Server name",
+    "serverNamePlaceholder": "e.g. Production",
+    "nameRequired": "Server name is required",
+    "nameInvalid": "Server name must contain letters or numbers",
+    "connectTimeout": "Still not connected — check your settings and try again.",
+    "addServerTitle": "Add a server"
+  },
+  "discovery": {
+    "title": "Auto-discovering settings",
+    "subtitle": "Reading values from your server…",
+    "failed": "Could not auto-discover — fill in the values manually.",
+    "steps": {
+      "connect": "Connecting over SSH",
+      "namespace": "Discovering namespace",
+      "dbPod": "Locating database pod",
+      "dbCreds": "Reading database credentials",
+      "brokers": "Locating broker pods",
+      "gameProc": "Locating game server process",
+      "containers": "Inspecting containers",
+      "finalize": "Finalizing"
+    }
+  },
+  "manage": {
+    "title": "Manage server",
+    "serverName": "Server name"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Servers and setup at a glance",
+    "loadFailed": "Failed to load server health: {{message}}",
+    "running": "Running",
+    "offline": "Offline",
+    "playersOnline": "{{count}} online",
+    "view": "View",
+    "manage": "Manage",
+    "empty": {
+      "title": "No servers yet",
+      "body": "Add your first game server to get started. You can also set up auth or Discord below — all optional.",
+      "addServer": "Add your first server",
+      "guestBody": "No servers have been configured yet."
+    },
+    "onboarding": {
+      "auth": {
+        "title": "Set up login / auth",
+        "body": "Require a login to access the dashboard. Optional — leave off for a trusted local network.",
+        "cta": "Set up auth"
+      },
+      "discord": {
+        "title": "Connect a Discord bot",
+        "body": "Send notifications and let roles map to permissions. Optional.",
+        "cta": "Connect Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Discord Guilds",
+    "subtitle": "Configure each Discord guild’s capability roles. One bot token serves every guild; servers link to a guild from their own Discord tab.",
+    "ariaLabel": "Discord guilds",
+    "add": "Add guild",
+    "addTitle": "Add guild",
+    "editTitle": "Edit guild",
+    "empty": "No Discord guilds configured yet.",
+    "on": "On",
+    "off": "Off",
+    "loadRoles": "Load roles",
+    "guildId": "Guild ID",
+    "guildIdHint": "Right-click your server icon → Copy Server ID (requires Developer Mode)",
+    "guildIdRequired": "Guild ID is required",
+    "serverRequired": "Each watched server must be selected",
+    "roleCount": "{{count}} roles",
+    "addServer": "Link a game server",
+    "server": "Server",
+    "serverHint": "The game server this guild watches",
+    "selectServer": "Select a server…",
+    "noServers": "This guild watches no servers yet.",
+    "watchedServersHint": "Pick a game server and the Discord channels this guild uses for it (announce + status). One guild can post for several servers.",
+    "announceChannel": "Announce channel ID",
+    "announceChannelHint": "Channel for server announcements (restarts, events)",
+    "statusEnabled": "Persistent status embed",
+    "statusEnabledHint": "Keep a live server-status embed updated in a channel",
+    "statusChannel": "Status channel ID",
+    "statusChannelHint": "Channel the status embed is posted in",
+    "statusInterval": "Status interval (seconds)",
+    "statusIntervalHint": "How often the embed refreshes. Minimum 30 seconds; defaults to 60.",
+    "rolesHint": "Discord roles granted each capability tier in this guild. Load roles after entering a guild ID.",
+    "rolesViewer": "Viewer roles",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Economy roles",
+    "rolesEconomyHint": "market & economy commands",
+    "rolesAdmin": "Admin roles",
+    "rolesAdminHint": "administrative commands",
+    "saved": "Guild saved",
+    "saveFailed": "Save failed: {{message}}",
+    "loadFailed": "Failed to load guilds: {{message}}",
+    "removed": "Guild removed",
+    "removeFailed": "Remove failed: {{message}}",
+    "removeTitle": "Remove guild",
+    "removeConfirm": "Remove guild {{guild}}? The bot will stop serving it and its watched servers.",
+    "columns": {
+      "guildId": "Guild ID",
+      "servers": "Watched servers",
+      "roles": "Roles"
+    },
+    "sections": {
+      "guild": "Guild",
+      "roles": "Capability Roles",
+      "watchedServers": "Linked game servers"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Link this server to one Discord guild and set its announce and status channels. Capability roles for that guild are set in Settings → Guilds.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Unlink this server from its Discord guild? Its channels are cleared; the guild and its roles stay intact.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
+      },
+      "noGuilds": "No guilds added yet — add one in Settings → Guilds, then pick it here."
+    },
+    "selectGuild": "Search guilds…",
+    "selectChannel": "Search channels…",
+    "guildExists": "That guild is already configured."
   }
 }

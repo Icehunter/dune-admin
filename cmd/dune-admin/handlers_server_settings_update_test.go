@@ -74,7 +74,7 @@ func TestSplitServerSettingsUpdatesByFile(t *testing.T) {
 func TestBuildUpdatedINIContent_NoUpdates(t *testing.T) {
 	t.Parallel()
 
-	body, err := buildUpdatedINIContent("ignored.ini", map[string]map[string]string{})
+	body, err := buildUpdatedINIContent("ignored.ini", map[string]map[string]string{}, globalControl, globalExecutor)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

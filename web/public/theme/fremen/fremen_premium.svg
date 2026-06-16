@@ -1,108 +1,128 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Fremen premium badge icon">
-  <defs>
-    <linearGradient id="navy" x1="38" y1="24" x2="218" y2="232" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#07152d"/>
-      <stop offset="0.52" stop-color="#020914"/>
-      <stop offset="1" stop-color="#0a1e3d"/>
-    </linearGradient>
-    <linearGradient id="edge" x1="42" y1="36" x2="214" y2="220" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#123b72"/>
-      <stop offset="0.5" stop-color="#071325"/>
-      <stop offset="1" stop-color="#0e3568"/>
-    </linearGradient>
-    <linearGradient id="cyan" x1="80" y1="70" x2="176" y2="186" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#67f6ff"/>
-      <stop offset="0.46" stop-color="#00b8ff"/>
-      <stop offset="1" stop-color="#004cff"/>
-    </linearGradient>
-    <linearGradient id="starDark" x1="128" y1="64" x2="128" y2="192" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#102f83"/>
-      <stop offset="1" stop-color="#001b61"/>
-    </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="2.1" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0  0 0 0 0 .75  0 0 0 0 1  0 0 0 .8 0" result="blueGlow"/>
-      <feMerge>
-        <feMergeNode in="blueGlow"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <clipPath id="octClip">
-      <path d="M128 12 197 41 226 110 197 215 128 244 59 215 30 110 59 41Z"/>
-    </clipPath>
-  </defs>
-
-  <!-- Transparent outside icon by default: no background rect. -->
-
-  <!-- Outer premium octagonal frame -->
-  <path d="M128 10 201 38 232 108 204 218 128 246 52 218 24 108 55 38Z"
-        fill="#020813" stroke="#0b2448" stroke-width="6"/>
-  <path d="M128 20 194 46 220 111 194 210 128 236 62 210 36 111 62 46Z"
-        fill="url(#edge)" stroke="#1797ff" stroke-width="2.5"/>
-  <path d="M128 33 184 55 207 113 184 198 128 221 72 198 49 113 72 55Z"
-        fill="url(#navy)" stroke="#0d3c78" stroke-width="4"/>
-  <path d="M128 43 177 63 197 115 177 188 128 209 79 188 59 115 79 63Z"
-        fill="#020812" stroke="#1374db" stroke-width="1.75" opacity=".95"/>
-
-  <!-- Sacred circular discipline rings -->
-  <circle cx="128" cy="128" r="71" fill="#020a18" stroke="#0c5cb5" stroke-width="3"/>
-  <circle cx="128" cy="128" r="58" fill="none" stroke="#009dff" stroke-width="2" stroke-dasharray="42 18" opacity=".72"/>
-  <circle cx="128" cy="128" r="48" fill="none" stroke="#113e83" stroke-width="1.4" opacity=".95"/>
-  <path d="M61 121a68 68 0 0 1 41-57M154 64a68 68 0 0 1 41 57M195 135a68 68 0 0 1-41 57M102 192a68 68 0 0 1-41-57"
-        fill="none" stroke="#25dfff" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="1 8" opacity=".82"/>
-
-  <!-- Side crescent survival blades -->
-  <path d="M83 98C67 116 64 145 76 169c-10-19-7-43 9-61 7-8 15-14 24-17-10 1-19 3-26 7Z"
-        fill="#0b2c61" stroke="#32d8ff" stroke-width="1.4" opacity=".72"/>
-  <path d="M173 98c16 18 19 47 7 71 10-19 7-43-9-61-7-8-15-14-24-17 10 1 19 3 26 7Z"
-        fill="#0b2c61" stroke="#32d8ff" stroke-width="1.4" opacity=".72"/>
-
-  <!-- Central blue premium star, faceted -->
-  <g filter="url(#glow)">
-    <path d="M128 58 142 108 190 92 158 128 190 164 142 148 128 198 114 148 66 164 98 128 66 92 114 108Z"
-          fill="url(#starDark)" stroke="#39eaff" stroke-width="1.4"/>
-    <path d="M128 58 142 108 128 128Z" fill="#5df6ff"/>
-    <path d="M142 108 190 92 128 128Z" fill="#24cfff"/>
-    <path d="M190 92 158 128 128 128Z" fill="#0078ff"/>
-    <path d="M158 128 190 164 128 128Z" fill="#00b7ff"/>
-    <path d="M190 164 142 148 128 128Z" fill="#005cff"/>
-    <path d="M142 148 128 198 128 128Z" fill="#008eff"/>
-    <path d="M128 198 114 148 128 128Z" fill="#0341c9"/>
-    <path d="M114 148 66 164 128 128Z" fill="#11c9ff"/>
-    <path d="M66 164 98 128 128 128Z" fill="#0052e8"/>
-    <path d="M98 128 66 92 128 128Z" fill="#3eefff"/>
-    <path d="M66 92 114 108 128 128Z" fill="#0067ff"/>
-    <path d="M114 108 128 58 128 128Z" fill="#13a8ff"/>
-  </g>
-
-  <!-- Water-discipline symbols -->
-  <path d="M128 202c8 10 14 18 14 25a14 14 0 0 1-28 0c0-7 6-15 14-25Z"
-        fill="url(#cyan)" stroke="#5ff6ff" stroke-width="2" filter="url(#glow)"/>
-  <path d="M128 32 139 54 128 69 117 54Z" fill="url(#cyan)" stroke="#55ecff" stroke-width="1.5"/>
-  <path d="M128 82 137 93 128 104 119 93Z" fill="#02101f" stroke="#33e7ff" stroke-width="3"/>
-  <path d="M128 170 137 181 128 192 119 181Z" fill="#02101f" stroke="#33e7ff" stroke-width="3"/>
-
-  <!-- Frame cyan inlays -->
-  <g fill="none" stroke="#28e7ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".9">
-    <path d="M71 52h44"/>
-    <path d="M141 52h44"/>
-    <path d="M48 114 35 128l13 14"/>
-    <path d="M208 114 221 128l-13 14"/>
-    <path d="M70 205h39"/>
-    <path d="M147 205h39"/>
-  </g>
-  <g fill="#20dbff" opacity=".88">
-    <circle cx="69" cy="88" r="2.5"/>
-    <circle cx="77" cy="84" r="2.1"/>
-    <circle cx="187" cy="88" r="2.5"/>
-    <circle cx="179" cy="84" r="2.1"/>
-  </g>
-
-  <!-- Lower ribbed sacred minimalism -->
-  <g fill="none" stroke="#0e65c2" stroke-width="2" opacity=".82">
-    <path d="M82 196 106 184"/>
-    <path d="M93 203 112 187"/>
-    <path d="M174 196 150 184"/>
-    <path d="M163 203 144 187"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Fremen premium badge icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="b" x1="38" x2="218" y1="24" y2="232" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#07152d"
+      /><stop offset=".52" stop-color="#020914" /><stop
+        offset="1"
+        stop-color="#0a1e3d"
+      /></linearGradient><linearGradient id="a" x1="42" x2="214" y1="36" y2="220" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#123b72"
+      /><stop offset=".5" stop-color="#071325" /><stop
+        offset="1"
+        stop-color="#0e3568"
+      /></linearGradient><linearGradient id="e" x1="80" x2="176" y1="70" y2="186" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#67f6ff"
+      /><stop offset=".46" stop-color="#00b8ff" /><stop
+        offset="1"
+        stop-color="#004cff"
+      /></linearGradient><linearGradient id="d" x1="128" x2="128" y1="64" y2="192" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#102f83"
+      /><stop offset="1" stop-color="#001b61" /></linearGradient><filter
+      id="c"
+      width="160%"
+      height="160%"
+      x="-30%"
+      y="-30%"
+    ><feGaussianBlur result="blur" stdDeviation="2.1" /><feColorMatrix
+        in="blur"
+        result="blueGlow"
+        values="0 0 0 0 0 0 0 0 0 .75 0 0 0 0 1 0 0 0 .8 0"
+      /><feMerge><feMergeNode in="blueGlow" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs><path
+    fill="#020813"
+    stroke="#0b2448"
+    stroke-width="6"
+    d="m128 10 73 28 31 70-28 110-76 28-76-28-28-110 31-70Z"
+  /><path
+    fill="url(#a)"
+    stroke="#1797ff"
+    stroke-width="2.5"
+    d="m128 20 66 26 26 65-26 99-66 26-66-26-26-99 26-65Z"
+  /><path
+    fill="url(#b)"
+    stroke="#0d3c78"
+    stroke-width="4"
+    d="m128 33 56 22 23 58-23 85-56 23-56-23-23-85 23-58Z"
+  /><path
+    fill="#020812"
+    stroke="#1374db"
+    stroke-width="1.75"
+    d="m128 43 49 20 20 52-20 73-49 21-49-21-20-73 20-52Z"
+    opacity=".95"
+  /><circle cx="128" cy="128" r="71" fill="#020a18" stroke="#0c5cb5" stroke-width="3" /><circle
+    cx="128"
+    cy="128"
+    r="58"
+    fill="none"
+    stroke="#009dff"
+    stroke-dasharray="42 18"
+    stroke-width="2"
+    opacity=".72"
+  /><circle cx="128" cy="128" r="48" fill="none" stroke="#113e83" stroke-width="1.4" opacity=".95" /><path
+    fill="none"
+    stroke="#25dfff"
+    stroke-dasharray="1 8"
+    stroke-linecap="round"
+    stroke-width="2.2"
+    d="M61 121a68 68 0 0 1 41-57m52 0a68 68 0 0 1 41 57m0 14a68 68 0 0 1-41 57m-52 0a68 68 0 0 1-41-57"
+    opacity=".82"
+  /><path
+    fill="#0b2c61"
+    stroke="#32d8ff"
+    stroke-width="1.4"
+    d="M83 98c-16 18-19 47-7 71-10-19-7-43 9-61 7-8 15-14 24-17-10 1-19 3-26 7Zm90 0c16 18 19 47 7 71 10-19 7-43-9-61-7-8-15-14-24-17 10 1 19 3 26 7Z"
+    opacity=".72"
+  /><g filter="url(#c)"><path
+      fill="url(#d)"
+      stroke="#39eaff"
+      stroke-width="1.4"
+      d="m128 58 14 50 48-16-32 36 32 36-48-16-14 50-14-50-48 16 32-36-32-36 48 16Z"
+    /><path fill="#5df6ff" d="m128 58 14 50-14 20Z" /><path fill="#24cfff" d="m142 108 48-16-62 36Z" /><path
+      fill="#0078ff"
+      d="m190 92-32 36h-30Z"
+    /><path fill="#00b7ff" d="m158 128 32 36-62-36Z" /><path fill="#005cff" d="m190 164-48-16-14-20Z" /><path
+      fill="#008eff"
+      d="m142 148-14 50v-70Z"
+    /><path fill="#0341c9" d="m128 198-14-50 14-20Z" /><path fill="#11c9ff" d="m114 148-48 16 62-36Z" /><path
+      fill="#0052e8"
+      d="m66 164 32-36h30Z"
+    /><path fill="#3eefff" d="M98 128 66 92l62 36Z" /><path fill="#0067ff" d="m66 92 48 16 14 20Z" /><path
+      fill="#13a8ff"
+      d="m114 108 14-50v70Z"
+    /></g><path
+    fill="url(#e)"
+    stroke="#5ff6ff"
+    stroke-width="2"
+    d="M128 202c8 10 14 18 14 25a14 14 0 0 1-28 0c0-7 6-15 14-25Z"
+    filter="url(#c)"
+  /><path fill="url(#e)" stroke="#55ecff" stroke-width="1.5" d="m128 32 11 22-11 15-11-15Z" /><path
+    fill="#02101f"
+    stroke="#33e7ff"
+    stroke-width="3"
+    d="m128 82 9 11-9 11-9-11Zm0 88 9 11-9 11-9-11Z"
+  /><path
+    fill="none"
+    stroke="#28e7ff"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="3"
+    d="M71 52h44m26 0h44M48 114l-13 14 13 14m160-28 13 14-13 14M70 205h39m38 0h39"
+    opacity=".9"
+  /><g fill="#20dbff" opacity=".88"><circle cx="69" cy="88" r="2.5" /><circle cx="77" cy="84" r="2.1" /><circle
+      cx="187"
+      cy="88"
+      r="2.5"
+    /><circle cx="179" cy="84" r="2.1" /></g><path
+    fill="none"
+    stroke="#0e65c2"
+    stroke-width="2"
+    d="m82 196 24-12m-13 19 19-16m62 9-24-12m13 19-19-16"
+    opacity=".82"
+  /></svg>

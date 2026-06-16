@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
-import { Button, Checkbox, Input, ListBox, Select, TextArea, toast } from '@heroui/react'
+import { Button, Input, ListBox, Select, Switch, TextArea, toast } from '@heroui/react'
 import { Panel, SectionLabel } from '../../../../../dune-ui'
 import { vehiclesSyncAtom } from '../../../../../data/store'
 import { api } from '../../../../../api/client'
@@ -9,6 +9,7 @@ import { busyAtom, partitionsAtom, allPlayersAtom } from '../store'
 import { useRun, useGate } from '../hooks/useActions'
 import { usePermissions } from '../../../../../hooks/usePermissions'
 import { PlayerSearchField } from '../../../../../components/PlayerSearchField'
+import { DeleteCharacterModal } from './DeleteCharacterModal'
 import type { AdminSectionProps } from './types'
 
 export const AdminSection: React.FC<AdminSectionProps> = ({
@@ -17,6 +18,7 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
   const { t } = useTranslation()
   const { can } = usePermissions()
   const canPlayersWrite = can('players:write')
+  const canPlayersDelete = can('players:delete')
   const canExportData = can('data:export')
   const [busy] = useAtom(busyAtom(player.id))
   const [partitions] = useAtom(partitionsAtom(player.id))
@@ -31,7 +33,6 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
   const [teleportZ, setTeleportZ] = React.useState('')
   const [selectedTeleportTarget, setSelectedTeleportTarget] = React.useState<number | null>(null)
   const [whisperText, setWhisperText] = React.useState('')
-  const [whisperSenderName, setWhisperSenderName] = React.useState('GM')
   const [spawnVehicleId, setSpawnVehicleId] = React.useState('')
   const [spawnVehicleTemplate, setSpawnVehicleTemplate] = React.useState('')
   const [spawnVehiclePartition, setSpawnVehiclePartition] = React.useState('')
@@ -42,6 +43,16 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
 
   const handleKick = () =>
     run(() => api.players.kick(player.fls_id), `Kick command sent for ${player.name}`)
+
+  const [deleteModalOpen, setDeleteModalOpen] = React.useState(false)
+
+  const handleDeleteCharacter = (reason: string) => {
+    setDeleteModalOpen(false)
+    run(
+      () => api.players.deleteCharacter(player.account_id, reason),
+      t('players.actions.admin.deleteCharacterDone', { player: player.name }),
+    )
+  }
 
   const handleWipeInventory = () => gate(
     t('players.actions.admin.wipeInventoryTitle'),
@@ -228,6 +239,14 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
+      <DeleteCharacterModal
+        open={deleteModalOpen}
+        playerName={player.name}
+        online={player.online_status === 'Online'}
+        busy={busy}
+        onCancel={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteCharacter}
+      />
       {canPlayersWrite && (
         <>
           <Panel>
@@ -305,6 +324,24 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
         </>
       )}
 
+      {canPlayersDelete && (
+        <Panel>
+          <SectionLabel>{t('players.actions.admin.deleteCharacter')}</SectionLabel>
+          <div className="text-xs text-muted mb-2">{t('players.actions.admin.deleteCharacterDesc')}</div>
+          <div className="flex items-end gap-3 py-1">
+            <div className="flex-1 text-xs text-danger">{t('players.actions.admin.deleteCharacterIrreversible')}</div>
+            <Button
+              size="sm"
+              variant="danger-soft"
+              isDisabled={busy}
+              onPress={() => setDeleteModalOpen(true)}
+            >
+              {t('players.actions.admin.deleteCharacterButton')}
+            </Button>
+          </div>
+        </Panel>
+      )}
+
       {canExportData && (
         <Panel>
           <SectionLabel>{t('players.actions.admin.characterExport')}</SectionLabel>
@@ -361,7 +398,7 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                 {t('players.actions.admin.move')}
               </Button>
             </div>
-            <div className="flex items-end gap-2 mt-2">
+            <div className="flex gap-2 mt-2 items-center">
               <Input aria-label="X" className="w-24" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} placeholder="X" />
               <Input aria-label="Y" className="w-24" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} placeholder="Y" />
               <Input aria-label="Z" className="w-24" value={teleportZ} onChange={(e) => setTeleportZ(e.target.value)} placeholder="Z" />
@@ -433,14 +470,7 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted shrink-0">{t('players.actions.admin.whisperFrom')}</span>
-                <Input
-                  aria-label={t('players.actions.admin.whisperFrom')}
-                  value={whisperSenderName}
-                  onChange={(e) => setWhisperSenderName(e.target.value)}
-                  placeholder="GM"
-                  maxLength={32}
-                  className="w-32"
-                />
+                <span className="text-xs text-foreground font-mono">GM</span>
               </div>
               <TextArea
                 aria-label={t('players.actions.admin.whisper')}
@@ -550,7 +580,7 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                   </Select.Popover>
                 </Select>
               </div>
-              <div className="flex items-end gap-2 mt-2">
+              <div className="flex gap-2 mt-2 items-center">
                 <Input aria-label="X" className="w-24" value={spawnX} onChange={(e) => setSpawnX(e.target.value)} placeholder="X" />
                 <Input aria-label="Y" className="w-24" value={spawnY} onChange={(e) => setSpawnY(e.target.value)} placeholder="Y" />
                 <Input aria-label="Z" className="w-24" value={spawnZ} onChange={(e) => setSpawnZ(e.target.value)} placeholder="Z" />
@@ -570,9 +600,10 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                 >
                   {t('players.actions.admin.pickOnMap')}
                 </Button>
-                <Checkbox isSelected={spawnVehiclePersistent} onChange={setSpawnVehiclePersistent}>
-                  <span className="text-xs">{t('players.actions.admin.persistent')}</span>
-                </Checkbox>
+                <Switch isSelected={spawnVehiclePersistent} onChange={setSpawnVehiclePersistent} size="sm">
+                  <Switch.Control><Switch.Thumb /></Switch.Control>
+                  <Switch.Content><span className="text-xs">{t('players.actions.admin.persistent')}</span></Switch.Content>
+                </Switch>
                 <Button
                   size="sm"
                   variant="ghost"

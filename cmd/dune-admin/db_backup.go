@@ -70,9 +70,21 @@ func dbBackupFilename(t time.Time) string {
 	return "dune-" + t.UTC().Format("20060102-150405") + ".dump"
 }
 
-// dbBackupDir resolves (and creates) the host directory where dumps live.
+// dbBackupDir resolves (and creates) the host directory where dumps live for the
+// active server's config. amp_backup_dir is per-server (servers table) after the
+// remodel, so resolve it from the active ServerConfig, not the cleared global.
 func dbBackupDir() (string, error) {
-	dir := loadedConfig.AmpBackupDir
+	return dbBackupDirFor(activeServerCfg())
+}
+
+// dbBackupDirFor resolves (and creates) the host directory where dumps live for
+// the given server config.
+func dbBackupDirFor(cfg ServerConfig) (string, error) {
+	return resolveBackupDir(cfg.AmpBackupDir)
+}
+
+func resolveBackupDir(ampBackupDir string) (string, error) {
+	dir := ampBackupDir
 	if dir == "" {
 		dir = filepath.Join(configDir(), "db-backups")
 	}
@@ -82,30 +94,53 @@ func dbBackupDir() (string, error) {
 	return dir, nil
 }
 
-// dbBackupConn builds the Postgres connection target from config. The AMP
-// Postgres listens on 127.0.0.1:<db_port> both inside and outside the container.
+// dbBackupConn builds the Postgres connection target from the active server's
+// config. The connection lives on the per-server ServerConfig (servers table)
+// after the storage remodel — the global loadedConfig flat fields are cleared,
+// so reading them here would dump the wrong DB (e.g. default :5432 instead of
+// the AMP :15432). Falls back to loadedConfig only when no server is registered.
 func dbBackupConn() dbConn {
-	port := loadedConfig.DBPort
+	return dbBackupConnFor(activeServerCfg())
+}
+
+// dbBackupConnFor builds the Postgres connection target from a server config. The
+// AMP Postgres listens on 127.0.0.1:<db_port> both inside and outside the container.
+func dbBackupConnFor(cfg ServerConfig) dbConn {
+	return resolveBackupConn(cfg.DBPort, cfg.DBName, cfg.DBUser, cfg.DBPass)
+}
+
+func resolveBackupConn(port int, name, user, pass string) dbConn {
 	if port == 0 {
 		port = 5432
 	}
-	name := loadedConfig.DBName
 	if name == "" {
 		name = "dune"
 	}
-	user := loadedConfig.DBUser
 	if user == "" {
 		user = "dune"
 	}
-	return dbConn{Host: "127.0.0.1", Port: port, User: user, Pass: loadedConfig.DBPass, Name: name}
+	return dbConn{Host: "127.0.0.1", Port: port, User: user, Pass: pass, Name: name}
 }
 
-// listDBBackups lists the .dump files in the backup dir, newest first.
+// listDBBackups lists the .dump files in the active server's backup dir.
 func listDBBackups() ([]dbBackupFile, error) {
 	dir, err := dbBackupDir()
 	if err != nil {
 		return nil, err
 	}
+	return listDBBackupsInDir(dir)
+}
+
+// listDBBackupsIn lists the .dump files in cfg's backup dir, newest first.
+func listDBBackupsIn(cfg ServerConfig) ([]dbBackupFile, error) {
+	dir, err := dbBackupDirFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return listDBBackupsInDir(dir)
+}
+
+func listDBBackupsInDir(dir string) ([]dbBackupFile, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("read backup dir: %w", err)
@@ -130,14 +165,28 @@ func listDBBackups() ([]dbBackupFile, error) {
 	return files, nil
 }
 
-// deleteDBBackup removes a backup file (and its sibling, if any) from the dir,
-// after validating the name. Used by manual delete and retention pruning.
+// deleteDBBackup removes a backup file from the active server's dir, after
+// validating the name. Used by manual delete.
 func deleteDBBackup(name string) error {
-	if err := validateBackupName(name); err != nil {
-		return err
-	}
 	dir, err := dbBackupDir()
 	if err != nil {
+		return err
+	}
+	return deleteDBBackupInDir(dir, name)
+}
+
+// deleteDBBackupIn removes a backup file from cfg's dir, after validating the
+// name. Used by retention pruning.
+func deleteDBBackupIn(cfg ServerConfig, name string) error {
+	dir, err := dbBackupDirFor(cfg)
+	if err != nil {
+		return err
+	}
+	return deleteDBBackupInDir(dir, name)
+}
+
+func deleteDBBackupInDir(dir, name string) error {
+	if err := validateBackupName(name); err != nil {
 		return err
 	}
 	path := filepath.Join(dir, name)

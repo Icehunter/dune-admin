@@ -2,13 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -19,7 +19,7 @@ var allowedOrigins []string
 
 func init() {
 	raw := envOr("ALLOWED_ORIGINS", "https://dune-admin.layout.tools,http://localhost:5173")
-	for _, o := range strings.Split(raw, ",") {
+	for o := range strings.SplitSeq(raw, ",") {
 		if o = strings.TrimSpace(o); o != "" {
 			allowedOrigins = append(allowedOrigins, o)
 		}
@@ -27,12 +27,7 @@ func init() {
 }
 
 func originAllowed(origin string) bool {
-	for _, o := range allowedOrigins {
-		if o == origin {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowedOrigins, origin)
 }
 
 // newDirectorProxy builds the /director/ reverse-proxy handler for target. It
@@ -84,7 +79,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 		if origin != "" && originAllowedForRequest(r) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Dune-Server")
 			// Session cookies require credentialed CORS. Safe because the
 			// allow-origin value is always an exact allowlisted origin, never "*".
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -106,6 +101,17 @@ func buildMux() *http.ServeMux {
 
 	// ── auth (exempt from capability enforcement) ────────────────────────────
 	registerAuthRoutes(mux)
+
+	// ── servers registry ──────────────────────────────────────────────────────
+	handleAPI(mux, "GET /api/v1/servers", capServerRead, handleListServers)
+	handleAPI(mux, "GET /api/v1/servers/health", capServerRead, handleServersHealth)
+	handleAPI(mux, "POST /api/v1/servers", capServerControl, handleAddServer)
+	handleAPI(mux, "POST /api/v1/servers/discover", capServerControl, handleDiscoverServer)
+	handleAPI(mux, "PUT /api/v1/servers/active", capServerControl, handleSetActiveServer)
+	handleAPI(mux, "DELETE /api/v1/servers/{id}", capServerControl, handleDeleteServer)
+	handleAPI(mux, "POST /api/v1/servers/{id}/reconnect", capServerControl, handleReconnectServer)
+	handleAPI(mux, "GET /api/v1/servers/{id}/config", capServerRead, handleGetServerConfig)
+	handleAPI(mux, "PUT /api/v1/servers/{id}/config", capServerControl, handleUpdateServerConfig)
 
 	// ── status ────────────────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/status", capServerRead, handleStatus)
@@ -173,6 +179,7 @@ func buildMux() *http.ServeMux {
 	handleAPI(mux, "POST /api/v1/players/award-char-xp", capPlayersWrite, handleAwardCharXP)
 	handleAPI(mux, "POST /api/v1/players/award-intel", capPlayersWrite, handleAwardIntel)
 	handleAPI(mux, "POST /api/v1/players/rename", capPlayersWrite, handleRenameCharacter)
+	handleAPI(mux, "POST /api/v1/players/delete", capPlayersDelete, handleDeleteCharacter)
 	handleAPI(mux, "GET /api/v1/players/{id}/tags", capPlayersRead, handleGetPlayerTags)
 	handleAPI(mux, "POST /api/v1/players/update-tags", capPlayersWrite, handleUpdatePlayerTags)
 	handleAPI(mux, "POST /api/v1/players/returning-player-award", capPlayersWrite, handleGrantReturningPlayerAward)
@@ -310,7 +317,15 @@ func buildMux() *http.ServeMux {
 
 	// ── discord ───────────────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/discord/roles", capConfigRead, handleGetDiscordRoles)
+	handleAPI(mux, "GET /api/v1/discord/available-guilds", capConfigRead, handleGetDiscordAvailableGuilds)
+	handleAPI(mux, "GET /api/v1/discord/channels", capConfigRead, handleGetDiscordChannels)
 	handleAPI(mux, "GET /api/v1/discord/members/search", capConfigRead, handleSearchDiscordMembers)
+	handleAPI(mux, "GET /api/v1/discord/guilds", capConfigRead, handleListDiscordGuilds)
+	handleAPI(mux, "POST /api/v1/discord/guilds", capConfigWrite, handleUpsertDiscordGuild)
+	handleAPI(mux, "DELETE /api/v1/discord/guilds/{guildID}", capConfigWrite, handleDeleteDiscordGuild)
+	handleAPI(mux, "GET /api/v1/discord/servers", capConfigRead, handleListDiscordServers)
+	handleAPI(mux, "PUT /api/v1/discord/servers/{serverID}", capConfigWrite, handleUpsertDiscordServer)
+	handleAPI(mux, "DELETE /api/v1/discord/servers/{serverID}", capConfigWrite, handleDeleteDiscordServer)
 
 	// ── welcome package ───────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/welcome-package/config", capWelcomeRead, handleGetWelcomeConfig)
@@ -356,23 +371,25 @@ func buildMux() *http.ServeMux {
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 
 	// ── director reverse proxy (universal, opt-in) ──────────────────────────
-	if loadedConfig.DirectorURL != "" {
-		if target, err := url.Parse(loadedConfig.DirectorURL); err == nil {
+	// director_url is per-server (servers table) after the remodel; resolve from
+	// the active server, not the cleared global loadedConfig.
+	if directorURL := activeServerCfg().DirectorURL; directorURL != "" {
+		if target, err := url.Parse(directorURL); err == nil {
 			mux.HandleFunc("/director/", newDirectorProxy(target, dialThroughExecutor))
-			log.Printf("Proxying /director/ → %s", loadedConfig.DirectorURL)
+			componentLog("server").Info().Str("director_url", directorURL).Msg("proxying /director/")
 		}
 	}
 
 	// SPA frontend: prefer the embedded FS (release builds with -tags=embed),
 	// then fall back to a local dist directory for dev/AMP deployments.
 	if fsys := embeddedSPAFS(); fsys != nil {
-		log.Println("Serving frontend from embedded assets")
-		mux.Handle("/", spaHandlerFS(fsys))
+		componentLog("server").Info().Msg("serving frontend from embedded assets")
+		mux.Handle("/", staticCacheMiddleware(spaHandlerFS(fsys)))
 	} else {
 		for _, dir := range []string{"./dist", "./web/dist"} {
 			if info, err := os.Stat(dir); err == nil && info.IsDir() {
-				log.Printf("Serving frontend from %s", dir)
-				mux.Handle("/", spaHandler(dir))
+				componentLog("server").Info().Str("dir", dir).Msg("serving frontend from directory")
+				mux.Handle("/", staticCacheMiddleware(spaHandler(dir)))
 				break
 			}
 		}
@@ -381,20 +398,22 @@ func buildMux() *http.ServeMux {
 	return mux
 }
 
-func startServer(addr string) {
+func startServer(addr string) error {
 	mux := buildMux()
 	initAuthRuntime(loadedConfig)
 
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           securityHeadersMiddleware(corsMiddleware(authMiddleware(mux, mux))),
+		Handler:           securityHeadersMiddleware(corsMiddleware(authMiddleware(mux, serverSelectorMiddleware(globalRegistry, mux)))),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      10 * time.Minute, // backup/restore/download can take several minutes
 		IdleTimeout:       60 * time.Second,
 	}
-	log.Printf("dune-admin listening on %s", addr)
-	log.Fatal(srv.ListenAndServe())
+	componentLog("server").Info().Str("addr", addr).Msg("dune-admin listening")
+	// Return the error instead of log.Fatal so the deferred cleanup registered
+	// in run() unwinds on shutdown; log.Fatal calls os.Exit, which skips defers.
+	return srv.ListenAndServe()
 }
 
 // spaHandler serves static files from distDir, falling back to index.html
@@ -455,6 +474,33 @@ func isRegularFile(fsys http.FileSystem, path string) bool {
 	return err == nil && !fi.IsDir()
 }
 
+// staticCacheMiddleware sets Cache-Control headers for static assets served by
+// the SPA handler. Vite-hashed bundles and stable public assets get long-lived
+// immutable caching; the HTML shell gets no-cache so new deploys are picked up.
+func staticCacheMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		switch {
+		case strings.HasPrefix(p, "/assets/"):
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		case strings.HasPrefix(p, "/art/"),
+			strings.HasPrefix(p, "/theme/"),
+			strings.HasPrefix(p, "/fonts/"):
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		case strings.HasSuffix(p, ".svg"),
+			strings.HasSuffix(p, ".png"),
+			strings.HasSuffix(p, ".ico"),
+			strings.HasSuffix(p, ".webp"),
+			strings.HasSuffix(p, ".woff2"),
+			strings.HasSuffix(p, ".woff"):
+			w.Header().Set("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400")
+		default:
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // ── JSON helpers ──────────────────────────────────────────────────────────────
 
 func jsonOK(w http.ResponseWriter, v any) {
@@ -501,10 +547,11 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 		"version":          AppVersion,
 		"commit":           GitCommit,
 		"build_time":       BuildTime,
-		"director_url":     loadedConfig.DirectorURL,
+		"director_url":     activeServerCfg().DirectorURL,
 		"listen_addr":      loadedConfig.ListenAddr,
 		"shutdown_pending": shutdownPending,
 		"shutdown_at":      shutdownAt,
+		"needs_setup":      needsSetup(),
 	})
 }
 
@@ -531,6 +578,9 @@ func handleReconnect(w http.ResponseWriter, r *http.Request) {
 	if err := connectAll(); err != nil {
 		jsonErr(w, err, 500)
 		return
+	}
+	if a := globalRegistry.Active(); a != nil {
+		invalidateServerHealth(a.ID) // connections rebuilt → drop stale health
 	}
 	handleStatus(w, r)
 }

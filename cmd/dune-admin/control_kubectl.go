@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"sort"
 	"strconv"
@@ -383,7 +382,7 @@ func tryReadINIFromPod(exec Executor, kctl, namespace, pod, filename string) str
 			"%s exec -n %s %s -- cat %s 2>/dev/null",
 			kctl, namespace, pod, shellQuote(p)))
 		if err == nil && len(strings.TrimSpace(content)) > 0 {
-			log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
+			componentLog("control_kubectl").Debug().Str("path", p).Int("bytes", len(content)).Str("pod", pod).Msg("default-ini read from pod")
 			return content
 		}
 	}
@@ -395,7 +394,7 @@ func tryReadINIFromPod(exec Executor, kctl, namespace, pod, filename string) str
 			"%s exec -n %s %s -- cat %s 2>/dev/null",
 			kctl, namespace, pod, shellQuote(p)))
 		if err == nil && len(strings.TrimSpace(content)) > 0 {
-			log.Printf("[default-ini] kubectl: read %s (%d bytes) from pod %s", p, len(content), pod)
+			componentLog("control_kubectl").Debug().Str("path", p).Int("bytes", len(content)).Str("pod", pod).Msg("default-ini read from pod")
 			return content
 		}
 	}
@@ -444,7 +443,7 @@ func (c *kubectlControl) ReadDefaultINI(_ context.Context, exec Executor, filena
 		}
 	}
 
-	log.Printf("[default-ini] kubectl: %s not found in namespace %s", filename, c.namespace)
+	componentLog("control_kubectl").Warn().Str("filename", filename).Str("namespace", c.namespace).Msg("default-ini not found in namespace")
 	return ""
 }
 

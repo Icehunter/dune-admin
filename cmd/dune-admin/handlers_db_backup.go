@@ -4,23 +4,24 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 )
 
-// dbBackupProviderOrErr guards the globals and asserts the control plane supports
-// native DB backups, writing the appropriate error response if not.
-func dbBackupProviderOrErr(w http.ResponseWriter) (dbBackupProvider, bool) {
-	if globalControl == nil || globalExecutor == nil {
+// dbBackupProviderOrErr guards the control plane and asserts it supports native
+// DB backups, writing the appropriate error response if not.
+func dbBackupProviderOrErr(w http.ResponseWriter, r *http.Request) (dbBackupProvider, bool) {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
+	if ctrl == nil || exec == nil {
 		jsonErr(w, fmt.Errorf("control plane not connected"), http.StatusServiceUnavailable)
 		return nil, false
 	}
-	prov, ok := globalControl.(dbBackupProvider)
+	prov, ok := ctrl.(dbBackupProvider)
 	if !ok {
-		jsonErr(w, fmt.Errorf("database backups are not supported by the %q control plane", globalControl.Name()),
+		jsonErr(w, fmt.Errorf("database backups are not supported by the %q control plane", ctrl.Name()),
 			http.StatusNotImplemented)
 		return nil, false
 	}
@@ -29,8 +30,8 @@ func dbBackupProviderOrErr(w http.ResponseWriter) (dbBackupProvider, bool) {
 
 // gameServersRunning reports whether any game-server processes are live, used as
 // the "battlegroup is stopped" guard for the destructive restore.
-func gameServersRunning(ctx context.Context) (bool, error) {
-	st, err := globalControl.GetStatus(ctx, globalExecutor)
+func gameServersRunning(ctx context.Context, ctrl ControlPlane, exec Executor) (bool, error) {
+	st, err := ctrl.GetStatus(ctx, exec)
 	if err != nil {
 		return false, err
 	}
@@ -62,7 +63,7 @@ func verifyDumpFile(path string) error {
 func handleDBBackupList(w http.ResponseWriter, _ *http.Request) {
 	files, err := listDBBackups()
 	if err != nil {
-		log.Printf("handleDBBackupList: %v", err)
+		componentLog("db_backup").Error().Err(err).Msg("list backups failed")
 		jsonErr(w, fmt.Errorf("could not list backups"), http.StatusInternalServerError)
 		return
 	}
@@ -75,14 +76,14 @@ func handleDBBackupList(w http.ResponseWriter, _ *http.Request) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 501 {object} map[string]string
 // @Router /api/v1/db-backups [post]
-func handleDBBackupCreate(w http.ResponseWriter, _ *http.Request) {
-	prov, ok := dbBackupProviderOrErr(w)
+func handleDBBackupCreate(w http.ResponseWriter, r *http.Request) {
+	prov, ok := dbBackupProviderOrErr(w, r)
 	if !ok {
 		return
 	}
-	name, size, err := createDBBackup(prov)
+	name, size, err := createDBBackup(prov, executorFromCtx(r))
 	if err != nil {
-		log.Printf("handleDBBackupCreate: %v", err)
+		componentLog("db_backup").Error().Err(err).Msg("create backup failed")
 		jsonErr(w, fmt.Errorf("backup failed"), http.StatusInternalServerError)
 		return
 	}
@@ -92,14 +93,14 @@ func handleDBBackupCreate(w http.ResponseWriter, _ *http.Request) {
 // createDBBackup takes a fresh pg_dump via the provider, verifies the archive,
 // and returns the new file's name and size. Shared by the Database-page create
 // handler and the battlegroup-page backup dispatch (issue #169).
-func createDBBackup(prov dbBackupProvider) (name string, size int64, err error) {
+func createDBBackup(prov dbBackupProvider, exec Executor) (name string, size int64, err error) {
 	dir, err := dbBackupDir()
 	if err != nil {
 		return "", 0, fmt.Errorf("prepare backup dir: %w", err)
 	}
 	name = dbBackupFilename(time.Now())
 	dest := filepath.Join(dir, name)
-	if out, bErr := prov.BackupDatabase(globalExecutor, dbBackupConn(), dest); bErr != nil {
+	if out, bErr := prov.BackupDatabase(exec, dbBackupConn(), dest); bErr != nil {
 		return "", 0, fmt.Errorf("backup: %w (%s)", bErr, out)
 	}
 	if vErr := verifyDumpFile(dest); vErr != nil {
@@ -116,7 +117,7 @@ func createDBBackup(prov dbBackupProvider) (name string, size int64, err error) 
 // provider. The name must be validated by validateBackupName before calling.
 // Shared by the Database-page restore handler and the battlegroup-page restore
 // dispatch (issue #169). Callers own the destructive-op (game-stopped) guard.
-func restoreDBBackupFile(prov dbBackupProvider, name string) (string, error) {
+func restoreDBBackupFile(prov dbBackupProvider, name string, exec Executor) (string, error) {
 	dir, err := dbBackupDir()
 	if err != nil {
 		return "", fmt.Errorf("backup dir unavailable: %w", err)
@@ -125,7 +126,7 @@ func restoreDBBackupFile(prov dbBackupProvider, name string) (string, error) {
 	if _, statErr := os.Stat(src); statErr != nil {
 		return "", fmt.Errorf("backup not found")
 	}
-	out, err := prov.RestoreDatabase(globalExecutor, dbBackupConn(), src)
+	out, err := prov.RestoreDatabase(exec, dbBackupConn(), src)
 	if err != nil {
 		return out, fmt.Errorf("restore: %w", err)
 	}
@@ -158,7 +159,7 @@ func handleDBBackupDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
 	if _, err := io.Copy(w, f); err != nil {
-		log.Printf("handleDBBackupDownload: %v", err)
+		componentLog("db_backup").Error().Err(err).Msg("download copy failed")
 	}
 }
 
@@ -174,7 +175,7 @@ func handleDBBackupDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := deleteDBBackup(name); err != nil {
-		log.Printf("handleDBBackupDelete: %v", err)
+		componentLog("db_backup").Error().Err(err).Msg("delete backup failed")
 		jsonErr(w, fmt.Errorf("could not delete backup"), http.StatusInternalServerError)
 		return
 	}
@@ -206,15 +207,17 @@ func handleDBBackupRestore(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, http.StatusBadRequest)
 		return
 	}
-	prov, ok := dbBackupProviderOrErr(w)
+	prov, ok := dbBackupProviderOrErr(w, r)
 	if !ok {
 		return
 	}
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
 	// Destructive-op guard: refuse while the game is live — pg_restore --clean
 	// over a running server would corrupt in-flight state.
-	running, err := gameServersRunning(r.Context())
+	running, err := gameServersRunning(r.Context(), ctrl, exec)
 	if err != nil {
-		log.Printf("handleDBBackupRestore: status check: %v", err)
+		componentLog("db_backup").Error().Err(err).Msg("status check failed")
 		jsonErr(w, fmt.Errorf("could not verify the battlegroup is stopped"), http.StatusInternalServerError)
 		return
 	}
@@ -223,9 +226,9 @@ func handleDBBackupRestore(w http.ResponseWriter, r *http.Request) {
 			http.StatusConflict)
 		return
 	}
-	out, err := restoreDBBackupFile(prov, body.File)
+	out, err := restoreDBBackupFile(prov, body.File, exec)
 	if err != nil {
-		log.Printf("handleDBBackupRestore: %v", err)
+		componentLog("db_backup").Error().Err(err).Msg("restore failed")
 		jsonErr(w, fmt.Errorf("restore failed"), http.StatusInternalServerError)
 		return
 	}

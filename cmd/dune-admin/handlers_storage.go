@@ -14,7 +14,7 @@ import (
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/storage [get]
 func handleListStorage(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdListStorageContainers().(msgStorageContainers)
+	msg, ok := cmdListStorageContainers(dbFromCtx(r)).(msgStorageContainers)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -45,7 +45,7 @@ func handleGetStorageItems(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdGetContainerInventory(id)().(msgContainerInventory)
+	msg, ok := cmdGetContainerInventory(dbFromCtx(r), id)().(msgContainerInventory)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -91,7 +91,7 @@ func handleGiveItemToStorage(w http.ResponseWriter, r *http.Request) {
 		req.Qty = 1
 	}
 
-	msg, ok := cmdGiveItemToContainer(id, req.Template, req.Qty, req.Quality)().(msgMutate)
+	msg, ok := cmdGiveItemToContainer(dbFromCtx(r), id, req.Template, req.Qty, req.Quality)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -143,7 +143,7 @@ func handleGiveItemsToStorage(w http.ResponseWriter, r *http.Request) {
 		if qty <= 0 {
 			qty = 1
 		}
-		msg, ok := cmdGiveItemToContainer(id, item.Template, qty, item.Quality)().(msgMutate)
+		msg, ok := cmdGiveItemToContainer(dbFromCtx(r), id, item.Template, qty, item.Quality)().(msgMutate)
 		if !ok || msg.err != nil {
 			reason := "internal error"
 			if ok && msg.err != nil {
@@ -172,36 +172,37 @@ func handleStorageOwnerDebug(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	if globalDB == nil {
+	db := dbFromCtx(r)
+	if db == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 500)
 		return
 	}
 	ctx := context.Background()
 
 	var ownerEntityID int64
-	_ = globalDB.QueryRow(ctx, `SELECT COALESCE(owner_entity_id,0) FROM dune.placeables WHERE id = $1`, id).Scan(&ownerEntityID)
+	_ = db.QueryRow(ctx, `SELECT COALESCE(owner_entity_id,0) FROM dune.placeables WHERE id = $1`, id).Scan(&ownerEntityID)
 
 	var afeEntityID, afeActorID int64
-	_ = globalDB.QueryRow(ctx, `SELECT entity_id, actor_id FROM dune.actor_fgl_entities WHERE entity_id = $1 LIMIT 1`, ownerEntityID).Scan(&afeEntityID, &afeActorID)
+	_ = db.QueryRow(ctx, `SELECT entity_id, actor_id FROM dune.actor_fgl_entities WHERE entity_id = $1 LIMIT 1`, ownerEntityID).Scan(&afeEntityID, &afeActorID)
 
 	var ownerAccountID int64
-	_ = globalDB.QueryRow(ctx, `SELECT COALESCE(owner_account_id,0) FROM dune.actors WHERE id = $1`, afeActorID).Scan(&ownerAccountID)
+	_ = db.QueryRow(ctx, `SELECT COALESCE(owner_account_id,0) FROM dune.actors WHERE id = $1`, afeActorID).Scan(&ownerAccountID)
 
 	// Alternate path: permission_actor_rank links container actor → player actor
 	var parPlayerID int64
-	_ = globalDB.QueryRow(ctx, `SELECT COALESCE(player_id,0) FROM dune.permission_actor_rank WHERE permission_actor_id = $1 LIMIT 1`, afeActorID).Scan(&parPlayerID)
+	_ = db.QueryRow(ctx, `SELECT COALESCE(player_id,0) FROM dune.permission_actor_rank WHERE permission_actor_id = $1 LIMIT 1`, afeActorID).Scan(&parPlayerID)
 
 	var parAccountID int64
-	_ = globalDB.QueryRow(ctx, `SELECT COALESCE(owner_account_id,0) FROM dune.actors WHERE id = $1`, parPlayerID).Scan(&parAccountID)
+	_ = db.QueryRow(ctx, `SELECT COALESCE(owner_account_id,0) FROM dune.actors WHERE id = $1`, parPlayerID).Scan(&parAccountID)
 
 	var characterName, funcomID, hexID string
 	accountID := ownerAccountID
 	if accountID == 0 {
 		accountID = parAccountID
 	}
-	_ = globalDB.QueryRow(ctx, `SELECT COALESCE(character_name,'') FROM dune.player_state WHERE account_id = $1`, accountID).Scan(&characterName)
-	_ = globalDB.QueryRow(ctx, `SELECT COALESCE(convert_from(encrypted_funcom_id,'UTF8'),'') FROM dune.encrypted_accounts WHERE id = $1`, accountID).Scan(&funcomID)
-	_ = globalDB.QueryRow(ctx, `SELECT COALESCE("user",'') FROM dune.accounts WHERE id = $1`, accountID).Scan(&hexID)
+	_ = db.QueryRow(ctx, `SELECT COALESCE(character_name,'') FROM dune.player_state WHERE account_id = $1`, accountID).Scan(&characterName)
+	_ = db.QueryRow(ctx, `SELECT COALESCE(convert_from(encrypted_funcom_id,'UTF8'),'') FROM dune.encrypted_accounts WHERE id = $1`, accountID).Scan(&funcomID)
+	_ = db.QueryRow(ctx, `SELECT COALESCE("user",'') FROM dune.accounts WHERE id = $1`, accountID).Scan(&hexID)
 
 	jsonOK(w, map[string]any{
 		"container_id":     id,

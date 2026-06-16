@@ -1,72 +1,125 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Atreides inspired side quest marker icon">
-  <defs>
-    <linearGradient id="gold" x1="64" y1="20" x2="190" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f0d77a"/>
-      <stop offset="0.42" stop-color="#b99a45"/>
-      <stop offset="0.72" stop-color="#e4c66d"/>
-      <stop offset="1" stop-color="#7b6429"/>
-    </linearGradient>
-    <linearGradient id="green" x1="80" y1="28" x2="178" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#164735"/>
-      <stop offset="0.58" stop-color="#0d3228"/>
-      <stop offset="1" stop-color="#071d18"/>
-    </linearGradient>
-    <linearGradient id="sage" x1="72" y1="72" x2="186" y2="204" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#a8b783"/>
-      <stop offset="1" stop-color="#596d43"/>
-    </linearGradient>
-    <linearGradient id="shadow" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#000000" stop-opacity="0.26"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0.08"/>
-    </linearGradient>
-    <filter id="softShadow" x="-18%" y="-14%" width="136%" height="136%">
-      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-
-  <!-- transparent background intentionally omitted -->
-
-  <g filter="url(#softShadow)">
-    <!-- outer map-pin / heraldic marker -->
-    <path d="M128 10 C95 26 66 55 54 90 C45 116 50 145 65 168 L128 244 L191 168 C206 145 211 116 202 90 C190 55 161 26 128 10 Z" fill="url(#gold)"/>
-    <path d="M128 22 C101 36 76 62 66 94 C58 119 63 144 77 163 L128 225 L179 163 C193 144 198 119 190 94 C180 62 155 36 128 22 Z" fill="url(#green)"/>
-
-    <!-- side armor plates -->
-    <path d="M55 86 L27 113 L44 151 L78 172 C60 145 52 118 55 86 Z" fill="#4e613c" stroke="url(#gold)" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M201 86 L229 113 L212 151 L178 172 C196 145 204 118 201 86 Z" fill="#4e613c" stroke="url(#gold)" stroke-width="4" stroke-linejoin="round"/>
-
-    <!-- inner ceremonial arc -->
-    <path d="M65 102 C72 61 99 36 128 31 C157 36 184 61 191 102" fill="none" stroke="#9eae76" stroke-width="8" stroke-linecap="round" opacity="0.9"/>
-    <path d="M71 104 C78 69 102 48 128 43 C154 48 178 69 185 104" fill="none" stroke="#0a261f" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
-
-    <!-- lower beveled pin panels -->
-    <path d="M75 154 L128 225 L181 154 L159 171 L128 204 L97 171 Z" fill="url(#shadow)" opacity="0.42"/>
-    <path d="M75 154 L128 225 L103 163 Z" fill="#314832" stroke="#7e914f" stroke-width="2"/>
-    <path d="M181 154 L128 225 L153 163 Z" fill="#42583a" stroke="#7e914f" stroke-width="2"/>
-    <path d="M128 139 L148 177 L128 205 L108 177 Z" fill="#0a2a22" stroke="url(#gold)" stroke-width="3"/>
-
-    <!-- protective sage chevron -->
-    <path d="M78 123 L128 170 L178 123 L159 132 L128 151 L97 132 Z" fill="url(#sage)" stroke="#1b3327" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M92 128 L128 158 L164 128 L128 183 Z" fill="#61774b" opacity="0.75"/>
-
-    <!-- gold winged side-quest crest -->
-    <path d="M54 80 L104 127 L127 151 L105 105 Z" fill="url(#gold)" stroke="#6f5923" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M202 80 L152 127 L129 151 L151 105 Z" fill="url(#gold)" stroke="#6f5923" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M68 105 L105 134 L94 115 Z" fill="#ead174" opacity="0.95"/>
-    <path d="M188 105 L151 134 L162 115 Z" fill="#ead174" opacity="0.95"/>
-    <path d="M73 124 L112 144 L100 132 Z" fill="#b99a45" opacity="0.95"/>
-    <path d="M183 124 L144 144 L156 132 Z" fill="#b99a45" opacity="0.95"/>
-
-    <!-- central quest spear / locator needle -->
-    <path d="M128 73 L139 121 L128 151 L117 121 Z" fill="url(#gold)" stroke="#6f5923" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M128 73 L128 151 L117 121 Z" fill="#f4dc86" opacity="0.45"/>
-
-    <!-- star markers -->
-    <path d="M128 47 L134 61 L148 67 L134 73 L128 87 L122 73 L108 67 L122 61 Z" fill="url(#gold)" stroke="#6f5923" stroke-width="1.5"/>
-    <path d="M128 185 L134 197 L128 209 L122 197 Z" fill="url(#gold)" stroke="#6f5923" stroke-width="1.5"/>
-
-    <!-- fine bevel highlights -->
-    <path d="M128 23 C103 36 79 62 68 94 C61 116 65 140 78 161" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2" stroke-linecap="round"/>
-    <path d="M187 96 C195 120 190 144 177 162 L130 219" fill="none" stroke="#000000" stroke-opacity="0.22" stroke-width="2" stroke-linecap="round"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Atreides inspired side quest marker icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="b" x1="64" x2="190" y1="20" y2="230" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#f0d77a"
+      /><stop offset=".42" stop-color="#b99a45" /><stop offset=".72" stop-color="#e4c66d" /><stop
+        offset="1"
+        stop-color="#7b6429"
+      /></linearGradient><linearGradient id="c" x1="80" x2="178" y1="28" y2="230" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#164735"
+      /><stop offset=".58" stop-color="#0d3228" /><stop
+        offset="1"
+        stop-color="#071d18"
+      /></linearGradient><linearGradient id="e" x1="72" x2="186" y1="72" y2="204" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#a8b783"
+      /><stop offset="1" stop-color="#596d43" /></linearGradient><linearGradient
+      id="d"
+      x1="0"
+      x2="0"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-opacity=".26" /><stop offset="1" stop-opacity=".08" /></linearGradient><filter
+      id="a"
+      width="136%"
+      height="136%"
+      x="-18%"
+      y="-14%"
+    ><feDropShadow dx="0" dy="4" flood-color="#000" flood-opacity=".35" stdDeviation="4" /></filter></defs><g
+    filter="url(#a)"
+  ><path
+      fill="url(#b)"
+      d="M128 10C95 26 66 55 54 90c-9 26-4 55 11 78l63 76 63-76c15-23 20-52 11-78-12-35-41-64-74-80"
+    /><path
+      fill="url(#c)"
+      d="M128 22c-27 14-52 40-62 72-8 25-3 50 11 69l51 62 51-62c14-19 19-44 11-69-10-32-35-58-62-72"
+    /><path
+      fill="#4e613c"
+      stroke="url(#b)"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="m55 86-28 27 17 38 34 21c-18-27-26-54-23-86Z"
+    /><path
+      fill="#4e613c"
+      stroke="url(#b)"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="m201 86 28 27-17 38-34 21c18-27 26-54 23-86Z"
+    /><path
+      fill="none"
+      stroke="#9eae76"
+      stroke-linecap="round"
+      stroke-width="8"
+      d="M65 102c7-41 34-66 63-71 29 5 56 30 63 71"
+      opacity=".9"
+    /><path
+      fill="none"
+      stroke="#0a261f"
+      stroke-linecap="round"
+      stroke-width="3"
+      d="M71 104c7-35 31-56 57-61 26 5 50 26 57 61"
+      opacity=".55"
+    /><path fill="url(#d)" d="m75 154 53 71 53-71-22 17-31 33-31-33Z" opacity=".42" /><path
+      fill="#314832"
+      stroke="#7e914f"
+      stroke-width="2"
+      d="m75 154 53 71-25-62Z"
+    /><path fill="#42583a" stroke="#7e914f" stroke-width="2" d="m181 154-53 71 25-62Z" /><path
+      fill="#0a2a22"
+      stroke="url(#b)"
+      stroke-width="3"
+      d="m128 139 20 38-20 28-20-28Z"
+    /><path
+      fill="url(#e)"
+      stroke="#1b3327"
+      stroke-linejoin="round"
+      stroke-width="3"
+      d="m78 123 50 47 50-47-19 9-31 19-31-19Z"
+    /><path fill="#61774b" d="m92 128 36 30 36-30-36 55Z" opacity=".75" /><path
+      fill="url(#b)"
+      stroke="#6f5923"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="m54 80 50 47 23 24-22-46Z"
+    /><path
+      fill="url(#b)"
+      stroke="#6f5923"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="m202 80-50 47-23 24 22-46Z"
+    /><path fill="#ead174" d="m68 105 37 29-11-19Zm120 0-37 29 11-19Z" opacity=".95" /><path
+      fill="#b99a45"
+      d="m73 124 39 20-12-12Zm110 0-39 20 12-12Z"
+      opacity=".95"
+    /><path
+      fill="url(#b)"
+      stroke="#6f5923"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="m128 73 11 48-11 30-11-30Z"
+    /><path fill="#f4dc86" d="M128 73v78l-11-30Z" opacity=".45" /><path
+      fill="url(#b)"
+      stroke="#6f5923"
+      stroke-width="1.5"
+      d="m128 47 6 14 14 6-14 6-6 14-6-14-14-6 14-6Z"
+    /><path fill="url(#b)" stroke="#6f5923" stroke-width="1.5" d="m128 185 6 12-6 12-6-12Z" /><path
+      fill="none"
+      stroke="#fff"
+      stroke-linecap="round"
+      stroke-opacity=".12"
+      stroke-width="2"
+      d="M128 23c-25 13-49 39-60 71-7 22-3 46 10 67"
+    /><path
+      fill="none"
+      stroke="#000"
+      stroke-linecap="round"
+      stroke-opacity=".22"
+      stroke-width="2"
+      d="M187 96c8 24 3 48-10 66l-47 57"
+    /></g></svg>

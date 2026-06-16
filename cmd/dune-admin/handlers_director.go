@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -148,11 +147,11 @@ func applyDirectorEdits(content string, edits map[string]map[string]string) stri
 	return strings.Join(lines, "\n")
 }
 
-func directorStore() (directorConfigStore, bool) {
-	if globalControl == nil || globalExecutor == nil {
+func resolveDirectorStore(ctrl ControlPlane) (directorConfigStore, bool) {
+	if ctrl == nil {
 		return nil, false
 	}
-	store, ok := globalControl.(directorConfigStore)
+	store, ok := ctrl.(directorConfigStore)
 	return store, ok
 }
 
@@ -163,19 +162,21 @@ func directorStore() (directorConfigStore, bool) {
 // @Failure 501 {object} map[string]string
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/director-config [get]
-func handleGetDirectorConfig(w http.ResponseWriter, _ *http.Request) {
-	if globalControl == nil || globalExecutor == nil {
+func handleGetDirectorConfig(w http.ResponseWriter, r *http.Request) {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
+	if ctrl == nil || exec == nil {
 		jsonErr(w, fmt.Errorf("not connected"), http.StatusServiceUnavailable)
 		return
 	}
-	store, ok := directorStore()
+	store, ok := resolveDirectorStore(ctrl)
 	if !ok {
 		jsonErr(w, fmt.Errorf("director config is only available on the AMP control plane"), http.StatusNotImplemented)
 		return
 	}
-	path, content, err := store.readDirectorConfig(globalExecutor)
+	path, content, err := store.readDirectorConfig(exec)
 	if err != nil {
-		log.Printf("handleGetDirectorConfig: %v", err)
+		componentLog("director").Error().Err(err).Msg("could not read director config")
 		jsonErr(w, fmt.Errorf("could not read director config"), http.StatusInternalServerError)
 		return
 	}
@@ -192,11 +193,13 @@ func handleGetDirectorConfig(w http.ResponseWriter, _ *http.Request) {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/director-config [put]
 func handleUpdateDirectorConfig(w http.ResponseWriter, r *http.Request) {
-	if globalControl == nil || globalExecutor == nil {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
+	if ctrl == nil || exec == nil {
 		jsonErr(w, fmt.Errorf("not connected"), http.StatusServiceUnavailable)
 		return
 	}
-	store, ok := directorStore()
+	store, ok := resolveDirectorStore(ctrl)
 	if !ok {
 		jsonErr(w, fmt.Errorf("director config is only available on the AMP control plane"), http.StatusNotImplemented)
 		return
@@ -212,15 +215,15 @@ func handleUpdateDirectorConfig(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("no updates provided"), http.StatusBadRequest)
 		return
 	}
-	_, content, err := store.readDirectorConfig(globalExecutor)
+	_, content, err := store.readDirectorConfig(exec)
 	if err != nil {
-		log.Printf("handleUpdateDirectorConfig: read: %v", err)
+		componentLog("director").Error().Err(err).Msg("could not read director config")
 		jsonErr(w, fmt.Errorf("could not read director config"), http.StatusInternalServerError)
 		return
 	}
-	path, err := store.writeDirectorConfig(globalExecutor, applyDirectorEdits(content, body.Updates))
+	path, err := store.writeDirectorConfig(exec, applyDirectorEdits(content, body.Updates))
 	if err != nil {
-		log.Printf("handleUpdateDirectorConfig: write: %v", err)
+		componentLog("director").Error().Err(err).Msg("could not write director config")
 		jsonErr(w, fmt.Errorf("could not write director config"), http.StatusInternalServerError)
 		return
 	}

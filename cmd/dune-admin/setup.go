@@ -296,6 +296,10 @@ func setupKubectlConnectDB(
 	fmt.Println("Connecting to database...")
 	dbUser = discoveredUser
 	dbPass = discoveredPass
+	// connectDB (kubectl path) tunnels through globalExecutor and aborts if it is
+	// nil — so it MUST be set before the connect, not after. Otherwise SSH + pod
+	// discovery succeed but the DB connect fails with "globalExecutor is nil".
+	globalExecutor = exec
 	pool, err := connectDB(context.Background(), discoveredUser, discoveredPass)
 	if err != nil {
 		fail("DB connect failed: " + err.Error())
@@ -304,7 +308,6 @@ func setupKubectlConnectDB(
 		exitSetup(1)
 	}
 	globalDB = pool
-	globalExecutor = exec
 	globalControl = newControlPlane("kubectl", *cfg)
 	ok("Database connected as: " + dbUser)
 	fmt.Println()

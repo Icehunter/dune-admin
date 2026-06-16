@@ -16,13 +16,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 	_ "time/tzdata" // embed the IANA tz database so time.LoadLocation works on
 	// minimal containers without the OS tzdata package (#204: scheduled restart
 	// rejected valid zones like "Europe/London").
@@ -31,6 +29,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"dune-admin/internal/marketbot"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // AppVersion is the release version shown to users.
@@ -309,6 +308,25 @@ type appConfig struct {
 	BattlepassPollSeconds      int   `yaml:"battlepass_poll_seconds"       json:"battlepass_poll_seconds"`
 	BattlepassScanPaceMs       int   `yaml:"battlepass_scan_pace_ms"       json:"battlepass_scan_pace_ms"`
 	BattlepassScanStartDelayMs int   `yaml:"battlepass_scan_start_delay_ms" json:"battlepass_scan_start_delay_ms"`
+
+	// Multi-server: when Servers is non-empty, connectAll is replaced by
+	// connectMultiServer which calls connectServer for each entry. DefaultServer
+	// names the initially-active server; if blank the first entry is used.
+	// Existing flat-config installs (no servers: key) are unaffected.
+	Servers       []ServerConfig `yaml:"servers"        json:"servers,omitempty"`
+	DefaultServer string         `yaml:"default_server" json:"default_server,omitempty"`
+	// DefaultServerName is the display name of the legacy flat "default" server,
+	// so single-server installs can rename it. Blank → "Default".
+	DefaultServerName string `yaml:"default_server_name" json:"default_server_name,omitempty"`
+}
+
+// defaultServerName returns the configured display name for the legacy flat
+// "default" server, falling back to "Default".
+func defaultServerName() string {
+	if loadedConfig.DefaultServerName != "" {
+		return loadedConfig.DefaultServerName
+	}
+	return "Default"
 }
 
 // marketBotEnabled returns the effective bot-enabled flag. Missing yaml key →
@@ -327,7 +345,7 @@ func marketBotEnabled(cfg appConfig) bool {
 func startWelcomePackageScanner(_ appConfig) context.CancelFunc {
 	var store *welcomeStore
 	if globalStore != nil {
-		store = newWelcomeStore(globalStore)
+		store = newWelcomeStore(globalStore, defaultServerID)
 	} else {
 		var err error
 		store, err = openWelcomeStore(filepath.Join(configDir(), "welcome-package.db"))
@@ -434,12 +452,10 @@ func detectStaleEnvFile(workDir string) bool {
 	if _, err := os.Stat(filepath.Join(workDir, ".env")); err != nil {
 		return false
 	}
-	log.Printf("[WARN] stale .env file found in %s", workDir)
-	log.Printf("[WARN] dune-admin is using %s — .env is ignored.", configPath())
-	log.Printf("[WARN] However, env vars pre-exported from .env before startup can")
-	log.Printf("[WARN] shadow config.yaml and silently break features (e.g. market-bot")
-	log.Printf("[WARN] control). Delete or rename .env and restart to be sure:")
-	log.Printf("[WARN]   mv %s %s.bak", filepath.Join(workDir, ".env"), filepath.Join(workDir, ".env"))
+	componentLog("main").Warn().
+		Str("dir", workDir).
+		Str("config_path", configPath()).
+		Msg("stale .env file found; .env is ignored but pre-exported env vars can shadow config.yaml and silently break features (e.g. market-bot control) — delete or rename .env and restart")
 	return true
 }
 
@@ -523,6 +539,14 @@ func resolveKeyPath() string {
 	if sshKeyPath != "" {
 		return sshKeyPath
 	}
+	return discoverSSHKeyPath()
+}
+
+// discoverSSHKeyPath searches the standard locations (config dir, next to the
+// binary, the working directory) for an "sshKey" file and returns the first hit.
+// When none exists it returns the config-dir path so callers have a stable
+// default. Independent of the sshKeyPath global so it works for per-server config.
+func discoverSSHKeyPath() string {
 	home, _ := os.UserHomeDir()
 	exe, _ := os.Executable()
 	exeDir := filepath.Dir(exe)
@@ -640,6 +664,16 @@ func loadItemData() error {
 // still requires setup, so an unreachable/failed discovery doesn't strand the
 // operator without a wizard path.
 func needsSetupConfigured() bool {
+	// DB is the source of truth: any configured server means no setup needed.
+	if globalServersStore != nil {
+		if has, err := globalServersStore.hasAnyServer(); err == nil {
+			return !has
+		}
+	}
+	// Fallback (store unavailable): the legacy flat-config heuristic.
+	if len(loadedConfig.Servers) > 0 {
+		return false
+	}
 	if dbPass != "" {
 		return false
 	}
@@ -647,7 +681,14 @@ func needsSetupConfigured() bool {
 }
 
 func needsSetup() bool {
-	// config.yaml takes priority over legacy .env.
+	// DB is the source of truth: a server configured in the store means the
+	// install is set up, regardless of whether config.yaml still exists.
+	if globalServersStore != nil {
+		if has, err := globalServersStore.hasAnyServer(); err == nil {
+			return !has
+		}
+	}
+	// Fallback (store unavailable): config.yaml takes priority over legacy .env.
 	if _, err := os.Stat(configPath()); err == nil {
 		return needsSetupConfigured()
 	}
@@ -661,7 +702,7 @@ func runSQLMode(query string) error {
 	if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
 		return fmt.Errorf("connect: %w", msg.err)
 	}
-	if msg, ok := cmdRunSQL(query)().(msgSQL); ok {
+	if msg, ok := cmdRunSQL(globalDB, query)().(msgSQL); ok {
 		if msg.err != nil {
 			return msg.err
 		}
@@ -753,18 +794,24 @@ func loadRuntimeData() error {
 }
 
 func setupIfNeeded() bool {
-	// Auto-run setup wizard when no config exists — setup leaves us connected.
-	if !needsSetup() {
-		return false
-	}
-	runSetup()
-	fmt.Println()
-	fmt.Printf("Starting server on %s...\n", listenAddr)
-	return true
+	// When setup is needed, skip the connect step — the web wizard handles
+	// initial configuration via POST /api/v1/config + POST /api/v1/reconnect.
+	// The terminal wizard is still available via --setup / make setup.
+	return needsSetup()
 }
 
 func closeGlobalConnections() {
-	if globalDB != nil {
+	// Close all per-server pools (dedup by pointer so aliased pools close once).
+	seen := make(map[*pgxpool.Pool]bool)
+	for _, sc := range globalRegistry.All() {
+		if sc.DB != nil && !seen[sc.DB] {
+			seen[sc.DB] = true
+			sc.DB.Close()
+		}
+	}
+	// Fallback for the legacy path where globalDB may not be in the registry
+	// (connect failed before registration, or the registry is empty).
+	if globalDB != nil && !seen[globalDB] {
 		globalDB.Close()
 	}
 	// Close the active executor so command-mode tears down its ControlMaster
@@ -792,11 +839,19 @@ func connectAndPrimeTemplates(alreadyConnected bool) {
 		refreshItemTemplates()
 		return
 	}
-	// Connect synchronously (SSH + DB).
-	if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
-		fmt.Fprintln(os.Stderr, "connect:", msg.err)
-		fmt.Fprintln(os.Stderr, "Starting server anyway — use /api/v1/reconnect to retry")
-		return
+	if len(loadedConfig.Servers) > 0 {
+		// Multi-server path: connect each server from the servers: list.
+		if err := connectMultiServer(loadedConfig); err != nil {
+			fmt.Fprintln(os.Stderr, "connect:", err)
+			fmt.Fprintln(os.Stderr, "Starting server anyway — use /api/v1/servers/{id}/reconnect to retry")
+		}
+	} else {
+		// Legacy flat-config path.
+		if msg, ok := cmdConnect().(msgConnect); ok && msg.err != nil {
+			fmt.Fprintln(os.Stderr, "connect:", msg.err)
+			fmt.Fprintln(os.Stderr, "Starting server anyway — use /api/v1/reconnect to retry")
+			return
+		}
 	}
 	refreshItemTemplates()
 }
@@ -847,44 +902,14 @@ func usableItemDataPath(configured string) string {
 	}
 	if fb := resolveItemDataPath(); itemDataPathResolvable(fb) {
 		if configured != "" {
-			log.Printf("market-bot: item-data path %q not found; falling back to %q", configured, fb)
+			componentLog("main").Warn().
+				Str("configured_path", configured).
+				Str("fallback_path", fb).
+				Msg("market-bot item-data path not found; falling back")
 		}
 		return fb
 	}
 	return configured
-}
-
-func startEmbeddedMarketBotIfEnabled(cfg appConfig) context.CancelFunc {
-	if !marketBotEnabled(cfg) {
-		return nil
-	}
-	embeddedBotConfigured = true
-	botCtx, botCancel := context.WithCancel(context.Background())
-	cacheDB, itemDataForBot, statePath := resolveEmbeddedMarketBotPaths(cfg, itemDataPath)
-	itemDataForBot = usableItemDataPath(itemDataForBot)
-	inst, err := marketbot.Run(botCtx, marketbot.BotConfig{
-		DBPool:       globalDB,
-		DBHost:       dbHost,
-		DBPort:       dbPort,
-		DBUser:       dbUser,
-		DBPass:       dbPass,
-		DBName:       dbName,
-		DBSchema:     dbSchema,
-		CacheDB:      cacheDB,
-		StatePath:    statePath,
-		ItemDataPath: itemDataForBot,
-		BuyInterval:  parseDurString(cfg.MarketBotBuyInt, 5*time.Minute),
-		ListInterval: parseDurString(cfg.MarketBotListInt, 30*time.Minute),
-		BuyThreshold: cfg.MarketBotThresh,
-		MaxBuys:      cfg.MarketBotMaxBuys,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "market-bot: startup failed: %v\n", err)
-		botCancel()
-		return nil
-	}
-	embeddedBot = inst
-	return botCancel
 }
 
 // immediateModeLabel returns the error prefix for immediate-mode failures
@@ -901,19 +926,42 @@ func immediateModeLabel() string {
 
 func main() {
 	flag.Parse()
+	if err := run(context.Background()); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
 
+// run wires up and starts the server, returning an error instead of calling
+// os.Exit/log.Fatal so that every deferred cleanup below unwinds on every return
+// path — including the server's exit. main() translates a returned error into a
+// non-zero exit code only after run() has fully returned and its defers ran.
+func run(ctx context.Context) error {
+	initLogging()
 	handled, err := runImmediateModes()
 	if handled {
 		if err != nil {
-			fmt.Fprintln(os.Stderr, immediateModeLabel()+err.Error())
-			os.Exit(1)
+			return fmt.Errorf("%s%w", immediateModeLabel(), err)
 		}
-		return
+		return nil
 	}
 
 	if err := loadRuntimeData(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
+	}
+
+	// Open the unified store BEFORE connecting: servers + global settings now
+	// live in the DB. hydrateConfigFromStore imports config.yaml once (first
+	// boot) and loads servers/settings into loadedConfig so the connect path and
+	// needsSetup() see DB-sourced state.
+	closeStore := initUnifiedStoreOnce()
+	defer closeStore()
+	hydrateConfigFromStore()
+
+	// Read caches must exist before the connect path / any handler. Non-fatal:
+	// on error the handlers serve live data.
+	if err := initGlobalCaches(); err != nil {
+		componentLog("main").Warn().Err(err).Msg("init caches failed; serving live")
 	}
 
 	alreadyConnected := setupIfNeeded()
@@ -921,20 +969,34 @@ func main() {
 
 	connectAndPrimeTemplates(alreadyConnected)
 
-	closeStore := initUnifiedStoreOnce()
-	defer closeStore()
+	// One-time copy of legacy Postgres dune.discord_links registrations into the
+	// SQLite discord_user_links store. Runs here (post-connect) because it needs
+	// the default server's live pool; best-effort + marker-gated, so it retries on
+	// a later boot if Postgres is unreachable now.
+	if id, ok := firstServerID(); ok && globalStore != nil {
+		var read legacyLinkReader
+		if globalDB != nil {
+			read = func(c context.Context) ([]legacyUserLink, error) {
+				return cmdReadLegacyDiscordLinks(c, globalDB)
+			}
+		}
+		migrateLegacyDiscordUserLinks(globalStore, id, read)
+	}
+
+	// Prewarm hot read caches so the first UI paint (dashboard health) is instant
+	// on a hard refresh, then keep them warm in the background (refresh-ahead).
+	warmer := newCacheWarmer(globalRegistry)
+	prewarmCaches(ctx, warmer)
+	go warmer.run(ctx)
 
 	sessionCancel := startSessionTracking()
 	defer sessionCancel()
 
-	if cancel := startEmbeddedMarketBotIfEnabled(loadedConfig); cancel != nil {
-		globalBotCancel = cancel
-		defer func() {
-			if globalBotCancel != nil {
-				globalBotCancel()
-			}
-		}()
-	}
+	// Start one market bot per enabled server that has a live DB. Servers with
+	// the toggle off, or with no DB yet (fresh/unconfigured env), don't start a
+	// bot — so a brand-new install no longer spams "market-bot startup failed".
+	restartAllServerMarketBots(loadedConfig)
+	defer stopAllServerMarketBots()
 
 	if loadedConfig.MarketBotRemoteURL != "" {
 		remoteBotProxy = newRemoteBotClient(loadedConfig.MarketBotRemoteURL, loadedConfig.MarketBotRemoteToken)
@@ -947,22 +1009,7 @@ func main() {
 	globalWelcomeCancel = startWelcomePackageScanner(loadedConfig)
 	defer stopWelcomeScanner()
 
-	// Scheduled restarts (#145): load persisted config + run the scheduler for
-	// the process lifetime (independent of the welcome scanner's lifecycle).
-	loadScheduledRestartConfig()
-	go runRestartScheduler(context.Background())
-
-	// Scheduled DB backups (#150): same lifecycle as scheduled restarts.
-	loadScheduledBackupConfig()
-	go runBackupScheduler(context.Background())
-
-	// Web interfaces (#155): load the operator-configured Server Health links.
-	loadWebInterfaces()
-
-	initLocationStore()
-	initGivePacksStore()
-	initEventStore()
-	initBattlepassStore()
+	startBackgroundServices(ctx)
 
 	applyEventEngine(loadedConfig)
 	defer stopEventEngine()
@@ -973,7 +1020,30 @@ func main() {
 	startEmbeddedLandsraadBotIfEnabled()
 	defer stopLandsraadBot()
 
-	startServer(listenAddr)
+	return startServer(listenAddr)
+}
+
+// startBackgroundServices launches the process-lifetime schedulers and loads the
+// operator-configured runtime data that has no teardown. The schedulers honour
+// ctx.Done(); today ctx is context.Background() (the process is hard-stopped on
+// signal), but threading ctx keeps this forward-compatible with graceful
+// shutdown without changing current behaviour.
+func startBackgroundServices(ctx context.Context) {
+	// Scheduled restarts (#145): per-server schedules live in the DB; the
+	// scheduler iterates the registry each tick. Runs for the process lifetime
+	// (independent of the welcome scanner's lifecycle).
+	go runRestartScheduler(ctx)
+
+	// Scheduled DB backups (#150): same lifecycle as scheduled restarts.
+	go runBackupScheduler(ctx)
+
+	// Web interfaces (#155): load the operator-configured Server Health links.
+	loadWebInterfaces()
+
+	initLocationStore()
+	initGivePacksStore()
+	initEventStore()
+	initBattlepassStore()
 }
 
 // initLocationStore opens (or creates) the persistent location store and sets
@@ -1003,7 +1073,7 @@ func initLocationStore() {
 func initGivePacksStore() {
 	var s *givePacksStore
 	if globalStore != nil {
-		s = newGivePacksStore(globalStore)
+		s = newGivePacksStore(globalStore, defaultServerID)
 	} else {
 		var err error
 		s, err = openGivePacksStore(filepath.Join(configDir(), "give-packs.db"))
@@ -1031,7 +1101,7 @@ func initGivePacksStore() {
 // globalEventStore. A failure is non-fatal — handlers guard for a nil store.
 func initEventStore() {
 	if globalStore != nil {
-		globalEventStore = newEventStore(globalStore)
+		globalEventStore = newEventStore(globalStore, defaultServerID)
 		return
 	}
 	var err error
@@ -1047,7 +1117,7 @@ func initEventStore() {
 // globalBattlepassStore. A failure is non-fatal — handlers guard for nil.
 func initBattlepassStore() {
 	if globalStore != nil {
-		globalBattlepassStore = newBattlepassStore(globalStore)
+		globalBattlepassStore = newBattlepassStore(globalStore, defaultServerID)
 		return
 	}
 	s, err := openBattlepassStore(filepath.Join(configDir(), "battlepass.db"))
@@ -1068,18 +1138,7 @@ func stopWelcomeScanner() {
 	}
 }
 
-// embeddedBot holds the live market bot instance when market_bot_enabled=true.
-// Nil when bot is disabled.
-var embeddedBot *marketbot.Instance
-
-// embeddedBotConfigured is true whenever the server config has market_bot_enabled=true,
-// regardless of whether the bot instance is currently running. Never reset to false.
-var embeddedBotConfigured bool
-
-// globalBotCancel cancels the embedded bot's context, stopping it cleanly.
-// Set by startEmbeddedMarketBotIfEnabled; nil when no bot is running.
-var globalBotCancel context.CancelFunc
-
-// remoteBotProxy forwards /api/v1/market-bot/* to a remote bot when set.
-// Takes precedence when embeddedBot is nil.
+// remoteBotProxy forwards /api/v1/market-bot/* to a remote bot when set, and is
+// the fallback when no per-server embedded bot is running. The embedded bots are
+// per-server (ServerContext.Bot).
 var remoteBotProxy *remoteBotClient

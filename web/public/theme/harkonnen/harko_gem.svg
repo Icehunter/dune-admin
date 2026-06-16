@@ -1,98 +1,114 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
-  <defs>
-    <linearGradient id="steelA" x1="70" y1="24" x2="186" y2="232" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2b2c2c"/>
-      <stop offset="0.45" stop-color="#090909"/>
-      <stop offset="1" stop-color="#010101"/>
-    </linearGradient>
-    <linearGradient id="steelB" x1="128" y1="16" x2="128" y2="236" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4b4d4c"/>
-      <stop offset="0.35" stop-color="#151515"/>
-      <stop offset="1" stop-color="#000"/>
-    </linearGradient>
-    <radialGradient id="crimsonGlow" cx="128" cy="132" r="86" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ff2a2a"/>
-      <stop offset="0.34" stop-color="#b00013"/>
-      <stop offset="0.68" stop-color="#310006"/>
-      <stop offset="1" stop-color="#050000" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="redFacet" x1="128" y1="42" x2="128" y2="218" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ff4a4a"/>
-      <stop offset="0.42" stop-color="#a00012"/>
-      <stop offset="1" stop-color="#1a0004"/>
-    </linearGradient>
-    <filter id="glow" x="32" y="20" width="192" height="216" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="3.5" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <clipPath id="crystalClip">
-      <path d="M128 14 172 69 202 138 128 240 54 138 84 69 128 14Z"/>
-    </clipPath>
-  </defs>
-
-  <!-- transparent background by design -->
-
-  <!-- outer aggressive side blades -->
-  <path d="M46 123 70 78 84 155 62 185Z" fill="#080808" stroke="#303030" stroke-width="1.5"/>
-  <path d="M210 123 186 78 172 155 194 185Z" fill="#080808" stroke="#303030" stroke-width="1.5"/>
-  <path d="M70 78 88 143 84 155Z" fill="#242625"/>
-  <path d="M186 78 168 143 172 155Z" fill="#242625"/>
-  <path d="M62 185 91 173 128 240Z" fill="#030303" stroke="#1b1b1b" stroke-width="1"/>
-  <path d="M194 185 165 173 128 240Z" fill="#030303" stroke="#1b1b1b" stroke-width="1"/>
-
-  <!-- crimson interior glow -->
-  <path d="M128 36 163 93 178 150 128 221 78 150 93 93Z" fill="url(#crimsonGlow)" filter="url(#glow)" opacity="0.9"/>
-
-  <!-- main crystal shell -->
-  <g clip-path="url(#crystalClip)">
-    <path d="M128 14 84 69 54 138 128 240Z" fill="url(#steelA)"/>
-    <path d="M128 14 172 69 202 138 128 240Z" fill="#050505"/>
-    <path d="M128 14 101 78 128 54 155 78Z" fill="url(#steelB)"/>
-    <path d="M84 69 101 78 83 150 54 138Z" fill="#141414"/>
-    <path d="M172 69 155 78 173 150 202 138Z" fill="#0a0a0a"/>
-    <path d="M101 78 128 54 155 78 146 128 128 112 110 128Z" fill="#111" stroke="#565656" stroke-width="1"/>
-
-    <!-- central red reward gemstone -->
-    <path d="M128 54 146 128 128 221 110 128Z" fill="url(#redFacet)"/>
-    <path d="M128 54 128 112 110 128Z" fill="#ff3333" opacity="0.78"/>
-    <path d="M128 54 146 128 128 112Z" fill="#550006" opacity="0.95"/>
-    <path d="M110 128 128 112 128 160 84 151Z" fill="#7a000a" opacity="0.92"/>
-    <path d="M146 128 128 112 128 160 172 151Z" fill="#220004" opacity="0.95"/>
-    <path d="M84 151 128 160 128 221Z" fill="#210004"/>
-    <path d="M172 151 128 160 128 221Z" fill="#090001"/>
-    <path d="M110 128 84 151 101 78Z" fill="#0a0a0a" opacity="0.82"/>
-    <path d="M146 128 172 151 155 78Z" fill="#070707" opacity="0.9"/>
-
-    <!-- lower armored facets -->
-    <path d="M54 138 84 151 128 240Z" fill="#070707" opacity="0.95"/>
-    <path d="M202 138 172 151 128 240Z" fill="#010101" opacity="0.95"/>
-    <path d="M84 151 105 177 128 240Z" fill="#111"/>
-    <path d="M172 151 151 177 128 240Z" fill="#050505"/>
-    <path d="M105 177 128 160 151 177 128 240Z" fill="#120002" opacity="0.95"/>
-  </g>
-
-  <!-- hard vector facet strokes -->
-  <path d="M128 14 172 69 202 138 128 240 54 138 84 69 128 14Z" stroke="#171717" stroke-width="3" stroke-linejoin="miter"/>
-  <path d="M128 14V240" stroke="#686868" stroke-width="1.2" opacity="0.55"/>
-  <path d="M84 69 101 78 110 128 84 151 54 138" stroke="#4a4a4a" stroke-width="1" opacity="0.8"/>
-  <path d="M172 69 155 78 146 128 172 151 202 138" stroke="#272727" stroke-width="1" opacity="0.9"/>
-  <path d="M101 78 128 54 155 78" stroke="#8a8a8a" stroke-width="1" opacity="0.6"/>
-  <path d="M110 128 128 112 146 128" stroke="#ff3333" stroke-width="1.4" opacity="0.7"/>
-  <path d="M84 151 128 160 172 151" stroke="#b00013" stroke-width="1.3" opacity="0.8"/>
-  <path d="M105 177 128 221 151 177" stroke="#ff1515" stroke-width="1" opacity="0.55"/>
-
-  <!-- militaristic red slits -->
-  <path d="M76 112 92 142 84 151Z" fill="#e00017" opacity="0.45"/>
-  <path d="M180 112 164 142 172 151Z" fill="#e00017" opacity="0.45"/>
-  <path d="M102 194 128 232 114 184Z" fill="#c00013" opacity="0.45"/>
-  <path d="M154 194 128 232 142 184Z" fill="#c00013" opacity="0.33"/>
-
-  <!-- sharp highlights -->
-  <path d="M128 18 128 52" stroke="#d8d8d8" stroke-width="1.2" opacity="0.65"/>
-  <path d="M134 70 142 125" stroke="#ffffff" stroke-width="1" opacity="0.65"/>
-  <path d="M75 165 95 156" stroke="#c9c9c9" stroke-width="2" opacity="0.55"/>
-  <path d="M181 165 161 156" stroke="#c9c9c9" stroke-width="2" opacity="0.55"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" fill="none" viewBox="0 0 256 256"><defs><linearGradient
+      id="d"
+      x1="70"
+      x2="186"
+      y1="24"
+      y2="232"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#2b2c2c" /><stop offset=".45" stop-color="#090909" /><stop
+        offset="1"
+        stop-color="#010101"
+      /></linearGradient><linearGradient id="e" x1="128" x2="128" y1="16" y2="236" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#4b4d4c"
+      /><stop offset=".35" stop-color="#151515" /><stop offset="1" /></linearGradient><linearGradient
+      id="f"
+      x1="128"
+      x2="128"
+      y1="42"
+      y2="218"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#ff4a4a" /><stop offset=".42" stop-color="#a00012" /><stop
+        offset="1"
+        stop-color="#1a0004"
+      /></linearGradient><radialGradient id="a" cx="128" cy="132" r="86" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#ff2a2a"
+      /><stop offset=".34" stop-color="#b00013" /><stop offset=".68" stop-color="#310006" /><stop
+        offset="1"
+        stop-color="#050000"
+        stop-opacity="0"
+      /></radialGradient><clipPath id="c"><path d="m128 14 44 55 30 69-74 102-74-102 30-69z" /></clipPath><filter
+      id="b"
+      width="192"
+      height="216"
+      x="32"
+      y="20"
+      color-interpolation-filters="sRGB"
+      filterUnits="userSpaceOnUse"
+    ><feGaussianBlur result="blur" stdDeviation="3.5" /><feMerge><feMergeNode in="blur" /><feMergeNode
+          in="SourceGraphic"
+        /></feMerge></filter></defs><path
+    fill="#080808"
+    stroke="#303030"
+    stroke-width="1.5"
+    d="m46 123 24-45 14 77-22 30Zm164 0-24-45-14 77 22 30Z"
+  /><path fill="#242625" d="m70 78 18 65-4 12Zm116 0-18 65 4 12Z" /><path
+    fill="#030303"
+    stroke="#1b1b1b"
+    d="m62 185 29-12 37 67Zm132 0-29-12-37 67Z"
+  /><path fill="url(#a)" d="m128 36 35 57 15 57-50 71-50-71 15-57Z" filter="url(#b)" opacity=".9" /><g
+    clip-path="url(#c)"
+  ><path fill="url(#d)" d="M128 14 84 69l-30 69 74 102Z" /><path fill="#050505" d="m128 14 44 55 30 69-74 102Z" /><path
+      fill="url(#e)"
+      d="m128 14-27 64 27-24 27 24Z"
+    /><path fill="#141414" d="m84 69 17 9-18 72-29-12Z" /><path fill="#0a0a0a" d="m172 69-17 9 18 72 29-12Z" /><path
+      fill="#111"
+      stroke="#565656"
+      d="m101 78 27-24 27 24-9 50-18-16-18 16Z"
+    /><path fill="url(#f)" d="m128 54 18 74-18 93-18-93Z" /><path
+      fill="#f33"
+      d="M128 54v58l-18 16Z"
+      opacity=".78"
+    /><path fill="#550006" d="m128 54 18 74-18-16Z" opacity=".95" /><path
+      fill="#7a000a"
+      d="m110 128 18-16v48l-44-9Z"
+      opacity=".92"
+    /><path fill="#220004" d="m146 128-18-16v48l44-9Z" opacity=".95" /><path fill="#210004" d="m84 151 44 9v61Z" /><path
+      fill="#090001"
+      d="m172 151-44 9v61Z"
+    /><path fill="#0a0a0a" d="m110 128-26 23 17-73Z" opacity=".82" /><path
+      fill="#070707"
+      d="m146 128 26 23-17-73Z"
+      opacity=".9"
+    /><path fill="#070707" d="m54 138 30 13 44 89Z" opacity=".95" /><path
+      fill="#010101"
+      d="m202 138-30 13-44 89Z"
+      opacity=".95"
+    /><path fill="#111" d="m84 151 21 26 23 63Z" /><path fill="#050505" d="m172 151-21 26-23 63Z" /><path
+      fill="#120002"
+      d="m105 177 23-17 23 17-23 63Z"
+      opacity=".95"
+    /></g><path stroke="#171717" stroke-width="3" d="m128 14 44 55 30 69-74 102-74-102 30-69z" /><path
+    stroke="#686868"
+    stroke-width="1.2"
+    d="M128 14v226"
+    opacity=".55"
+  /><path stroke="#4a4a4a" d="m84 69 17 9 9 50-26 23-30-13" opacity=".8" /><path
+    stroke="#272727"
+    d="m172 69-17 9-9 50 26 23 30-13"
+    opacity=".9"
+  /><path stroke="#8a8a8a" d="m101 78 27-24 27 24" opacity=".6" /><path
+    stroke="#f33"
+    stroke-width="1.4"
+    d="m110 128 18-16 18 16"
+    opacity=".7"
+  /><path stroke="#b00013" stroke-width="1.3" d="m84 151 44 9 44-9" opacity=".8" /><path
+    stroke="#ff1515"
+    d="m105 177 23 44 23-44"
+    opacity=".55"
+  /><path fill="#e00017" d="m76 112 16 30-8 9Zm104 0-16 30 8 9Z" opacity=".45" /><path
+    fill="#c00013"
+    d="m102 194 26 38-14-48Z"
+    opacity=".45"
+  /><path fill="#c00013" d="m154 194-26 38 14-48Z" opacity=".33" /><path
+    stroke="#d8d8d8"
+    stroke-width="1.2"
+    d="M128 18v34"
+    opacity=".65"
+  /><path stroke="#fff" d="m134 70 8 55" opacity=".65" /><path
+    stroke="#c9c9c9"
+    stroke-width="2"
+    d="m75 165 20-9m86 9-20-9"
+    opacity=".55"
+  /></svg>

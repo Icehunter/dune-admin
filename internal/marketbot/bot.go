@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog"
 )
 
 // BotConfig holds all settings needed to start the embedded market bot.
@@ -32,6 +33,11 @@ type BotConfig struct {
 	MaxBuys      int
 	APIAddr      string // empty = disable HTTP sub-API
 	APIToken     string
+	// Logger is the structured logger the host attaches per server (carrying
+	// component/server_id/control_plane fields). Run wires this logger to ALSO
+	// fan out to the LogSink (live WebSocket view). The zero value is fine — Run
+	// builds a fallback when no level/output is configured.
+	Logger zerolog.Logger
 }
 
 // Instance holds live handles to the running bot so the host process can
@@ -104,7 +110,7 @@ func (i *Instance) CleanupListings(ctx context.Context) (orders int64, items int
 //	inst, err := marketbot.Start(ctx, cfg)  // non-blocking wrapper below
 func Run(ctx context.Context, cfg BotConfig) (*Instance, error) {
 	sink := NewLogSink()
-	logger := sink.Logger("market-bot ", os.Stderr)
+	logger := botLogger(cfg.Logger, sink)
 	started := time.Now()
 
 	if cfg.BuyInterval == 0 {
@@ -133,7 +139,7 @@ func Run(ctx context.Context, cfg BotConfig) (*Instance, error) {
 	}
 	if cfg.DBPool != nil {
 		pool = cfg.DBPool
-		logger.Println("using shared dune-admin database pool")
+		logger.Info().Msg("using shared dune-admin database pool")
 	} else {
 		if cfg.DBHost == "" {
 			return nil, fmt.Errorf("marketbot: DBHost is required")
@@ -162,7 +168,8 @@ func Run(ctx context.Context, cfg BotConfig) (*Instance, error) {
 			pool.Close()
 			return nil, fmt.Errorf("marketbot: db ping: %w", err)
 		}
-		logger.Printf("connected to %s:%d/%s", cfg.DBHost, cfg.DBPort, cfg.DBName)
+		logger.Info().Str("db_host", cfg.DBHost).Int("db_port", cfg.DBPort).
+			Str("db_name", cfg.DBName).Msg("connected to database")
 	}
 
 	botCfg := &Config{config: defaultConfig()}
@@ -176,22 +183,22 @@ func Run(ctx context.Context, cfg BotConfig) (*Instance, error) {
 	// Restore UI-tunable runtime config from disk if present.
 	if cfg.StatePath != "" {
 		if state, err := LoadState(cfg.StatePath); err != nil {
-			logger.Printf("warn: load persisted state %s: %v (using defaults)", cfg.StatePath, err)
+			logger.Warn().Str("state_path", cfg.StatePath).Err(err).Msg("load persisted state failed; using defaults")
 		} else if state.MaxBuys > 0 || len(state.DisabledItems) > 0 || state.BuyThreshold > 0 {
 			// Non-zero state indicates the file existed and had real content.
 			botCfg.config = state
-			logger.Printf("loaded persisted runtime state from %s (%d disabled items)", cfg.StatePath, len(state.DisabledItems))
+			logger.Info().Str("state_path", cfg.StatePath).Int("disabled_items", len(state.DisabledItems)).Msg("loaded persisted runtime state")
 		}
 		// Register persistence hook so every successful Apply writes through.
 		statePath := cfg.StatePath
 		botCfg.OnChange(func(v configValues) {
 			if err := SaveState(statePath, v); err != nil {
-				logger.Printf("warn: persist state %s: %v", statePath, err)
+				logger.Warn().Str("state_path", statePath).Err(err).Msg("persist state failed")
 			}
 		})
 	}
 
-	logger.Println("loading catalog...")
+	logger.Info().Msg("loading catalog")
 	catalog, err := loadCatalog(cfg.ItemDataPath)
 	if err != nil {
 		if ownsDB {
@@ -199,9 +206,9 @@ func Run(ctx context.Context, cfg BotConfig) (*Instance, error) {
 		}
 		return nil, fmt.Errorf("marketbot: load catalog: %w", err)
 	}
-	logger.Printf("catalog: %d listable items", len(catalog))
+	logger.Info().Int("listable_items", len(catalog)).Msg("catalog loaded")
 
-	ex, err := NewExchange(pool, cfg.CacheDB, catalog, botCfg)
+	ex, err := NewExchange(pool, cfg.CacheDB, catalog, botCfg, logger)
 	if err != nil {
 		if ownsDB {
 			pool.Close()
@@ -209,14 +216,14 @@ func Run(ctx context.Context, cfg BotConfig) (*Instance, error) {
 		return nil, fmt.Errorf("marketbot: init exchange: %w", err)
 	}
 
-	logger.Println("initializing exchange...")
+	logger.Info().Msg("initializing exchange")
 	if err := ex.Init(ctx, catalog); err != nil {
 		if ownsDB {
 			pool.Close()
 		}
 		return nil, fmt.Errorf("marketbot: init: %w", err)
 	}
-	logger.Println("exchange ready")
+	logger.Info().Msg("exchange ready")
 
 	var api *APIServer
 	if cfg.APIAddr != "" {
@@ -243,8 +250,8 @@ func Run(ctx context.Context, cfg BotConfig) (*Instance, error) {
 		if ownsDB {
 			defer pool.Close()
 		}
-		runLoop(ctx, logger, botCfg, ex, catalog)
-		logger.Println("shutting down")
+		runLoop(ctx, botCfg, ex, catalog)
+		logger.Info().Msg("shutting down")
 	}()
 
 	return inst, nil
@@ -257,7 +264,12 @@ func Start(ctx context.Context, cfg BotConfig) <-chan *Instance {
 	go func() {
 		inst, err := Run(ctx, cfg)
 		if err != nil {
-			log.Printf("marketbot: startup failed: %v", err)
+			l := cfg.Logger
+			if l.GetLevel() == zerolog.Disabled {
+				l = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05"}).
+					With().Timestamp().Str("component", "market_bot").Logger()
+			}
+			l.Error().Err(err).Msg("startup failed")
 			ch <- nil
 			return
 		}
@@ -266,7 +278,31 @@ func Start(ctx context.Context, cfg BotConfig) <-chan *Instance {
 	return ch
 }
 
-func runLoop(ctx context.Context, logger *log.Logger, cfg *Config, ex *Exchange, catalog []CatalogItem) {
+// botLogger builds the logger the bot uses internally. It preserves the host
+// logger's context fields (component/server_id/control_plane) while fanning
+// every line out to BOTH stderr (in the process log format) and the LogSink
+// (live WebSocket view, always human-readable console format so the UI stays
+// legible regardless of LOG_FORMAT). A zero-value host logger (tests,
+// standalone) yields a fresh sink+stderr console logger.
+func botLogger(host zerolog.Logger, sink *LogSink) zerolog.Logger {
+	sinkConsole := zerolog.ConsoleWriter{Out: trimWriter{sink}, TimeFormat: "15:04:05", NoColor: true}
+	if host.GetLevel() == zerolog.Disabled {
+		return sink.Logger(os.Stderr)
+	}
+	mw := zerolog.MultiLevelWriter(stderrWriter(), sinkConsole)
+	return host.Output(mw)
+}
+
+// stderrWriter mirrors initLogging's destination choice: JSON to stderr when
+// LOG_FORMAT=json, otherwise a human-readable console writer.
+func stderrWriter() io.Writer {
+	if strings.EqualFold(os.Getenv("LOG_FORMAT"), "json") {
+		return os.Stderr
+	}
+	return zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05"}
+}
+
+func runLoop(ctx context.Context, cfg *Config, ex *Exchange, catalog []CatalogItem) {
 	ex.Tick(ctx, catalog)
 
 	tick := time.NewTicker(time.Minute)

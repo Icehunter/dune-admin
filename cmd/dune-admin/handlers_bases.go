@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func quatToYaw(qx, qy, qz, qw float64) float64 {
@@ -68,8 +70,8 @@ func parseVec4(s string) (x, y, z, w float64, err error) {
 // @Success 200 {array} map[string]interface{}
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/bases [get]
-func handleListBases(w http.ResponseWriter, _ *http.Request) {
-	msg, ok := cmdListBases().(msgBaseList)
+func handleListBases(w http.ResponseWriter, r *http.Request) {
+	msg, ok := cmdListBases(dbFromCtx(r)).(msgBaseList)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -106,8 +108,8 @@ func parseBasePathID(id string) (int64, error) {
 	return parsedID, nil
 }
 
-func queryBaseExportInstances(ctx context.Context, id int64) ([]rawBaseInstance, error) {
-	rows, err := globalDB.Query(ctx, `
+func queryBaseExportInstances(ctx context.Context, db *pgxpool.Pool, id int64) ([]rawBaseInstance, error) {
+	rows, err := db.Query(ctx, `
 		SELECT building_type, transform, owner_entity_id
 		FROM dune.building_instances
 		WHERE building_id = $1`, id)
@@ -133,8 +135,8 @@ func queryBaseExportInstances(ctx context.Context, id int64) ([]rawBaseInstance,
 	return raws, nil
 }
 
-func queryBaseExportPlaceables(ctx context.Context, ownerEntityID int64) ([]rawBasePlaceable, error) {
-	rows, err := globalDB.Query(ctx, `
+func queryBaseExportPlaceables(ctx context.Context, db *pgxpool.Pool, ownerEntityID int64) ([]rawBasePlaceable, error) {
+	rows, err := db.Query(ctx, `
 		SELECT p.building_type,
 		       (a.transform).location::text,
 		       (a.transform).rotation::text,
@@ -288,13 +290,14 @@ func handleExportBase(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	if globalDB == nil {
+	db := dbFromCtx(r)
+	if db == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 500)
 		return
 	}
 	ctx := context.Background()
 
-	rawInstances, err := queryBaseExportInstances(ctx, id)
+	rawInstances, err := queryBaseExportInstances(ctx, db, id)
 	if err != nil {
 		jsonErr(w, err, 500)
 		return
@@ -307,7 +310,7 @@ func handleExportBase(w http.ResponseWriter, r *http.Request) {
 	cx, cy, cz := calculateBaseCentroid(rawInstances)
 	instances := buildBlueprintInstances(rawInstances, cx, cy, cz)
 
-	rawPlaceables, err := queryBaseExportPlaceables(ctx, rawInstances[0].ownerEntityID)
+	rawPlaceables, err := queryBaseExportPlaceables(ctx, db, rawInstances[0].ownerEntityID)
 	if err != nil {
 		jsonErr(w, err, 500)
 		return

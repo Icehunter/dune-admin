@@ -1,14 +1,43 @@
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'>
-  <g transform='rotate(270 75 75)' fill='none' stroke-linecap='round'><path stroke='#cf2b2b' stroke-opacity='.85' stroke-width='2' d='M8 92 L8 28 L28 8 L98 8'/>
-  <path stroke='#cf2b2b' stroke-opacity='.7' stroke-width='1.5' d='M8 84 L26 66 L26 8'/>
-  <path stroke='#cf2b2b' stroke-opacity='.4' stroke-width='1' d='M14 84 L32 66 L32 8'/>
-  <path stroke='#ff0000' stroke-opacity='.6' stroke-width='1' d='M18 88 L18 34 L34 18 L90 18'/>
-  <path stroke='none' fill='#260606' fill-opacity='.6' d='M8 56 L8 28 L28 8 L56 8 L48 16 L20 16 L16 20 L16 48 Z'/>
-  <rect x='36' y='22' width='7' height='22' fill='#cf2b2b' fill-opacity='.55'><animate attributeName='fill-opacity' values='.25;.75;.25' dur='2.4s' repeatCount='indefinite'/>
-  </rect><rect x='46' y='22' width='5' height='16' fill='#3d0808' fill-opacity='.85'/>
-  <line x1='14' y1='42' x2='42' y2='14' stroke='#ff0000' stroke-opacity='.45' stroke-width='1'><animateTransform attributeName='transform' type='translate' values='0 0;6 6;0 0' dur='4s' repeatCount='indefinite'/>
-  </line><line x1='14' y1='56' x2='56' y2='14' stroke='#ff0000' stroke-opacity='.3' stroke-width='1'><animateTransform attributeName='transform' type='translate' values='0 0;6 6;0 0' dur='4s' begin='0.8s' repeatCount='indefinite'/>
-  </line><line x1='14' y1='70' x2='70' y2='14' stroke='#ff0000' stroke-opacity='.2' stroke-width='1'><animateTransform attributeName='transform' type='translate' values='0 0;6 6;0 0' dur='4s' begin='1.6s' repeatCount='indefinite'/>
-  </line>
-</g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150"><g fill="none" stroke-linecap="round"><path
+      stroke="#cf2b2b"
+      stroke-opacity=".85"
+      stroke-width="2"
+      d="M92 142H28L8 122V52"
+    /><path stroke="#cf2b2b" stroke-opacity=".7" stroke-width="1.5" d="m84 142-18-18H8" /><path
+      stroke="#cf2b2b"
+      stroke-opacity=".4"
+      d="m84 136-18-18H8"
+    /><path stroke="red" stroke-opacity=".6" d="M88 132H34l-16-16V60" /><path
+      fill="#260606"
+      fill-opacity=".6"
+      d="M56 142H28L8 122V94l8 8v28l4 4h28Z"
+    /><path fill="#cf2b2b" fill-opacity=".55" d="M22 114v-7h22v7z"><animate
+        attributeName="fill-opacity"
+        dur="2.4s"
+        repeatCount="indefinite"
+        values=".25;.75;.25"
+      /></path><path fill="#3d0808" fill-opacity=".85" d="M22 104v-5h16v5z" /><path
+      stroke="red"
+      stroke-opacity=".45"
+      d="m42 136-28-28"
+    ><animateTransform
+        attributeName="transform"
+        dur="4s"
+        repeatCount="indefinite"
+        type="translate"
+        values="0 0;6 6;0 0"
+      /></path><path stroke="red" stroke-opacity=".3" d="M56 136 14 94"><animateTransform
+        attributeName="transform"
+        begin="0.8s"
+        dur="4s"
+        repeatCount="indefinite"
+        type="translate"
+        values="0 0;6 6;0 0"
+      /></path><path stroke="red" stroke-opacity=".2" d="M70 136 14 80"><animateTransform
+        attributeName="transform"
+        begin="1.6s"
+        dur="4s"
+        repeatCount="indefinite"
+        type="translate"
+        values="0 0;6 6;0 0"
+      /></path></g></svg>

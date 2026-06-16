@@ -60,7 +60,7 @@ func TestUploadBackupArchive_InvalidZip(t *testing.T) {
 	t.Parallel()
 
 	file := testMultipartFile{Reader: bytes.NewReader([]byte("not a zip"))}
-	_, status, err := uploadBackupArchive("/unused", file)
+	_, status, err := uploadBackupArchive("/unused", file, nil)
 	if err == nil {
 		t.Fatal("expected invalid zip error")
 	}
@@ -86,7 +86,7 @@ func TestUploadBackupArchive_NoBackupFile(t *testing.T) {
 	}
 
 	file := testMultipartFile{Reader: bytes.NewReader(buf.Bytes())}
-	_, status, err := uploadBackupArchive("/unused", file)
+	_, status, err := uploadBackupArchive("/unused", file, nil)
 	if err == nil || err.Error() != "zip contains no .backup file" {
 		t.Fatalf("expected no-backup error, got %v", err)
 	}

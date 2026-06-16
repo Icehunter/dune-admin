@@ -1,93 +1,139 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Atreides story progression open book icon">
-  <defs>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f0d37a"/>
-      <stop offset="0.45" stop-color="#b98c33"/>
-      <stop offset="1" stop-color="#6f4f18"/>
-    </linearGradient>
-    <linearGradient id="goldLight" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fff0ad"/>
-      <stop offset="1" stop-color="#b68a32"/>
-    </linearGradient>
-    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#184b34"/>
-      <stop offset="1" stop-color="#082719"/>
-    </linearGradient>
-    <linearGradient id="sage" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#aab58a"/>
-      <stop offset="1" stop-color="#59684a"/>
-    </linearGradient>
-    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fff7d8"/>
-      <stop offset="1" stop-color="#d7bd72"/>
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-
-  <!-- transparent background intentionally omitted -->
-
-  <g filter="url(#shadow)">
-    <!-- outer heraldic shield -->
-    <path d="M128 15 L153 44 L209 55 L229 108 L213 171 L166 222 L128 241 L90 222 L43 171 L27 108 L47 55 L103 44 Z"
-          fill="url(#green)" stroke="url(#gold)" stroke-width="5" stroke-linejoin="round"/>
-
-    <!-- inner circular military heraldry rings -->
-    <circle cx="128" cy="128" r="91" fill="none" stroke="url(#gold)" stroke-width="5"/>
-    <circle cx="128" cy="128" r="78" fill="none" stroke="#7d6022" stroke-width="3" opacity="0.9"/>
-    <circle cx="128" cy="128" r="69" fill="#0b311f" opacity="0.58"/>
-
-    <!-- side protective laurel / armor panels -->
-    <g stroke="url(#gold)" stroke-width="3" stroke-linejoin="round">
-      <path d="M51 129 C38 142 37 165 53 179 C67 160 69 143 60 121 Z" fill="url(#sage)"/>
-      <path d="M66 165 C50 176 51 198 72 209 C82 188 79 176 66 165 Z" fill="#4e6142"/>
-      <path d="M205 129 C218 142 219 165 203 179 C189 160 187 143 196 121 Z" fill="url(#sage)"/>
-      <path d="M190 165 C206 176 205 198 184 209 C174 188 177 176 190 165 Z" fill="#4e6142"/>
-    </g>
-
-    <!-- top noble Atreides-like crest gem -->
-    <path d="M128 16 L144 48 L128 70 L112 48 Z" fill="url(#goldLight)" stroke="url(#gold)" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M128 16 L128 70" stroke="#6f4f18" stroke-width="2" opacity="0.65"/>
-
-    <!-- sage plume behind book -->
-    <g stroke="url(#goldLight)" stroke-width="2" stroke-linejoin="round">
-      <path d="M128 66 C114 88 110 109 128 139 C146 109 142 88 128 66 Z" fill="url(#sage)"/>
-      <path d="M105 79 C102 103 111 124 128 142 C128 112 120 94 105 79 Z" fill="#7f8f68"/>
-      <path d="M151 79 C154 103 145 124 128 142 C128 112 136 94 151 79 Z" fill="#7f8f68"/>
-      <path d="M87 93 C95 119 111 135 128 145 C119 116 105 101 87 93 Z" fill="#62744f"/>
-      <path d="M169 93 C161 119 145 135 128 145 C137 116 151 101 169 93 Z" fill="#62744f"/>
-    </g>
-
-    <!-- open book shadow/base -->
-    <path d="M49 152 C75 149 102 157 128 181 C154 157 181 149 207 152 L207 183 C177 181 151 189 128 208 C105 189 79 181 49 183 Z"
-          fill="#5b4219" opacity="0.65"/>
-
-    <!-- book covers -->
-    <path d="M45 94 C77 93 102 106 128 137 L128 199 C102 174 75 166 45 169 Z" fill="#8f6a24" stroke="url(#gold)" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M211 94 C179 93 154 106 128 137 L128 199 C154 174 181 166 211 169 Z" fill="#8f6a24" stroke="url(#gold)" stroke-width="4" stroke-linejoin="round"/>
-
-    <!-- pages -->
-    <path d="M52 86 C78 88 105 101 128 132 L128 190 C103 165 78 154 52 158 Z" fill="url(#page)" stroke="#f7e5a6" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M204 86 C178 88 151 101 128 132 L128 190 C153 165 178 154 204 158 Z" fill="url(#page)" stroke="#f7e5a6" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M64 104 C84 106 103 116 120 136" fill="none" stroke="#c7a85a" stroke-width="2" opacity="0.75"/>
-    <path d="M63 125 C85 127 105 137 121 154" fill="none" stroke="#c7a85a" stroke-width="2" opacity="0.6"/>
-    <path d="M192 104 C172 106 153 116 136 136" fill="none" stroke="#c7a85a" stroke-width="2" opacity="0.75"/>
-    <path d="M193 125 C171 127 151 137 135 154" fill="none" stroke="#c7a85a" stroke-width="2" opacity="0.6"/>
-    <path d="M128 132 L128 198" stroke="#8f6a24" stroke-width="3"/>
-
-    <!-- page stack lines -->
-    <path d="M53 160 C83 158 105 170 128 194" fill="none" stroke="#6f4f18" stroke-width="3" opacity="0.75"/>
-    <path d="M203 160 C173 158 151 170 128 194" fill="none" stroke="#6f4f18" stroke-width="3" opacity="0.75"/>
-    <path d="M58 170 C84 169 105 178 128 202" fill="none" stroke="#d0a84a" stroke-width="2"/>
-    <path d="M198 170 C172 169 151 178 128 202" fill="none" stroke="#d0a84a" stroke-width="2"/>
-
-    <!-- central duty/protection diamond -->
-    <path d="M128 111 L140 131 L128 153 L116 131 Z" fill="url(#goldLight)" stroke="#6f4f18" stroke-width="2"/>
-    <path d="M128 119 L134 132 L128 144 L122 132 Z" fill="#265238" opacity="0.85"/>
-
-    <!-- lower shield point -->
-    <path d="M128 211 L151 229 L128 241 L105 229 Z" fill="url(#sage)" stroke="url(#gold)" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M128 213 L128 239" stroke="#3c4933" stroke-width="2" opacity="0.7"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Atreides story progression open book icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="c" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#f0d37a" /><stop
+        offset=".45"
+        stop-color="#b98c33"
+      /><stop offset="1" stop-color="#6f4f18" /></linearGradient><linearGradient
+      id="e"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#fff0ad" /><stop offset="1" stop-color="#b68a32" /></linearGradient><linearGradient
+      id="b"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#184b34" /><stop offset="1" stop-color="#082719" /></linearGradient><linearGradient
+      id="d"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#aab58a" /><stop offset="1" stop-color="#59684a" /></linearGradient><linearGradient
+      id="f"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#fff7d8" /><stop offset="1" stop-color="#d7bd72" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="4" flood-color="#000" flood-opacity=".35" stdDeviation="4" /></filter></defs><g
+    filter="url(#a)"
+  ><path
+      fill="url(#b)"
+      stroke="url(#c)"
+      stroke-linejoin="round"
+      stroke-width="5"
+      d="m128 15 25 29 56 11 20 53-16 63-47 51-38 19-38-19-47-51-16-63 20-53 56-11Z"
+    /><circle cx="128" cy="128" r="91" fill="none" stroke="url(#c)" stroke-width="5" /><circle
+      cx="128"
+      cy="128"
+      r="78"
+      fill="none"
+      stroke="#7d6022"
+      stroke-width="3"
+      opacity=".9"
+    /><circle cx="128" cy="128" r="69" fill="#0b311f" opacity=".58" /><g
+      stroke="url(#c)"
+      stroke-linejoin="round"
+      stroke-width="3"
+    ><path fill="url(#d)" d="M51 129c-13 13-14 36 2 50 14-19 16-36 7-58Z" /><path
+        fill="#4e6142"
+        d="M66 165c-16 11-15 33 6 44 10-21 7-33-6-44Z"
+      /><path fill="url(#d)" d="M205 129c13 13 14 36-2 50-14-19-16-36-7-58Z" /><path
+        fill="#4e6142"
+        d="M190 165c16 11 15 33-6 44-10-21-7-33 6-44Z"
+      /></g><path
+      fill="url(#e)"
+      stroke="url(#c)"
+      stroke-linejoin="round"
+      stroke-width="3"
+      d="m128 16 16 32-16 22-16-22Z"
+    /><path stroke="#6f4f18" stroke-width="2" d="M128 16v54" opacity=".65" /><g
+      stroke="url(#e)"
+      stroke-linejoin="round"
+      stroke-width="2"
+    ><path fill="url(#d)" d="M128 66c-14 22-18 43 0 73 18-30 14-51 0-73Z" /><path
+        fill="#7f8f68"
+        d="M105 79c-3 24 6 45 23 63 0-30-8-48-23-63Z"
+      /><path fill="#7f8f68" d="M151 79c3 24-6 45-23 63 0-30 8-48 23-63Z" /><path
+        fill="#62744f"
+        d="M87 93c8 26 24 42 41 52-9-29-23-44-41-52Z"
+      /><path fill="#62744f" d="M169 93c-8 26-24 42-41 52 9-29 23-44 41-52Z" /></g><path
+      fill="#5b4219"
+      d="M49 152c26-3 53 5 79 29 26-24 53-32 79-29v31c-30-2-56 6-79 25-23-19-49-27-79-25Z"
+      opacity=".65"
+    /><path
+      fill="#8f6a24"
+      stroke="url(#c)"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="M45 94c32-1 57 12 83 43v62c-26-25-53-33-83-30Z"
+    /><path
+      fill="#8f6a24"
+      stroke="url(#c)"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="M211 94c-32-1-57 12-83 43v62c26-25 53-33 83-30Z"
+    /><path
+      fill="url(#f)"
+      stroke="#f7e5a6"
+      stroke-linejoin="round"
+      stroke-width="3"
+      d="M52 86c26 2 53 15 76 46v58c-25-25-50-36-76-32Z"
+    /><path
+      fill="url(#f)"
+      stroke="#f7e5a6"
+      stroke-linejoin="round"
+      stroke-width="3"
+      d="M204 86c-26 2-53 15-76 46v58c25-25 50-36 76-32Z"
+    /><path fill="none" stroke="#c7a85a" stroke-width="2" d="M64 104c20 2 39 12 56 32" opacity=".75" /><path
+      fill="none"
+      stroke="#c7a85a"
+      stroke-width="2"
+      d="M63 125c22 2 42 12 58 29"
+      opacity=".6"
+    /><path fill="none" stroke="#c7a85a" stroke-width="2" d="M192 104c-20 2-39 12-56 32" opacity=".75" /><path
+      fill="none"
+      stroke="#c7a85a"
+      stroke-width="2"
+      d="M193 125c-22 2-42 12-58 29"
+      opacity=".6"
+    /><path stroke="#8f6a24" stroke-width="3" d="M128 132v66" /><path
+      fill="none"
+      stroke="#6f4f18"
+      stroke-width="3"
+      d="M53 160c30-2 52 10 75 34m75-34c-30-2-52 10-75 34"
+      opacity=".75"
+    /><path fill="none" stroke="#d0a84a" stroke-width="2" d="M58 170c26-1 47 8 70 32m70-32c-26-1-47 8-70 32" /><path
+      fill="url(#e)"
+      stroke="#6f4f18"
+      stroke-width="2"
+      d="m128 111 12 20-12 22-12-22Z"
+    /><path fill="#265238" d="m128 119 6 13-6 12-6-12Z" opacity=".85" /><path
+      fill="url(#d)"
+      stroke="url(#c)"
+      stroke-linejoin="round"
+      stroke-width="4"
+      d="m128 211 23 18-23 12-23-12Z"
+    /><path stroke="#3c4933" stroke-width="2" d="M128 213v26" opacity=".7" /></g></svg>

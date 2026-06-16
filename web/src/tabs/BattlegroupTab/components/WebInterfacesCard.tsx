@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Spinner, toast } from '@heroui/react'
+import { Button, Skeleton, Spinner, toast } from '@heroui/react'
 import { Icon, FieldInput } from '../../../dune-ui'
 import { copyText } from '../../../utils/clipboard'
 import { api } from '../../../api/client'
@@ -117,7 +117,21 @@ export const WebInterfacesCard: React.FC<{ status: Status | null }> = ({ status 
 
   return (
     <HealthCard title={t('serverHealth.webInterfaces')} icon="layout" accessory={!editing && !loading ? editBtn : undefined}>
-      {loading && <div className="py-2 flex justify-center"><Spinner size="sm" color="current" /></div>}
+      {loading && (
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 2 }, (_, i) => (
+            // Mirror a loaded row exactly (no inner gap; label text-sm=20px,
+            // url text-xs=16px) so the skeleton → row swap doesn't shift.
+            <div key={i} className="flex items-center gap-2">
+              <Skeleton className="size-4 rounded" />
+              <div className="flex flex-col min-w-0 flex-1">
+                <Skeleton className="h-5 w-1/3 rounded-lg" />
+                <Skeleton className="h-4 w-2/3 rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!loading && director && <DirectorRow directorURL={director} />}
 

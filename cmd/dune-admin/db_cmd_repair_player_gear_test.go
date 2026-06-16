@@ -138,15 +138,15 @@ func TestValidateRepairPlayerGearInput(t *testing.T) {
 	t.Cleanup(func() { globalDB = originalDB })
 
 	globalDB = nil
-	if err := validateRepairPlayerGearInput(42); err == nil || err.Error() != "not connected" {
+	if err := validateRepairPlayerGearInput(globalDB, 42); err == nil || err.Error() != "not connected" {
 		t.Fatalf("expected not connected error, got %v", err)
 	}
 
 	globalDB = &pgxpool.Pool{}
-	if err := validateRepairPlayerGearInput(0); err == nil || err.Error() != "player ID required" {
+	if err := validateRepairPlayerGearInput(globalDB, 0); err == nil || err.Error() != "player ID required" {
 		t.Fatalf("expected player ID required error, got %v", err)
 	}
-	if err := validateRepairPlayerGearInput(42); err != nil {
+	if err := validateRepairPlayerGearInput(globalDB, 42); err != nil {
 		t.Fatalf("expected valid input, got %v", err)
 	}
 }

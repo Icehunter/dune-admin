@@ -1,87 +1,119 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">Atreides Spice Crystal Icon</title>
-  <desc id="desc">A transparent SVG icon of an elegant cluster of green spice crystals framed by muted gold and deep green heraldic geometry.</desc>
-  <defs>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ead78a"/>
-      <stop offset="0.52" stop-color="#b89a3f"/>
-      <stop offset="1" stop-color="#6f5b22"/>
-    </linearGradient>
-    <linearGradient id="goldDark" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#c9ad51"/>
-      <stop offset="1" stop-color="#604d1b"/>
-    </linearGradient>
-    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#b9cf73"/>
-      <stop offset="0.5" stop-color="#577c37"/>
-      <stop offset="1" stop-color="#173d25"/>
-    </linearGradient>
-    <linearGradient id="deepGreen" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2e6040"/>
-      <stop offset="1" stop-color="#0b2a1d"/>
-    </linearGradient>
-    <linearGradient id="sage" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#d2dd92"/>
-      <stop offset="1" stop-color="#6f914d"/>
-    </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="1.4" flood-color="#06170f" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-
-  <!-- No background: transparent canvas -->
-  <g filter="url(#softShadow)" stroke-linejoin="round" stroke-linecap="round">
-    <!-- Heraldic outer laurels -->
-    <path d="M43 181 C35 134 54 71 108 36 C82 80 71 134 77 191 C62 192 50 188 43 181Z" fill="url(#deepGreen)" stroke="url(#gold)" stroke-width="3"/>
-    <path d="M213 181 C221 134 202 71 148 36 C174 80 185 134 179 191 C194 192 206 188 213 181Z" fill="url(#deepGreen)" stroke="url(#gold)" stroke-width="3"/>
-    <path d="M57 187 C49 162 49 138 57 113" fill="none" stroke="#c4a64b" stroke-width="3" opacity="0.85"/>
-    <path d="M199 187 C207 162 207 138 199 113" fill="none" stroke="#c4a64b" stroke-width="3" opacity="0.85"/>
-
-    <!-- Inner gold shield base -->
-    <path d="M64 168 L93 151 L128 187 L163 151 L192 168 C177 199 153 218 128 232 C103 218 79 199 64 168Z" fill="url(#goldDark)" stroke="url(#gold)" stroke-width="3"/>
-    <path d="M82 174 L108 161 L128 203 L148 161 L174 174 C162 194 145 209 128 219 C111 209 94 194 82 174Z" fill="url(#deepGreen)" stroke="#b89a3f" stroke-width="2"/>
-
-    <!-- Crystal cluster back shards -->
-    <g stroke="#eef3c8" stroke-width="2.2">
-      <path d="M67 154 L86 92 L107 151 L92 184Z" fill="url(#green)"/>
-      <path d="M189 154 L170 92 L149 151 L164 184Z" fill="url(#green)"/>
-      <path d="M88 169 L103 120 L118 171 L103 193Z" fill="url(#sage)"/>
-      <path d="M168 169 L153 120 L138 171 L153 193Z" fill="url(#sage)"/>
-      <path d="M101 171 L113 137 L125 177 L113 196Z" fill="url(#green)"/>
-      <path d="M155 171 L143 137 L131 177 L143 196Z" fill="url(#green)"/>
-    </g>
-
-    <!-- Central crystal -->
-    <g stroke="#f2f5cb" stroke-width="2.6">
-      <path d="M128 24 L158 79 L146 184 L128 204 L110 184 L98 79Z" fill="url(#green)"/>
-      <path d="M128 24 L128 204 L110 184 L98 79Z" fill="#7f9f4e" opacity="0.72"/>
-      <path d="M128 24 L158 79 L146 184 L128 204Z" fill="#173d25" opacity="0.55"/>
-      <path d="M98 79 L128 99 L158 79 L128 24Z" fill="url(#sage)"/>
-      <path d="M128 99 L128 204" fill="none" stroke="#f8f6d6" stroke-width="2" opacity="0.9"/>
-    </g>
-
-    <!-- Foreground smaller crystals -->
-    <g stroke="#f1f2c2" stroke-width="2">
-      <path d="M74 177 L87 139 L104 178 L91 203Z" fill="url(#green)"/>
-      <path d="M182 177 L169 139 L152 178 L165 203Z" fill="url(#green)"/>
-      <path d="M103 190 L116 157 L129 191 L116 211Z" fill="url(#sage)"/>
-      <path d="M153 190 L140 157 L127 191 L140 211Z" fill="url(#sage)"/>
-    </g>
-
-    <!-- Top noble spear/crown -->
-    <path d="M128 8 L145 55 L128 75 L111 55Z" fill="url(#gold)" stroke="#f1dc86" stroke-width="2"/>
-    <path d="M128 8 L128 75 L111 55Z" fill="#f2df8a" opacity="0.38"/>
-    <path d="M128 8 L145 55 L128 75Z" fill="#5d4a1b" opacity="0.42"/>
-
-    <!-- Central base gem -->
-    <path d="M128 184 L145 207 L128 230 L111 207Z" fill="url(#gold)" stroke="#f0d879" stroke-width="2"/>
-    <path d="M128 194 L138 207 L128 221 L118 207Z" fill="url(#green)" stroke="#d9c464" stroke-width="1.5"/>
-    <path d="M128 194 L128 221" stroke="#e9efc7" stroke-width="1.2" opacity="0.85"/>
-
-    <!-- Fine beveled highlights -->
-    <path d="M76 154 L88 99" stroke="#e9efc7" stroke-width="2" opacity="0.7"/>
-    <path d="M180 154 L168 99" stroke="#e9efc7" stroke-width="2" opacity="0.7"/>
-    <path d="M118 42 L106 81" stroke="#fff6b6" stroke-width="1.4" opacity="0.75"/>
-    <path d="M138 42 L151 80" stroke="#8f742d" stroke-width="1.4" opacity="0.75"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-labelledby="title desc"
+  viewBox="0 0 256 256"
+><title>Atreides Spice Crystal Icon</title><desc
+  >A transparent SVG icon of an elegant cluster of green spice crystals framed by muted gold and deep green heraldic geometry.</desc><defs
+  ><linearGradient id="c" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#ead78a" /><stop
+        offset=".52"
+        stop-color="#b89a3f"
+      /><stop offset="1" stop-color="#6f5b22" /></linearGradient><linearGradient
+      id="d"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#c9ad51" /><stop offset="1" stop-color="#604d1b" /></linearGradient><linearGradient
+      id="e"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#b9cf73" /><stop offset=".5" stop-color="#577c37" /><stop
+        offset="1"
+        stop-color="#173d25"
+      /></linearGradient><linearGradient id="b" x1="0" x2="1" y1="0" y2="1"><stop
+        offset="0"
+        stop-color="#2e6040"
+      /><stop offset="1" stop-color="#0b2a1d" /></linearGradient><linearGradient
+      id="f"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#d2dd92" /><stop offset="1" stop-color="#6f914d" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="2" flood-color="#06170f" flood-opacity=".35" stdDeviation="1.4" /></filter></defs><g
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    filter="url(#a)"
+  ><path
+      fill="url(#b)"
+      stroke="url(#c)"
+      stroke-width="3"
+      d="M43 181c-8-47 11-110 65-145-26 44-37 98-31 155-15 1-27-3-34-10"
+    /><path
+      fill="url(#b)"
+      stroke="url(#c)"
+      stroke-width="3"
+      d="M213 181c8-47-11-110-65-145 26 44 37 98 31 155 15 1 27-3 34-10"
+    /><path
+      fill="none"
+      stroke="#c4a64b"
+      stroke-width="3"
+      d="M57 187c-8-25-8-49 0-74m142 74c8-25 8-49 0-74"
+      opacity=".85"
+    /><path
+      fill="url(#d)"
+      stroke="url(#c)"
+      stroke-width="3"
+      d="m64 168 29-17 35 36 35-36 29 17c-15 31-39 50-64 64-25-14-49-33-64-64"
+    /><path
+      fill="url(#b)"
+      stroke="#b89a3f"
+      stroke-width="2"
+      d="m82 174 26-13 20 42 20-42 26 13c-12 20-29 35-46 45-17-10-34-25-46-45"
+    /><g stroke="#eef3c8" stroke-width="2.2"><path fill="url(#e)" d="m67 154 19-62 21 59-15 33Z" /><path
+        fill="url(#e)"
+        d="m189 154-19-62-21 59 15 33Z"
+      /><path fill="url(#f)" d="m88 169 15-49 15 51-15 22Z" /><path
+        fill="url(#f)"
+        d="m168 169-15-49-15 51 15 22Z"
+      /><path fill="url(#e)" d="m101 171 12-34 12 40-12 19Z" /><path
+        fill="url(#e)"
+        d="m155 171-12-34-12 40 12 19Z"
+      /></g><g stroke="#f2f5cb" stroke-width="2.6"><path
+        fill="url(#e)"
+        d="m128 24 30 55-12 105-18 20-18-20L98 79Z"
+      /><path fill="#7f9f4e" d="M128 24v180l-18-20L98 79Z" opacity=".72" /><path
+        fill="#173d25"
+        d="m128 24 30 55-12 105-18 20Z"
+        opacity=".55"
+      /><path fill="url(#f)" d="m98 79 30 20 30-20-30-55Z" /><path
+        fill="none"
+        stroke="#f8f6d6"
+        stroke-width="2"
+        d="M128 99v105"
+        opacity=".9"
+      /></g><g stroke="#f1f2c2" stroke-width="2"><path fill="url(#e)" d="m74 177 13-38 17 39-13 25Z" /><path
+        fill="url(#e)"
+        d="m182 177-13-38-17 39 13 25Z"
+      /><path fill="url(#f)" d="m103 190 13-33 13 34-13 20Z" /><path
+        fill="url(#f)"
+        d="m153 190-13-33-13 34 13 20Z"
+      /></g><path fill="url(#c)" stroke="#f1dc86" stroke-width="2" d="m128 8 17 47-17 20-17-20Z" /><path
+      fill="#f2df8a"
+      d="M128 8v67l-17-20Z"
+      opacity=".38"
+    /><path fill="#5d4a1b" d="m128 8 17 47-17 20Z" opacity=".42" /><path
+      fill="url(#c)"
+      stroke="#f0d879"
+      stroke-width="2"
+      d="m128 184 17 23-17 23-17-23Z"
+    /><path fill="url(#e)" stroke="#d9c464" stroke-width="1.5" d="m128 194 10 13-10 14-10-14Z" /><path
+      stroke="#e9efc7"
+      stroke-width="1.2"
+      d="M128 194v27"
+      opacity=".85"
+    /><path stroke="#e9efc7" stroke-width="2" d="m76 154 12-55m92 55-12-55" opacity=".7" /><path
+      stroke="#fff6b6"
+      stroke-width="1.4"
+      d="m118 42-12 39"
+      opacity=".75"
+    /><path stroke="#8f742d" stroke-width="1.4" d="m138 42 13 38" opacity=".75" /></g></svg>

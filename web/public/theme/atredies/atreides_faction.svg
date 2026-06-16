@@ -1,94 +1,105 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none" role="img" aria-label="Atreides inspired noble hawk faction crest">
-  <defs>
-    <linearGradient id="gold" x1="50" y1="20" x2="206" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#F2D98A"/>
-      <stop offset="0.42" stop-color="#B8943F"/>
-      <stop offset="1" stop-color="#7B5F25"/>
-    </linearGradient>
-    <linearGradient id="goldHi" x1="80" y1="32" x2="174" y2="204" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFF0B8"/>
-      <stop offset="1" stop-color="#B28A34"/>
-    </linearGradient>
-    <linearGradient id="green" x1="128" y1="42" x2="128" y2="228" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#284331"/>
-      <stop offset="1" stop-color="#10281F"/>
-    </linearGradient>
-    <linearGradient id="sage" x1="45" y1="80" x2="212" y2="204" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#87966D"/>
-      <stop offset="1" stop-color="#4C6043"/>
-    </linearGradient>
-    <linearGradient id="dark" x1="128" y1="50" x2="128" y2="214" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1B3828"/>
-      <stop offset="1" stop-color="#0A1E18"/>
-    </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#06120D" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-
-  <!-- Outer shield -->
-  <path d="M128 18L170 58L206 78L191 151L128 238L65 151L50 78L86 58L128 18Z" fill="url(#gold)" filter="url(#softShadow)"/>
-  <path d="M128 29L164 64L195 83L181 145L128 220L75 145L61 83L92 64L128 29Z" fill="url(#green)"/>
-  <path d="M128 43L156 70L181 88L169 137L128 198L87 137L75 88L100 70L128 43Z" stroke="url(#goldHi)" stroke-width="4" fill="none" opacity="0.95"/>
-
-  <!-- Wings gold bases -->
-  <path d="M77 84L25 39L33 114L81 150L92 132L58 106L41 62L88 101L77 84Z" fill="url(#gold)"/>
-  <path d="M179 84L231 39L223 114L175 150L164 132L198 106L215 62L168 101L179 84Z" fill="url(#gold)"/>
-
-  <!-- Left wing plates -->
-  <path d="M81 95L36 59L43 102L90 132Z" fill="#142B21"/>
-  <path d="M87 125L39 101L50 132L101 150Z" fill="#243B2A"/>
-  <path d="M97 148L52 132L70 158L112 165Z" fill="url(#sage)"/>
-  <path d="M109 168L72 160L92 183L121 181Z" fill="#71805F"/>
-
-  <!-- Right wing plates -->
-  <path d="M175 95L220 59L213 102L166 132Z" fill="#142B21"/>
-  <path d="M169 125L217 101L206 132L155 150Z" fill="#243B2A"/>
-  <path d="M159 148L204 132L186 158L144 165Z" fill="url(#sage)"/>
-  <path d="M147 168L184 160L164 183L135 181Z" fill="#71805F"/>
-
-  <!-- Wing bevel strokes -->
-  <g stroke="url(#goldHi)" stroke-width="3" stroke-linejoin="round">
-    <path d="M81 95L36 59L43 102L90 132Z"/>
-    <path d="M87 125L39 101L50 132L101 150Z"/>
-    <path d="M97 148L52 132L70 158L112 165Z"/>
-    <path d="M109 168L72 160L92 183L121 181Z"/>
-    <path d="M175 95L220 59L213 102L166 132Z"/>
-    <path d="M169 125L217 101L206 132L155 150Z"/>
-    <path d="M159 148L204 132L186 158L144 165Z"/>
-    <path d="M147 168L184 160L164 183L135 181Z"/>
-  </g>
-
-  <!-- Central spear and halo -->
-  <path d="M128 52L137 86L130 125H126L119 86L128 52Z" fill="url(#goldHi)"/>
-  <path d="M86 130C88 94 105 73 128 73C151 73 168 94 170 130" stroke="url(#goldHi)" stroke-width="3" opacity="0.8"/>
-
-  <!-- Hawk body crest frame -->
-  <path d="M128 83L166 117L151 171L128 210L105 171L90 117L128 83Z" fill="url(#gold)" filter="url(#softShadow)"/>
-  <path d="M128 94L155 121L143 165L128 191L113 165L101 121L128 94Z" fill="url(#dark)"/>
-
-  <!-- Hawk head -->
-  <path d="M103 122C115 108 136 104 153 111C164 115 171 122 174 130C166 127 158 127 152 132C145 137 141 147 139 158C135 146 136 136 143 128C129 132 116 130 103 122Z" fill="#6F8062"/>
-  <path d="M104 121C121 113 143 113 159 119C151 111 134 106 116 111C110 113 106 116 104 121Z" fill="url(#goldHi)"/>
-  <path d="M154 126C162 123 171 127 177 135C168 134 160 137 154 145C156 137 157 131 154 126Z" fill="url(#gold)"/>
-  <path d="M139 122L148 120L145 126L137 126Z" fill="#D7B557"/>
-  <path d="M110 139L128 157L145 139L139 166L128 178L117 166Z" fill="#2E4B38" stroke="url(#goldHi)" stroke-width="2"/>
-
-  <!-- Lower tail geometry -->
-  <path d="M128 178L154 195L128 232L102 195L128 178Z" fill="url(#gold)"/>
-  <path d="M128 189L143 199L128 218L113 199L128 189Z" fill="#7F8D68"/>
-  <path d="M112 193L99 178L96 205L116 218Z" fill="#1A3327" stroke="url(#goldHi)" stroke-width="2"/>
-  <path d="M144 193L157 178L160 205L140 218Z" fill="#1A3327" stroke="url(#goldHi)" stroke-width="2"/>
-
-  <!-- Laurel accents -->
-  <g fill="#6F7D5E" stroke="#A88A42" stroke-width="1.4" opacity="0.95">
-    <path d="M63 190C50 190 42 199 39 212C52 209 60 202 63 190Z"/>
-    <path d="M74 205C61 207 53 217 52 230C65 225 72 218 74 205Z"/>
-    <path d="M193 190C206 190 214 199 217 212C204 209 196 202 193 190Z"/>
-    <path d="M182 205C195 207 203 217 204 230C191 225 184 218 182 205Z"/>
-  </g>
-
-  <!-- Fine central highlights -->
-  <path d="M128 32V214" stroke="#F3D98B" stroke-width="1.2" opacity="0.32"/>
-  <path d="M74 86L128 31L182 86" stroke="#F8E5A2" stroke-width="1.5" opacity="0.45"/>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  fill="none"
+  aria-label="Atreides inspired noble hawk faction crest"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="a" x1="50" x2="206" y1="20" y2="230" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#f2d98a"
+      /><stop offset=".42" stop-color="#b8943f" /><stop
+        offset="1"
+        stop-color="#7b5f25"
+      /></linearGradient><linearGradient id="d" x1="80" x2="174" y1="32" y2="204" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#fff0b8"
+      /><stop offset="1" stop-color="#b28a34" /></linearGradient><linearGradient
+      id="c"
+      x1="128"
+      x2="128"
+      y1="42"
+      y2="228"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#284331" /><stop offset="1" stop-color="#10281f" /></linearGradient><linearGradient
+      id="e"
+      x1="45"
+      x2="212"
+      y1="80"
+      y2="204"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#87966d" /><stop offset="1" stop-color="#4c6043" /></linearGradient><linearGradient
+      id="f"
+      x1="128"
+      x2="128"
+      y1="50"
+      y2="214"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#1b3828" /><stop offset="1" stop-color="#0a1e18" /></linearGradient><filter
+      id="b"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+      color-interpolation-filters="sRGB"
+    ><feDropShadow dx="0" dy="3" flood-color="#06120d" flood-opacity=".35" stdDeviation="2.2" /></filter></defs><path
+    fill="url(#a)"
+    d="m128 18 42 40 36 20-15 73-63 87-63-87-15-73 36-20z"
+    filter="url(#b)"
+  /><path fill="url(#c)" d="m128 29 36 35 31 19-14 62-53 75-53-75-14-62 31-19z" /><path
+    stroke="url(#d)"
+    stroke-width="4"
+    d="m128 43 28 27 25 18-12 49-41 61-41-61-12-49 25-18z"
+    opacity=".95"
+  /><path fill="url(#a)" d="M77 84 25 39l8 75 48 36 11-18-34-26-17-44 47 39z" /><path
+    fill="url(#a)"
+    d="m179 84 52-45-8 75-48 36-11-18 34-26 17-44-47 39z"
+  /><path fill="#142b21" d="M81 95 36 59l7 43 47 30Z" /><path fill="#243b2a" d="m87 125-48-24 11 31 51 18Z" /><path
+    fill="url(#e)"
+    d="m97 148-45-16 18 26 42 7Z"
+  /><path fill="#71805f" d="m109 168-37-8 20 23 29-2Z" /><path fill="#142b21" d="m175 95 45-36-7 43-47 30Z" /><path
+    fill="#243b2a"
+    d="m169 125 48-24-11 31-51 18Z"
+  /><path fill="url(#e)" d="m159 148 45-16-18 26-42 7Z" /><path fill="#71805f" d="m147 168 37-8-20 23-29-2Z" /><g
+    stroke="url(#d)"
+    stroke-linejoin="round"
+    stroke-width="3"
+  ><path d="M81 95 36 59l7 43 47 30Z" /><path d="m87 125-48-24 11 31 51 18Z" /><path
+      d="m97 148-45-16 18 26 42 7Z"
+    /><path d="m109 168-37-8 20 23 29-2Z" /><path d="m175 95 45-36-7 43-47 30Z" /><path
+      d="m169 125 48-24-11 31-51 18Z"
+    /><path d="m159 148 45-16-18 26-42 7Z" /><path d="m147 168 37-8-20 23-29-2Z" /></g><path
+    fill="url(#d)"
+    d="m128 52 9 34-7 39h-4l-7-39z"
+  /><path stroke="url(#d)" stroke-width="3" d="M86 130c2-36 19-57 42-57s40 21 42 57" opacity=".8" /><path
+    fill="url(#a)"
+    d="m128 83 38 34-15 54-23 39-23-39-15-54z"
+    filter="url(#b)"
+  /><path fill="url(#f)" d="m128 94 27 27-12 44-15 26-15-26-12-44z" /><path
+    fill="#6f8062"
+    d="M103 122c12-14 33-18 50-11 11 4 18 11 21 19-8-3-16-3-22 2-7 5-11 15-13 26-4-12-3-22 4-30-14 4-27 2-40-6"
+  /><path fill="url(#d)" d="M104 121c17-8 39-8 55-2-8-8-25-13-43-8-6 2-10 5-12 10" /><path
+    fill="url(#a)"
+    d="M154 126c8-3 17 1 23 9-9-1-17 2-23 10 2-8 3-14 0-19"
+  /><path fill="#d7b557" d="m139 122 9-2-3 6h-8Z" /><path
+    fill="#2e4b38"
+    stroke="url(#d)"
+    stroke-width="2"
+    d="m110 139 18 18 17-18-6 27-11 12-11-12Z"
+  /><path fill="url(#a)" d="m128 178 26 17-26 37-26-37z" /><path fill="#7f8d68" d="m128 189 15 10-15 19-15-19z" /><path
+    fill="#1a3327"
+    stroke="url(#d)"
+    stroke-width="2"
+    d="m112 193-13-15-3 27 20 13Z"
+  /><path fill="#1a3327" stroke="url(#d)" stroke-width="2" d="m144 193 13-15 3 27-20 13Z" /><path
+    fill="#6f7d5e"
+    stroke="#a88a42"
+    stroke-width="1.4"
+    d="M63 190c-13 0-21 9-24 22 13-3 21-10 24-22Zm11 15c-13 2-21 12-22 25 13-5 20-12 22-25Zm119-15c13 0 21 9 24 22-13-3-21-10-24-22Zm-11 15c13 2 21 12 22 25-13-5-20-12-22-25Z"
+    opacity=".95"
+  /><path stroke="#f3d98b" stroke-width="1.2" d="M128 32v182" opacity=".32" /><path
+    stroke="#f8e5a2"
+    stroke-width="1.5"
+    d="m74 86 54-55 54 55"
+    opacity=".45"
+  /></svg>

@@ -6,6 +6,7 @@ import './i18n'
 import { applyTheme, loadTheme, loadAnimations, setAnimations } from './theme'
 import { App } from './App.tsx'
 import { AuthProvider } from './auth/AuthContext'
+import { ActiveServerProvider } from './context/ActiveServerProvider'
 import { ClerkProvider } from '@clerk/react'
 import { dark } from '@clerk/themes'
 
@@ -37,15 +38,17 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
       <AuthProvider>
-        {publishableKey
-          ? (
-              <ClerkProvider publishableKey={publishableKey} afterSignOutUrl="/" appearance={clerkAppearance}>
+        <ActiveServerProvider>
+          {publishableKey
+            ? (
+                <ClerkProvider publishableKey={publishableKey} afterSignOutUrl="/" appearance={clerkAppearance}>
+                  <App />
+                </ClerkProvider>
+              )
+            : (
                 <App />
-              </ClerkProvider>
-            )
-          : (
-              <App />
-            )}
+              )}
+        </ActiveServerProvider>
       </AuthProvider>
     </HashRouter>
   </StrictMode>,

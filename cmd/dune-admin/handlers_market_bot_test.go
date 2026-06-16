@@ -9,6 +9,29 @@ import (
 	"testing"
 )
 
+// resetBotRegistry swaps globalRegistry for a fresh empty one so activeBot(r)
+// returns nil (no embedded bot) and restores it after the test. Per-server bots
+// live on ServerContext now, so handler tests drive the no-bot / remote paths by
+// controlling the registry rather than package globals.
+func resetBotRegistry(t *testing.T) {
+	t.Helper()
+	orig := globalRegistry
+	globalRegistry = newServerRegistry(nil)
+	t.Cleanup(func() { globalRegistry = orig })
+}
+
+// registerActiveBotConfigured sets up an active server whose bot toggle is on but
+// whose instance isn't running (BotConfigured=true, Bot=nil).
+func registerActiveBotConfigured(t *testing.T) {
+	t.Helper()
+	orig := globalRegistry
+	reg := newServerRegistry(nil)
+	reg.Register(&ServerContext{ID: "default", Name: "Default", BotConfigured: true})
+	_ = reg.SetActive("default")
+	globalRegistry = reg
+	t.Cleanup(func() { globalRegistry = orig })
+}
+
 // newRemoteFakeServer creates a fake remote bot HTTP server and returns a
 // remoteBotClient pointed at it, plus a cleanup function.
 func newRemoteFakeServer(t *testing.T, mux *http.ServeMux) (*remoteBotClient, func()) {
@@ -21,13 +44,10 @@ func newRemoteFakeServer(t *testing.T, mux *http.ServeMux) (*remoteBotClient, fu
 }
 
 func TestHandleMarketBotStatus_NeitherConfigured(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
 	remoteBotProxy = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	req := httptest.NewRequest("GET", "/api/v1/market-bot/status", nil)
 	w := httptest.NewRecorder()
@@ -49,12 +69,9 @@ func TestHandleMarketBotStatus_NeitherConfigured(t *testing.T) {
 }
 
 func TestHandleMarketBotStatus_RemoteProxy(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /status", func(w http.ResponseWriter, r *http.Request) {
@@ -93,12 +110,9 @@ func TestHandleMarketBotStatus_RemoteProxy(t *testing.T) {
 }
 
 func TestHandleMarketBotConfig_RemoteGet(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /config", func(w http.ResponseWriter, r *http.Request) {
@@ -123,12 +137,9 @@ func TestHandleMarketBotConfig_RemoteGet(t *testing.T) {
 }
 
 func TestHandleMarketBotConfig_RemotePut(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	var receivedBody string
 	mux := http.NewServeMux()
@@ -158,13 +169,10 @@ func TestHandleMarketBotConfig_RemotePut(t *testing.T) {
 }
 
 func TestHandleMarketBotConfig_NeitherConfigured(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
 	remoteBotProxy = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	req := httptest.NewRequest("GET", "/api/v1/market-bot/config", nil)
 	w := httptest.NewRecorder()
@@ -176,12 +184,9 @@ func TestHandleMarketBotConfig_NeitherConfigured(t *testing.T) {
 }
 
 func TestHandleMarketBotExec_Remote(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	var receivedCmd string
 	mux := http.NewServeMux()
@@ -212,13 +217,10 @@ func TestHandleMarketBotExec_Remote(t *testing.T) {
 }
 
 func TestHandleMarketBotExec_UnknownCmd(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
 	remoteBotProxy = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	req := httptest.NewRequest("POST", "/api/v1/market-bot/exec",
 		strings.NewReader(`{"cmd":"nuke"}`))
@@ -232,12 +234,9 @@ func TestHandleMarketBotExec_UnknownCmd(t *testing.T) {
 }
 
 func TestHandleMarketBotCleanup_Remote(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /cleanup", func(w http.ResponseWriter, r *http.Request) {
@@ -262,12 +261,9 @@ func TestHandleMarketBotCleanup_Remote(t *testing.T) {
 }
 
 func TestHandleMarketBotLogsReady_Remote(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	remoteBotProxy = newRemoteBotClient("http://irrelevant", "tok")
 
@@ -291,13 +287,10 @@ func TestHandleMarketBotLogsReady_Remote(t *testing.T) {
 }
 
 func TestHandleMarketBotLogsReady_NeitherConfigured(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
 	remoteBotProxy = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	req := httptest.NewRequest("GET", "/api/v1/market-bot/logs-ready", nil)
 	w := httptest.NewRecorder()
@@ -316,12 +309,9 @@ func TestHandleMarketBotLogsReady_NeitherConfigured(t *testing.T) {
 }
 
 func TestHandleMarketBotStatus_RemoteUnreachable(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
-	embeddedBotConfigured = false
-	defer func() { embeddedBot = origBot; remoteBotProxy = origProxy; embeddedBotConfigured = origCfg }()
+	defer func() { remoteBotProxy = origProxy }()
 
 	remoteBotProxy = newRemoteBotClient("http://127.0.0.1:19999", "tok")
 
@@ -335,17 +325,10 @@ func TestHandleMarketBotStatus_RemoteUnreachable(t *testing.T) {
 }
 
 func TestHandleMarketBotStatus_ConfiguredButDisabled(t *testing.T) {
-	origBot := embeddedBot
+	registerActiveBotConfigured(t) // toggle on, instance not running
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
 	remoteBotProxy = nil
-	embeddedBotConfigured = true // configured in YAML but not running
-	defer func() {
-		embeddedBot = origBot
-		remoteBotProxy = origProxy
-		embeddedBotConfigured = origCfg
-	}()
+	defer func() { remoteBotProxy = origProxy }()
 
 	req := httptest.NewRequest("GET", "/api/v1/market-bot/status", nil)
 	w := httptest.NewRecorder()
@@ -367,17 +350,10 @@ func TestHandleMarketBotStatus_ConfiguredButDisabled(t *testing.T) {
 }
 
 func TestHandleMarketBotStatus_NeitherConfiguredNorEnabled(t *testing.T) {
-	origBot := embeddedBot
+	resetBotRegistry(t)
 	origProxy := remoteBotProxy
-	origCfg := embeddedBotConfigured
-	embeddedBot = nil
 	remoteBotProxy = nil
-	embeddedBotConfigured = false
-	defer func() {
-		embeddedBot = origBot
-		remoteBotProxy = origProxy
-		embeddedBotConfigured = origCfg
-	}()
+	defer func() { remoteBotProxy = origProxy }()
 
 	req := httptest.NewRequest("GET", "/api/v1/market-bot/status", nil)
 	w := httptest.NewRecorder()

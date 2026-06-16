@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // serverCmdAuthToken is the static AuthToken the game server validates on
@@ -296,14 +298,15 @@ func rmqSpawnVehicleAt(flsID, className string, x, y, z, rotation float64, templ
 
 // ── player ID resolution ──────────────────────────────────────────────────────
 
-// flsIDFromActorID resolves the accounts."user" hex Funcom UUID for an actor
-// (player pawn). This is the PlayerId format expected by RMQ server commands.
-func flsIDFromActorID(ctx context.Context, actorID int64) (string, error) {
-	if globalDB == nil {
+// flsIDFromActorIDPool resolves the accounts."user" hex Funcom UUID for an actor
+// (player pawn) using the provided pool. This is the PlayerId format expected by
+// RMQ server commands.
+func flsIDFromActorIDPool(ctx context.Context, pool *pgxpool.Pool, actorID int64) (string, error) {
+	if pool == nil {
 		return "", fmt.Errorf("not connected")
 	}
 	var flsID string
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 		SELECT ac."user"
 		FROM dune.accounts ac
 		JOIN dune.actors a ON a.owner_account_id = ac.id
@@ -314,14 +317,19 @@ func flsIDFromActorID(ctx context.Context, actorID int64) (string, error) {
 	return flsID, nil
 }
 
-// playerIDDebug returns all relevant player ID forms for a given actor ID.
-// Used by the debug endpoint to verify which ID format the game server expects.
-func playerIDDebug(ctx context.Context, actorID int64) (map[string]string, error) {
-	if globalDB == nil {
+// flsIDFromActorID resolves via the global pool (legacy; use flsIDFromActorIDPool for multi-server).
+func flsIDFromActorID(ctx context.Context, actorID int64) (string, error) {
+	return flsIDFromActorIDPool(ctx, globalDB, actorID)
+}
+
+// playerIDDebugPool returns all relevant player ID forms for a given actor ID
+// using the provided pool. Used by the debug endpoint.
+func playerIDDebugPool(ctx context.Context, pool *pgxpool.Pool, actorID int64) (map[string]string, error) {
+	if pool == nil {
 		return nil, fmt.Errorf("not connected")
 	}
 	var displayName, hexID string
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 		SELECT convert_from(e.encrypted_funcom_id, 'UTF8'), COALESCE(ac."user", '')
 		FROM dune.encrypted_accounts e
 		JOIN dune.actors a ON a.owner_account_id = e.id
@@ -336,14 +344,19 @@ func playerIDDebug(ctx context.Context, actorID int64) (map[string]string, error
 	}, nil
 }
 
-// isHexIDOnline returns true if the player identified by their hex Funcom UUID
-// (accounts."user") currently has a non-Offline online_status.
-func isHexIDOnline(ctx context.Context, hexID string) bool {
-	if globalDB == nil {
+// playerIDDebug resolves via the global pool (legacy; use playerIDDebugPool for multi-server).
+func playerIDDebug(ctx context.Context, actorID int64) (map[string]string, error) {
+	return playerIDDebugPool(ctx, globalDB, actorID)
+}
+
+// isHexIDOnlinePool returns true if the player identified by their hex Funcom UUID
+// (accounts."user") currently has a non-Offline online_status, using the given pool.
+func isHexIDOnlinePool(ctx context.Context, pool *pgxpool.Pool, hexID string) bool {
+	if pool == nil {
 		return false
 	}
 	var status string
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 		SELECT COALESCE(ps.online_status::text, 'Offline')
 		FROM dune.accounts ac
 		JOIN dune.player_state ps ON ps.account_id = ac.id
@@ -355,15 +368,20 @@ func isHexIDOnline(ctx context.Context, hexID string) bool {
 	return status != "Offline"
 }
 
-// displayNameFromHexID resolves the encrypted_funcom_id display name
-// (e.g. "Icehunter#55381") from the hex Funcom UUID in accounts."user".
-// Used by DB paths that identify players by display name.
-func displayNameFromHexID(ctx context.Context, hexID string) (string, error) {
-	if globalDB == nil {
+// isHexIDOnline resolves via the global pool (legacy; use isHexIDOnlinePool for multi-server).
+func isHexIDOnline(ctx context.Context, hexID string) bool {
+	return isHexIDOnlinePool(ctx, globalDB, hexID)
+}
+
+// displayNameFromHexIDPool resolves the encrypted_funcom_id display name
+// (e.g. "Icehunter#55381") from the hex Funcom UUID in accounts."user",
+// using the given pool.
+func displayNameFromHexIDPool(ctx context.Context, pool *pgxpool.Pool, hexID string) (string, error) {
+	if pool == nil {
 		return "", fmt.Errorf("not connected")
 	}
 	var name string
-	err := globalDB.QueryRow(ctx, `
+	err := pool.QueryRow(ctx, `
 		SELECT convert_from(e.encrypted_funcom_id, 'UTF8')
 		FROM dune.accounts ac
 		JOIN dune.encrypted_accounts e ON e.id = ac.id
@@ -372,4 +390,9 @@ func displayNameFromHexID(ctx context.Context, hexID string) (string, error) {
 		return "", fmt.Errorf("resolve display name for %s: %w", hexID, err)
 	}
 	return name, nil
+}
+
+// displayNameFromHexID resolves via the global pool (legacy; use displayNameFromHexIDPool for multi-server).
+func displayNameFromHexID(ctx context.Context, hexID string) (string, error) {
+	return displayNameFromHexIDPool(ctx, globalDB, hexID)
 }

@@ -1,92 +1,95 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">Fremen Desert Navigation Star</title>
-  <desc id="desc">Transparent sci-fi rewards icon: a sharp blue four-point desert navigation star with deep navy facets, cyan highlights, and sacred minimal circular navigation marks.</desc>
-  <defs>
-    <linearGradient id="bladeDark" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#020714"/>
-      <stop offset="0.55" stop-color="#061a34"/>
-      <stop offset="1" stop-color="#0a2b50"/>
-    </linearGradient>
-    <linearGradient id="bladeBlue" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#06305e"/>
-      <stop offset="0.55" stop-color="#006eea"/>
-      <stop offset="1" stop-color="#33e8ff"/>
-    </linearGradient>
-    <radialGradient id="coreGlow" cx="50%" cy="50%" r="55%">
-      <stop offset="0" stop-color="#63f7ff" stop-opacity="1"/>
-      <stop offset="0.45" stop-color="#008cff" stop-opacity="0.9"/>
-      <stop offset="1" stop-color="#001b70" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="2.2" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-
-  <!-- transparent background intentionally omitted -->
-
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="128" cy="128" r="58" stroke="#0078ff" stroke-width="3" stroke-dasharray="48 26" opacity="0.9"/>
-    <circle cx="128" cy="128" r="76" stroke="#061a34" stroke-width="3" stroke-dasharray="44 34" opacity="0.95"/>
-    <circle cx="128" cy="128" r="47" stroke="#20d9ff" stroke-width="2" stroke-dasharray="1 8" opacity="0.85"/>
-  </g>
-
-  <g filter="url(#softGlow)">
-    <circle cx="128" cy="128" r="21" fill="url(#coreGlow)" opacity="0.85"/>
-  </g>
-
-  <g stroke="#051226" stroke-width="1.5" stroke-linejoin="round">
-    <!-- primary four-point star silhouette -->
-    <polygon points="128,21 143,109 235,128 143,147 128,235 113,147 21,128 113,109" fill="url(#bladeDark)"/>
-
-    <!-- dark faceted panels -->
-    <polygon points="128,21 134,106 128,119 122,106" fill="#020817" opacity="0.96"/>
-    <polygon points="128,235 134,150 128,137 122,150" fill="#020817" opacity="0.96"/>
-    <polygon points="21,128 108,122 120,128 108,134" fill="#020817" opacity="0.96"/>
-    <polygon points="235,128 148,122 136,128 148,134" fill="#020817" opacity="0.96"/>
-
-    <polygon points="122,106 113,109 108,122 120,128" fill="#0b2b50" opacity="0.8"/>
-    <polygon points="134,106 143,109 148,122 136,128" fill="#123a68" opacity="0.76"/>
-    <polygon points="120,128 108,134 113,147 122,150" fill="#0b2b50" opacity="0.75"/>
-    <polygon points="136,128 148,134 143,147 134,150" fill="#123a68" opacity="0.72"/>
-
-    <!-- luminous inner star -->
-    <polygon points="128,64 132,116 192,128 132,140 128,192 124,140 64,128 124,116" fill="url(#bladeBlue)" opacity="0.9"/>
-    <polygon points="128,107 136,128 128,149 120,128" fill="#062eea" stroke="#55f7ff" stroke-width="4"/>
-  </g>
-
-  <g fill="none" stroke="#29dfff" stroke-width="2" stroke-linecap="round" opacity="0.95">
-    <path d="M128 37 L128 111"/>
-    <path d="M128 145 L128 219"/>
-    <path d="M37 128 L111 128"/>
-    <path d="M145 128 L219 128"/>
-  </g>
-
-  <g fill="#006eff" stroke="#42ecff" stroke-width="1">
-    <polygon points="128,6 135,17 128,28 121,17"/>
-    <polygon points="128,228 135,239 128,250 121,239"/>
-    <polygon points="6,128 17,121 28,128 17,135"/>
-    <polygon points="228,128 239,121 250,128 239,135"/>
-  </g>
-
-  <g fill="#0c7dff" opacity="0.95">
-    <circle cx="128" cy="37" r="2.3"/>
-    <circle cx="128" cy="47" r="2.1"/>
-    <circle cx="128" cy="219" r="2.3"/>
-    <circle cx="128" cy="209" r="2.1"/>
-    <circle cx="37" cy="128" r="2.3"/>
-    <circle cx="47" cy="128" r="2.1"/>
-    <circle cx="219" cy="128" r="2.3"/>
-    <circle cx="209" cy="128" r="2.1"/>
-  </g>
-
-  <g fill="#061a34" stroke="#0b8dff" stroke-width="1">
-    <circle cx="78" cy="78" r="4"/>
-    <circle cx="178" cy="78" r="4"/>
-    <circle cx="78" cy="178" r="4"/>
-    <circle cx="178" cy="178" r="4"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-labelledby="title desc"
+  viewBox="0 0 256 256"
+><title>Fremen Desert Navigation Star</title><desc
+  >Transparent sci-fi rewards icon: a sharp blue four-point desert navigation star with deep navy facets, cyan highlights, and sacred minimal circular navigation marks.</desc><defs
+  ><linearGradient id="c" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#020714" /><stop
+        offset=".55"
+        stop-color="#061a34"
+      /><stop offset="1" stop-color="#0a2b50" /></linearGradient><linearGradient
+      id="d"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#06305e" /><stop offset=".55" stop-color="#006eea" /><stop
+        offset="1"
+        stop-color="#33e8ff"
+      /></linearGradient><radialGradient id="b" cx="50%" cy="50%" r="55%"><stop offset="0" stop-color="#63f7ff" /><stop
+        offset=".45"
+        stop-color="#008cff"
+        stop-opacity=".9"
+      /><stop offset="1" stop-color="#001b70" stop-opacity="0" /></radialGradient><filter
+      id="a"
+      width="200%"
+      height="200%"
+      x="-50%"
+      y="-50%"
+    ><feGaussianBlur result="blur" stdDeviation="2.2" /><feMerge><feMergeNode in="blur" /><feMergeNode
+          in="SourceGraphic"
+        /></feMerge></filter></defs><g fill="none" stroke-linecap="round" stroke-linejoin="round"><circle
+      cx="128"
+      cy="128"
+      r="58"
+      stroke="#0078ff"
+      stroke-dasharray="48 26"
+      stroke-width="3"
+      opacity=".9"
+    /><circle
+      cx="128"
+      cy="128"
+      r="76"
+      stroke="#061a34"
+      stroke-dasharray="44 34"
+      stroke-width="3"
+      opacity=".95"
+    /><circle cx="128" cy="128" r="47" stroke="#20d9ff" stroke-dasharray="1 8" stroke-width="2" opacity=".85" /></g><g
+    filter="url(#a)"
+  ><circle cx="128" cy="128" r="21" fill="url(#b)" opacity=".85" /></g><g
+    stroke="#051226"
+    stroke-linejoin="round"
+    stroke-width="1.5"
+  ><path fill="url(#c)" d="m128 21 15 88 92 19-92 19-15 88-15-88-92-19 92-19z" /><path
+      fill="#020817"
+      d="m128 21 6 85-6 13-6-13zm0 214 6-85-6-13-6 13zM21 128l87-6 12 6-12 6zm214 0-87-6-12 6 12 6z"
+      opacity=".96"
+    /><path fill="#0b2b50" d="m122 106-9 3-5 13 12 6z" opacity=".8" /><path
+      fill="#123a68"
+      d="m134 106 9 3 5 13-12 6z"
+      opacity=".76"
+    /><path fill="#0b2b50" d="m120 128-12 6 5 13 9 3z" opacity=".75" /><path
+      fill="#123a68"
+      d="m136 128 12 6-5 13-9 3z"
+      opacity=".72"
+    /><path fill="url(#d)" d="m128 64 4 52 60 12-60 12-4 52-4-52-60-12 60-12z" opacity=".9" /><path
+      fill="#062eea"
+      stroke="#55f7ff"
+      stroke-width="4"
+      d="m128 107 8 21-8 21-8-21z"
+    /></g><path
+    fill="none"
+    stroke="#29dfff"
+    stroke-linecap="round"
+    stroke-width="2"
+    d="M128 37v74m0 34v74m-91-91h74m34 0h74"
+    opacity=".95"
+  /><path
+    fill="#006eff"
+    stroke="#42ecff"
+    d="m128 6 7 11-7 11-7-11zm0 222 7 11-7 11-7-11zM6 128l11-7 11 7-11 7zm222 0 11-7 11 7-11 7z"
+  /><g fill="#0c7dff" opacity=".95"><circle cx="128" cy="37" r="2.3" /><circle cx="128" cy="47" r="2.1" /><circle
+      cx="128"
+      cy="219"
+      r="2.3"
+    /><circle cx="128" cy="209" r="2.1" /><circle cx="37" cy="128" r="2.3" /><circle cx="47" cy="128" r="2.1" /><circle
+      cx="219"
+      cy="128"
+      r="2.3"
+    /><circle cx="209" cy="128" r="2.1" /></g><g fill="#061a34" stroke="#0b8dff"><circle cx="78" cy="78" r="4" /><circle
+      cx="178"
+      cy="78"
+      r="4"
+    /><circle cx="78" cy="178" r="4" /><circle cx="178" cy="178" r="4" /></g></svg>

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"dune-admin/internal/landsraadbot"
@@ -16,13 +15,14 @@ import (
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/landsraad [get]
 func handleGetLandsraad(w http.ResponseWriter, r *http.Request) {
-	if globalDB == nil {
+	db := dbFromCtx(r)
+	if db == nil {
 		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
 		return
 	}
-	ov, err := cmdFetchLandsraad(r.Context(), globalDB)
+	ov, err := cmdFetchLandsraad(r.Context(), db)
 	if err != nil {
-		log.Printf("handleGetLandsraad: %v", err)
+		componentLog("handlers").Error().Err(err).Msg("fetch landsraad failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}

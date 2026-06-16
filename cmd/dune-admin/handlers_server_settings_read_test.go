@@ -24,7 +24,7 @@ func TestReadINIContent_PlainCatFirst(t *testing.T) {
 		return "[section]\nkey=value\n", nil
 	})
 
-	content := readINIContent("/path/to/UserGame.ini")
+	content := readINIContent("/path/to/UserGame.ini", globalControl, globalExecutor)
 
 	if content == "" {
 		t.Fatal("expected content, got empty string")
@@ -48,7 +48,7 @@ func TestReadINIContent_FallsBackToSudoCat(t *testing.T) {
 		return "", errors.New("permission denied")
 	})
 
-	content := readINIContent("/path/to/UserGame.ini")
+	content := readINIContent("/path/to/UserGame.ini", globalControl, globalExecutor)
 
 	if !strings.Contains(content, "sudovalue") {
 		t.Fatalf("expected sudo cat fallback content, got: %q", content)
@@ -62,7 +62,7 @@ func TestReadINIContent_ReturnsEmptyWhenBothFail(t *testing.T) {
 		return "", errors.New("no such file")
 	})
 
-	content := readINIContent("/path/to/nonexistent.ini")
+	content := readINIContent("/path/to/nonexistent.ini", globalControl, globalExecutor)
 
 	if content != "" {
 		t.Fatalf("expected empty string, got: %q", content)

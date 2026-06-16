@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -38,25 +37,44 @@ func commandTier(cmd string) discordTier {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-// discordConfig holds the Discord-relevant slice of appConfig, pre-parsed for
-// use by the router and authz checks.
+// discordConfig holds the per-guild AUTHORIZATION slice (the three role tiers),
+// pre-parsed for the router and authz checks. Server selection is no longer part
+// of the config — commands route by the invoking user's character link
+// (self-service) or across the guild's watched servers (admin/register).
 type discordConfig struct {
-	GuildID           string
-	RolesViewer       []string
-	RolesEconomy      []string
-	RolesAdmin        []string
-	AnnounceChannelID string
+	GuildID      string
+	RolesViewer  []string
+	RolesEconomy []string
+	RolesAdmin   []string
 }
 
-// discordConfigFromApp builds a discordConfig from the global appConfig.
-func discordConfigFromApp(cfg appConfig) discordConfig {
+// discordConfigFromGuild builds the per-guild auth config from a discord_guilds
+// row. The role CSVs are the guild's own, so the same bot token authorizes
+// correctly across many guilds.
+func discordConfigFromGuild(g discordGuild) discordConfig {
 	return discordConfig{
-		GuildID:           cfg.DiscordGuildID,
-		RolesViewer:       splitRoleIDs(cfg.DiscordRolesViewer),
-		RolesEconomy:      splitRoleIDs(cfg.DiscordRolesEconomy),
-		RolesAdmin:        splitRoleIDs(cfg.DiscordRolesAdmin),
-		AnnounceChannelID: cfg.DiscordAnnounceChannelID,
+		GuildID:      g.GuildID,
+		RolesViewer:  splitRoleIDs(g.RolesViewer),
+		RolesEconomy: splitRoleIDs(g.RolesEconomy),
+		RolesAdmin:   splitRoleIDs(g.RolesAdmin),
 	}
+}
+
+// resolveGuildContext looks the invoking guild up in discord_guilds and returns
+// its auth config. ok=false when the guild is not configured (the bot only
+// serves configured guilds). It does NOT pick a server — server selection is
+// per-command (self-service routes by the user's link; admin/register search
+// the guild's watched servers).
+func resolveGuildContext(guildID string) (discordGuild, bool) {
+	if guildID == "" || globalDiscordGuildsStore == nil {
+		return discordGuild{}, false
+	}
+	g, ok, err := globalDiscordGuildsStore.getGuild(guildID)
+	if err != nil {
+		componentLog("discord").Warn().Str("guild_id", guildID).Err(err).Msg("guild lookup failed")
+		return discordGuild{}, false
+	}
+	return g, ok
 }
 
 // splitRoleIDs parses a comma-separated string of Discord role IDs into a
@@ -88,11 +106,14 @@ type discordMember struct {
 }
 
 // discordInteraction is the parsed representation of a Discord slash command
-// interaction, extracted from discordgo types in the session adapter.
+// interaction, extracted from discordgo types in the session adapter. ChannelID
+// is the channel the command was invoked in — it selects the target server
+// (each server owns its announce + status channels in one guild).
 type discordInteraction struct {
-	GuildID string
-	Member  discordMember
-	Command string
+	GuildID   string
+	ChannelID string
+	Member    discordMember
+	Command   string
 	// Options maps option name → value (string or int64 depending on the command).
 	Options map[string]any
 }
@@ -103,22 +124,26 @@ type discordReply struct {
 	Ephemeral bool // if true, only the invoker sees the reply
 }
 
-// discordDeps are the injected dependencies for discordDispatchCommand,
-// enabling unit testing without a live Discord connection or DB.
+// discordDeps are the injected dependencies for dispatchDiscordCommand, enabling
+// unit testing without a live Discord connection or DB. Every dep is already
+// bound to the ONE server resolved from the invoking channel — there is no
+// cross-server search: the channel fixes the server, and the user's character on
+// that server is the subject.
 type discordDeps struct {
-	// admin commands
-	status       func(ctx context.Context) (string, error)
-	lookupPlayer func(ctx context.Context, name string) ([]playerInfo, error)
+	// status of the channel's server.
+	status func(ctx context.Context) (string, error)
+	// lookup/give-currency act on the channel's server only.
+	lookup       func(ctx context.Context, name string) ([]playerInfo, error)
 	giveCurrency func(ctx context.Context, controllerID, amount int64) (newBalance int64, err error)
 
-	// registration
+	// registration (one character per (user, channel's server)).
 	registerLink func(ctx context.Context, discordUserID string, accountID int64, charName, avatarURL string) error
 	deleteLink   func(ctx context.Context, discordUserID string) (bool, error)
 
-	// self-service (require registration)
-	getLink        func(ctx context.Context, discordUserID string) (accountID int64, charName string, err error)
+	// self-service (require registration on the channel's server).
+	getLink        func(ctx context.Context, discordUserID string) (charName string, ok bool, err error)
 	fetchCurrency  func(ctx context.Context, controllerID int64) ([]currencyRow, error)
-	fetchInventory func(ctx context.Context, controllerID int64) ([]itemInfo, error)
+	fetchInventory func(ctx context.Context, actorID int64) ([]itemInfo, error)
 }
 
 // ── Authorization ─────────────────────────────────────────────────────────────
@@ -209,42 +234,41 @@ func dispatchDiscordCommand(ctx context.Context, i discordInteraction, cfg disco
 func handleDiscordStatus(ctx context.Context, deps discordDeps) discordReply {
 	summary, err := deps.status(ctx)
 	if err != nil {
-		log.Printf("discord /status: %v", err)
+		componentLog("discord").Warn().Err(err).Msg("/status failed")
 		return discordReply{Content: "Error fetching server status.", Ephemeral: true}
 	}
 	return discordReply{Content: summary}
 }
 
-// handleDiscordLookup finds players by character name and returns their info.
+// handleDiscordLookup finds players by character name on the channel's server.
 func handleDiscordLookup(ctx context.Context, opts map[string]any, deps discordDeps) discordReply {
 	name, ok := optString(opts, "name")
 	if !ok || name == "" {
 		return discordReply{Content: "Missing required option: name.", Ephemeral: true}
 	}
 
-	players, err := deps.lookupPlayer(ctx, name)
+	players, err := deps.lookup(ctx, name)
 	if err != nil {
-		log.Printf("discord /lookup %q: %v", name, err)
+		componentLog("discord").Warn().Str("name", name).Err(err).Msg("/lookup failed")
 		return discordReply{Content: "Error looking up player.", Ephemeral: true}
 	}
 	if len(players) == 0 {
 		return discordReply{Content: fmt.Sprintf("No player found matching %q.", name), Ephemeral: true}
 	}
-
 	if len(players) > 1 {
-		return discordReply{
-			Content: fmt.Sprintf("%d matches for %q — be more specific.", len(players), name),
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "%d matches for %q:\n", len(players), name)
+		for _, p := range players {
+			fmt.Fprintf(&sb, "• %s\n", p.Name)
 		}
+		return discordReply{Content: strings.TrimRight(sb.String(), "\n")}
 	}
-
-	p := players[0]
-	return discordReply{
-		Content: formatPlayerLookup(p),
-	}
+	return discordReply{Content: formatPlayerLookup(players[0])}
 }
 
-// handleDiscordGiveCurrency grants Solaris to a player by character name.
-// The name must resolve to exactly one player; ambiguous names are rejected.
+// handleDiscordGiveCurrency grants Solaris to a player by character name on the
+// channel's server. The name must resolve to exactly one player; ambiguous
+// matches are rejected with a disambiguation prompt.
 func handleDiscordGiveCurrency(ctx context.Context, opts map[string]any, deps discordDeps) discordReply {
 	name, ok := optString(opts, "name")
 	if !ok || name == "" {
@@ -255,9 +279,9 @@ func handleDiscordGiveCurrency(ctx context.Context, opts map[string]any, deps di
 		return discordReply{Content: "Missing required option: amount.", Ephemeral: true}
 	}
 
-	players, err := deps.lookupPlayer(ctx, name)
+	players, err := deps.lookup(ctx, name)
 	if err != nil {
-		log.Printf("discord /give-currency lookup %q: %v", name, err)
+		componentLog("discord").Warn().Str("name", name).Err(err).Msg("/give-currency lookup failed")
 		return discordReply{Content: "Error looking up player.", Ephemeral: true}
 	}
 	if len(players) == 0 {
@@ -265,7 +289,7 @@ func handleDiscordGiveCurrency(ctx context.Context, opts map[string]any, deps di
 	}
 	if len(players) > 1 {
 		return discordReply{
-			Content:   fmt.Sprintf("Ambiguous name %q — %d players match. Be more specific.", name, len(players)),
+			Content:   fmt.Sprintf("Ambiguous name %q — %d players match on this server. Be more specific.", name, len(players)),
 			Ephemeral: true,
 		}
 	}
@@ -273,7 +297,7 @@ func handleDiscordGiveCurrency(ctx context.Context, opts map[string]any, deps di
 	p := players[0]
 	newBalance, err := deps.giveCurrency(ctx, p.ControllerID, amount)
 	if err != nil {
-		log.Printf("discord /give-currency player=%d amount=%d: %v", p.ControllerID, amount, err)
+		componentLog("discord").Warn().Int64("player_id", p.ControllerID).Int64("amount", amount).Err(err).Msg("/give-currency grant failed")
 		return discordReply{Content: "Error granting currency.", Ephemeral: true}
 	}
 	return discordReply{
@@ -318,15 +342,20 @@ func handleDiscordRegister(ctx context.Context, member discordMember, opts map[s
 	if !ok || strings.TrimSpace(name) == "" {
 		return discordReply{Content: "❌ Please provide a character name.", Ephemeral: true}
 	}
-	players, err := deps.lookupPlayer(ctx, name)
+	players, err := deps.lookup(ctx, name)
 	if err != nil {
 		return discordReply{Content: "❌ Lookup failed — try again.", Ephemeral: true}
 	}
 	if len(players) == 0 {
-		return discordReply{Content: fmt.Sprintf("❌ No character found named **%s**.", name), Ephemeral: true}
+		return discordReply{Content: fmt.Sprintf("❌ No character found named **%s** on this server.", name), Ephemeral: true}
 	}
 	if len(players) > 1 {
-		return discordReply{Content: fmt.Sprintf("❌ Multiple characters match **%s** — be more specific.", name), Ephemeral: true}
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "❌ Multiple characters match **%s** — be more specific:\n", name)
+		for _, p := range players {
+			fmt.Fprintf(&sb, "• %s\n", p.Name)
+		}
+		return discordReply{Content: strings.TrimRight(sb.String(), "\n"), Ephemeral: true}
 	}
 	p := players[0]
 	avatarURL := discordAvatarURL(member.UserID, member.AvatarHash)
@@ -358,20 +387,28 @@ func handleDiscordUnregister(ctx context.Context, userID string, deps discordDep
 
 // ── Self-service helpers ──────────────────────────────────────────────────────
 
-// discordResolvePlayer looks up the registered character for the given Discord
-// user ID and returns the playerInfo. Returns a ready error reply when the user
-// is not registered or the character can't be found.
+// discordResolvePlayer routes by the user's character on the channel's server
+// (the deps are already bound to that server): it reads the registered character
+// name via getLink, then looks the character up on that server. Returns the
+// playerInfo, or a ready error reply when the user is not registered on this
+// server, or the character can't be found (deleted/transferred away).
 func discordResolvePlayer(ctx context.Context, userID string, deps discordDeps) (playerInfo, discordReply, bool) {
-	_, charName, err := deps.getLink(ctx, userID)
+	charName, ok, err := deps.getLink(ctx, userID)
 	if err != nil {
 		return playerInfo{}, discordReply{Content: "❌ Registration lookup failed.", Ephemeral: true}, false
 	}
-	if charName == "" {
-		return playerInfo{}, discordReply{Content: "You're not registered. Use **/register** first.", Ephemeral: true}, false
+	if !ok || charName == "" {
+		return playerInfo{}, discordReply{Content: "You haven't registered a character on this server. Use **/register** first.", Ephemeral: true}, false
 	}
-	players, err := deps.lookupPlayer(ctx, charName)
-	if err != nil || len(players) == 0 {
-		return playerInfo{}, discordReply{Content: fmt.Sprintf("❌ Could not find character **%s**.", charName), Ephemeral: true}, false
+	players, err := deps.lookup(ctx, charName)
+	if err != nil {
+		return playerInfo{}, discordReply{Content: fmt.Sprintf("❌ Could not look up character **%s**.", charName), Ephemeral: true}, false
+	}
+	if len(players) == 0 {
+		return playerInfo{}, discordReply{
+			Content:   fmt.Sprintf("❌ Your registered character **%s** wasn't found — it may have been deleted. Use **/register** again.", charName),
+			Ephemeral: true,
+		}, false
 	}
 	return players[0], discordReply{}, true
 }
@@ -520,8 +557,11 @@ func cmdListDiscordRoles(guildID string, fetchRoles guildRolesFetchFn) ([]discor
 // Prefers the running gateway bot session, but falls back to a REST-only
 // session built from discord_bot_token — listing roles requires the token,
 // not the event bot (discord_bot_enabled), so role pickers work either way.
-func handleGetDiscordRoles(w http.ResponseWriter, _ *http.Request) {
-	fetch, guildID := discordRolesFetcher()
+func handleGetDiscordRoles(w http.ResponseWriter, r *http.Request) {
+	// The role picker is per-guild: an explicit ?guild=<id> overrides the
+	// session's default guild so each guild mapping can pick its own roles.
+	wantGuild := strings.TrimSpace(r.URL.Query().Get("guild"))
+	fetch, guildID := discordRolesFetcher(wantGuild)
 	handleGetDiscordRolesInner(w, guildID, func(gID string) ([]discordRoleRow, error) {
 		if fetch == nil {
 			return nil, errDiscordNotConnected
@@ -532,15 +572,24 @@ func handleGetDiscordRoles(w http.ResponseWriter, _ *http.Request) {
 
 // discordRolesFetcher returns a GuildRoles call bound to the best available
 // session: the live gateway bot when running, otherwise a REST-only session
-// from the configured bot token. Nil when neither is available.
-func discordRolesFetcher() (guildRolesFetchFn, string) {
+// from the configured bot token. wantGuild, when non-empty, overrides the
+// default guild (per-guild role pickers). Nil when neither session nor a usable
+// guild id is available.
+func discordRolesFetcher(wantGuild string) (guildRolesFetchFn, string) {
 	if sess, guildID := getDiscordState(); sess != nil {
+		if wantGuild != "" {
+			guildID = wantGuild
+		}
 		return func(id string) ([]*discordgo.Role, error) {
 			return sess.GuildRoles(id)
 		}, guildID
 	}
 	cfg := loadedConfig
-	if cfg.DiscordBotToken == "" || cfg.DiscordGuildID == "" {
+	guildID := cfg.DiscordGuildID
+	if wantGuild != "" {
+		guildID = wantGuild
+	}
+	if cfg.DiscordBotToken == "" || guildID == "" {
 		return nil, ""
 	}
 	sess, err := discordgo.New("Bot " + cfg.DiscordBotToken)
@@ -549,7 +598,7 @@ func discordRolesFetcher() (guildRolesFetchFn, string) {
 	}
 	return func(id string) ([]*discordgo.Role, error) {
 		return sess.GuildRoles(id)
-	}, cfg.DiscordGuildID
+	}, guildID
 }
 
 func handleGetDiscordRolesInner(w http.ResponseWriter, guildID string, fetch roleFetcherFn) {
@@ -559,7 +608,7 @@ func handleGetDiscordRolesInner(w http.ResponseWriter, guildID string, fetch rol
 			jsonErr(w, err, http.StatusServiceUnavailable)
 			return
 		}
-		log.Printf("handleGetDiscordRoles: %v", err)
+		componentLog("discord").Error().Err(err).Msg("handleGetDiscordRoles failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}

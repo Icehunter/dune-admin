@@ -7,6 +7,98 @@ import (
 	"testing"
 )
 
+// ── Phase 5c: per-server scanner tests ───────────────────────────────────────
+
+// TestWelcomePackageScanTick_NilPoolSkipsGrants confirms that when the server
+// context has a nil DB, the tick returns early without touching the store.
+func TestWelcomePackageScanTick_NilPoolSkipsGrants(t *testing.T) {
+	t.Parallel()
+	store, err := openWelcomeStore(filepath.Join(t.TempDir(), "w.sqlite"))
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer func() { _ = store.close() }()
+
+	oldRt := getWelcomeRuntime()
+	setWelcomeRuntime(buildWelcomeRuntime(true, []string{"v1"}, 30, []welcomePackage{{
+		Version: "v1",
+		Items:   []welcomePackageItem{{Template: "PlantFiber", Qty: 1}},
+	}}, welcomeMessageOptions{}))
+	t.Cleanup(func() { setWelcomeRuntime(oldRt) })
+
+	sc := &ServerContext{} // DB == nil
+	welcomePackageScanTick(context.Background(), sc, store)
+
+	rows, err := store.listGrants(10)
+	if err != nil {
+		t.Fatalf("listGrants: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("expected no grants with nil DB, got %d", len(rows))
+	}
+}
+
+// TestWelcomePackageScanTick_NilStoreSkipsGrants confirms that a nil store is a
+// no-op (pkgActive=false).
+func TestWelcomePackageScanTick_NilStoreSkipsGrants(t *testing.T) {
+	t.Parallel()
+	oldRt := getWelcomeRuntime()
+	setWelcomeRuntime(buildWelcomeRuntime(true, []string{"v1"}, 30, []welcomePackage{{
+		Version: "v1",
+		Items:   []welcomePackageItem{{Template: "PlantFiber", Qty: 1}},
+	}}, welcomeMessageOptions{}))
+	t.Cleanup(func() { setWelcomeRuntime(oldRt) })
+
+	sc := &ServerContext{} // DB == nil, store == nil → pkgActive=false → noop
+	welcomePackageScanTick(context.Background(), sc, nil)
+	// no panic is the assertion
+}
+
+// TestCmdListWelcomeOnlineAccounts_NilPool confirms a nil pool returns an error.
+func TestCmdListWelcomeOnlineAccounts_NilPool(t *testing.T) {
+	t.Parallel()
+	_, err := cmdListWelcomeOnlineAccounts(context.Background(), nil)
+	if err == nil {
+		t.Fatal("expected error for nil pool")
+	}
+}
+
+// TestRunWelcomePackageGrants_UsesPassedStore confirms that grants from the scanner
+// go into the explicitly passed store and not into a different store instance.
+func TestRunWelcomePackageGrants_UsesPassedStore(t *testing.T) {
+	t.Parallel()
+	storeA, err := openWelcomeStore(filepath.Join(t.TempDir(), "a.sqlite"))
+	if err != nil {
+		t.Fatalf("open storeA: %v", err)
+	}
+	defer func() { _ = storeA.close() }()
+	storeB, err := openWelcomeStore(filepath.Join(t.TempDir(), "b.sqlite"))
+	if err != nil {
+		t.Fatalf("open storeB: %v", err)
+	}
+	defer func() { _ = storeB.close() }()
+
+	rt := buildWelcomeRuntime(true, []string{"v1"}, 30, []welcomePackage{{
+		Version: "v1",
+		Items:   []welcomePackageItem{{Template: "PlantFiber", Qty: 1}},
+	}}, welcomeMessageOptions{})
+
+	online := []welcomeAccount{
+		{AccountID: 1, PawnID: 10, FlsID: "FLS1", CharacterName: "Paul"},
+	}
+
+	runWelcomePackageGrants(context.Background(), rt, online, storeA, func(_ context.Context, _ int64, _ string, _ []welcomePackageItem) ([]string, error) {
+		return nil, nil // success
+	})
+
+	if ex, _ := storeA.grantExists("FLS1", "v1", 1); !ex {
+		t.Error("grant must exist in storeA")
+	}
+	if ex, _ := storeB.grantExists("FLS1", "v1", 1); ex {
+		t.Error("grant must NOT appear in storeB")
+	}
+}
+
 func TestValidateWelcomeItems(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

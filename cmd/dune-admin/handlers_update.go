@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -25,7 +24,7 @@ import (
 func artifactName(goos, goarch string) string {
 	switch goos {
 	case "darwin":
-		return "dune-admin_darwin_universal.tar.gz"
+		return "dune-admin_darwin_all.tar.gz"
 	case "windows":
 		return fmt.Sprintf("dune-admin_windows_%s.zip", goarch)
 	default:
@@ -105,7 +104,7 @@ func makeUpdateCheckHandler(fetcher func(string) ([]byte, error)) http.HandlerFu
 	return func(w http.ResponseWriter, r *http.Request) {
 		tag, htmlURL, err := latestRelease(fetcher)
 		if err != nil {
-			log.Printf("handleUpdateCheck: %v", err)
+			componentLog("update").Error().Err(err).Msg("check latest release failed")
 			jsonErr(w, fmt.Errorf("could not reach GitHub"), http.StatusBadGateway)
 			return
 		}
@@ -261,7 +260,7 @@ func applyUpdate(tag, goos, goarch, currentBin string, fetcher func(string) ([]b
 		return fmt.Errorf("find checksum for %s: %w", artifact, err)
 	}
 
-	log.Printf("update: downloading %s %s", artifact, tag)
+	componentLog("update").Info().Str("artifact", artifact).Str("tag", tag).Msg("downloading release")
 	archiveData, err := fetcher(base + "/" + artifact)
 	if err != nil {
 		return fmt.Errorf("download archive: %w", err)
@@ -270,7 +269,7 @@ func applyUpdate(tag, goos, goarch, currentBin string, fetcher func(string) ([]b
 	if err := verifySHA256(archiveData, expectedSum); err != nil {
 		return err
 	}
-	log.Printf("update: checksum verified")
+	componentLog("update").Info().Msg("checksum verified")
 
 	tmp := currentBin + ".new"
 	if err := extractBinary(archiveData, artifact, filepath.Base(currentBin), tmp); err != nil {
@@ -279,6 +278,7 @@ func applyUpdate(tag, goos, goarch, currentBin string, fetcher func(string) ([]b
 	}
 
 	prev := currentBin + ".prev"
+	_ = os.Remove(prev) // Windows rename won't overwrite; remove stale .prev first
 	if err := os.Rename(currentBin, prev); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("backup current binary: %w", err)
@@ -289,7 +289,7 @@ func applyUpdate(tag, goos, goarch, currentBin string, fetcher func(string) ([]b
 		return fmt.Errorf("swap binary: %w", err)
 	}
 
-	log.Printf("update: swapped binary to %s", tag)
+	componentLog("update").Info().Str("tag", tag).Msg("swapped binary")
 	return nil
 }
 
@@ -320,7 +320,7 @@ func makeUpdateApplyHandler(
 
 		tag, _, err := latestRelease(checkFetcher)
 		if err != nil {
-			log.Printf("handleUpdateApply: check release: %v", err)
+			componentLog("update").Error().Err(err).Msg("apply: check release failed")
 			jsonErr(w, fmt.Errorf("could not reach GitHub"), http.StatusBadGateway)
 			return
 		}
@@ -329,7 +329,7 @@ func makeUpdateApplyHandler(
 			return
 		}
 		if err := applyUpdate(tag, goos, goarch, currentBin, applyFetcher); err != nil {
-			log.Printf("handleUpdateApply: apply: %v", err)
+			componentLog("update").Error().Err(err).Msg("apply update failed")
 			jsonErr(w, fmt.Errorf("update failed"), http.StatusInternalServerError)
 			return
 		}
@@ -379,9 +379,9 @@ func signalSelfTERM() error {
 // actually replacing or killing the test process.
 func restartProcess(reExec, fallback func() error) {
 	if err := reExec(); err != nil {
-		log.Printf("update: in-place re-exec failed (%v); falling back to process restart", err)
+		componentLog("update").Warn().Err(err).Msg("in-place re-exec failed; falling back to process restart")
 		if serr := fallback(); serr != nil {
-			log.Printf("update: process restart fallback failed: %v", serr)
+			componentLog("update").Error().Err(serr).Msg("process restart fallback failed")
 		}
 	}
 }

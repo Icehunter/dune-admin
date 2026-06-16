@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"path/filepath"
 	"regexp"
@@ -94,7 +93,7 @@ func (c *ampControl) GetStatus(ctx context.Context, exec Executor) (*Battlegroup
 	// leaves Dimension at zero.
 	dirMeta, err := c.fetchDirectorPartitions(ctx, exec)
 	if err != nil {
-		log.Printf("ampControl.GetStatus: director enrichment unavailable: %v", err)
+		componentLog("control_amp").Warn().Err(err).Msg("director enrichment unavailable")
 	}
 	pids := make([]int, 0, len(procs))
 	for _, p := range procs {
@@ -814,8 +813,8 @@ func (c *ampControl) ReadDefaultINI(_ context.Context, exec Executor, filename s
 
 // directorConfigPath derives $STATE/director_config.ini from the resolved server
 // INI dir, which is $STATE/ue5-saved/UserSettings (so $STATE is two levels up).
-func (c *ampControl) directorConfigPath() (string, error) {
-	dir, err := iniDir()
+func (c *ampControl) directorConfigPath(exec Executor) (string, error) {
+	dir, err := iniDir(c, exec)
 	if err != nil {
 		return "", err
 	}
@@ -823,7 +822,7 @@ func (c *ampControl) directorConfigPath() (string, error) {
 }
 
 func (c *ampControl) readDirectorConfig(exec Executor) (string, string, error) {
-	path, err := c.directorConfigPath()
+	path, err := c.directorConfigPath(exec)
 	if err != nil {
 		return "", "", err
 	}
@@ -838,7 +837,7 @@ func (c *ampControl) readDirectorConfig(exec Executor) (string, string, error) {
 }
 
 func (c *ampControl) writeDirectorConfig(exec Executor, content string) (string, error) {
-	path, err := c.directorConfigPath()
+	path, err := c.directorConfigPath(exec)
 	if err != nil {
 		return "", err
 	}

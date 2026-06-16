@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // globalBattlepassCancel stops the running battlepass engine goroutine.
@@ -188,7 +189,7 @@ func evaluateBattlepassTick(ctx context.Context, deps battlepassDeps, store *bat
 			}
 		}
 		if err := evaluateBattlepassPlayer(ctx, deps, store, tiers, p, awardPast, autoGrant); err != nil {
-			log.Printf("battlepass: evaluate account %d: %v", p.AccountID, err)
+			componentLog("battlepass").Warn().Int64("account_id", p.AccountID).Err(err).Msg("evaluate player failed")
 		}
 	}
 	return nil
@@ -245,7 +246,7 @@ func bootBattlepassScan(ctx context.Context, deps battlepassDeps, store *battlep
 		}
 	}
 	if err := evaluateBattlepassTick(ctx, deps, store, awardPast, autoGrant, paceEvery); err != nil {
-		log.Printf("battlepass: boot scan: %v", err)
+		componentLog("battlepass").Warn().Err(err).Msg("boot scan failed")
 	}
 }
 
@@ -264,33 +265,33 @@ func runBattlepassEngine(ctx context.Context, deps battlepassDeps, store *battle
 			return
 		case <-ticker.C:
 			if err := evaluateBattlepassTick(ctx, deps, store, awardPast, autoGrant, paceEvery); err != nil {
-				log.Printf("battlepass: tick: %v", err)
+				componentLog("battlepass").Warn().Err(err).Msg("tick failed")
 			}
 		}
 	}
 }
 
-// productionBattlepassDeps builds the deps from live globals. Called from
-// startBattlepassIfEnabled only; tests inject mocks directly.
-func productionBattlepassDeps() battlepassDeps {
+// productionBattlepassDeps builds the deps from the given pool. Called from
+// applyBattlepassEngine only; tests inject mocks directly.
+func productionBattlepassDeps(pool *pgxpool.Pool) battlepassDeps {
 	return battlepassDeps{
 		fetchPlayers: func(ctx context.Context) ([]battlepassPlayer, error) {
-			if globalDB == nil {
+			if pool == nil {
 				return nil, fmt.Errorf("database not connected")
 			}
-			return cmdFetchBattlepassPlayers(ctx, globalDB)
+			return cmdFetchBattlepassPlayers(ctx, pool)
 		},
 		fetchCompletedJourneyNodes: func(ctx context.Context, accountID int64) ([]string, error) {
-			if globalDB == nil {
+			if pool == nil {
 				return nil, fmt.Errorf("database not connected")
 			}
-			return cmdFetchCompletedJourneyNodeIDs(ctx, globalDB, accountID)
+			return cmdFetchCompletedJourneyNodeIDs(ctx, pool, accountID)
 		},
 		fetchPlayerTags: func(ctx context.Context, accountID int64) ([]string, error) {
-			if globalDB == nil {
+			if pool == nil {
 				return nil, fmt.Errorf("database not connected")
 			}
-			return cmdFetchPlayerTagsForAccount(ctx, globalDB, accountID)
+			return cmdFetchPlayerTagsForAccount(ctx, pool, accountID)
 		},
 		pace: func(ctx context.Context, d time.Duration) error {
 			if d <= 0 {
@@ -333,11 +334,15 @@ func applyBattlepassEngine(cfg appConfig) {
 		return
 	}
 
+	// Seed the baked-in catalog ONLY when this server has no tiers yet. The DB is
+	// the source of truth: operator edits (via the import/reset API) must survive
+	// restarts and config saves, so we must NOT clobber existing tiers here. An
+	// explicit "reset to defaults" / import still uses reseedTiers.
 	catalog := defaultBattlepassCatalog()
-	if err := globalBattlepassStore.reseedTiers(catalog); err != nil {
-		log.Printf("battlepass: reseed catalog: %v", err)
-	} else {
-		log.Printf("battlepass: catalog synced (%d tiers)", len(catalog))
+	if n, err := globalBattlepassStore.seedTiersIfEmpty(catalog); err != nil {
+		componentLog("battlepass").Error().Err(err).Msg("seed catalog failed")
+	} else if n > 0 {
+		componentLog("battlepass").Info().Int("tier_count", n).Msg("catalog seeded")
 	}
 
 	globalBattlepassMu.Lock()
@@ -346,7 +351,7 @@ func applyBattlepassEngine(cfg appConfig) {
 	if globalBattlepassCancel != nil {
 		globalBattlepassCancel()
 		globalBattlepassCancel = nil
-		log.Printf("battlepass: engine stopped")
+		componentLog("battlepass").Info().Msg("engine stopped")
 	}
 
 	if !battlepassEnabled(cfg) {
@@ -357,18 +362,28 @@ func applyBattlepassEngine(cfg appConfig) {
 	paceEvery := clampBattlepassPaceMs(cfg.BattlepassScanPaceMs)
 	startDelay := clampBattlepassStartDelayMs(cfg.BattlepassScanStartDelayMs)
 	autoGrant := battlepassAutoGrant(cfg)
-	log.Printf("battlepass: engine started (interval %s, pace %s, start_delay %s, award_past=%t, auto_grant=%t)",
-		interval, paceEvery, startDelay, battlepassAwardPast(cfg), autoGrant)
+	componentLog("battlepass").Info().
+		Str("interval", interval.String()).
+		Str("pace", paceEvery.String()).
+		Str("start_delay", startDelay.String()).
+		Bool("award_past", battlepassAwardPast(cfg)).
+		Bool("auto_grant", autoGrant).
+		Msg("engine started")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	globalBattlepassCancel = cancel
-	go runBattlepassEngine(ctx, productionBattlepassDeps(),
-		globalBattlepassStore, interval, paceEvery, startDelay, battlepassAwardPast(cfg), autoGrant)
-
-	// When auto-grant is on, run the deferred-grant retry loop alongside the
-	// evaluation engine. It is cancelled by the same ctx on stop/reconfigure.
-	if autoGrant {
-		go runBattlepassGrantLoop(ctx, globalBattlepassStore, productionBattlepassGrantDeps())
+	for _, sc := range globalRegistry.All() {
+		if sc.DB == nil {
+			continue
+		}
+		// Each server's engine writes claims/grants under that server's scope so
+		// the same account_id on different servers never collides.
+		scoped := globalBattlepassStore.withScope(sc.StoreScope)
+		go runBattlepassEngine(ctx, productionBattlepassDeps(sc.DB),
+			scoped, interval, paceEvery, startDelay, battlepassAwardPast(cfg), autoGrant)
+		if autoGrant {
+			go runBattlepassGrantLoop(ctx, scoped, productionBattlepassGrantDeps(sc.DB))
+		}
 	}
 }
 

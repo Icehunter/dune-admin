@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -18,7 +17,17 @@ const masked = "••••••••"
 // @Produce json
 // @Success 200 {object} appConfig
 // @Router /api/v1/config [get]
-func handleGetConfig(w http.ResponseWriter, r *http.Request) {
+func handleGetConfig(w http.ResponseWriter, _ *http.Request) {
+	// DB is the source of truth: serve the in-memory config hydrated from the
+	// store at boot (and kept in sync by the save/servers handlers). config.yaml
+	// is only a first-boot import seed and is never read at runtime.
+	if globalSettingsStore != nil {
+		cfg := loadedConfig
+		maskSecrets(&cfg)
+		jsonOK(w, cfg)
+		return
+	}
+	// Legacy fallback (store unavailable): read config.yaml.
 	data, err := os.ReadFile(configPath())
 	if err != nil {
 		jsonOK(w, buildCurrentConfig())
@@ -33,22 +42,12 @@ func handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, cfg)
 }
 
-// maskSecrets replaces all secret fields with the display placeholder.
+// maskSecrets replaces the app-level secret fields with the display placeholder.
+// db/broker/amp secrets are per-server now (handled by maskServerSecrets); only
+// the app-wide secrets live on the global config.
 func maskSecrets(cfg *appConfig) {
-	if cfg.DBPass != "" {
-		cfg.DBPass = masked
-	}
-	if cfg.BrokerPass != "" {
-		cfg.BrokerPass = masked
-	}
-	if cfg.BrokerJWTSecret != "" {
-		cfg.BrokerJWTSecret = masked
-	}
 	if cfg.MarketBotRemoteToken != "" {
 		cfg.MarketBotRemoteToken = masked
-	}
-	if cfg.AmpAPIPass != "" {
-		cfg.AmpAPIPass = masked
 	}
 	if cfg.DiscordBotToken != "" {
 		cfg.DiscordBotToken = masked
@@ -58,6 +57,27 @@ func maskSecrets(cfg *appConfig) {
 	}
 	if cfg.AuthLocalPasswordHash != "" {
 		cfg.AuthLocalPasswordHash = masked
+	}
+	// On the DB path these flat connection secrets are empty (they moved to the
+	// per-server columns). But the legacy fallback (store unavailable) unmarshals
+	// an old flat config.yaml straight into appConfig, so mask them here too so a
+	// pre-remodel config never returns plaintext db/broker/amp passwords.
+	if cfg.DBPass != "" {
+		cfg.DBPass = masked
+	}
+	if cfg.BrokerPass != "" {
+		cfg.BrokerPass = masked
+	}
+	if cfg.BrokerJWTSecret != "" {
+		cfg.BrokerJWTSecret = masked
+	}
+	if cfg.AmpAPIPass != "" {
+		cfg.AmpAPIPass = masked
+	}
+	// Per-server entries carry their own secrets — mask them too so plaintext
+	// passwords never reach the client.
+	for i := range cfg.Servers {
+		maskServerSecrets(&cfg.Servers[i])
 	}
 }
 
@@ -69,11 +89,7 @@ func preserveMaskedSecrets(
 	readFile func(string) ([]byte, error),
 	path string,
 ) {
-	needsRestore := cfg.DBPass == masked ||
-		cfg.BrokerPass == masked ||
-		cfg.BrokerJWTSecret == masked ||
-		cfg.MarketBotRemoteToken == masked ||
-		cfg.AmpAPIPass == masked ||
+	needsRestore := cfg.MarketBotRemoteToken == masked ||
 		cfg.DiscordBotToken == masked ||
 		cfg.AuthDiscordClientSecret == masked ||
 		cfg.AuthLocalPasswordHash == masked
@@ -86,25 +102,9 @@ func preserveMaskedSecrets(
 	if data, err := readFile(path); err == nil {
 		_ = yaml.Unmarshal(data, &old)
 	}
-	// dbPass global may differ from loadedConfig when set from env var
-	if old.DBPass == "" {
-		old.DBPass = dbPass
-	}
 
-	if cfg.DBPass == masked {
-		cfg.DBPass = old.DBPass
-	}
-	if cfg.BrokerPass == masked {
-		cfg.BrokerPass = old.BrokerPass
-	}
-	if cfg.BrokerJWTSecret == masked {
-		cfg.BrokerJWTSecret = old.BrokerJWTSecret
-	}
 	if cfg.MarketBotRemoteToken == masked {
 		cfg.MarketBotRemoteToken = old.MarketBotRemoteToken
-	}
-	if cfg.AmpAPIPass == masked {
-		cfg.AmpAPIPass = old.AmpAPIPass
 	}
 	if cfg.DiscordBotToken == masked {
 		cfg.DiscordBotToken = old.DiscordBotToken
@@ -115,6 +115,16 @@ func preserveMaskedSecrets(
 	if cfg.AuthLocalPasswordHash == masked {
 		cfg.AuthLocalPasswordHash = old.AuthLocalPasswordHash
 	}
+}
+
+// persistGlobalSettings saves the global settings to the DB (the source of
+// truth), falling back to config.yaml only when the store is unavailable.
+// config.yaml is otherwise a first-boot import seed and is never written again.
+func persistGlobalSettings(cfg appConfig) error {
+	if globalSettingsStore != nil {
+		return globalSettingsStore.saveSettings(cfg)
+	}
+	return writeConfigFile(cfg)
 }
 
 func writeConfigFile(cfg appConfig) error {
@@ -129,20 +139,6 @@ func writeConfigFile(cfg appConfig) error {
 		return fmt.Errorf("write config: %w", err)
 	}
 	return nil
-}
-
-// stopEmbeddedMarketBot cancels the running embedded bot (if any) and clears
-// embeddedBot and globalBotCancel. Call this before resetRuntimeConnections so
-// the bot releases its reference to the old (about-to-be-closed) globalDB pool.
-func stopEmbeddedMarketBot() {
-	if embeddedBot == nil {
-		return
-	}
-	if globalBotCancel != nil {
-		globalBotCancel()
-		globalBotCancel = nil
-	}
-	embeddedBot = nil
 }
 
 func resetRuntimeConnections() {
@@ -174,14 +170,51 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preserveMaskedSecrets(&cfg, os.ReadFile, configPath())
+	// DB is the source of truth: restore masked secrets from the in-memory
+	// config (hydrated from the store), not from a stale config.yaml.
+	readFile := os.ReadFile
+	if globalSettingsStore != nil {
+		readFile = func(string) ([]byte, error) { return nil, os.ErrNotExist }
+	}
+	preserveMaskedSecrets(&cfg, readFile, configPath())
+
+	// Per-server config (Servers[] / default_server) is owned exclusively by the
+	// /api/v1/servers endpoints. A global-settings save must never wipe or mutate
+	// it — the POST /config payload carries only global + flat fields.
+	cfg.Servers = loadedConfig.Servers
+	cfg.DefaultServer = loadedConfig.DefaultServer
+
+	// scope=global is the dune-admin Settings modal: it edits only global settings
+	// (auth, Discord, market-bot tuning, listen addr) and must NOT touch the
+	// connection or create/reconnect any server. Without this, saving global
+	// settings on a server-less install would gap-fill the empty flat config to
+	// "local" defaults and connectAll() a phantom "Default" server.
+	globalScope := r.URL.Query().Get("scope") == "global"
+
+	// The flat-connect path (gap-fill defaults + connectAll) belongs to the
+	// legacy single-server setup only — never a global save, never multi-server,
+	// and never when the DB-backed stores are live (servers go through /servers).
+	flatConnect := !globalScope && len(cfg.Servers) == 0 && globalSettingsStore == nil
+	if flatConnect {
+		// Gap-fill blank connection fields with control-plane defaults so leaving
+		// a field empty in the wizard uses the default (mirroring the console
+		// wizard) instead of wiping it via applyConfig.
+		applyFlatConnectionDefaults(&cfg)
+	}
 
 	if err := applyNewLocalPassword(&cfg); err != nil {
 		jsonErr(w, err, 500)
 		return
 	}
 
-	if err := writeConfigFile(cfg); err != nil {
+	// Persist global settings to the DB (source of truth); fall back to
+	// config.yaml only when the store is unavailable.
+	if globalSettingsStore != nil {
+		if err := globalSettingsStore.saveSettings(cfg); err != nil {
+			jsonErr(w, err, 500)
+			return
+		}
+	} else if err := writeConfigFile(cfg); err != nil {
 		jsonErr(w, err, 500)
 		return
 	}
@@ -197,23 +230,26 @@ func handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	// honored immediately too — the middleware checks loadedConfig per request.
 	initAuthRuntime(cfg)
 
-	// Stop the running bot (if any) before closing the DB pool.
-	// A running bot holds a reference to globalDB; if we close the pool first
-	// the bot's next tick will use a closed pool and panic or error.
-	stopEmbeddedMarketBot()
+	if flatConnect {
+		// Stop the running bots before closing the DB pool. A running bot holds a
+		// reference to the pool; if we close it first the bot's next tick would
+		// use a closed pool.
+		stopAllServerMarketBots()
 
-	resetRuntimeConnections()
+		resetRuntimeConnections()
 
-	// Reconnect is best-effort — config is already written to disk.
-	// If reconnect fails (e.g. SSH not yet reachable), the file is still
-	// saved and will take effect on the next restart or manual reconnect.
-	if err := connectAll(); err != nil {
-		log.Printf("handleSaveConfig: reconnect after save: %v", err)
+		// Reconnect is best-effort — config is already written to disk.
+		// If reconnect fails (e.g. SSH not yet reachable), the file is still
+		// saved and will take effect on the next restart or manual reconnect.
+		if err := connectAll(); err != nil {
+			componentLog("config").Error().Err(err).Msg("reconnect after save failed")
+		}
 	}
 
-	// Apply the market bot config AFTER connectAll so the bot gets the
-	// freshly-established globalDB rather than the old (closed) pool.
-	// applyMarketBotConfig will restart the bot (if enabled) with the new pool.
+	// Restart every server's market bot AFTER reconnect so each picks up the new
+	// global tuning (intervals/thresholds) against its live pool. Then refresh
+	// the remote-bot proxy from the new config.
+	restartAllServerMarketBots(loadedConfig)
 	applyMarketBotConfig(cfg)
 	// Discord connects outbound (no dependency on globalDB) so restart it last
 	// to pick up any token/guild/role changes without requiring a process restart.
@@ -237,6 +273,10 @@ func clearSessionOnAuthToggle(w http.ResponseWriter, r *http.Request, wasEnabled
 
 // buildCurrentConfig constructs an appConfig from the current global vars.
 func buildCurrentConfig() appConfig {
+	dbPassOut := ""
+	if dbPass != "" {
+		dbPassOut = masked
+	}
 	return appConfig{
 		SSHHost:          sshHost,
 		SSHUser:          sshUser,
@@ -244,7 +284,7 @@ func buildCurrentConfig() appConfig {
 		DBHost:           dbHost,
 		DBPort:           dbPort,
 		DBUser:           dbUser,
-		DBPass:           masked,
+		DBPass:           dbPassOut,
 		DBName:           dbName,
 		DBSchema:         dbSchema,
 		Control:          controlPlane,
@@ -258,29 +298,10 @@ func buildCurrentConfig() appConfig {
 	}
 }
 
-// applyMarketBotConfig stops or starts the embedded market bot to match the
-// new config. Called after applyConfig so loadedConfig is already updated.
+// applyMarketBotConfig refreshes the remote-bot proxy from the new global config.
+// The embedded bots themselves are per-server and (re)started via
+// restartAllServerMarketBots / the /servers endpoints, not here.
 func applyMarketBotConfig(cfg appConfig) {
-	wantEnabled := marketBotEnabled(cfg)
-	botRunning := embeddedBot != nil
-
-	if botRunning && !wantEnabled {
-		log.Printf("config: market_bot_enabled set to false — stopping embedded bot")
-		if globalBotCancel != nil {
-			globalBotCancel()
-			globalBotCancel = nil
-		}
-		embeddedBot = nil
-	}
-
-	if !botRunning && wantEnabled {
-		log.Printf("config: market_bot_enabled set to true — starting embedded bot")
-		if cancel := startEmbeddedMarketBotIfEnabled(cfg); cancel != nil {
-			globalBotCancel = cancel
-		}
-	}
-
-	// Update remote proxy from new config.
 	if cfg.MarketBotRemoteURL != "" {
 		remoteBotProxy = newRemoteBotClient(cfg.MarketBotRemoteURL, cfg.MarketBotRemoteToken)
 	} else {
@@ -292,24 +313,29 @@ func applyMarketBotConfig(cfg appConfig) {
 // the gap-filled values into config.yaml (then applies them). Requires an
 // active executor (command-mode/kubectl).
 func handleDiscover(w http.ResponseWriter, r *http.Request) {
-	if globalExecutor == nil {
+	exec := executorFromCtx(r)
+	if exec == nil {
 		jsonErr(w, fmt.Errorf("no executor connected"), http.StatusServiceUnavailable)
 		return
 	}
-	g, err := discoverGameConfig(globalExecutor)
+	g, err := discoverGameConfig(exec)
 	if err != nil {
 		jsonErr(w, err, http.StatusBadGateway)
 		return
 	}
 	var gameIP, adminIP, directorIP string
-	if globalControl != nil && globalControl.Name() == "kubectl" {
-		pods := fetchClusterPodIPs(globalExecutor)
+	ctrl := controlFromCtx(r)
+	if ctrl != nil && ctrl.Name() == "kubectl" {
+		pods := fetchClusterPodIPs(exec)
 		gameIP = podIPByPattern(pods, "mq-game")
 		adminIP = podIPByPattern(pods, "mq-admin")
 		directorIP = podIPByPattern(pods, "bgd")
 	}
 	cfg := persistDiscoveredConfig(loadedConfig, g, gameIP, adminIP, directorIP)
-	if r.URL.Query().Get("persist") == "true" {
+	// persist=true is a legacy single-server convenience (gap-fills the flat
+	// connection config). In DB-backed multi-server mode discovered values are
+	// returned to the add-server form instead, so skip the file write.
+	if r.URL.Query().Get("persist") == "true" && globalSettingsStore == nil {
 		if err := writeConfigFile(cfg); err != nil {
 			jsonErr(w, fmt.Errorf("write config: %w", err), http.StatusInternalServerError)
 			return

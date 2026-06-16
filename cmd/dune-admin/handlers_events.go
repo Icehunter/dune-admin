@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -17,7 +16,7 @@ func handleListEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	events, err := globalEventStore.list()
 	if err != nil {
-		log.Printf("handleListEvents: %v", err)
+		componentLog("events").Error().Err(err).Msg("list events failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
@@ -44,7 +43,7 @@ func handleCreateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	created, err := globalEventStore.create(req)
 	if err != nil {
-		log.Printf("handleCreateEvent: %v", err)
+		componentLog("events").Error().Err(err).Msg("create event failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
@@ -81,7 +80,7 @@ func handleUpdateEvent(w http.ResponseWriter, r *http.Request) {
 			jsonErr(w, fmt.Errorf("event not found"), http.StatusNotFound)
 			return
 		}
-		log.Printf("handleUpdateEvent: %v", err)
+		componentLog("events").Error().Int64("event_id", id).Err(err).Msg("update event failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
@@ -103,7 +102,7 @@ func handleDeleteEvent(w http.ResponseWriter, r *http.Request) {
 			jsonErr(w, fmt.Errorf("event not found"), http.StatusNotFound)
 			return
 		}
-		log.Printf("handleDeleteEvent: %v", err)
+		componentLog("events").Error().Int64("event_id", id).Err(err).Msg("delete event failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
@@ -134,7 +133,7 @@ func handleSetEventEnabled(w http.ResponseWriter, r *http.Request) {
 			jsonErr(w, fmt.Errorf("event not found"), http.StatusNotFound)
 			return
 		}
-		log.Printf("handleSetEventEnabled: %v", err)
+		componentLog("events").Error().Int64("event_id", id).Err(err).Msg("set event enabled failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
@@ -159,13 +158,13 @@ func handleGetEventStatus(w http.ResponseWriter, r *http.Request) {
 			jsonErr(w, fmt.Errorf("event not found"), http.StatusNotFound)
 			return
 		}
-		log.Printf("handleGetEventStatus: %v", err)
+		componentLog("events").Error().Int64("event_id", id).Err(err).Msg("get event status failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
 	claims, err := globalEventStore.listClaims(id)
 	if err != nil {
-		log.Printf("handleGetEventStatus listClaims: %v", err)
+		componentLog("events").Error().Int64("event_id", id).Err(err).Msg("list event claims failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
@@ -192,12 +191,12 @@ func handleResetEvent(w http.ResponseWriter, r *http.Request) {
 			jsonErr(w, fmt.Errorf("event not found"), http.StatusNotFound)
 			return
 		}
-		log.Printf("handleResetEvent get: %v", err)
+		componentLog("events").Error().Int64("event_id", id).Err(err).Msg("get event for reset failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
 	if err := globalEventStore.clearClaims(id); err != nil {
-		log.Printf("handleResetEvent clearClaims: %v", err)
+		componentLog("events").Error().Int64("event_id", id).Err(err).Msg("clear event claims failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
@@ -236,16 +235,16 @@ func handleGrantEventClaim(w http.ResponseWriter, r *http.Request) {
 			jsonErr(w, fmt.Errorf("event not found"), http.StatusNotFound)
 			return
 		}
-		log.Printf("handleGrantEventClaim get: %v", err)
+		componentLog("events").Error().Int64("event_id", eventID).Err(err).Msg("get event for grant failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
 
-	deps := productionEventDeps()
+	deps := productionEventDeps(globalDB, storeScopeFromCtx(r))
 	deps.resolveGrantTargets = eventGrantTargetResolver
 	claim := eventClaimRecord{EventID: def.ID, Version: def.Version, AccountID: accountID}
 	if err := attemptGrantForClaim(r.Context(), deps, globalEventStore, claim); err != nil {
-		log.Printf("handleGrantEventClaim grant %d/%d/%d: %v", def.ID, def.Version, accountID, err)
+		componentLog("events").Error().Int64("event_id", def.ID).Int("version", def.Version).Int64("account_id", accountID).Err(err).Msg("grant event claim failed")
 		jsonErr(w, fmt.Errorf("grant failed: %w", err), http.StatusInternalServerError)
 		return
 	}
@@ -282,8 +281,8 @@ func handleSaveEventsConfig(w http.ResponseWriter, r *http.Request) {
 
 	loadedConfig.EventsEnabled = p.Enabled
 
-	if err := writeConfigFile(loadedConfig); err != nil {
-		log.Printf("handleSaveEventsConfig: %v", err)
+	if err := persistGlobalSettings(loadedConfig); err != nil {
+		componentLog("events").Error().Err(err).Msg("persist events config failed")
 		jsonErr(w, fmt.Errorf("failed to write config"), http.StatusInternalServerError)
 		return
 	}

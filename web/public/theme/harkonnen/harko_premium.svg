@@ -1,60 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Sci-fi faction rewards crest icon">
-  <defs>
-    <linearGradient id="blackMetal" x1="64" y1="24" x2="192" y2="232" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2a2a2a"/>
-      <stop offset="0.38" stop-color="#070707"/>
-      <stop offset="0.72" stop-color="#151515"/>
-      <stop offset="1" stop-color="#000000"/>
-    </linearGradient>
-    <linearGradient id="redSteel" x1="128" y1="28" x2="128" y2="226" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ff1838"/>
-      <stop offset="0.42" stop-color="#8f0014"/>
-      <stop offset="1" stop-color="#2b0008"/>
-    </linearGradient>
-    <filter id="hardShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#000000" flood-opacity="0.65"/>
-    </filter>
-  </defs>
-
-  <!-- outer brutalist faction crest -->
-  <g filter="url(#hardShadow)" stroke-linejoin="miter" stroke-linecap="square">
-    <path d="M128 12 213 47 232 105 202 203 128 239 54 203 24 105 43 47Z"
-          fill="url(#blackMetal)" stroke="#4a000b" stroke-width="6"/>
-    <path d="M128 28 197 58 213 106 188 190 128 220 68 190 43 106 59 58Z"
-          fill="none" stroke="#b0001b" stroke-width="4"/>
-
-    <!-- side armored wings / angular war geometry -->
-    <path d="M57 87 91 67 107 91 77 108 100 123 70 154 37 112Z"
-          fill="#0b0b0c" stroke="#65000f" stroke-width="4"/>
-    <path d="M199 87 165 67 149 91 179 108 156 123 186 154 219 112Z"
-          fill="#0b0b0c" stroke="#65000f" stroke-width="4"/>
-
-    <path d="M75 158 103 136 119 159 92 192Z"
-          fill="#141416" stroke="#3a0009" stroke-width="4"/>
-    <path d="M181 158 153 136 137 159 164 192Z"
-          fill="#141416" stroke="#3a0009" stroke-width="4"/>
-
-    <!-- crimson inner shield -->
-    <path d="M128 38 164 75 151 184 128 215 105 184 92 75Z"
-          fill="url(#redSteel)" stroke="#1a0005" stroke-width="5"/>
-
-    <!-- central spear-like symbol -->
-    <path d="M128 24 146 91 137 91 137 174 128 210 119 174 119 91 110 91Z"
-          fill="#050505" stroke="#e00024" stroke-width="4"/>
-    <path d="M128 50 137 91 128 91 119 91Z" fill="#ff1b3d" opacity="0.9"/>
-    <path d="M128 89 135 170 128 196 121 170Z" fill="#1a0006" opacity="0.95"/>
-
-    <!-- militaristic chevrons / reward rank cues -->
-    <path d="M90 118 116 132 110 144 80 128Z" fill="#b0001b"/>
-    <path d="M166 118 140 132 146 144 176 128Z" fill="#b0001b"/>
-    <path d="M82 142 112 158 105 171 72 153Z" fill="#65000f"/>
-    <path d="M174 142 144 158 151 171 184 153Z" fill="#65000f"/>
-
-    <!-- hard black cut lines for brutalist facets -->
-    <path d="M61 62 95 82 M195 62 161 82 M49 107 83 107 M207 107 173 107 M76 191 106 181 M180 191 150 181"
-          fill="none" stroke="#000000" stroke-width="5" opacity="0.85"/>
-
-    <!-- small lower fang geometry -->
-    <path d="M110 191 128 226 146 191 128 205Z" fill="#070707" stroke="#790012" stroke-width="3"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Sci-fi faction rewards crest icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="b" x1="64" x2="192" y1="24" y2="232" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#2a2a2a"
+      /><stop offset=".38" stop-color="#070707" /><stop offset=".72" stop-color="#151515" /><stop
+        offset="1"
+      /></linearGradient><linearGradient id="c" x1="128" x2="128" y1="28" y2="226" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#ff1838"
+      /><stop offset=".42" stop-color="#8f0014" /><stop offset="1" stop-color="#2b0008" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="3" flood-color="#000" flood-opacity=".65" stdDeviation="2" /></filter></defs><g
+    stroke-linecap="square"
+    filter="url(#a)"
+  ><path fill="url(#b)" stroke="#4a000b" stroke-width="6" d="m128 12 85 35 19 58-30 98-74 36-74-36-30-98 19-58Z" /><path
+      fill="none"
+      stroke="#b0001b"
+      stroke-width="4"
+      d="m128 28 69 30 16 48-25 84-60 30-60-30-25-84 16-48Z"
+    /><path
+      fill="#0b0b0c"
+      stroke="#65000f"
+      stroke-width="4"
+      d="m57 87 34-20 16 24-30 17 23 15-30 31-33-42Zm142 0-34-20-16 24 30 17-23 15 30 31 33-42Z"
+    /><path
+      fill="#141416"
+      stroke="#3a0009"
+      stroke-width="4"
+      d="m75 158 28-22 16 23-27 33Zm106 0-28-22-16 23 27 33Z"
+    /><path fill="url(#c)" stroke="#1a0005" stroke-width="5" d="m128 38 36 37-13 109-23 31-23-31L92 75Z" /><path
+      fill="#050505"
+      stroke="#e00024"
+      stroke-width="4"
+      d="m128 24 18 67h-9v83l-9 36-9-36V91h-9Z"
+    /><path fill="#ff1b3d" d="m128 50 9 41h-18Z" opacity=".9" /><path
+      fill="#1a0006"
+      d="m128 89 7 81-7 26-7-26Z"
+      opacity=".95"
+    /><path fill="#b0001b" d="m90 118 26 14-6 12-30-16Zm76 0-26 14 6 12 30-16Z" /><path
+      fill="#65000f"
+      d="m82 142 30 16-7 13-33-18Zm92 0-30 16 7 13 33-18Z"
+    /><path
+      fill="none"
+      stroke="#000"
+      stroke-width="5"
+      d="m61 62 34 20m100-20-34 20M49 107h34m124 0h-34m-97 84 30-10m74 10-30-10"
+      opacity=".85"
+    /><path fill="#070707" stroke="#790012" stroke-width="3" d="m110 191 18 35 18-35-18 14Z" /></g></svg>

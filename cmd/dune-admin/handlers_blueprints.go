@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // @Summary List all building blueprints
@@ -18,7 +19,7 @@ import (
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/blueprints [get]
 func handleListBlueprints(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdListBlueprints().(msgBlueprintList)
+	msg, ok := cmdListBlueprints(dbFromCtx(r)).(msgBlueprintList)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -49,7 +50,7 @@ func handleExportBlueprint(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	bf, err := fetchBlueprintData(r.Context(), id)
+	bf, err := fetchBlueprintData(r.Context(), dbFromCtx(r), id)
 	if err != nil {
 		jsonErr(w, err, 500)
 		return
@@ -124,7 +125,7 @@ func handleImportBlueprint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg, ok := importBlueprintData(r.Context(), playerID, bf).(msgMutate)
+	msg, ok := importBlueprintData(r.Context(), dbFromCtx(r), playerID, bf).(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -167,9 +168,9 @@ func isStructuralBuilding(buildingType string) bool {
 	return structuralBuildingTypes[buildingType]
 }
 
-func fetchBlueprintName(ctx context.Context, blueprintID int64) string {
+func fetchBlueprintName(ctx context.Context, db *pgxpool.Pool, blueprintID int64) string {
 	var name string
-	_ = globalDB.QueryRow(ctx, `
+	_ = db.QueryRow(ctx, `
 		SELECT COALESCE(i.stats->'FBuildingBlueprintItemStats'->1->>'BuildingBlueprintName', '')
 		FROM dune.building_blueprints bb
 		JOIN dune.items i ON i.id = bb.item_id
@@ -192,8 +193,8 @@ func buildBlueprintInstance(iid int, buildingType string, transform []float32, s
 	}, true
 }
 
-func fetchBlueprintInstances(ctx context.Context, blueprintID int64) ([]blueprintInstance, error) {
-	rows, err := globalDB.Query(ctx, `
+func fetchBlueprintInstances(ctx context.Context, db *pgxpool.Pool, blueprintID int64) ([]blueprintInstance, error) {
+	rows, err := db.Query(ctx, `
 		SELECT instance_id, building_type, transform, provides_stability
 		FROM dune.building_blueprint_instances
 		WHERE building_blueprint_id = $1
@@ -240,8 +241,8 @@ func buildBlueprintPlaceable(pid int, buildingType string, transform []float32) 
 	}, true
 }
 
-func fetchBlueprintPlaceables(ctx context.Context, blueprintID int64) ([]blueprintPlaceable, error) {
-	rows, err := globalDB.Query(ctx, `
+func fetchBlueprintPlaceables(ctx context.Context, db *pgxpool.Pool, blueprintID int64) ([]blueprintPlaceable, error) {
+	rows, err := db.Query(ctx, `
 		SELECT placeable_id, building_type, transform
 		FROM dune.building_blueprint_placeables
 		WHERE building_blueprint_id = $1
@@ -281,8 +282,8 @@ func buildBlueprintPentashield(pid int, scale []int16) (blueprintPentashield, bo
 	}, true
 }
 
-func fetchBlueprintPentashields(ctx context.Context, blueprintID int64) ([]blueprintPentashield, error) {
-	rows, err := globalDB.Query(ctx, `
+func fetchBlueprintPentashields(ctx context.Context, db *pgxpool.Pool, blueprintID int64) ([]blueprintPentashield, error) {
+	rows, err := db.Query(ctx, `
 		SELECT placeable_id, scale
 		FROM dune.building_blueprint_pentashields
 		WHERE building_blueprint_id = $1
@@ -313,21 +314,21 @@ func fetchBlueprintPentashields(ctx context.Context, blueprintID int64) ([]bluep
 
 // fetchBlueprintData fetches blueprint instances, placeables, and pentashields
 // from the DB and returns a blueprintFile ready for JSON serialization.
-func fetchBlueprintData(ctx context.Context, blueprintID int64) (blueprintFile, error) {
-	if globalDB == nil {
+func fetchBlueprintData(ctx context.Context, db *pgxpool.Pool, blueprintID int64) (blueprintFile, error) {
+	if db == nil {
 		return blueprintFile{}, fmt.Errorf("not connected")
 	}
 
-	name := fetchBlueprintName(ctx, blueprintID)
-	instances, err := fetchBlueprintInstances(ctx, blueprintID)
+	name := fetchBlueprintName(ctx, db, blueprintID)
+	instances, err := fetchBlueprintInstances(ctx, db, blueprintID)
 	if err != nil {
 		return blueprintFile{}, err
 	}
-	placeables, err := fetchBlueprintPlaceables(ctx, blueprintID)
+	placeables, err := fetchBlueprintPlaceables(ctx, db, blueprintID)
 	if err != nil {
 		return blueprintFile{}, err
 	}
-	pentashields, err := fetchBlueprintPentashields(ctx, blueprintID)
+	pentashields, err := fetchBlueprintPentashields(ctx, db, blueprintID)
 	if err != nil {
 		return blueprintFile{}, err
 	}
@@ -502,17 +503,17 @@ func insertBlueprintPentashields(ctx context.Context, tx pgx.Tx, blueprintID int
 }
 
 // importBlueprintData imports a blueprintFile into the DB for the given player pawn ID.
-func importBlueprintData(ctx context.Context, playerPawnID int64, bf blueprintFile) Msg {
-	if globalDB == nil {
+func importBlueprintData(ctx context.Context, db *pgxpool.Pool, playerPawnID int64, bf blueprintFile) Msg {
+	if db == nil {
 		return msgMutate{err: fmt.Errorf("not connected")}
 	}
 
 	// Player must be offline.
-	if err := checkPlayerOffline(ctx, playerPawnID); err != nil {
+	if err := checkPlayerOfflinePool(ctx, db, playerPawnID); err != nil {
 		return msgMutate{err: err}
 	}
 
-	tx, err := globalDB.Begin(ctx)
+	tx, err := db.Begin(ctx)
 	if err != nil {
 		return msgMutate{err: fmt.Errorf("begin tx: %w", err)}
 	}

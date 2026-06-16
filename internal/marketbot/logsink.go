@@ -2,8 +2,10 @@ package marketbot
 
 import (
 	"io"
-	"log"
+	"strings"
 	"sync"
+
+	"github.com/rs/zerolog"
 )
 
 const ringCapacity = 1000
@@ -88,8 +90,28 @@ func (s *LogSink) Unsubscribe(ch chan string) {
 	s.subsMu.Unlock()
 }
 
-// Logger returns a *log.Logger that writes to this sink as well as w.
-// Pass io.Discard to suppress the secondary output.
-func (s *LogSink) Logger(prefix string, w io.Writer) *log.Logger {
-	return log.New(io.MultiWriter(s, w), prefix, log.Ldate|log.Ltime|log.Lmsgprefix)
+// Logger returns a zerolog.Logger that emits human-readable console lines to
+// BOTH this sink (for the live WebSocket log view) and w (typically stderr).
+// Each zerolog event is one Write call, so the sink — and therefore every
+// WebSocket subscriber — receives exactly one line per event. Pass io.Discard
+// as w to suppress the secondary output.
+//
+// The trailing newline zerolog appends to console output is trimmed for the
+// sink copy so the ring buffer / WS frames hold clean single lines.
+func (s *LogSink) Logger(w io.Writer) zerolog.Logger {
+	sinkConsole := zerolog.ConsoleWriter{Out: trimWriter{s}, TimeFormat: "15:04:05", NoColor: true}
+	stderrConsole := zerolog.ConsoleWriter{Out: w, TimeFormat: "15:04:05"}
+	mw := zerolog.MultiLevelWriter(sinkConsole, stderrConsole)
+	return zerolog.New(mw).With().Timestamp().Logger()
+}
+
+// trimWriter strips the trailing newline from each write before forwarding to
+// the underlying writer, so the LogSink stores one clean line per log event.
+type trimWriter struct{ w io.Writer }
+
+func (t trimWriter) Write(p []byte) (int, error) {
+	if _, err := t.w.Write([]byte(strings.TrimRight(string(p), "\n"))); err != nil {
+		return 0, err
+	}
+	return len(p), nil
 }

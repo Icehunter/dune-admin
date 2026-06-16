@@ -1,96 +1,109 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Spice desert faction crest icon">
-  <defs>
-    <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#F8D57A"/>
-      <stop offset="0.55" stop-color="#D8952E"/>
-      <stop offset="1" stop-color="#8D4517"/>
-    </linearGradient>
-    <linearGradient id="ember" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#F49A22"/>
-      <stop offset="0.55" stop-color="#B95712"/>
-      <stop offset="1" stop-color="#54270F"/>
-    </linearGradient>
-    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FFE7A6"/>
-      <stop offset="0.45" stop-color="#DFA744"/>
-      <stop offset="1" stop-color="#7A3D13"/>
-    </linearGradient>
-    <linearGradient id="turq" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#9EF6E9"/>
-      <stop offset="0.55" stop-color="#24BFC2"/>
-      <stop offset="1" stop-color="#086F78"/>
-    </linearGradient>
-    <radialGradient id="sun" cx="50%" cy="45%" r="60%">
-      <stop offset="0" stop-color="#FFE49A" stop-opacity="0.95"/>
-      <stop offset="0.58" stop-color="#E58A20" stop-opacity="0.82"/>
-      <stop offset="1" stop-color="#743611" stop-opacity="0.85"/>
-    </radialGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#2d1208" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-
-  <!-- Outer angular faction crest -->
-  <g filter="url(#softShadow)">
-    <path d="M128 12 L151 48 L190 31 L229 84 L207 151 L128 238 L49 151 L27 84 L66 31 L105 48 Z"
-          fill="url(#metal)"/>
-    <path d="M128 27 L145 59 L184 44 L215 88 L196 145 L128 222 L60 145 L41 88 L72 44 L111 59 Z"
-          fill="url(#ember)"/>
-  </g>
-
-  <!-- Inner desert sun field -->
-  <path d="M61 95 C75 53 100 38 128 38 C156 38 181 53 195 95 L184 139 C167 119 148 110 128 110 C108 110 89 119 72 139 Z"
-        fill="url(#sun)" opacity="0.96"/>
-  <path d="M67 112 C89 96 103 99 128 111 C152 122 167 121 189 105 L185 128 C166 119 148 122 128 133 C107 144 88 143 70 130 Z"
-        fill="#C8751D" opacity="0.78"/>
-  <path d="M70 132 C92 118 106 121 128 133 C150 144 166 143 185 130 L180 145 C162 139 147 143 128 154 C108 166 91 163 76 151 Z"
-        fill="#9C5018" opacity="0.85"/>
-  <path d="M75 95 A57 57 0 0 1 181 95" fill="none" stroke="#FFD979" stroke-width="2" opacity="0.75"/>
-
-  <!-- Side blades / ornament panels -->
-  <path d="M30 111 L75 159 L100 151 L65 205 L39 184 Z" fill="url(#metal)"/>
-  <path d="M226 111 L181 159 L156 151 L191 205 L217 184 Z" fill="url(#metal)"/>
-  <path d="M47 129 L80 163 L65 188 L49 174 Z" fill="#A94F13" opacity="0.95"/>
-  <path d="M209 129 L176 163 L191 188 L207 174 Z" fill="#A94F13" opacity="0.95"/>
-  <path d="M62 171 L86 177" stroke="#F0B64A" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
-  <path d="M194 171 L170 177" stroke="#F0B64A" stroke-width="3" stroke-linecap="round" opacity="0.85"/>
-
-  <!-- Central spire -->
-  <path d="M128 10 L140 46 L140 126 L128 151 L116 126 L116 46 Z" fill="url(#metal)"/>
-  <path d="M128 30 L133 57 L133 129 L128 141 L123 129 L123 57 Z" fill="#7B350F" opacity="0.75"/>
-  <path d="M128 20 L128 139" stroke="#FFF0B8" stroke-width="3" opacity="0.75"/>
-  <path d="M102 75 L116 132 L101 162 L80 154 L100 123 Z" fill="url(#metal)"/>
-  <path d="M154 75 L140 132 L155 162 L176 154 L156 123 Z" fill="url(#metal)"/>
-
-  <!-- Lower shield fins -->
-  <path d="M86 151 L112 172 L128 230 L103 203 L79 181 Z" fill="#612B12"/>
-  <path d="M170 151 L144 172 L128 230 L153 203 L177 181 Z" fill="#612B12"/>
-  <path d="M108 171 L128 230 L148 171 L128 188 Z" fill="url(#metal)"/>
-  <path d="M128 181 L139 203 L128 225 L117 203 Z" fill="#733311"/>
-
-  <!-- Central medallion and turquoise accent -->
-  <circle cx="128" cy="147" r="37" fill="#5B280E"/>
-  <circle cx="128" cy="147" r="31" fill="url(#metal)"/>
-  <circle cx="128" cy="147" r="24" fill="#0D7271"/>
-  <circle cx="128" cy="147" r="20" fill="url(#turq)"/>
-  <path d="M128 126 L149 147 L128 168 L107 147 Z" fill="#54DAD2"/>
-  <path d="M128 126 L128 147 L107 147 Z" fill="#B3FFF3" opacity="0.75"/>
-  <path d="M128 126 L149 147 L128 147 Z" fill="#3BC8C9" opacity="0.85"/>
-  <path d="M128 168 L149 147 L128 147 Z" fill="#108B94" opacity="0.9"/>
-  <path d="M128 168 L107 147 L128 147 Z" fill="#1EAEB0" opacity="0.95"/>
-  <path d="M128 107 L134 133 L128 140 L122 133 Z" fill="url(#metal)"/>
-  <path d="M128 187 L134 161 L128 154 L122 161 Z" fill="url(#metal)"/>
-  <path d="M88 147 L114 141 L121 147 L114 153 Z" fill="url(#metal)"/>
-  <path d="M168 147 L142 141 L135 147 L142 153 Z" fill="url(#metal)"/>
-
-  <!-- Sci-fi line details -->
-  <path d="M72 72 L99 55" stroke="#FFD77A" stroke-width="2" opacity="0.55"/>
-  <path d="M184 72 L157 55" stroke="#FFD77A" stroke-width="2" opacity="0.55"/>
-  <path d="M96 192 L115 211" stroke="#DFA744" stroke-width="3" stroke-linecap="round"/>
-  <path d="M160 192 L141 211" stroke="#DFA744" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="86" cy="84" r="3" fill="#FFD979"/>
-  <circle cx="170" cy="84" r="3" fill="#FFD979"/>
-  <circle cx="63" cy="163" r="3" fill="#F4B33F"/>
-  <circle cx="193" cy="163" r="3" fill="#F4B33F"/>
-  <path d="M79 104 L84 111 L92 114 L84 117 L79 124 L74 117 L66 114 L74 111 Z" fill="#FFE49A" opacity="0.9"/>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Spice desert faction crest icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="c" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#f49a22" /><stop
+        offset=".55"
+        stop-color="#b95712"
+      /><stop offset="1" stop-color="#54270f" /></linearGradient><linearGradient
+      id="b"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#ffe7a6" /><stop offset=".45" stop-color="#dfa744" /><stop
+        offset="1"
+        stop-color="#7a3d13"
+      /></linearGradient><linearGradient id="e" x1="0" x2="1" y1="0" y2="1"><stop
+        offset="0"
+        stop-color="#9ef6e9"
+      /><stop offset=".55" stop-color="#24bfc2" /><stop
+        offset="1"
+        stop-color="#086f78"
+      /></linearGradient><radialGradient id="d" cx="50%" cy="45%" r="60%"><stop
+        offset="0"
+        stop-color="#ffe49a"
+        stop-opacity=".95"
+      /><stop offset=".58" stop-color="#e58a20" stop-opacity=".82" /><stop
+        offset="1"
+        stop-color="#743611"
+        stop-opacity=".85"
+      /></radialGradient><filter id="a" width="140%" height="140%" x="-20%" y="-20%"><feDropShadow
+        dx="0"
+        dy="3"
+        flood-color="#2d1208"
+        flood-opacity=".35"
+        stdDeviation="2"
+      /></filter></defs><g filter="url(#a)"><path
+      fill="url(#b)"
+      d="m128 12 23 36 39-17 39 53-22 67-79 87-79-87-22-67 39-53 39 17Z"
+    /><path fill="url(#c)" d="m128 27 17 32 39-15 31 44-19 57-68 77-68-77-19-57 31-44 39 15Z" /></g><path
+    fill="url(#d)"
+    d="M61 95c14-42 39-57 67-57s53 15 67 57l-11 44c-17-20-36-29-56-29s-39 9-56 29Z"
+    opacity=".96"
+  /><path
+    fill="#c8751d"
+    d="M67 112c22-16 36-13 61-1 24 11 39 10 61-6l-4 23c-19-9-37-6-57 5-21 11-40 10-58-3Z"
+    opacity=".78"
+  /><path
+    fill="#9c5018"
+    d="M70 132c22-14 36-11 58 1 22 11 38 10 57-3l-5 15c-18-6-33-2-52 9-20 12-37 9-52-3Z"
+    opacity=".85"
+  /><path fill="none" stroke="#ffd979" stroke-width="2" d="M75 95a57 57 0 0 1 106 0" opacity=".75" /><path
+    fill="url(#b)"
+    d="m30 111 45 48 25-8-35 54-26-21Z"
+  /><path fill="url(#b)" d="m226 111-45 48-25-8 35 54 26-21Z" /><path
+    fill="#a94f13"
+    d="m47 129 33 34-15 25-16-14Zm162 0-33 34 15 25 16-14Z"
+    opacity=".95"
+  /><path stroke="#f0b64a" stroke-linecap="round" stroke-width="3" d="m62 171 24 6m108-6-24 6" opacity=".85" /><path
+    fill="url(#b)"
+    d="m128 10 12 36v80l-12 25-12-25V46Z"
+  /><path fill="#7b350f" d="m128 30 5 27v72l-5 12-5-12V57Z" opacity=".75" /><path
+    stroke="#fff0b8"
+    stroke-width="3"
+    d="M128 20v119"
+    opacity=".75"
+  /><path fill="url(#b)" d="m102 75 14 57-15 30-21-8 20-31Z" /><path
+    fill="url(#b)"
+    d="m154 75-14 57 15 30 21-8-20-31Z"
+  /><path fill="#612b12" d="m86 151 26 21 16 58-25-27-24-22Zm84 0-26 21-16 58 25-27 24-22Z" /><path
+    fill="url(#b)"
+    d="m108 171 20 59 20-59-20 17Z"
+  /><path fill="#733311" d="m128 181 11 22-11 22-11-22Z" /><circle cx="128" cy="147" r="37" fill="#5b280e" /><circle
+    cx="128"
+    cy="147"
+    r="31"
+    fill="url(#b)"
+  /><circle cx="128" cy="147" r="24" fill="#0d7271" /><circle cx="128" cy="147" r="20" fill="url(#e)" /><path
+    fill="#54dad2"
+    d="m128 126 21 21-21 21-21-21Z"
+  /><path fill="#b3fff3" d="M128 126v21h-21Z" opacity=".75" /><path
+    fill="#3bc8c9"
+    d="m128 126 21 21h-21Z"
+    opacity=".85"
+  /><path fill="#108b94" d="m128 168 21-21h-21Z" opacity=".9" /><path
+    fill="#1eaeb0"
+    d="m128 168-21-21h21Z"
+    opacity=".95"
+  /><path fill="url(#b)" d="m128 107 6 26-6 7-6-7Z" /><path fill="url(#b)" d="m128 187 6-26-6-7-6 7Z" /><path
+    fill="url(#b)"
+    d="m88 147 26-6 7 6-7 6Z"
+  /><path fill="url(#b)" d="m168 147-26-6-7 6 7 6Z" /><path
+    stroke="#ffd77a"
+    stroke-width="2"
+    d="m72 72 27-17m85 17-27-17"
+    opacity=".55"
+  /><path stroke="#dfa744" stroke-linecap="round" stroke-width="3" d="m96 192 19 19m45-19-19 19" /><circle
+    cx="86"
+    cy="84"
+    r="3"
+    fill="#ffd979"
+  /><circle cx="170" cy="84" r="3" fill="#ffd979" /><circle cx="63" cy="163" r="3" fill="#f4b33f" /><circle
+    cx="193"
+    cy="163"
+    r="3"
+    fill="#f4b33f"
+  /><path fill="#ffe49a" d="m79 104 5 7 8 3-8 3-5 7-5-7-8-3 8-3Z" opacity=".9" /></svg>

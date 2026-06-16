@@ -1,90 +1,135 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">Desert Tower Spice Refinery Icon</title>
-  <desc id="desc">A transparent sci-fi desert tower and spice refinery icon in amber, burnt umber, golden sand, and turquoise.</desc>
-  <defs>
-    <linearGradient id="tower" x1="88" y1="42" x2="168" y2="216" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#F6B33A"/>
-      <stop offset="0.48" stop-color="#C96B18"/>
-      <stop offset="1" stop-color="#6D381E"/>
-    </linearGradient>
-    <linearGradient id="sand" x1="44" y1="165" x2="102" y2="226" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFD079"/>
-      <stop offset="1" stop-color="#D67414"/>
-    </linearGradient>
-    <linearGradient id="metal" x1="60" y1="40" x2="196" y2="220" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFE08D"/>
-      <stop offset="0.42" stop-color="#D99A2D"/>
-      <stop offset="1" stop-color="#7A431F"/>
-    </linearGradient>
-    <linearGradient id="turq" x1="128" y1="74" x2="128" y2="126" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7DF9EF"/>
-      <stop offset="1" stop-color="#00A9A5"/>
-    </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#3A2116" flood-opacity="0.28"/>
-    </filter>
-  </defs>
-
-  <g filter="url(#softShadow)" stroke-linejoin="round" stroke-linecap="round">
-    <!-- rear tanks -->
-    <path d="M49 184h42v31H43v-25c0-3 3-6 6-6Z" fill="#8B4A20" stroke="#4B291C" stroke-width="4"/>
-    <path d="M48 148h39c6 0 11 5 11 11v30H37v-30c0-6 5-11 11-11Z" fill="#B96018" stroke="#4B291C" stroke-width="4"/>
-    <path d="M42 149c5-16 46-16 51 0Z" fill="#F0B84F" stroke="#4B291C" stroke-width="4"/>
-    <path d="M40 166h55" stroke="#F6C861" stroke-width="5"/>
-    <path d="M166 184h42c3 0 6 3 6 6v25h-54v-25c0-3 3-6 6-6Z" fill="#76401F" stroke="#4B291C" stroke-width="4"/>
-    <path d="M166 153h42c6 0 11 5 11 11v26h-64v-26c0-6 5-11 11-11Z" fill="#9B5523" stroke="#4B291C" stroke-width="4"/>
-    <path d="M161 154c6-17 49-17 55 0Z" fill="#DFA947" stroke="#4B291C" stroke-width="4"/>
-    <path d="M160 170h57" stroke="#F6C861" stroke-width="5"/>
-
-    <!-- pipes -->
-    <path d="M82 163v-37c0-12 10-22 22-22h18" fill="none" stroke="#5D351E" stroke-width="14"/>
-    <path d="M82 163v-37c0-12 10-22 22-22h18" fill="none" stroke="#B16A27" stroke-width="6"/>
-    <path d="M174 162v-36c0-12-10-22-22-22h-19" fill="none" stroke="#5D351E" stroke-width="14"/>
-    <path d="M174 162v-36c0-12-10-22-22-22h-19" fill="none" stroke="#B16A27" stroke-width="6"/>
-    <path d="M80 134h15M160 134h15" stroke="#F6C861" stroke-width="5"/>
-
-    <!-- spice chute and pile -->
-    <path d="M76 211l45-64h22l-33 68Z" fill="#6D381E" stroke="#4B291C" stroke-width="4"/>
-    <path d="M82 211l42-58h10l-30 58Z" fill="url(#sand)"/>
-    <path d="M29 222c10-19 28-28 51-26 19 1 31 9 39 26Z" fill="#E78A18"/>
-    <path d="M46 219c14-13 36-17 59 3Z" fill="#FFB43F" opacity="0.7"/>
-
-    <!-- central base -->
-    <path d="M60 222h136l-15-46H75Z" fill="#5A331E" stroke="#4B291C" stroke-width="5"/>
-    <path d="M80 217h96l-9-30H89Z" fill="#D9992E" stroke="#4B291C" stroke-width="4"/>
-    <path d="M102 222v-28c0-8 6-14 14-14h24c8 0 14 6 14 14v28Z" fill="#6A371C" stroke="#4B291C" stroke-width="4"/>
-    <path d="M114 222v-25h28v25Z" fill="#E77717" stroke="#4B291C" stroke-width="3"/>
-    <path d="M123 222v-24M133 222v-24" stroke="#FFD36A" stroke-width="3" opacity="0.75"/>
-    <path d="M73 188h110" stroke="#F7C55E" stroke-width="5"/>
-
-    <!-- tower body -->
-    <path d="M94 181 104 70c1-12 11-22 24-22s23 10 24 22l10 111Z" fill="url(#tower)" stroke="#4B291C" stroke-width="5"/>
-    <path d="M108 179 116 74c1-7 6-13 12-13s11 6 12 13l8 105Z" fill="#E9B865" opacity="0.78"/>
-    <path d="M96 117h64M100 151h56" stroke="#4B291C" stroke-width="5" opacity="0.8"/>
-    <path d="M109 84h8v19h-8ZM139 84h8v19h-8Z" fill="#3D2418"/>
-
-    <!-- crown and spire -->
-    <path d="M104 57c4-14 44-14 48 0Z" fill="#D87813" stroke="#4B291C" stroke-width="4"/>
-    <path d="M99 65h58l-5-12h-48Z" fill="#F4B63D" stroke="#4B291C" stroke-width="4"/>
-    <path d="M111 48h34v11h-34Z" fill="#6C3B1F" stroke="#4B291C" stroke-width="4"/>
-    <path d="M123 48 128 18l5 30Z" fill="#C26D17" stroke="#4B291C" stroke-width="3"/>
-
-    <!-- front ornament panel -->
-    <path d="M128 72 147 94v43l-19 20-19-20V94Z" fill="#5B311E" stroke="#F2B744" stroke-width="5"/>
-    <path d="M128 82 138 96v28l-10 13-10-13V96Z" fill="url(#turq)" stroke="#075D5B" stroke-width="3"/>
-    <path d="M128 137 136 146 128 155 120 146Z" fill="#0BAAA5" stroke="#F2B744" stroke-width="4"/>
-
-    <!-- spice flame emblem -->
-    <path d="M128 145c-11 13-20 23-20 35 0 12 9 22 20 22s20-10 20-22c0-12-9-22-20-35Z" fill="#B85B12" stroke="#F6C861" stroke-width="5"/>
-    <path d="M128 162c-5 7-10 12-10 19 0 6 4 11 10 11s10-5 10-11c0-7-5-12-10-19Z" fill="#5B2B19"/>
-
-    <!-- golden armor strips -->
-    <path d="M94 181 75 199h34l19-25 19 25h34l-19-18" fill="none" stroke="#F2B744" stroke-width="8"/>
-    <path d="M106 119 94 129v37M150 119l12 10v37" fill="none" stroke="#4B291C" stroke-width="4" opacity="0.75"/>
-    <circle cx="111" cy="125" r="3" fill="#3B2318"/>
-    <circle cx="145" cy="125" r="3" fill="#3B2318"/>
-
-    <!-- turquoise lower lights -->
-    <path d="M91 198v12M165 198v12" stroke="#22D5C8" stroke-width="4"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-labelledby="title desc"
+  viewBox="0 0 256 256"
+><title>Desert Tower Spice Refinery Icon</title><desc
+  >A transparent sci-fi desert tower and spice refinery icon in amber, burnt umber, golden sand, and turquoise.</desc><defs
+  ><linearGradient id="c" x1="88" x2="168" y1="42" y2="216" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#f6b33a"
+      /><stop offset=".48" stop-color="#c96b18" /><stop
+        offset="1"
+        stop-color="#6d381e"
+      /></linearGradient><linearGradient id="b" x1="44" x2="102" y1="165" y2="226" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#ffd079"
+      /><stop offset="1" stop-color="#d67414" /></linearGradient><linearGradient
+      id="d"
+      x1="128"
+      x2="128"
+      y1="74"
+      y2="126"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#7df9ef" /><stop offset="1" stop-color="#00a9a5" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="4" flood-color="#3a2116" flood-opacity=".28" stdDeviation="3" /></filter></defs><g
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    filter="url(#a)"
+  ><path fill="#8b4a20" stroke="#4b291c" stroke-width="4" d="M49 184h42v31H43v-25c0-3 3-6 6-6" /><path
+      fill="#b96018"
+      stroke="#4b291c"
+      stroke-width="4"
+      d="M48 148h39c6 0 11 5 11 11v30H37v-30c0-6 5-11 11-11"
+    /><path fill="#f0b84f" stroke="#4b291c" stroke-width="4" d="M42 149c5-16 46-16 51 0Z" /><path
+      stroke="#f6c861"
+      stroke-width="5"
+      d="M40 166h55"
+    /><path fill="#76401f" stroke="#4b291c" stroke-width="4" d="M166 184h42c3 0 6 3 6 6v25h-54v-25c0-3 3-6 6-6" /><path
+      fill="#9b5523"
+      stroke="#4b291c"
+      stroke-width="4"
+      d="M166 153h42c6 0 11 5 11 11v26h-64v-26c0-6 5-11 11-11"
+    /><path fill="#dfa947" stroke="#4b291c" stroke-width="4" d="M161 154c6-17 49-17 55 0Z" /><path
+      stroke="#f6c861"
+      stroke-width="5"
+      d="M160 170h57"
+    /><path fill="none" stroke="#5d351e" stroke-width="14" d="M82 163v-37c0-12 10-22 22-22h18" /><path
+      fill="none"
+      stroke="#b16a27"
+      stroke-width="6"
+      d="M82 163v-37c0-12 10-22 22-22h18"
+    /><path fill="none" stroke="#5d351e" stroke-width="14" d="M174 162v-36c0-12-10-22-22-22h-19" /><path
+      fill="none"
+      stroke="#b16a27"
+      stroke-width="6"
+      d="M174 162v-36c0-12-10-22-22-22h-19"
+    /><path stroke="#f6c861" stroke-width="5" d="M80 134h15m65 0h15" /><path
+      fill="#6d381e"
+      stroke="#4b291c"
+      stroke-width="4"
+      d="m76 211 45-64h22l-33 68Z"
+    /><path fill="url(#b)" d="m82 211 42-58h10l-30 58Z" /><path
+      fill="#e78a18"
+      d="M29 222c10-19 28-28 51-26 19 1 31 9 39 26Z"
+    /><path fill="#ffb43f" d="M46 219c14-13 36-17 59 3Z" opacity=".7" /><path
+      fill="#5a331e"
+      stroke="#4b291c"
+      stroke-width="5"
+      d="M60 222h136l-15-46H75Z"
+    /><path fill="#d9992e" stroke="#4b291c" stroke-width="4" d="M80 217h96l-9-30H89Z" /><path
+      fill="#6a371c"
+      stroke="#4b291c"
+      stroke-width="4"
+      d="M102 222v-28c0-8 6-14 14-14h24c8 0 14 6 14 14v28Z"
+    /><path fill="#e77717" stroke="#4b291c" stroke-width="3" d="M114 222v-25h28v25Z" /><path
+      stroke="#ffd36a"
+      stroke-width="3"
+      d="M123 222v-24m10 24v-24"
+      opacity=".75"
+    /><path stroke="#f7c55e" stroke-width="5" d="M73 188h110" /><path
+      fill="url(#c)"
+      stroke="#4b291c"
+      stroke-width="5"
+      d="m94 181 10-111c1-12 11-22 24-22s23 10 24 22l10 111Z"
+    /><path fill="#e9b865" d="m108 179 8-105c1-7 6-13 12-13s11 6 12 13l8 105Z" opacity=".78" /><path
+      stroke="#4b291c"
+      stroke-width="5"
+      d="M96 117h64m-60 34h56"
+      opacity=".8"
+    /><path fill="#3d2418" d="M109 84h8v19h-8Zm30 0h8v19h-8Z" /><path
+      fill="#d87813"
+      stroke="#4b291c"
+      stroke-width="4"
+      d="M104 57c4-14 44-14 48 0Z"
+    /><path fill="#f4b63d" stroke="#4b291c" stroke-width="4" d="M99 65h58l-5-12h-48Z" /><path
+      fill="#6c3b1f"
+      stroke="#4b291c"
+      stroke-width="4"
+      d="M111 48h34v11h-34Z"
+    /><path fill="#c26d17" stroke="#4b291c" stroke-width="3" d="m123 48 5-30 5 30Z" /><path
+      fill="#5b311e"
+      stroke="#f2b744"
+      stroke-width="5"
+      d="m128 72 19 22v43l-19 20-19-20V94Z"
+    /><path fill="url(#d)" stroke="#075d5b" stroke-width="3" d="m128 82 10 14v28l-10 13-10-13V96Z" /><path
+      fill="#0baaa5"
+      stroke="#f2b744"
+      stroke-width="4"
+      d="m128 137 8 9-8 9-8-9Z"
+    /><path
+      fill="#b85b12"
+      stroke="#f6c861"
+      stroke-width="5"
+      d="M128 145c-11 13-20 23-20 35s9 22 20 22 20-10 20-22-9-22-20-35"
+    /><path fill="#5b2b19" d="M128 162c-5 7-10 12-10 19 0 6 4 11 10 11s10-5 10-11c0-7-5-12-10-19" /><path
+      fill="none"
+      stroke="#f2b744"
+      stroke-width="8"
+      d="m94 181-19 18h34l19-25 19 25h34l-19-18"
+    /><path fill="none" stroke="#4b291c" stroke-width="4" d="m106 119-12 10v37m56-47 12 10v37" opacity=".75" /><circle
+      cx="111"
+      cy="125"
+      r="3"
+      fill="#3b2318"
+    /><circle cx="145" cy="125" r="3" fill="#3b2318" /><path
+      stroke="#22d5c8"
+      stroke-width="4"
+      d="M91 198v12m74-12v12"
+    /></g></svg>

@@ -1,12 +1,28 @@
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'>
-  <g fill='none' stroke-linecap='round'><path stroke='#33b572' stroke-opacity='.8' stroke-width='2' d='M8 92 L8 34 L34 8 L92 8'/>
-  <path stroke='#33b572' stroke-opacity='.35' stroke-width='1.2' d='M16 82 L16 38 L38 16 L80 16'/>
-  <path stroke='#d9a43b' stroke-opacity='.65' stroke-width='1.6' d='M14 70 L34 52 L52 56 L65 44 L82 50'/>
-  <path stroke='#d9a43b' stroke-opacity='.28' stroke-width='1' d='M22 88 L42 68 L58 72'/>
-  <circle fill='#d9a43b' fill-opacity='.7' cx='57' cy='69' r='4'><animate attributeName='fill-opacity' values='.3;.85;.3' dur='3.8s' repeatCount='indefinite'/>
-  <animate attributeName='r' values='3.5;4.5;3.5' dur='3.8s' repeatCount='indefinite'/>
-  </circle><circle fill='#d9a43b' fill-opacity='.6' cx='44' cy='29' r='2.4'/>
-  <path stroke='#fff8e0' stroke-opacity='0' stroke-width='1' d='M42 27 L46 31'><animate attributeName='stroke-opacity' values='0;.35;0' dur='5s' begin='1.2s' repeatCount='indefinite'/>
-  </path>
-</g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150"><g fill="none" stroke-linecap="round"><path
+      stroke="#33b572"
+      stroke-opacity=".8"
+      stroke-width="2"
+      d="M8 92V34L34 8h58"
+    /><path stroke="#33b572" stroke-opacity=".35" stroke-width="1.2" d="M16 82V38l22-22h42" /><path
+      stroke="#d9a43b"
+      stroke-opacity=".65"
+      stroke-width="1.6"
+      d="m14 70 20-18 18 4 13-12 17 6"
+    /><path stroke="#d9a43b" stroke-opacity=".28" d="m22 88 20-20 16 4" /><circle
+      cx="57"
+      cy="69"
+      r="4"
+      fill="#d9a43b"
+      fill-opacity=".7"
+    ><animate attributeName="fill-opacity" dur="3.8s" repeatCount="indefinite" values=".3;.85;.3" /><animate
+        attributeName="r"
+        dur="3.8s"
+        repeatCount="indefinite"
+        values="3.5;4.5;3.5"
+      /></circle><circle cx="44" cy="29" r="2.4" fill="#d9a43b" fill-opacity=".6" /><path d="m42 27 4 4"><animate
+        attributeName="stroke-opacity"
+        begin="1.2s"
+        dur="5s"
+        repeatCount="indefinite"
+        values="0;.35;0"
+      /></path></g></svg>

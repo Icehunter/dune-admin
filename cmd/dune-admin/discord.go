@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var discordMu sync.RWMutex
@@ -55,11 +55,11 @@ func startEmbeddedDiscordBotIfEnabled(cfg appConfig) context.CancelFunc {
 		return nil
 	}
 	if cfg.DiscordBotToken == "" {
-		log.Println("discord: bot enabled but discord_bot_token is not set — skipping")
+		componentLog("discord").Info().Msg("bot enabled but discord_bot_token is not set — skipping")
 		return nil
 	}
 	if cfg.DiscordGuildID == "" {
-		log.Println("discord: bot enabled but discord_guild_id is not set — skipping")
+		componentLog("discord").Info().Msg("bot enabled but discord_guild_id is not set — skipping")
 		return nil
 	}
 
@@ -84,10 +84,11 @@ func stopDiscordBot() {
 // so that enable/disable takes effect without a process restart.
 func applyDiscordConfig(cfg appConfig) {
 	stopDiscordBot()
-	// The status embed loop depends on a live bot session; (re)apply it whenever
-	// the bot does. It guards a nil session per tick, so starting it before the
-	// gateway is fully open is safe — it simply skips until the session arrives.
-	applyDiscordStatusLoop(cfg)
+	// The status embed loops depend on a live bot session; (re)apply them whenever
+	// the bot does. Each guild loop guards a nil session per tick, so starting
+	// before the gateway is fully open is safe — it simply skips until the
+	// session arrives. Per-guild config is read from discord_guilds.
+	applyDiscordStatusLoops()
 	if !discordBotEnabled(cfg) {
 		return
 	}
@@ -114,13 +115,11 @@ func discordConnect(ctx context.Context, cfg appConfig) {
 	// privileged intents are required.
 	dg.Identify.Intents = discordgo.IntentsGuilds
 
-	dcfg := discordConfigFromApp(cfg)
-
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type != discordgo.InteractionApplicationCommand {
 			return
 		}
-		handleDiscordInteraction(s, i, dcfg)
+		handleDiscordInteraction(s, i)
 	})
 
 	if err := dg.Open(); err != nil {
@@ -133,53 +132,251 @@ func discordConnect(ctx context.Context, cfg appConfig) {
 		return
 	}
 
-	discordPostOpen(dg, cfg, dcfg)
+	discordPostOpen(dg, cfg)
 	discordShutdownWatcher(ctx, dg)
 }
 
 // discordPostOpen runs non-fatal setup after the Discord gateway is open:
-// command registration, discord_links table creation, and startup announcement.
-func discordPostOpen(dg *discordgo.Session, cfg appConfig, dcfg discordConfig) {
-	if err := registerDiscordCommands(dg, cfg.DiscordGuildID); err != nil {
-		log.Printf("discord: command registration failed: %v", err)
-	}
+// per-guild slash-command registration for every configured guild. Character
+// links now live in the unified SQLite store, so there is no per-pool table to
+// ensure.
+func discordPostOpen(dg *discordgo.Session, cfg appConfig) {
+	registerAllGuildCommands(dg)
 
-	if globalDB != nil {
-		if err := cmdEnsureDiscordLinksTable(context.Background(), globalDB); err != nil {
-			log.Printf("discord: failed to ensure discord_links table: %v", err)
-		}
-	}
-
+	// globalDiscordGuildID keeps the seed/legacy guild for role-picker fallback.
 	setDiscordState(dg, cfg.DiscordGuildID)
-	log.Printf("discord: bot connected (guild %s)", cfg.DiscordGuildID)
+	componentLog("discord").Info().Str("guild_id", cfg.DiscordGuildID).Msg("bot connected")
 	// No "bot connected" announce — it spams the channel on every (re)connect.
 	// Live connection status is surfaced by the persistent status embed (#188).
+}
+
+// registerAllGuildCommands registers slash commands for every configured guild
+// in discord_guilds. Guild-scoped registration is instant, so multi-guild
+// fan-out is cheap.
+func registerAllGuildCommands(dg *discordgo.Session) {
+	for _, g := range listConfiguredGuilds() {
+		if err := registerDiscordCommands(dg, g.GuildID); err != nil {
+			componentLog("discord").Warn().Str("guild_id", g.GuildID).Err(err).Msg("command registration failed")
+		}
+	}
+}
+
+// listConfiguredGuilds returns all configured guilds (roles config), or nil if
+// the store is unavailable.
+func listConfiguredGuilds() []discordGuild {
+	if globalDiscordGuildsStore == nil {
+		return nil
+	}
+	guilds, err := globalDiscordGuildsStore.listGuilds()
+	if err != nil {
+		componentLog("discord").Warn().Err(err).Msg("list guilds failed")
+		return nil
+	}
+	return guilds
+}
+
+// discordApplyMu serializes applyDiscordGuilds so overlapping CRUD writes don't
+// race on the status-loop registry or issue interleaved command registrations.
+var discordApplyMu sync.Mutex
+
+// applyDiscordGuildsFn is the worker applyDiscordGuildsAsync runs. It's a package
+// var so tests can substitute it; production always uses applyDiscordGuilds.
+var applyDiscordGuildsFn = applyDiscordGuilds
+
+// applyDiscordGuildsAsync runs applyDiscordGuilds off the request goroutine so an
+// HTTP save returns immediately. Command registration is best-effort — failures
+// are logged, never surfaced to the caller — so there is nothing to wait for.
+// Applies are serialized by discordApplyMu to avoid racing the status-loop
+// registry when writes overlap.
+func applyDiscordGuildsAsync(removedGuildIDs ...string) {
+	go func() {
+		discordApplyMu.Lock()
+		defer discordApplyMu.Unlock()
+		applyDiscordGuildsFn(removedGuildIDs...)
+	}()
+}
+
+// applyDiscordGuilds re-registers (or bulk-clears) slash commands on the live
+// session to match the current discord_guilds rows, without a bot restart.
+// Called after any discord_guilds CRUD write. Configured guilds get their
+// commands registered; the removedGuildIDs (if any) are bulk-cleared.
+func applyDiscordGuilds(removedGuildIDs ...string) {
+	sess, _ := getDiscordState()
+	if sess == nil {
+		return // bot not connected — registration happens at next discordPostOpen
+	}
+	registerAllGuildCommands(sess)
+	for _, gid := range removedGuildIDs {
+		if gid == "" {
+			continue
+		}
+		if err := clearGuildCommands(sess, gid); err != nil {
+			componentLog("discord").Warn().Str("guild_id", gid).Err(err).Msg("clear guild commands failed")
+		}
+	}
+	// Status loops follow the discord_servers links too.
+	applyDiscordStatusLoops()
+}
+
+// clearGuildCommands removes all of the bot's slash commands from a guild
+// (used when a guild mapping is deleted).
+func clearGuildCommands(dg *discordgo.Session, guildID string) error {
+	if _, err := dg.ApplicationCommandBulkOverwrite(dg.State.User.ID, guildID, nil); err != nil {
+		return fmt.Errorf("clear commands for guild %q: %w", guildID, err)
+	}
+	return nil
 }
 
 // discordShutdownWatcher blocks until ctx is cancelled, then closes the session.
 func discordShutdownWatcher(ctx context.Context, dg *discordgo.Session) {
 	<-ctx.Done()
 	if err := dg.Close(); err != nil {
-		log.Printf("discord: session close error: %v", err)
+		componentLog("discord").Warn().Err(err).Msg("session close error")
 	}
 	setDiscordState(nil, "")
-	log.Println("discord: bot disconnected")
+	componentLog("discord").Info().Msg("bot disconnected")
 }
 
-// handleDiscordInteraction extracts the interaction into our internal types
-// and dispatches through the testable router in handlers_discord.go.
-func handleDiscordInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, cfg discordConfig) {
+// handleDiscordInteraction extracts the interaction into our internal types,
+// resolves the target SERVER from the channel it was invoked in, loads that
+// server's guild auth config, and dispatches through the testable router in
+// handlers_discord.go. A channel that belongs to no server's announce/status
+// channel gets a polite ephemeral error; a registered-but-unavailable server
+// (no live pool) gets "server unavailable".
+func handleDiscordInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if i.Member == nil || i.Member.User == nil {
 		return // DMs are not supported
 	}
 
+	serverID, guildID, ok := serverForChannel(i.ChannelID)
+	if !ok {
+		sendDiscordReply(s, i, discordReply{
+			Content:   "Run this in one of a server's Discord channels (its announce or status channel).",
+			Ephemeral: true,
+		})
+		return
+	}
+
+	guild, ok := resolveGuildContext(guildID)
+	if !ok {
+		sendDiscordReply(s, i, discordReply{
+			Content:   "This server's Discord guild isn't configured. Ask an admin to set it up.",
+			Ephemeral: true,
+		})
+		return
+	}
+
+	pool := poolForServer(serverID)
+	if pool == nil {
+		sendDiscordReply(s, i, discordReply{
+			Content:   "That server is currently unavailable. Try again later.",
+			Ephemeral: true,
+		})
+		return
+	}
+
+	interaction := buildDiscordInteraction(i)
+	// The channel fixes the guild for auth; override GuildID so authz matches the
+	// server's linked guild even if the raw interaction guild differs.
+	interaction.GuildID = guildID
+	cfg := discordConfigFromGuild(guild)
+	deps := buildDiscordDeps(serverID)
+
+	reply := dispatchDiscordCommand(context.Background(), interaction, cfg, deps)
+	sendDiscordReply(s, i, reply)
+}
+
+// serverForChannel resolves the server + guild that owns channelID (its announce
+// or status channel), via the unified store. ok=false on no store, no match, or
+// a lookup error (logged).
+func serverForChannel(channelID string) (serverID int, guildID string, ok bool) {
+	if globalDiscordGuildsStore == nil {
+		return 0, "", false
+	}
+	sid, gid, found, err := globalDiscordGuildsStore.serverForChannel(channelID)
+	if err != nil {
+		componentLog("discord").Warn().Str("channel_id", channelID).Err(err).Msg("server for channel failed")
+		return 0, "", false
+	}
+	return sid, gid, found
+}
+
+// poolForServer resolves a server id to its live pgx pool via the registry.
+// Returns nil when the server isn't registered or its pool is nil.
+func poolForServer(serverID int) *pgxpool.Pool {
+	sc := globalRegistry.Get(serverScope(serverID))
+	if sc == nil {
+		return nil
+	}
+	return sc.DB
+}
+
+// buildDiscordDeps binds every command dependency to the ONE server resolved
+// from the invoking channel. Each dep looks the server's pool up at call time
+// via the registry, so a server going offline degrades gracefully.
+func buildDiscordDeps(serverID int) discordDeps {
+	return discordDeps{
+		status: func(ctx context.Context) (string, error) {
+			return statusSummaryForServer(ctx, serverID)
+		},
+		lookup: func(ctx context.Context, name string) ([]playerInfo, error) {
+			pool := poolForServer(serverID)
+			if pool == nil {
+				return nil, fmt.Errorf("server %d not connected", serverID)
+			}
+			return cmdFindPlayersByName(ctx, pool, name)
+		},
+		giveCurrency: func(ctx context.Context, controllerID, amount int64) (int64, error) {
+			pool := poolForServer(serverID)
+			if pool == nil {
+				return 0, fmt.Errorf("server %d not connected", serverID)
+			}
+			return cmdGiveCurrencyCtx(ctx, pool, controllerID, amount)
+		},
+		registerLink: func(_ context.Context, discordUserID string, accountID int64, charName, avatarURL string) error {
+			if globalDiscordGuildsStore == nil {
+				return fmt.Errorf("store not available")
+			}
+			return globalDiscordGuildsStore.upsertUserLink(discordUserID, serverID, accountID, charName, avatarURL)
+		},
+		deleteLink: func(_ context.Context, discordUserID string) (bool, error) {
+			if globalDiscordGuildsStore == nil {
+				return false, fmt.Errorf("store not available")
+			}
+			return globalDiscordGuildsStore.deleteUserLink(discordUserID, serverID)
+		},
+		getLink: func(_ context.Context, discordUserID string) (string, bool, error) {
+			if globalDiscordGuildsStore == nil {
+				return "", false, fmt.Errorf("store not available")
+			}
+			_, charName, ok, err := globalDiscordGuildsStore.getUserLink(discordUserID, serverID)
+			return charName, ok, err
+		},
+		fetchCurrency: func(ctx context.Context, controllerID int64) ([]currencyRow, error) {
+			pool := poolForServer(serverID)
+			if pool == nil {
+				return nil, fmt.Errorf("server %d not connected", serverID)
+			}
+			return cmdFetchPlayerCurrencyCtx(ctx, pool, controllerID)
+		},
+		fetchInventory: func(ctx context.Context, actorID int64) ([]itemInfo, error) {
+			pool := poolForServer(serverID)
+			if pool == nil {
+				return nil, fmt.Errorf("server %d not connected", serverID)
+			}
+			return cmdFetchPlayerInventoryCtx(ctx, pool, actorID)
+		},
+	}
+}
+
+// buildDiscordInteraction parses a discordgo interaction into our internal type.
+func buildDiscordInteraction(i *discordgo.InteractionCreate) discordInteraction {
 	member := discordMember{
 		UserID:          i.Member.User.ID,
 		AvatarHash:      i.Member.User.Avatar,
 		Roles:           i.Member.Roles,
 		IsAdministrator: (i.Member.Permissions & discordgo.PermissionAdministrator) != 0,
 	}
-
 	data := i.ApplicationCommandData()
 	opts := make(map[string]any, len(data.Options))
 	for _, opt := range data.Options {
@@ -190,41 +387,13 @@ func handleDiscordInteraction(s *discordgo.Session, i *discordgo.InteractionCrea
 			opts[opt.Name] = opt.IntValue()
 		}
 	}
-
-	interaction := discordInteraction{
-		GuildID: i.GuildID,
-		Member:  member,
-		Command: data.Name,
-		Options: opts,
+	return discordInteraction{
+		GuildID:   i.GuildID,
+		ChannelID: i.ChannelID,
+		Member:    member,
+		Command:   data.Name,
+		Options:   opts,
 	}
-
-	deps := discordDeps{
-		status: discordStatusDep,
-		lookupPlayer: func(ctx context.Context, name string) ([]playerInfo, error) {
-			return cmdFindPlayersByName(ctx, globalDB, name)
-		},
-		giveCurrency: func(ctx context.Context, controllerID, amount int64) (int64, error) {
-			return cmdGiveCurrencyCtx(ctx, globalDB, controllerID, amount)
-		},
-		registerLink: func(ctx context.Context, discordUserID string, accountID int64, charName, avatarURL string) error {
-			return cmdRegisterDiscordLink(ctx, globalDB, discordUserID, accountID, charName, avatarURL)
-		},
-		deleteLink: func(ctx context.Context, discordUserID string) (bool, error) {
-			return cmdDeleteDiscordLink(ctx, globalDB, discordUserID)
-		},
-		getLink: func(ctx context.Context, discordUserID string) (int64, string, error) {
-			return cmdGetDiscordLink(ctx, globalDB, discordUserID)
-		},
-		fetchCurrency: func(ctx context.Context, controllerID int64) ([]currencyRow, error) {
-			return cmdFetchPlayerCurrencyCtx(ctx, globalDB, controllerID)
-		},
-		fetchInventory: func(ctx context.Context, actorID int64) ([]itemInfo, error) {
-			return cmdFetchPlayerInventoryCtx(ctx, globalDB, actorID)
-		},
-	}
-
-	reply := dispatchDiscordCommand(context.Background(), interaction, cfg, deps)
-	sendDiscordReply(s, i, reply)
 }
 
 // sendDiscordReply responds to a Discord slash command interaction.
@@ -244,7 +413,7 @@ func sendDiscordReply(s *discordgo.Session, i *discordgo.InteractionCreate, repl
 		},
 	})
 	if err != nil {
-		log.Printf("discord: failed to respond to interaction: %v", err)
+		componentLog("discord").Warn().Err(err).Msg("failed to respond to interaction")
 	}
 }
 
@@ -321,10 +490,11 @@ func registerDiscordCommands(dg *discordgo.Session, guildID string) error {
 		},
 	}
 
-	for _, cmd := range commands {
-		if _, err := dg.ApplicationCommandCreate(dg.State.User.ID, guildID, cmd); err != nil {
-			return fmt.Errorf("register command %q: %w", cmd.Name, err)
-		}
+	// One bulk-overwrite call replaces the whole command set atomically, instead
+	// of a separate (rate-limited) REST round-trip per command. This is both far
+	// faster and idempotent — re-running it converges to the same set.
+	if _, err := dg.ApplicationCommandBulkOverwrite(dg.State.User.ID, guildID, commands); err != nil {
+		return fmt.Errorf("register commands for guild %q: %w", guildID, err)
 	}
 	return nil
 }
@@ -344,26 +514,59 @@ func postDiscordAnnouncement(channelID, message string) error {
 	return err
 }
 
+// announceSend is the channel-message sender used by announceToServer; a var so
+// tests can substitute a capturing fake without a live Discord session.
+var announceSend = postDiscordAnnouncement
+
+// announceToServer posts message to serverID's own announce channel (each server
+// links to exactly one guild and has one announce channel). A server with no
+// link or no announce channel is a no-op.
+func announceToServer(serverID int, message string) error {
+	// Prefer the server's own announce channel; fall back to the legacy global
+	// announce channel so a deployment that set an announce channel without a
+	// per-server guild link keeps announcing (instead of silently dropping it).
+	channelID := loadedConfig.DiscordAnnounceChannelID
+	if globalDiscordGuildsStore != nil {
+		link, ok, err := globalDiscordGuildsStore.getServerLink(serverID)
+		if err != nil {
+			return fmt.Errorf("announce: get server link %d: %w", serverID, err)
+		}
+		if ok && link.AnnounceChannelID != "" {
+			channelID = link.AnnounceChannelID
+		}
+	}
+	if channelID == "" {
+		return nil
+	}
+	if perr := announceSend(channelID, message); perr != nil {
+		componentLog("discord").Warn().Int("server_id", serverID).Err(perr).Msg("announce to server failed")
+	}
+	return nil
+}
+
 // ── Dep wrappers ──────────────────────────────────────────────────────────────
 
-// discordStatusDep is the live status dep: fetches online/total counts.
-func discordStatusDep(ctx context.Context) (string, error) {
-	if globalDB == nil {
-		return "", fmt.Errorf("database not connected")
+// discordStatusQuery counts online/total player characters for one server pool.
+const discordStatusQuery = `
+	SELECT
+		COUNT(*) FILTER (WHERE COALESCE(ps.online_status::text, 'Offline') <> 'Offline'),
+		COUNT(*)
+	FROM dune.actors a
+	LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
+	WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
+
+// statusSummaryForServer builds the /status reply for one server (the channel's
+// server). A down pool reports that the server is not connected.
+func statusSummaryForServer(ctx context.Context, serverID int) (string, error) {
+	pool := poolForServer(serverID)
+	if pool == nil {
+		return "This server is not currently connected.", nil
 	}
 	var online, total int64
-	err := globalDB.QueryRow(ctx, `
-		SELECT
-			COUNT(*) FILTER (WHERE COALESCE(ps.online_status::text, 'Offline') <> 'Offline'),
-			COUNT(*)
-		FROM dune.actors a
-		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
-		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`,
-		gmIdentityAccountID).Scan(&online, &total)
-	if err != nil {
-		return "", fmt.Errorf("status query: %w", err)
+	if err := pool.QueryRow(ctx, discordStatusQuery, gmIdentityAccountID).Scan(&online, &total); err != nil {
+		return "", fmt.Errorf("status query for server %d: %w", serverID, err)
 	}
-	return fmt.Sprintf("🌐 Server online · **%d / %d** players active", online, total), nil
+	return fmt.Sprintf("🌐 Server #%d · **%d / %d** players active", serverID, online, total), nil
 }
 
 // ── Pointer helpers ───────────────────────────────────────────────────────────

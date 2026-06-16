@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	pathpkg "path"
@@ -551,8 +550,8 @@ func splitCuratedFromINI(updates map[string]map[string]string) (fieldUpdates map
 // When the active control plane provides a game-overrides path (AMP), writes go
 // there (UserOverrides.ini); otherwise game settings are written directly to
 // UserGame.ini in dir, matching the historical behaviour for kubectl/docker/local.
-func gameWritePath(dir string) string {
-	if provider, ok := globalControl.(gameOverrideProvider); ok {
+func gameWritePath(dir string, ctrl ControlPlane) string {
+	if provider, ok := ctrl.(gameOverrideProvider); ok {
 		if path := provider.gameOverridePath(dir); path != "" {
 			return path
 		}
@@ -560,15 +559,20 @@ func gameWritePath(dir string) string {
 	return dir + "/UserGame.ini"
 }
 
-func iniDir() (string, error) {
+func iniDir(ctrl ControlPlane, exec Executor) (string, error) {
 	// Always try the control plane first so amp can probe for ue5-saved/UserSettings
 	// even when server_ini_dir is explicitly configured. Control planes that don't
 	// support auto-discovery (docker, local without kubectl) return an error and we
 	// fall through to the configured value.
-	if globalControl != nil && globalExecutor != nil {
-		if dir, err := globalControl.DiscoverIniDir(context.Background(), globalExecutor); err == nil {
+	if ctrl != nil && exec != nil {
+		if dir, err := ctrl.DiscoverIniDir(context.Background(), exec); err == nil {
 			return dir, nil
 		}
+	}
+	// server_ini_dir is per-server (servers table) after the remodel; prefer the
+	// active server's value over the stale flag-global / cleared loadedConfig.
+	if d := activeServerCfg().ServerIniDir; d != "" {
+		return d, nil
 	}
 	if serverIniDir != "" {
 		return serverIniDir, nil
@@ -588,11 +592,11 @@ var defaultINICache sync.Map // key: filename → string content
 
 // readDefaultINIContent returns DefaultGame.ini or DefaultEngine.ini content,
 // serving from the in-process cache after the first successful read.
-func readDefaultINIContent(iniDir, filename string) string {
+func readDefaultINIContent(iniDir, filename string, ctrl ControlPlane, exec Executor) string {
 	if v, ok := defaultINICache.Load(filename); ok {
 		return v.(string)
 	}
-	content := discoverDefaultINI(iniDir, filename)
+	content := discoverDefaultINI(iniDir, filename, ctrl, exec)
 	if content != "" {
 		defaultINICache.Store(filename, content)
 	}
@@ -653,8 +657,8 @@ type defaultINIDirProvider interface {
 // discoverViaControlDefaultDir reads a Default INI from the directory the active
 // control plane derives for the host (AMP's extracted game-server tree).
 // Returns "" when the control plane provides no such directory.
-func discoverViaControlDefaultDir(iniDir, filename string) string {
-	provider, ok := globalControl.(defaultINIDirProvider)
+func discoverViaControlDefaultDir(iniDir, filename string, ctrl ControlPlane, exec Executor) string {
+	provider, ok := ctrl.(defaultINIDirProvider)
 	if !ok {
 		return ""
 	}
@@ -662,10 +666,10 @@ func discoverViaControlDefaultDir(iniDir, filename string) string {
 	if dir == "" {
 		return ""
 	}
-	return readINIContent(dir + "/" + filename)
+	return readINIContent(dir+"/"+filename, ctrl, exec)
 }
 
-func discoverViaConfiguredPath(filename string) string {
+func discoverViaConfiguredPath(filename string, ctrl ControlPlane, exec Executor) string {
 	path := configuredDefaultINIPath(filename)
 	if path == "" {
 		return ""
@@ -673,90 +677,90 @@ func discoverViaConfiguredPath(filename string) string {
 	if data, err := os.ReadFile(path); err == nil && len(data) > 0 {
 		return string(data)
 	}
-	return readINIContent(path)
+	return readINIContent(path, ctrl, exec)
 }
 
-func discoverViaK8sDerivedPath(iniDir, filename string) string {
+func discoverViaK8sDerivedPath(iniDir, filename string, ctrl ControlPlane, exec Executor) string {
 	ns, pod, inPodDir, ok := parseK8sINIPath(iniDir)
 	if !ok {
 		return ""
 	}
 	for _, inPodPath := range k8sDerivedDefaultINICandidates(inPodDir, filename) {
-		if content := readINIContent(fmt.Sprintf("k8s://%s/%s%s", ns, pod, inPodPath)); content != "" {
+		if content := readINIContent(fmt.Sprintf("k8s://%s/%s%s", ns, pod, inPodPath), ctrl, exec); content != "" {
 			return content
 		}
 	}
 	return ""
 }
 
-func discoverViaHostPaths(filename string) string {
+func discoverViaHostPaths(filename string, ctrl ControlPlane, exec Executor) string {
 	for _, path := range hostDefaultINICandidates(filename) {
-		if content := readINIContent(path); content != "" {
+		if content := readINIContent(path, ctrl, exec); content != "" {
 			return content
 		}
 	}
 	return ""
 }
 
-func discoverViaHostFind(filename string) string {
-	out, _ := globalExecutor.Exec(fmt.Sprintf(
+func discoverViaHostFind(filename string, ctrl ControlPlane, exec Executor) string {
+	out, _ := exec.Exec(fmt.Sprintf(
 		"sudo find /home /root /dune /run/k3s/containerd /var/lib/rancher/k3s/agent/containerd"+
 			" -maxdepth 10 -name %s -not -path '*/Saved/*' -not -path '*/saved/*' 2>/dev/null | head -1",
 		shellQuote(filename)))
 	if path := strings.TrimSpace(out); path != "" {
-		return readINIContent(path)
+		return readINIContent(path, ctrl, exec)
 	}
 	return ""
 }
 
-func discoverViaRelativePath(iniDir, filename string) string {
+func discoverViaRelativePath(iniDir, filename string, ctrl ControlPlane, exec Executor) string {
 	for _, path := range relativeDefaultINICandidates(iniDir, filename) {
-		if content := readINIContent(path); content != "" {
+		if content := readINIContent(path, ctrl, exec); content != "" {
 			return content
 		}
 	}
 	return ""
 }
 
-func discoverDefaultINI(iniDir, filename string) string {
-	if content := discoverViaConfiguredPath(filename); content != "" {
+func discoverDefaultINI(iniDir, filename string, ctrl ControlPlane, exec Executor) string {
+	if content := discoverViaConfiguredPath(filename, ctrl, exec); content != "" {
 		return content
 	}
 
 	// 1a. Control-plane-derived host directory (AMP's extracted game-server tree).
 	// Deterministic and configuration-free; the stock defaults live deeper than
 	// the host-find maxdepth, so this must run before the find fallback.
-	if content := discoverViaControlDefaultDir(iniDir, filename); content != "" {
+	if content := discoverViaControlDefaultDir(iniDir, filename, ctrl, exec); content != "" {
 		return content
 	}
 
 	// 1b. When INI dir points to a k8s pod path, derive nearby Config paths in
 	// the same pod first. This is the most reliable source in deployed mode.
-	if content := discoverViaK8sDerivedPath(iniDir, filename); content != "" {
+	if content := discoverViaK8sDerivedPath(iniDir, filename, ctrl, exec); content != "" {
 		return content
 	}
 
-	if globalExecutor != nil {
+	if exec != nil {
 		// 2a. Well-known host directories — tried in order before any find.
-		if content := discoverViaHostPaths(filename); content != "" {
+		if content := discoverViaHostPaths(filename, ctrl, exec); content != "" {
 			return content
 		}
 
 		// 2b. Host filesystem scan: /home /root /dune first, then k3s containerd
 		// paths. These require sudo but the executor already runs with sudo access.
-		if content := discoverViaHostFind(filename); content != "" {
+		if content := discoverViaHostFind(filename, ctrl, exec); content != "" {
 			return content
 		}
 
 		// 3. Relative candidates from iniDir (non-k8s layouts).
-		if content := discoverViaRelativePath(iniDir, filename); content != "" {
+		if content := discoverViaRelativePath(iniDir, filename, ctrl, exec); content != "" {
 			return content
 		}
 	}
 
 	// 4. Container exec fallback (kubectl / docker — requires container running).
-	if globalControl != nil && globalExecutor != nil {
-		if c := globalControl.ReadDefaultINI(context.Background(), globalExecutor, filename); c != "" {
+	if ctrl != nil && exec != nil {
+		if c := ctrl.ReadDefaultINI(context.Background(), exec, filename); c != "" {
 			return c
 		}
 	}
@@ -788,13 +792,13 @@ type iniFileReader interface {
 	readINIFile(exec Executor, path string) (string, error)
 }
 
-func readINIContent(path string) string {
-	if globalExecutor == nil {
+func readINIContent(path string, ctrl ControlPlane, exec Executor) string {
+	if exec == nil {
 		return ""
 	}
 	if ns, pod, inPodPath, ok := parseK8sINIPath(path); ok {
-		kctl := kubectlCLI(globalExecutor)
-		out, err := globalExecutor.Exec(fmt.Sprintf(
+		kctl := kubectlCLI(exec)
+		out, err := exec.Exec(fmt.Sprintf(
 			"%s exec -n %s %s -- cat %s 2>/dev/null",
 			kctl, ns, pod, shellQuote(inPodPath)))
 		if err != nil {
@@ -805,8 +809,8 @@ func readINIContent(path string) string {
 	// Let the control plane read the file with its own privileges first (AMP
 	// reads amp-owned files as the amp user — see readDirectorConfig). This is
 	// additive: the generic cat fallbacks below still run if it yields nothing.
-	if reader, ok := globalControl.(iniFileReader); ok {
-		if out, err := reader.readINIFile(globalExecutor, path); err == nil && strings.TrimSpace(out) != "" {
+	if reader, ok := ctrl.(iniFileReader); ok {
+		if out, err := reader.readINIFile(exec, path); err == nil && strings.TrimSpace(out) != "" {
 			return out
 		}
 	}
@@ -814,16 +818,16 @@ func readINIContent(path string) string {
 	// where the service user is amp and owns UserGame.ini), no sudo is needed
 	// and sudo cat may not be in the sudoers at all. Fall back to sudo cat for
 	// setups where the service user is not the file owner (docker, SSH, etc.).
-	out, err := globalExecutor.Exec(fmt.Sprintf("cat %s 2>/dev/null", shellQuote(path)))
+	out, err := exec.Exec(fmt.Sprintf("cat %s 2>/dev/null", shellQuote(path)))
 	if err == nil && strings.TrimSpace(out) != "" {
 		return out
 	}
-	out, _ = globalExecutor.Exec(fmt.Sprintf("sudo cat %s 2>/dev/null", shellQuote(path)))
+	out, _ = exec.Exec(fmt.Sprintf("sudo cat %s 2>/dev/null", shellQuote(path)))
 	if strings.TrimSpace(out) == "" {
 		// Diagnostic for the field: a path we expected to read came back empty
 		// across every strategy. Helps confirm the #173 read-back failure on the
 		// AMP dev box without changing behaviour.
-		log.Printf("readINIContent: %s unreadable (empty from control-plane read and cat/sudo cat) — settings from this file won't show", path)
+		componentLog("server_settings").Warn().Str("path", path).Msg("ini unreadable (empty from control-plane read and cat/sudo cat); settings from this file won't show")
 	}
 	return out
 }
@@ -976,24 +980,24 @@ func buildServerSettingsRawSections(
 	return raw
 }
 
-func writeINIContent(path, body string) error {
-	if globalExecutor == nil {
+func writeINIContent(path, body string, exec Executor) error {
+	if exec == nil {
 		return fmt.Errorf("not connected")
 	}
 	if ns, pod, inPodPath, ok := parseK8sINIPath(path); ok {
-		kctl := kubectlCLI(globalExecutor)
+		kctl := kubectlCLI(exec)
 		payload := base64.StdEncoding.EncodeToString([]byte(body))
 		cmd := fmt.Sprintf(
 			"echo %s | base64 -d | %s exec -i -n %s %s -- sh -lc 'cat > %s' 2>/dev/null",
 			shellQuote(payload), kctl, ns, pod, shellQuote(inPodPath),
 		)
-		out, err := globalExecutor.Exec(cmd)
+		out, err := exec.Exec(cmd)
 		if err != nil {
 			return fmt.Errorf("write %s: %w — %s", inPodPath, err, strings.TrimSpace(out))
 		}
 		return nil
 	}
-	return globalExecutor.WriteFile(path, strings.NewReader(body))
+	return exec.WriteFile(path, strings.NewReader(body))
 }
 
 // @Summary Get server INI settings and raw sections
@@ -1003,28 +1007,30 @@ func writeINIContent(path, body string) error {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/server-settings [get]
 func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
-	if globalExecutor == nil {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
+	if exec == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
-	dir, err := iniDir()
+	dir, err := iniDir(ctrl, exec)
 	if err != nil {
 		jsonErr(w, err, 503)
 		return
 	}
 
-	gameContent := readINIContent(dir + "/UserGame.ini")
-	engineContent := readINIContent(dir + "/UserEngine.ini")
-	defaultGameContent := readDefaultINIContent(dir, "DefaultGame.ini")
-	defaultEngineContent := readDefaultINIContent(dir, "DefaultEngine.ini")
+	gameContent := readINIContent(dir+"/UserGame.ini", ctrl, exec)
+	engineContent := readINIContent(dir+"/UserEngine.ini", ctrl, exec)
+	defaultGameContent := readDefaultINIContent(dir, "DefaultGame.ini", ctrl, exec)
+	defaultEngineContent := readDefaultINIContent(dir, "DefaultEngine.ini", ctrl, exec)
 
 	// When the control plane manages UserGame.ini itself (AMP), dune-admin's
 	// game settings live in a separate overrides file that wins at runtime.
 	// Surface it as the highest-priority layer. Skip the read when the override
 	// path is just UserGame.ini (non-AMP) to avoid duplicating that layer.
 	var overridesContent string
-	if overridePath := gameWritePath(dir); overridePath != dir+"/UserGame.ini" {
-		overridesContent = readINIContent(overridePath)
+	if overridePath := gameWritePath(dir, ctrl); overridePath != dir+"/UserGame.ini" {
+		overridesContent = readINIContent(overridePath, ctrl, exec)
 	}
 
 	gameIni := parseINI(gameContent)
@@ -1045,17 +1051,17 @@ func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
 	// reflect saved values immediately rather than showing stale/default INI
 	// values until the next restart (#173). Degrade gracefully: on error, keep
 	// the INI-derived values.
-	if reader, ok := globalControl.(serverSettingsReader); ok {
-		if amp, err := reader.readServerSettings(r.Context(), globalExecutor, curatedFieldNamesFrom(settings)); err != nil {
-			log.Printf("handleGetServerSettings: amp settings read-back: %v", err)
+	if reader, ok := ctrl.(serverSettingsReader); ok {
+		if amp, err := reader.readServerSettings(r.Context(), exec, curatedFieldNamesFrom(settings)); err != nil {
+			componentLog("server_settings").Error().Err(err).Msg("amp settings read-back failed")
 		} else {
 			settings = overlayAMPSettings(settings, amp)
 		}
 	}
 
 	controlName := ""
-	if globalControl != nil {
-		controlName = globalControl.Name()
+	if ctrl != nil {
+		controlName = ctrl.Name()
 	}
 	jsonOK(w, map[string]any{
 		"settings": settings,
@@ -1591,44 +1597,44 @@ func splitServerSettingsUpdatesByFile(
 	return gameUpdates, engineUpdates
 }
 
-func buildUpdatedINIContent(path string, updates map[string]map[string]string) (string, error) {
+func buildUpdatedINIContent(path string, updates map[string]map[string]string, ctrl ControlPlane, exec Executor) (string, error) {
 	if len(updates) == 0 {
 		return "", nil
 	}
-	return applyDuneAdminUpdates(readINIContent(path), updates)
+	return applyDuneAdminUpdates(readINIContent(path, ctrl, exec), updates)
 }
 
 // applyServerSettingsToINI writes updates to the user INI files
 // (UserGame/UserOverrides + UserEngine), routing each section to the right file.
 // It returns an HTTP status code alongside any error: 409 when a managed-marker
 // conflict would risk data loss, 500 on write failure, 0 on success.
-func applyServerSettingsToINI(dir string, updates map[string]map[string]string) (int, error) {
+func applyServerSettingsToINI(dir string, updates map[string]map[string]string, ctrl ControlPlane, exec Executor) (int, error) {
 	// Route each section to UserGame.ini or UserEngine.ini based on which default
 	// file declares it (ConsoleVariables is always engine-scoped).
-	defaultEngineIni := parseINI(readDefaultINIContent(dir, "DefaultEngine.ini"))
+	defaultEngineIni := parseINI(readDefaultINIContent(dir, "DefaultEngine.ini", ctrl, exec))
 	gameUpdates, engineUpdates := splitServerSettingsUpdatesByFile(defaultEngineIni, updates)
 
 	// Game settings route to UserOverrides.ini under AMP (leaving AMP's
 	// dashboard-managed UserGame.ini untouched) and to UserGame.ini otherwise.
-	gamePath := gameWritePath(dir)
+	gamePath := gameWritePath(dir, ctrl)
 	gameName := pathpkg.Base(gamePath)
-	gameBody, err := buildUpdatedINIContent(gamePath, gameUpdates)
+	gameBody, err := buildUpdatedINIContent(gamePath, gameUpdates, ctrl, exec)
 	if err != nil {
 		return 409, fmt.Errorf("%s: %w", gameName, err)
 	}
 	if len(gameUpdates) > 0 {
-		if err := writeINIContent(gamePath, gameBody); err != nil {
+		if err := writeINIContent(gamePath, gameBody, exec); err != nil {
 			return 500, fmt.Errorf("write %s: %w", gameName, err)
 		}
 	}
 
 	enginePath := dir + "/UserEngine.ini"
-	engineBody, err := buildUpdatedINIContent(enginePath, engineUpdates)
+	engineBody, err := buildUpdatedINIContent(enginePath, engineUpdates, ctrl, exec)
 	if err != nil {
 		return 409, fmt.Errorf("UserEngine.ini: %w", err)
 	}
 	if len(engineUpdates) > 0 {
-		if err := writeINIContent(enginePath, engineBody); err != nil {
+		if err := writeINIContent(enginePath, engineBody, exec); err != nil {
 			return 500, fmt.Errorf("write UserEngine.ini: %w", err)
 		}
 	}
@@ -1645,7 +1651,9 @@ func applyServerSettingsToINI(dir string, updates map[string]map[string]string) 
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/server-settings [put]
 func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
-	if globalExecutor == nil {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
+	if exec == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
@@ -1670,10 +1678,10 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 	// direct INI path. Splitting (rather than rejecting non-curated keys) lets
 	// operators still set custom settings AMP doesn't manage.
 	iniUpdates := normalized.updates
-	if writer, ok := globalControl.(serverSettingsWriter); ok {
+	if writer, ok := ctrl.(serverSettingsWriter); ok {
 		fieldUpdates, rest := splitCuratedFromINI(normalized.updates)
 		if len(fieldUpdates) > 0 {
-			if err := writer.writeServerSettings(r.Context(), globalExecutor, fieldUpdates); err != nil {
+			if err := writer.writeServerSettings(r.Context(), exec, fieldUpdates); err != nil {
 				jsonErr(w, err, 502)
 				return
 			}
@@ -1682,12 +1690,12 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(iniUpdates) > 0 {
-		dir, err := iniDir()
+		dir, err := iniDir(ctrl, exec)
 		if err != nil {
 			jsonErr(w, err, 503)
 			return
 		}
-		if code, err := applyServerSettingsToINI(dir, iniUpdates); err != nil {
+		if code, err := applyServerSettingsToINI(dir, iniUpdates, ctrl, exec); err != nil {
 			jsonErr(w, err, code)
 			return
 		}
@@ -1714,11 +1722,13 @@ func handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/server-settings/raw [put]
 func handleUpdateRawSection(w http.ResponseWriter, r *http.Request) {
-	if globalExecutor == nil {
+	ctrl := controlFromCtx(r)
+	exec := executorFromCtx(r)
+	if exec == nil {
 		jsonErr(w, fmt.Errorf("not connected"), 503)
 		return
 	}
-	dir, err := iniDir()
+	dir, err := iniDir(ctrl, exec)
 	if err != nil {
 		jsonErr(w, err, 503)
 		return
@@ -1733,22 +1743,22 @@ func handleUpdateRawSection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defaultEngineIni := parseINI(readDefaultINIContent(dir, "DefaultEngine.ini"))
+	defaultEngineIni := parseINI(readDefaultINIContent(dir, "DefaultEngine.ini", ctrl, exec))
 	var filePath string
 	if isEngineSection(req.Section, defaultEngineIni) {
 		filePath = dir + "/UserEngine.ini"
 	} else {
-		filePath = gameWritePath(dir)
+		filePath = gameWritePath(dir, ctrl)
 	}
 
-	existing := readINIContent(filePath)
+	existing := readINIContent(filePath, ctrl, exec)
 	updated, err := applyDuneAdminRawSection(existing, req.Section, strings.TrimSpace(req.Lines))
 	if err != nil {
 		jsonErr(w, fmt.Errorf("%s: %w", filePath, err), 409)
 		return
 	}
 
-	if err := writeINIContent(filePath, updated); err != nil {
+	if err := writeINIContent(filePath, updated, exec); err != nil {
 		jsonErr(w, fmt.Errorf("write %s: %w", filePath, err), 500)
 		return
 	}

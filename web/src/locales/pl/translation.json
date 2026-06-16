@@ -205,7 +205,7 @@
     "signIn": "Zaloguj się",
     "switchToSidenav": "Przełącz na boczną nawigację",
     "switchToTopnav": "Przełącz na górną nawigację",
-    "title": "DUNE ADMIN",
+    "title": "UNE ADMIN",
     "updateAvailable": "Dostępna aktualizacja",
     "updateAvailableBody": "Dostępna jest nowa wersja: v{{current}} → v{{latest}}.",
     "updated": "Zaktualizowano do {{version}}. Serwer restartuje się…",
@@ -373,7 +373,9 @@
     "deleteSelected": "Usuń zaznaczone",
     "clearSelection": "Wyczyść zaznaczenie",
     "noItems": "Brak elementów.",
-    "beta": "Beta"
+    "beta": "Beta",
+    "back": "Wstecz",
+    "dismiss": "Odrzuć"
   },
   "database": {
     "columnColumn": "Kolumna",
@@ -684,7 +686,8 @@
     "groups": {
       "economy": "Gospodarka",
       "operations": "Operacje",
-      "playerWorld": "Świat gracza"
+      "playerWorld": "Świat gracza",
+      "dashboard": "Start"
     },
     "liveMap": "Mapa na żywo",
     "logs": "Logi",
@@ -696,7 +699,8 @@
     "events": "Wydarzenia na żywo",
     "menu": "Nawigacja",
     "battlepass": "Battlepass",
-    "permissions": "Uprawnienia"
+    "permissions": "Uprawnienia",
+    "dashboard": "Pulpit"
   },
   "players": {
     "actions": {
@@ -778,7 +782,21 @@
         "wipeInventory": "Wyczyść ekwipunek",
         "wipeInventoryConfirmDesc": "Spowoduje to zniszczenie wszystkich przedmiotów w ekwipunku {{player}}. Tej akcji nie można cofnąć.",
         "wipeInventoryDesc": "Niszczy wszystkie przedmioty w ekwipunku gracza",
-        "wipeInventoryTitle": "Trwale wyczyścić ekwipunek?"
+        "wipeInventoryTitle": "Trwale wyczyścić ekwipunek?",
+        "deleteCharacter": "Usuń postać",
+        "deleteCharacterDesc": "Trwale usuń tę postać z serwera.",
+        "deleteCharacterButton": "Usuń postać",
+        "deleteCharacterIrreversible": "Spowoduje to trwałe usunięcie postaci, jej aktorów, własności budynków oraz konta. Tej operacji nie można cofnąć.",
+        "deleteCharacterTitle": "Usunąć postać na stałe?",
+        "deleteCharacterWarning": "Spowoduje to trwałe usunięcie {{player}} oraz wszystkich powiązanych danych: aktorów, znaczników odrodzenia i konta. Zapis audytu zostanie zachowany. Tej operacji nie można cofnąć.",
+        "deleteCharacterOnlineWarning": "Ten gracz wydaje się być online. Najpierw go wyrzuć, aby usunięcie zakończyło się poprawnie.",
+        "deleteCharacterReasonLabel": "Powód (zapisany w dzienniku audytu)",
+        "deleteCharacterReasonPlaceholder": "Dlaczego ta postać jest usuwana?",
+        "deleteCharacterConfirmLabel": "Wpisz „{{phrase}}\", aby potwierdzić",
+        "deleteCharacterConfirm": "Usuń na stałe",
+        "deleteCharacterCountdown": "Poczekaj {{seconds}} s…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Postać {{player}} usunięta"
       },
       "contracts": {
         "applyContracts_one": "Zastosuj kontrakt(y) ({{count}})",
@@ -1241,7 +1259,11 @@
       "serverIniDir": "Katalog INI serwera",
       "serverIniDirHint": "lokalizacja UserGame.ini",
       "url": "URL",
-      "urlHint": "przechowywany w przeglądarce, nie na serwerze"
+      "urlHint": "przechowywany w przeglądarce, nie na serwerze",
+      "dangerZone": "Strefa zagrożenia",
+      "deleteServer": "Usuń serwer",
+      "deleteServerNamed": "Usuń serwer „{{name}}\"",
+      "deleteServerHint": "Trwale usuń ten serwer i wszystkie jego zapisane dane. Tej operacji nie można cofnąć."
     },
     "amp": {
       "containerName": "Nazwa kontenera",
@@ -1324,7 +1346,9 @@
       "authDashboard": "Logowanie do panelu",
       "authDiscord": "Logowanie przez Discord (OAuth)",
       "authOwners": "Właściciele",
-      "discordStatus": "Osadzenie statusu"
+      "discordStatus": "Osadzenie statusu",
+      "marketBot": "Bot rynkowy",
+      "discordGuilds": "Gildie Discord"
     },
     "ssh": {
       "hostPort": "Host : port",
@@ -1339,7 +1363,8 @@
       "connection": "Połączenie",
       "control": "Sterowanie",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Gildie"
     },
     "discord": {
       "hint": "Utwórz bota na discord.com/developers/applications, włącz go, skopiuj token i zaproś na swój serwer z zakresem applications.commands.",
@@ -1369,7 +1394,8 @@
       "statusChannel": "ID kanału statusu",
       "statusChannelHint": "Kliknij kanał prawym przyciskiem → Kopiuj ID kanału (wymaga trybu programisty).",
       "statusInterval": "Interwał aktualizacji (sekundy)",
-      "statusIntervalHint": "Jak często osadzenie się odświeża. Minimum 30 sekund; domyślnie 60."
+      "statusIntervalHint": "Jak często osadzenie się odświeża. Minimum 30 sekund; domyślnie 60.",
+      "perGuildMoved": "Konfiguracja dla gildii — role uprawnień i serwery obserwowane przez każdą gildię (wraz z ich kanałami) — jest zarządzana w karcie Gildie."
     },
     "auth": {
       "hint": "Wymagaj logowania do panelu i API. Zalecane, gdy dune-admin jest dostępny spoza Twojej sieci LAN.",
@@ -1404,6 +1430,14 @@
       "cookieStrictDesc": "Ciasteczko nigdy nie jest wysyłane przy żadnym żądaniu międzywitrynowym — najsilniejsza ochrona CSRF. Niezgodne z logowaniem Discord (przekierowanie OAuth nie może go przenieść); używaj tylko z kontami lokalnymi.",
       "cookieNone": "None (brak)",
       "cookieNoneDesc": "Ciasteczko jest wysyłane przy wszystkich żądaniach, także cross-origin. Potrzebne tylko gdy UI i backend są na różnych domenach (np. podział CDN). Wymaga HTTPS."
+    },
+    "scope": {
+      "server": "Serwer",
+      "admin": "DuneAdmin"
+    },
+    "marketBot": {
+      "enabled": "Włącz bota rynkowego dla tego serwera",
+      "enabledHint": "Uruchamia wbudowanego bota rynkowego dla tego serwera. Ustawienia są współdzielone między serwerami i znajdują się na karcie Rynek."
     }
   },
   "storage": {
@@ -1634,7 +1668,8 @@
       "config": "Konfiguracja",
       "factionScrip": "Bony frakcji",
       "rewards": "Nagrody",
-      "solari": "Solari"
+      "solari": "Solari",
+      "currencyXp": "Waluta i XP"
     },
     "signals": {
       "level": "Poziom postaci",
@@ -1901,5 +1936,157 @@
     "placeholder": "Szukaj graczy…",
     "loadFailed": "Nie udało się załadować graczy: {{message}}",
     "loading": "Ładowanie graczy…"
+  },
+  "servers": {
+    "removeTitle": "Usuń serwer",
+    "removeDesc": "Trwale usunąć „{{name}}\" i wszystkie jego zapisane dane? Tej operacji nie można cofnąć.",
+    "removeConfirm": "Usuń",
+    "removeFailed": "Usuwanie nie powiodło się",
+    "removeWarning": "Trwale usuń „{{name}}” i wszystkie jego zapisane dane. Tej operacji nie można cofnąć.",
+    "removeConfirmLabel": "Wpisz {{name}}, aby potwierdzić",
+    "removeCountdown": "Poczekaj {{seconds}}s…"
+  },
+  "setup": {
+    "discovering": "Automatyczne wykrywanie ustawień serwera…",
+    "connecting": "Łączenie…",
+    "saveAndConnect": "Zapisz i połącz",
+    "serverName": "Nazwa serwera",
+    "serverNamePlaceholder": "np. Produkcja",
+    "nameRequired": "Nazwa serwera jest wymagana",
+    "nameInvalid": "Nazwa serwera musi zawierać litery lub cyfry",
+    "connectTimeout": "Nadal brak połączenia — sprawdź ustawienia i spróbuj ponownie.",
+    "addServerTitle": "Dodaj serwer"
+  },
+  "discovery": {
+    "title": "Automatyczne wykrywanie ustawień",
+    "subtitle": "Odczytywanie wartości z serwera…",
+    "failed": "Nie udało się wykryć automatycznie — wprowadź wartości ręcznie.",
+    "steps": {
+      "connect": "Łączenie przez SSH",
+      "namespace": "Wykrywanie przestrzeni nazw",
+      "dbPod": "Lokalizowanie poda bazy danych",
+      "dbCreds": "Odczytywanie danych logowania bazy danych",
+      "brokers": "Lokalizowanie podów brokera",
+      "gameProc": "Lokalizowanie procesu serwera gry",
+      "containers": "Sprawdzanie kontenerów",
+      "finalize": "Finalizowanie"
+    }
+  },
+  "manage": {
+    "title": "Zarządzaj serwerem",
+    "serverName": "Nazwa serwera"
+  },
+  "dashboard": {
+    "title": "Pulpit",
+    "subtitle": "Serwery i konfiguracja w skrócie",
+    "loadFailed": "Nie udało się wczytać stanu serwera: {{message}}",
+    "running": "Działa",
+    "offline": "Offline",
+    "playersOnline": "{{count}} online",
+    "view": "Pokaż",
+    "manage": "Zarządzaj",
+    "empty": {
+      "title": "Brak serwerów",
+      "body": "Dodaj pierwszy serwer gry, aby zacząć. Poniżej możesz też skonfigurować auth lub Discord — wszystko opcjonalne.",
+      "addServer": "Dodaj pierwszy serwer",
+      "guestBody": "Nie skonfigurowano jeszcze żadnego serwera."
+    },
+    "onboarding": {
+      "auth": {
+        "title": "Skonfiguruj logowanie / auth",
+        "body": "Wymagaj logowania, aby uzyskać dostęp do pulpitu. Opcjonalne — pozostaw wyłączone w zaufanej sieci lokalnej.",
+        "cta": "Skonfiguruj auth"
+      },
+      "discord": {
+        "title": "Połącz bota Discord",
+        "body": "Wysyłaj powiadomienia i mapuj role na uprawnienia. Opcjonalne.",
+        "cta": "Połącz Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Gildie Discord",
+    "subtitle": "Skonfiguruj role uprawnień każdej gildii Discord. Jeden token bota obsługuje wszystkie gildie; serwery łączą się z gildią z własnej karty Discord.",
+    "ariaLabel": "Gildie Discord",
+    "add": "Dodaj gildię",
+    "addTitle": "Dodaj gildię",
+    "editTitle": "Edytuj gildię",
+    "empty": "Nie skonfigurowano jeszcze żadnych gildii Discord.",
+    "on": "Wł.",
+    "off": "Wył.",
+    "loadRoles": "Wczytaj role",
+    "guildId": "ID gildii",
+    "guildIdHint": "Kliknij prawym ikonę serwera → Kopiuj ID serwera (wymaga trybu dewelopera)",
+    "guildIdRequired": "ID gildii jest wymagane",
+    "serverRequired": "Każdy obserwowany serwer musi być wybrany",
+    "roleCount": "{{count}} ról",
+    "addServer": "Dodaj serwer",
+    "server": "Serwer",
+    "serverHint": "Serwer gry obserwowany przez tę gildię",
+    "selectServer": "Wybierz serwer…",
+    "noServers": "Ta gildia nie obserwuje jeszcze żadnego serwera.",
+    "watchedServersHint": "Każdy obserwowany serwer publikuje swoje osadzenia statusu/ogłoszeń na kanałach poniżej.",
+    "announceChannel": "ID kanału ogłoszeń",
+    "announceChannelHint": "Kanał na ogłoszenia serwera (restarty, wydarzenia)",
+    "statusEnabled": "Trwałe osadzenie statusu",
+    "statusEnabledHint": "Utrzymuje aktualne osadzenie statusu na żywo w kanale",
+    "statusChannel": "ID kanału statusu",
+    "statusChannelHint": "Kanał, na którym publikowane jest osadzenie statusu",
+    "statusInterval": "Interwał statusu (sekundy)",
+    "statusIntervalHint": "Jak często osadzenie się odświeża. Minimum 30 sekund; domyślnie 60.",
+    "rolesHint": "Role Discord przyznające każdy poziom uprawnień w tej gildii. Wczytaj role po wpisaniu ID gildii.",
+    "rolesViewer": "Role podglądu",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Role ekonomii",
+    "rolesEconomyHint": "komendy rynku i ekonomii",
+    "rolesAdmin": "Role administratora",
+    "rolesAdminHint": "komendy administracyjne",
+    "saved": "Zapisano gildię",
+    "saveFailed": "Zapis nie powiódł się: {{message}}",
+    "loadFailed": "Nie udało się wczytać gildii: {{message}}",
+    "removed": "Usunięto gildię",
+    "removeFailed": "Usuwanie nie powiodło się: {{message}}",
+    "removeTitle": "Usuń gildię",
+    "removeConfirm": "Usunąć gildię {{guild}}? Bot przestanie ją obsługiwać wraz z jej obserwowanymi serwerami.",
+    "columns": {
+      "guildId": "ID gildii",
+      "servers": "Obserwowane serwery",
+      "roles": "Role"
+    },
+    "sections": {
+      "guild": "Gildia",
+      "roles": "Role uprawnień",
+      "watchedServers": "Obserwowane serwery"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Połącz ten serwer z jedną gildią Discord i ustaw jego kanały ogłoszeń i statusu. Role uprawnień tej gildii ustawia się w Ustawienia → Gildie.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Odłączyć ten serwer od jego gildii Discord? Jego kanały zostaną wyczyszczone; gildia i jej role pozostaną nienaruszone.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
+      },
+      "noGuilds": "Nie dodano jeszcze żadnej gildii — dodaj ją w Ustawienia → Gildie, a następnie wybierz tutaj."
+    },
+    "selectGuild": "Szukaj gildii…",
+    "selectChannel": "Szukaj kanałów…",
+    "guildExists": "Ta gildia jest już skonfigurowana."
   }
 }

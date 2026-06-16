@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 )
@@ -12,8 +11,8 @@ import (
 // @Produce json
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/scheduled-restarts [get]
-func handleGetScheduledRestarts(w http.ResponseWriter, _ *http.Request) {
-	cfg := getScheduledRestartConfig()
+func handleGetScheduledRestarts(w http.ResponseWriter, r *http.Request) {
+	cfg := getScheduledRestartConfig(storeScopeFromCtx(r))
 	resp := map[string]any{
 		"enabled":      cfg.Enabled,
 		"timezone":     cfg.Timezone,
@@ -74,13 +73,14 @@ func handleUpdateScheduledRestarts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	cur := getScheduledRestartConfig() // preserve last_fired watermark
+	scope := storeScopeFromCtx(r)
+	cur := getScheduledRestartConfig(scope) // preserve last_fired watermark
 	cur.Enabled = body.Enabled
 	cur.Timezone = body.Timezone
 	cur.Rules = body.Rules
 	cur.WarnMinutes = body.WarnMinutes
-	if err := saveScheduledRestartConfig(cur); err != nil {
-		log.Printf("handleUpdateScheduledRestarts: %v", err)
+	if err := saveScheduledRestartConfig(scope, cur); err != nil {
+		componentLog("scheduled_restart").Error().Err(err).Msg("save schedule failed")
 		jsonErr(w, fmt.Errorf("could not save schedule"), http.StatusInternalServerError)
 		return
 	}
@@ -93,8 +93,9 @@ func handleUpdateScheduledRestarts(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Router /api/v1/scheduled-restarts/skip-next [post]
-func handleSkipNextRestart(w http.ResponseWriter, _ *http.Request) {
-	cfg := getScheduledRestartConfig()
+func handleSkipNextRestart(w http.ResponseWriter, r *http.Request) {
+	scope := storeScopeFromCtx(r)
+	cfg := getScheduledRestartConfig(scope)
 	next, ok := nextRestartAt(time.Now(), cfg.Rules, restartLocation(cfg.Timezone))
 	if !ok {
 		jsonErr(w, fmt.Errorf("no upcoming restart to skip"), http.StatusBadRequest)
@@ -102,6 +103,6 @@ func handleSkipNextRestart(w http.ResponseWriter, _ *http.Request) {
 	}
 	// Advancing the watermark to the next occurrence makes the scheduler treat it
 	// as already handled — neither warned nor fired.
-	setRestartLastFired(next.Unix())
+	setRestartLastFired(scope, next.Unix())
 	jsonOK(w, map[string]string{"ok": "next restart skipped"})
 }

@@ -205,7 +205,7 @@
     "signIn": "登录",
     "switchToSidenav": "切换到侧边导航",
     "switchToTopnav": "切换到顶部导航",
-    "title": "DUNE ADMIN",
+    "title": "UNE ADMIN",
     "updateAvailable": "有可用更新",
     "updateAvailableBody": "新版本可用：v{{current}} → v{{latest}}。",
     "updated": "已更新至 {{version}}。服务器正在重启…",
@@ -369,7 +369,9 @@
     "deleteSelected": "删除所选",
     "clearSelection": "清除选择",
     "noItems": "暂无项目。",
-    "beta": "测试版"
+    "beta": "测试版",
+    "back": "返回",
+    "dismiss": "忽略"
   },
   "database": {
     "columnColumn": "列",
@@ -670,7 +672,8 @@
     "groups": {
       "economy": "经济",
       "operations": "运营",
-      "playerWorld": "玩家世界"
+      "playerWorld": "玩家世界",
+      "dashboard": "主页"
     },
     "liveMap": "实时地图",
     "logs": "日志",
@@ -682,7 +685,8 @@
     "events": "实时活动",
     "menu": "导航",
     "battlepass": "战斗通行证",
-    "permissions": "权限"
+    "permissions": "权限",
+    "dashboard": "仪表板"
   },
   "players": {
     "actions": {
@@ -764,7 +768,21 @@
         "wipeInventory": "清空背包",
         "wipeInventoryConfirmDesc": "这将销毁 {{player}} 背包中的所有物品。此操作无法撤销。",
         "wipeInventoryDesc": "销毁玩家背包中的所有物品",
-        "wipeInventoryTitle": "永久清空背包？"
+        "wipeInventoryTitle": "永久清空背包？",
+        "deleteCharacter": "删除角色",
+        "deleteCharacterDesc": "将此角色从服务器中永久删除。",
+        "deleteCharacterButton": "删除角色",
+        "deleteCharacterIrreversible": "这将永久删除该角色、其参与者、建筑所有权及账户。此操作无法撤销。",
+        "deleteCharacterTitle": "永久删除角色?",
+        "deleteCharacterWarning": "这将永久删除 {{player}} 及所有相关数据:参与者、重生信标和账户。将保留审计记录。此操作无法撤销。",
+        "deleteCharacterOnlineWarning": "该玩家似乎在线。请先将其踢出,以便删除操作顺利完成。",
+        "deleteCharacterReasonLabel": "原因(记录在审计日志中)",
+        "deleteCharacterReasonPlaceholder": "为什么要删除该角色?",
+        "deleteCharacterConfirmLabel": "输入\"{{phrase}}\"以确认",
+        "deleteCharacterConfirm": "永久删除",
+        "deleteCharacterCountdown": "请等待 {{seconds}} 秒…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "角色 {{player}} 已删除"
       },
       "contracts": {
         "applyContracts_one": "应用合约 ({{count}})",
@@ -1199,7 +1217,11 @@
       "serverIniDir": "服务器 INI 目录",
       "serverIniDirHint": "UserGame.ini 位置",
       "url": "URL",
-      "urlHint": "存储在浏览器中，而非服务器"
+      "urlHint": "存储在浏览器中，而非服务器",
+      "dangerZone": "危险区域",
+      "deleteServer": "删除服务器",
+      "deleteServerNamed": "删除服务器“{{name}}”",
+      "deleteServerHint": "永久删除此服务器及其所有存储的数据。此操作无法撤销。"
     },
     "amp": {
       "containerName": "容器名称",
@@ -1282,7 +1304,9 @@
       "authDashboard": "面板登录",
       "authDiscord": "Discord 登录（OAuth）",
       "authOwners": "所有者",
-      "discordStatus": "状态嵌入"
+      "discordStatus": "状态嵌入",
+      "marketBot": "市场机器人",
+      "discordGuilds": "Discord 公会"
     },
     "ssh": {
       "hostPort": "主机：端口",
@@ -1297,7 +1321,8 @@
       "connection": "连接",
       "control": "控制",
       "discord": "Discord",
-      "auth": "认证"
+      "auth": "认证",
+      "guilds": "公会"
     },
     "discord": {
       "hint": "在 discord.com/developers/applications 创建机器人，启用后复制令牌，并以 applications.commands 权限范围将其邀请至服务器。",
@@ -1327,7 +1352,8 @@
       "statusChannel": "状态频道 ID",
       "statusChannelHint": "右键点击频道 →“复制频道 ID”（需要开发者模式）。",
       "statusInterval": "更新间隔（秒）",
-      "statusIntervalHint": "嵌入消息的刷新频率。最少 30 秒；默认 60。"
+      "statusIntervalHint": "嵌入消息的刷新频率。最少 30 秒；默认 60。",
+      "perGuildMoved": "每个公会的配置——权限角色以及每个公会监视的服务器（及其频道）——在\"公会\"标签页中管理。"
     },
     "auth": {
       "hint": "要求登录面板和 API。当 dune-admin 可从局域网外访问时建议启用。",
@@ -1362,6 +1388,14 @@
       "cookieStrictDesc": "Cookie 在任何跨站请求中都不会发送——最强的 CSRF 保护。与 Discord 登录不兼容（OAuth 重定向无法携带它）；仅与本地用户名/密码账户配合使用。",
       "cookieNone": "None（无）",
       "cookieNoneDesc": "Cookie 在所有请求中发送，包括跨域。仅当面板 UI 和后端位于不同域名时需要（例如 CDN 分离）。需要 HTTPS。"
+    },
+    "scope": {
+      "server": "服务器",
+      "admin": "DuneAdmin"
+    },
+    "marketBot": {
+      "enabled": "为此服务器启用市场机器人",
+      "enabledHint": "在此服务器上运行内置市场机器人。调优设置在各服务器间共享，位于“市场”选项卡中。"
     }
   },
   "storage": {
@@ -1588,7 +1622,8 @@
       "config": "配置",
       "factionScrip": "派系凭证",
       "rewards": "奖励",
-      "solari": "索拉里"
+      "solari": "索拉里",
+      "currencyXp": "货币与经验"
     },
     "signals": {
       "level": "角色等级",
@@ -1855,5 +1890,157 @@
     "placeholder": "搜索玩家…",
     "loadFailed": "加载玩家失败：{{message}}",
     "loading": "正在加载玩家…"
+  },
+  "servers": {
+    "removeTitle": "移除服务器",
+    "removeDesc": "永久移除“{{name}}”及其所有存储的数据吗？此操作无法撤销。",
+    "removeConfirm": "移除",
+    "removeFailed": "移除失败",
+    "removeWarning": "永久删除“{{name}}”及其所有存储数据。此操作无法撤销。",
+    "removeConfirmLabel": "输入 {{name}} 以确认",
+    "removeCountdown": "请等待 {{seconds}} 秒…"
+  },
+  "setup": {
+    "discovering": "正在自动发现服务器设置…",
+    "connecting": "正在连接…",
+    "saveAndConnect": "保存并连接",
+    "serverName": "服务器名称",
+    "serverNamePlaceholder": "例如 Production",
+    "nameRequired": "服务器名称为必填项",
+    "nameInvalid": "服务器名称必须包含字母或数字",
+    "connectTimeout": "仍未连接——请检查设置后重试。",
+    "addServerTitle": "添加服务器"
+  },
+  "discovery": {
+    "title": "正在自动检测设置",
+    "subtitle": "正在从服务器读取值…",
+    "failed": "无法自动检测——请手动填写这些值。",
+    "steps": {
+      "connect": "正在通过 SSH 连接",
+      "namespace": "正在检测命名空间",
+      "dbPod": "正在定位数据库 Pod",
+      "dbCreds": "正在读取数据库凭据",
+      "brokers": "正在定位 broker Pod",
+      "gameProc": "正在定位游戏服务器进程",
+      "containers": "正在检查容器",
+      "finalize": "正在完成"
+    }
+  },
+  "manage": {
+    "title": "管理服务器",
+    "serverName": "服务器名称"
+  },
+  "dashboard": {
+    "title": "仪表板",
+    "subtitle": "一览服务器与设置",
+    "loadFailed": "无法加载服务器状态：{{message}}",
+    "running": "运行中",
+    "offline": "离线",
+    "playersOnline": "{{count}} 人在线",
+    "view": "查看",
+    "manage": "管理",
+    "empty": {
+      "title": "还没有服务器",
+      "body": "添加你的第一个游戏服务器即可开始。你也可以在下方设置鉴权或 Discord——全部可选。",
+      "addServer": "添加第一个服务器",
+      "guestBody": "尚未配置任何服务器。"
+    },
+    "onboarding": {
+      "auth": {
+        "title": "设置登录 / 鉴权",
+        "body": "要求登录才能访问仪表板。可选——在受信任的本地网络中可不启用。",
+        "cta": "设置鉴权"
+      },
+      "discord": {
+        "title": "连接 Discord 机器人",
+        "body": "发送通知并将身份组映射到权限。可选。",
+        "cta": "连接 Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Discord 公会",
+    "subtitle": "配置每个 Discord 公会的权限角色。一个机器人令牌即可服务所有公会；服务器在各自的 Discord 选项卡中链接到公会。",
+    "ariaLabel": "Discord 公会",
+    "add": "添加公会",
+    "addTitle": "添加公会",
+    "editTitle": "编辑公会",
+    "empty": "尚未配置任何 Discord 公会。",
+    "on": "开",
+    "off": "关",
+    "loadRoles": "加载角色",
+    "guildId": "公会 ID",
+    "guildIdHint": "右键点击服务器图标 → 复制服务器 ID（需要开发者模式）",
+    "guildIdRequired": "公会 ID 为必填项",
+    "serverRequired": "每个监视的服务器都必须选择",
+    "roleCount": "{{count}} 个角色",
+    "addServer": "添加服务器",
+    "server": "服务器",
+    "serverHint": "该公会监视的游戏服务器",
+    "selectServer": "选择一个服务器…",
+    "noServers": "该公会尚未监视任何服务器。",
+    "watchedServersHint": "每个被监视的服务器会将其状态/公告嵌入发布到下方的频道。",
+    "announceChannel": "公告频道 ID",
+    "announceChannelHint": "用于服务器公告的频道（重启、活动）",
+    "statusEnabled": "常驻状态嵌入",
+    "statusEnabledHint": "在频道中保持实时状态嵌入更新",
+    "statusChannel": "状态频道 ID",
+    "statusChannelHint": "状态嵌入发布所在的频道",
+    "statusInterval": "状态刷新间隔（秒）",
+    "statusIntervalHint": "嵌入的刷新频率。最少 30 秒；默认 60。",
+    "rolesHint": "在该公会中授予各权限层级的 Discord 角色。输入公会 ID 后加载角色。",
+    "rolesViewer": "查看者角色",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "经济角色",
+    "rolesEconomyHint": "市场与经济命令",
+    "rolesAdmin": "管理员角色",
+    "rolesAdminHint": "管理命令",
+    "saved": "公会已保存",
+    "saveFailed": "保存失败：{{message}}",
+    "loadFailed": "加载公会失败：{{message}}",
+    "removed": "公会已移除",
+    "removeFailed": "移除失败：{{message}}",
+    "removeTitle": "移除公会",
+    "removeConfirm": "移除公会 {{guild}}？机器人将停止为其及其监视的服务器提供服务。",
+    "columns": {
+      "guildId": "公会 ID",
+      "servers": "监视的服务器",
+      "roles": "角色"
+    },
+    "sections": {
+      "guild": "公会",
+      "roles": "权限角色",
+      "watchedServers": "监视的服务器"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "将此服务器链接到一个 Discord 公会，并设置其公告和状态频道。该公会的权限角色在设置 → 公会中设置。",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "取消此服务器与其 Discord 公会的链接？其频道将被清除；公会及其角色保持不变。",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
+      },
+      "noGuilds": "尚未添加公会 — 请在 设置 → 公会 中添加，然后在此处选择。"
+    },
+    "selectGuild": "搜索公会…",
+    "selectChannel": "搜索频道…",
+    "guildExists": "该公会已配置。"
   }
 }

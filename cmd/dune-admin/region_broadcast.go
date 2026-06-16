@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"strings"
 	"unicode"
 )
@@ -144,7 +143,7 @@ type regionMapSender func(ctx context.Context, region, sourcePlayer, message str
 func runMapChatBroadcastOnJoinLeave(ctx context.Context, joins, leaves []welcomeAccount, cfg regionBroadcastConfig, send regionMapSender) {
 	for _, ann := range regionAnnouncementsFor(joins, leaves, cfg) {
 		if err := send(ctx, ann.region, ann.sourcePlayer, ann.text); err != nil {
-			log.Printf("region-broadcast: map chat %s failed: %v", ann.region, err)
+			componentLog("region_broadcast").Warn().Err(err).Str("region", ann.region).Msg("map chat send failed")
 		}
 	}
 }
@@ -164,7 +163,7 @@ func runRegionBroadcastOnJoinLeave(ctx context.Context, joins, leaves, online []
 				continue
 			}
 			if err := send(ctx, player.AccountID, ann.sourcePlayer, ann.text); err != nil {
-				log.Printf("region-broadcast: whisper to account %d failed: %v", player.AccountID, err)
+				componentLog("region_broadcast").Warn().Err(err).Int64("account_id", player.AccountID).Msg("whisper failed")
 			}
 		}
 	}

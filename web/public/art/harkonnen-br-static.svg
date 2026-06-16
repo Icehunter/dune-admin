@@ -1,14 +1,22 @@
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'>
-  <g transform='rotate(180 75 75)' fill='none' stroke-linecap='round'><path stroke='#cf2b2b' stroke-opacity='.85' stroke-width='2' d='M8 92 L8 28 L28 8 L98 8'/>
-  <path stroke='#cf2b2b' stroke-opacity='.7' stroke-width='1.5' d='M8 84 L26 66 L26 8'/>
-  <path stroke='#cf2b2b' stroke-opacity='.4' stroke-width='1' d='M14 84 L32 66 L32 8'/>
-  <path stroke='#ff0000' stroke-opacity='.6' stroke-width='1' d='M18 88 L18 34 L34 18 L90 18'/>
-  <path stroke='none' fill='#260606' fill-opacity='.6' d='M8 56 L8 28 L28 8 L56 8 L48 16 L20 16 L16 20 L16 48 Z'/>
-  <rect x='36' y='22' width='7' height='22' fill='#cf2b2b' fill-opacity='.55'>
-  </rect><rect x='46' y='22' width='5' height='16' fill='#3d0808' fill-opacity='.85'/>
-  <line x1='14' y1='42' x2='42' y2='14' stroke='#ff0000' stroke-opacity='.45' stroke-width='1'>
-  </line><line x1='14' y1='56' x2='56' y2='14' stroke='#ff0000' stroke-opacity='.3' stroke-width='1'>
-  </line><line x1='14' y1='70' x2='70' y2='14' stroke='#ff0000' stroke-opacity='.2' stroke-width='1'>
-  </line>
-</g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150"><g fill="none" stroke-linecap="round"><path
+      stroke="#cf2b2b"
+      stroke-opacity=".85"
+      stroke-width="2"
+      d="M142 58v64l-20 20H52"
+    /><path stroke="#cf2b2b" stroke-opacity=".7" stroke-width="1.5" d="m142 66-18 18v58" /><path
+      stroke="#cf2b2b"
+      stroke-opacity=".4"
+      d="m136 66-18 18v58"
+    /><path stroke="red" stroke-opacity=".6" d="M132 62v54l-16 16H60" /><path
+      fill="#260606"
+      fill-opacity=".6"
+      d="M142 94v28l-20 20H94l8-8h28l4-4v-28Z"
+    /><path fill="#cf2b2b" fill-opacity=".55" d="M114 128h-7v-22h7z" /><path
+      fill="#3d0808"
+      fill-opacity=".85"
+      d="M104 128h-5v-16h5z"
+    /><path stroke="red" stroke-opacity=".45" d="m136 108-28 28" /><path
+      stroke="red"
+      stroke-opacity=".3"
+      d="m136 94-42 42"
+    /><path stroke="red" stroke-opacity=".2" d="m136 80-56 56" /></g></svg>

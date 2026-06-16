@@ -157,13 +157,21 @@ const serializeReward = (
   return Object.keys(r).length === 0 ? '' : JSON.stringify(r)
 }
 
+// dedupXPByTrack keeps one entry per track (last wins) so each track is a stable,
+// unique row id for the XP rewards table.
+const dedupXPByTrack = (arr: RewardXP[]): RewardXP[] => {
+  const byTrack = new Map<string, RewardXP>()
+  arr.forEach((x) => byTrack.set(x.track, x))
+  return [...byTrack.values()]
+}
+
 export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   isOpen, onClose, editing, onSaved,
 }) => {
   const { t } = useTranslation()
   const isEdit = editing !== null
 
-  const [activeSegment, setActiveSegment] = React.useState<'config' | 'rewards'>('config')
+  const [activeSegment, setActiveSegment] = React.useState<'config' | 'rewards' | 'items'>('config')
 
   // Config fields
   const [name, setName] = React.useState('')
@@ -190,6 +198,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const [rewardItems, setRewardItems] = React.useState<KeyedRewardItem[]>([])
   const [rewardItemKeys, setRewardItemKeys] = React.useState<Selection>(new Set())
   const [rewardXP, setRewardXP] = React.useState<RewardXP[]>([])
+  const [xpKeys, setXpKeys] = React.useState<Selection>(new Set())
 
   // Item picker state
   const [templates, setTemplates] = React.useState<{ id: string, name: string }[]>([])
@@ -232,7 +241,8 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           type RawItem = { template: string, qty: number, quality: number }
           const rawItems: RawItem[] = Array.isArray(r.items) ? r.items as RawItem[] : []
           setRewardItems(rawItems.map((item) => ({ ...item, _key: nextKey() })))
-          setRewardXP(Array.isArray(r.xp) ? r.xp as RewardXP[] : [])
+          // Collapse any legacy duplicate tracks so each track is a unique row id.
+          setRewardXP(dedupXPByTrack(Array.isArray(r.xp) ? r.xp as RewardXP[] : []))
         }
         catch {
           setRewardCurrency(0)
@@ -361,9 +371,72 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const addXP = () => {
     if (xpAmount <= 0) return
     const track = xpType === 'character' ? 'character' : xpSpecTrack
-    setRewardXP((prev) => [...prev, { track, amount: xpAmount }])
+    // One row per track (track is the table row id): re-adding a track updates
+    // its amount instead of creating a duplicate.
+    setRewardXP((prev) => {
+      const idx = prev.findIndex((x) => x.track === track)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = { track, amount: xpAmount }
+        return next
+      }
+      return [...prev, { track, amount: xpAmount }]
+    })
     setXpAmount(0)
   }
+
+  const xpSelectionCount = xpKeys === 'all'
+    ? rewardXP.length
+    : (xpKeys as Set<string>).size
+
+  const handleBulkDeleteXP = () => {
+    if (xpKeys === 'all') {
+      setRewardXP([])
+    }
+    else {
+      const keys = xpKeys as Set<string>
+      setRewardXP((prev) => prev.filter((x) => !keys.has(x.track)))
+    }
+    setXpKeys(new Set())
+  }
+
+  const xpColumns: DataGridColumn<RewardXP>[] = [
+    {
+      id: 'track',
+      isRowHeader: true,
+      header: t('events.editor.xpTrack'),
+      minWidth: 200,
+      allowsResizing: true,
+      cell: (x) => <span className="font-mono text-sm text-foreground">{x.track}</span>,
+    },
+    {
+      id: 'amount',
+      header: t('events.editor.xpAmount'),
+      minWidth: 130,
+      cell: (x) => (
+        <span className="text-muted">
+          {x.amount.toLocaleString()}
+          {' XP'}
+        </span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      width: 52,
+      cell: (x) => (
+        <Button
+          size="sm"
+          variant="danger-soft"
+          isIconOnly
+          onPress={() => setRewardXP((prev) => prev.filter((p) => p.track !== x.track))}
+          aria-label={t('common.remove')}
+        >
+          <Icon name="trash" />
+        </Button>
+      ),
+    },
+  ]
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -479,14 +552,14 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         <Modal.Container size="cover" scroll="outside">
           <Modal.Dialog className="p-10 dialog-surface-alt">
             <Modal.CloseTrigger />
-            <Modal.Header className="flex items-center gap-4 shrink-0">
+            <Modal.Header className="flex flex-row items-center justify-start gap-4 shrink-0">
               <Modal.Heading className="text-accent">
                 {isEdit ? t('events.editor.editTitle') : t('events.editor.createTitle')}
               </Modal.Heading>
               <Segment
                 className="ml-auto"
                 selectedKey={activeSegment}
-                onSelectionChange={(k) => setActiveSegment(k as 'config' | 'rewards')}
+                onSelectionChange={(k) => setActiveSegment(k as 'config' | 'rewards' | 'items')}
                 size="sm"
                 aria-label={t('events.editor.createTitle')}
               >
@@ -496,7 +569,11 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                 </Segment.Item>
                 <Segment.Item id="rewards">
                   <Segment.Separator />
-                  {t('events.editor.rewards')}
+                  {t('events.editor.currencyXp')}
+                </Segment.Item>
+                <Segment.Item id="items">
+                  <Segment.Separator />
+                  {t('events.editor.items')}
                 </Segment.Item>
               </Segment>
             </Modal.Header>
@@ -780,16 +857,16 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                 </FormSection>
               </div>
 
-              {/* Rewards panel — always mounted */}
+              {/* Rewards panel (currency + XP) — always mounted */}
               <div
                 className="flex flex-col flex-1 min-h-0 gap-4"
                 style={{ display: activeSegment === 'rewards' ? undefined : 'none' }}
               >
-                {/* Top row: Currency + XP side by side */}
-                <div className="grid grid-cols-2 gap-4 shrink-0">
-                  <FormSection>
+                {/* Currency on top (two responsive columns), XP rewards full-height below */}
+                <div className="flex flex-col flex-1 min-h-0 gap-4">
+                  <FormSection className="shrink-0">
                     <SectionLabel>{t('events.editor.currency')}</SectionLabel>
-                    <div className="flex flex-col gap-2 mt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                       <div>
                         <span className={fieldLabelClass}>{t('events.editor.solari')}</span>
                         <NumberInput
@@ -815,9 +892,9 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                     </div>
                   </FormSection>
 
-                  <FormSection>
+                  <FormSection className="flex-1 min-h-0 flex flex-col">
                     <SectionLabel>{t('events.editor.xpRewards')}</SectionLabel>
-                    <div className="flex items-end gap-2 mt-2">
+                    <div className="flex items-end gap-2 mt-2 shrink-0">
                       <div className="w-40 shrink-0">
                         <span className={fieldLabelClass}>{t('events.editor.xpType')}</span>
                         <FieldSelect
@@ -861,33 +938,29 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                       </Button>
                     </div>
                     {rewardXP.length > 0 && (
-                      <div className="flex flex-col gap-1 mt-2">
-                        {rewardXP.map((x, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius)] text-xs bg-surface border border-border"
-                          >
-                            <span className="flex-1 font-mono text-foreground">{x.track}</span>
-                            <span className="text-muted">
-                              {x.amount.toLocaleString()}
-                              {' XP'}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="danger-soft"
-                              onPress={() => setRewardXP((prev) => prev.filter((_, i) => i !== idx))}
-                              aria-label={t('common.remove')}
-                            >
-                              <Icon name="trash" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+                      <DataGrid
+                        aria-label={t('events.editor.xpRewards')}
+                        columns={xpColumns}
+                        data={rewardXP}
+                        getRowId={(x) => x.track}
+                        selectedKeys={xpKeys}
+                        selectionMode="multiple"
+                        showSelectionCheckboxes
+                        onSelectionChange={setXpKeys}
+                        className="mt-2 flex-1 min-h-0"
+                        scrollContainerClassName="h-full overflow-y-auto"
+                        allowsColumnResize
+                      />
                     )}
                   </FormSection>
                 </div>
+              </div>
 
-                {/* Items — fills remaining space */}
+              {/* Items panel — its own tab so the table gets the full height */}
+              <div
+                className="flex flex-col flex-1 min-h-0"
+                style={{ display: activeSegment === 'items' ? undefined : 'none' }}
+              >
                 <FormSection className="flex-1 min-h-0 flex flex-col">
                   <SectionLabel>{t('events.editor.items')}</SectionLabel>
                   <div className="flex items-center gap-2 mt-2 shrink-0">
@@ -1013,7 +1086,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
             {/* Inside the dialog: outside it, React Aria's modal underlay
                 makes the bar inert. The dialog's filter creates a containing
                 block, so position:fixed pins it to the dialog bottom. */}
-            <ActionBar aria-label={t('events.editor.items')} isOpen={rewardSelectionCount > 0}>
+            <ActionBar aria-label={t('events.editor.items')} isOpen={activeSegment === 'items' && rewardSelectionCount > 0}>
               <ActionBar.Prefix>
                 <Chip size="sm" className="shrink-0 tabular-nums">{rewardSelectionCount}</Chip>
               </ActionBar.Prefix>
@@ -1037,6 +1110,37 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                   size="sm"
                   variant="ghost"
                   onPress={() => setRewardItemKeys(new Set())}
+                  aria-label={t('common.clearSelection')}
+                >
+                  <Icon name="x" />
+                </Button>
+              </ActionBar.Suffix>
+            </ActionBar>
+
+            <ActionBar aria-label={t('events.editor.xpRewards')} isOpen={activeSegment === 'rewards' && xpSelectionCount > 0}>
+              <ActionBar.Prefix>
+                <Chip size="sm" className="shrink-0 tabular-nums">{xpSelectionCount}</Chip>
+              </ActionBar.Prefix>
+              <Separator />
+              <ActionBar.Content>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-danger"
+                  onPress={handleBulkDeleteXP}
+                  aria-label={t('common.deleteSelected')}
+                >
+                  <Icon name="trash-2" />
+                  <span className="action-bar__label">{t('common.deleteSelected')}</span>
+                </Button>
+              </ActionBar.Content>
+              <Separator />
+              <ActionBar.Suffix>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="ghost"
+                  onPress={() => setXpKeys(new Set())}
                   aria-label={t('common.clearSelection')}
                 >
                   <Icon name="x" />

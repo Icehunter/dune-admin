@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,12 +75,19 @@ func saveBackupGlobals(t *testing.T) string {
 	t.Helper()
 	prevC, prevE := globalControl, globalExecutor
 	prevCfg := loadedConfig
+	prevReg := globalRegistry
 	dir := t.TempDir()
 	loadedConfig.AmpBackupDir = dir
 	globalExecutor = &fnExecutor{fn: func(string) (string, error) { return "", nil }}
+	// The DB-backup dir/conn resolve from the active server's ServerConfig after
+	// the storage remodel, so register one pointing at the temp dir.
+	globalRegistry = newServerRegistry(nil)
+	globalRegistry.Register(&ServerContext{ID: "1", Name: "T", Cfg: ServerConfig{ID: 1, AmpBackupDir: dir}})
+	_ = globalRegistry.SetActive("1")
 	t.Cleanup(func() {
 		globalControl, globalExecutor = prevC, prevE
 		loadedConfig = prevCfg
+		globalRegistry = prevReg
 	})
 	return dir
 }
@@ -91,7 +100,7 @@ func TestDispatchBackup_AMPUsesDBProvider(t *testing.T) {
 	ctrl := &dbProviderControl{}
 	globalControl = ctrl
 
-	out, err := dispatchBackup(context.Background())
+	out, err := dispatchBackup(context.Background(), globalControl, globalExecutor)
 	if err != nil {
 		t.Fatalf("dispatchBackup: %v", err)
 	}
@@ -125,7 +134,7 @@ func TestDispatchBackup_NonProviderUsesExecCommand(t *testing.T) {
 	ctrl := &recordingControl{execOut: "backup done"}
 	globalControl = ctrl
 
-	out, err := dispatchBackup(context.Background())
+	out, err := dispatchBackup(context.Background(), globalControl, globalExecutor)
 	if err != nil {
 		t.Fatalf("dispatchBackup: %v", err)
 	}
@@ -148,7 +157,7 @@ func TestDispatchRestore_AMPUsesDBProvider(t *testing.T) {
 	ctrl := &dbProviderControl{}
 	globalControl = ctrl
 
-	out, err := dispatchRestore(context.Background(), name)
+	out, err := dispatchRestore(context.Background(), globalControl, globalExecutor, name)
 	if err != nil {
 		t.Fatalf("dispatchRestore: %v", err)
 	}
@@ -172,7 +181,7 @@ func TestDispatchRestore_AMPRejectsNonDump(t *testing.T) {
 	saveBackupGlobals(t)
 	globalControl = &dbProviderControl{}
 
-	if _, err := dispatchRestore(context.Background(), "snapshot.backup"); err == nil {
+	if _, err := dispatchRestore(context.Background(), globalControl, globalExecutor, "snapshot.backup"); err == nil {
 		t.Fatal("expected error restoring a .backup name under AMP")
 	}
 }
@@ -191,7 +200,7 @@ func TestDispatchRestore_NonProviderUsesControlScript(t *testing.T) {
 		return "imported", nil
 	}}
 
-	out, err := dispatchRestore(context.Background(), "snapshot.backup")
+	out, err := dispatchRestore(context.Background(), globalControl, globalExecutor, "snapshot.backup")
 	if err != nil {
 		t.Fatalf("dispatchRestore: %v", err)
 	}
@@ -209,8 +218,34 @@ func TestDispatchRestore_NonProviderRejectsNonBackup(t *testing.T) {
 	saveBackupGlobals(t)
 	globalControl = &recordingControl{name: "kubectl"}
 
-	if _, err := dispatchRestore(context.Background(), "dune-x.dump"); err == nil {
+	if _, err := dispatchRestore(context.Background(), globalControl, globalExecutor, "dune-x.dump"); err == nil {
 		t.Fatal("expected error restoring a .dump name under kubectl")
+	}
+}
+
+// TestHandleBGStatus_CtxControlOverridesGlobal verifies that a control plane
+// stashed in the request context is used instead of globalControl.
+func TestHandleBGStatus_CtxControlOverridesGlobal(t *testing.T) {
+	prevC, prevE := globalControl, globalExecutor
+	globalControl, globalExecutor = nil, nil
+	t.Cleanup(func() { globalControl, globalExecutor = prevC, prevE })
+
+	ctrl := &recordingControl{}
+	exec := &fnExecutor{fn: func(string) (string, error) { return "", nil }}
+	reg := newServerRegistry(nil)
+	sc := &ServerContext{ID: "s1", StoreScope: defaultServerID, Control: ctrl, Executor: exec}
+	reg.Register(sc)
+
+	inner := http.HandlerFunc(handleBGStatus)
+	h := serverSelectorMiddleware(reg, inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/battlegroup/status", nil)
+	req.Header.Set("X-Dune-Server", "s1")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code == http.StatusServiceUnavailable {
+		t.Error("ctx control should prevent 503 when globalControl is nil")
 	}
 }
 

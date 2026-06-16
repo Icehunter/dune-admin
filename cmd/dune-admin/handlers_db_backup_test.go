@@ -42,3 +42,61 @@ func TestHandleDBBackupDownload_BadName(t *testing.T) {
 		t.Fatalf("download traversal: code = %d, want 400", rec.Code)
 	}
 }
+
+// TestDbBackupProviderOrErr_CtxControlOverridesGlobal verifies that a
+// ServerContext stashed in the request context satisfies the control guard even
+// when globalControl is nil.
+func TestDbBackupProviderOrErr_CtxControlOverridesGlobal(t *testing.T) {
+	prevC, prevE := globalControl, globalExecutor
+	globalControl, globalExecutor = nil, nil
+	t.Cleanup(func() { globalControl, globalExecutor = prevC, prevE })
+
+	ctrl := &dbProviderControl{}
+	exec := &fnExecutor{fn: func(string) (string, error) { return "", nil }}
+	reg := newServerRegistry(nil)
+	sc := &ServerContext{ID: "s1", StoreScope: defaultServerID, Control: ctrl, Executor: exec}
+	reg.Register(sc)
+
+	var capturedProv dbBackupProvider
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		prov, ok := dbBackupProviderOrErr(w, r)
+		if !ok {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		capturedProv = prov
+		w.WriteHeader(http.StatusOK)
+	})
+	h := serverSelectorMiddleware(reg, inner)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/db-backups", nil)
+	req.Header.Set("X-Dune-Server", "s1")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+	if capturedProv == nil {
+		t.Fatal("expected a dbBackupProvider to be resolved from ctx control")
+	}
+}
+
+// TestGameServersRunning_ExplicitCtrl verifies the function uses the passed ctrl
+// rather than globalControl.
+func TestGameServersRunning_ExplicitCtrl(t *testing.T) {
+	prevC, prevE := globalControl, globalExecutor
+	globalControl, globalExecutor = nil, nil
+	t.Cleanup(func() { globalControl, globalExecutor = prevC, prevE })
+
+	ctrl := &recordingControl{}
+	exec := &fnExecutor{fn: func(string) (string, error) { return "", nil }}
+
+	running, err := gameServersRunning(t.Context(), ctrl, exec)
+	if err != nil {
+		t.Fatalf("gameServersRunning: %v", err)
+	}
+	if running {
+		t.Error("expected false — recordingControl returns empty status")
+	}
+}

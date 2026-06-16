@@ -103,7 +103,7 @@ func marketItemsPagination(r *http.Request, total int) (start, end, page, limit 
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/market/items [get]
 func handleMarketItems(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchMarketItems().(msgMarketItems)
+	msg, ok := cmdFetchMarketItems(dbFromCtx(r)).(msgMarketItems)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -140,7 +140,7 @@ func handleMarketItems(w http.ResponseWriter, r *http.Request) {
 // @Router /api/v1/market/listings [get]
 func handleMarketListings(w http.ResponseWriter, r *http.Request) {
 	templateID := r.URL.Query().Get("template_id")
-	msg, ok := cmdFetchMarketListings(templateID).(msgMarketListings)
+	msg, ok := cmdFetchMarketListings(dbFromCtx(r), templateID).(msgMarketListings)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -176,7 +176,7 @@ func handleMarketListings(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/market/sales [get]
 func handleMarketSales(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchMarketSales().(msgMarketSales)
+	msg, ok := cmdFetchMarketSales(dbFromCtx(r)).(msgMarketSales)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -200,7 +200,7 @@ func handleMarketSales(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/market/stats [get]
 func handleMarketStats(w http.ResponseWriter, r *http.Request) {
-	msg, ok := cmdFetchMarketStats().(msgMarketStats)
+	msg, ok := cmdFetchMarketStats(dbFromCtx(r)).(msgMarketStats)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return

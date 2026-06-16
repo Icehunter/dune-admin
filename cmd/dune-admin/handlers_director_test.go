@@ -202,3 +202,72 @@ func TestHandleGetDirectorConfig_NotConnected(t *testing.T) {
 		t.Fatalf("want 503, got %d", rr.Code)
 	}
 }
+
+// directorFakeControl is a ControlPlane that also implements directorConfigStore.
+type directorFakeControl struct {
+	stubControlPlane
+	iniPath    string
+	iniContent string
+	iniErr     error
+}
+
+func (f *directorFakeControl) readDirectorConfig(_ Executor) (string, string, error) {
+	return f.iniPath, f.iniContent, f.iniErr
+}
+
+func (f *directorFakeControl) writeDirectorConfig(_ Executor, content string) (string, error) {
+	f.iniContent = content
+	return f.iniPath, f.iniErr
+}
+
+func TestResolveDirectorStore_NilControl(t *testing.T) {
+	_, ok := resolveDirectorStore(nil)
+	if ok {
+		t.Error("expected (nil, false) for nil control")
+	}
+}
+
+func TestResolveDirectorStore_NoInterface(t *testing.T) {
+	_, ok := resolveDirectorStore(&stubControlPlane{})
+	if ok {
+		t.Error("expected (nil, false) for control that does not implement directorConfigStore")
+	}
+}
+
+func TestResolveDirectorStore_ImplementsInterface(t *testing.T) {
+	ctrl := &directorFakeControl{iniPath: "/some/path", iniContent: "[ Battlegroup ]\nFoo=1\n"}
+	store, ok := resolveDirectorStore(ctrl)
+	if !ok || store == nil {
+		t.Fatal("expected (store, true) for directorFakeControl")
+	}
+}
+
+func TestHandleGetDirectorConfig_CtxControlOverridesGlobal(t *testing.T) {
+	origC, origE := globalControl, globalExecutor
+	globalControl, globalExecutor = nil, nil
+	defer func() { globalControl, globalExecutor = origC, origE }()
+
+	ctrl := &directorFakeControl{
+		iniPath:    "/director.ini",
+		iniContent: "[ Battlegroup ]\nDbFetchInterval=5\n",
+	}
+	exec := &fnExecutor{fn: func(string) (string, error) { return "", nil }}
+	reg := newServerRegistry(nil)
+	sc := &ServerContext{ID: "s1", StoreScope: defaultServerID, Control: ctrl, Executor: exec}
+	reg.Register(sc)
+
+	inner := http.HandlerFunc(handleGetDirectorConfig)
+	h := serverSelectorMiddleware(reg, inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/director-config", nil)
+	req.Header.Set("X-Dune-Server", "s1")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code == http.StatusServiceUnavailable {
+		t.Error("ctx control should prevent 503 when globalControl is nil")
+	}
+	if rr.Code != http.StatusOK {
+		t.Errorf("want 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+}

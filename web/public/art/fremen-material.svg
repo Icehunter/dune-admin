@@ -1,14 +1,35 @@
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'>
-  <g fill='none'><animateTransform attributeName='transform' type='translate' values='0 0;14 -8;-10 9;0 0' dur='46s' repeatCount='indefinite'/>
-  <circle stroke='#4ea3e8' stroke-opacity='.07' stroke-width='1.5' cx='150' cy='150' r='48'/>
-  <circle stroke='#4ea3e8' stroke-opacity='.05' stroke-width='1.5' cx='150' cy='150' r='82'/>
-  <circle stroke='#9ff4ff' stroke-opacity='.05' stroke-dasharray='8 11' cx='150' cy='150' r='64'><animateTransform attributeName='transform' type='rotate' from='0 150 150' to='-360 150 150' dur='80s' repeatCount='indefinite'/>
-  </circle><g><animateTransform attributeName='transform' type='rotate' from='0 150 150' to='360 150 150' dur='35s' repeatCount='indefinite'/>
-  <circle cx='198' cy='150' r='3.5' fill='#9ff4ff' fill-opacity='.25'/>
-  
-</g><g><animateTransform attributeName='transform' type='rotate' from='150 150 150' to='510 150 150' dur='70s' repeatCount='indefinite'/>
-  <circle cx='232' cy='150' r='2.5' fill='#4ea3e8' fill-opacity='.22'/>
-  
-</g>
-</g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><g fill="none"><animateTransform
+      attributeName="transform"
+      dur="46s"
+      repeatCount="indefinite"
+      type="translate"
+      values="0 0;14 -8;-10 9;0 0"
+    /><circle cx="150" cy="150" r="48" stroke="#4ea3e8" stroke-opacity=".07" stroke-width="1.5" /><circle
+      cx="150"
+      cy="150"
+      r="82"
+      stroke="#4ea3e8"
+      stroke-opacity=".05"
+      stroke-width="1.5"
+    /><circle cx="150" cy="150" r="64" stroke="#9ff4ff" stroke-dasharray="8 11" stroke-opacity=".05"><animateTransform
+        attributeName="transform"
+        dur="80s"
+        from="0 150 150"
+        repeatCount="indefinite"
+        to="-360 150 150"
+        type="rotate"
+      /></circle><g><animateTransform
+        attributeName="transform"
+        dur="35s"
+        from="0 150 150"
+        repeatCount="indefinite"
+        to="360 150 150"
+        type="rotate"
+      /><circle cx="198" cy="150" r="3.5" fill="#9ff4ff" fill-opacity=".25" /></g><g><animateTransform
+        attributeName="transform"
+        dur="70s"
+        from="150 150 150"
+        repeatCount="indefinite"
+        to="510 150 150"
+        type="rotate"
+      /><circle cx="232" cy="150" r="2.5" fill="#4ea3e8" fill-opacity=".22" /></g></g></svg>

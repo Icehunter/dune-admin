@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // schematicCategory returns the effective category for a template ID.
@@ -59,11 +61,11 @@ func itemNameLookup(templateID string) string {
 
 // cmdFetchMarketItems returns all active exchange listings aggregated by template ID,
 // enriched with catalog metadata from item-data.json.
-func cmdFetchMarketItems() Msg {
-	if globalDB == nil {
+func cmdFetchMarketItems(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgMarketItems{err: fmt.Errorf("not connected")}
 	}
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT
 			o.template_id,
 			o.quality_level,
@@ -117,8 +119,8 @@ func cmdFetchMarketItems() Msg {
 
 // cmdFetchMarketListings returns all active exchange listings, optionally filtered by template ID.
 // Pass templateID="" to fetch all listings.
-func cmdFetchMarketListings(templateID string) Msg {
-	if globalDB == nil {
+func cmdFetchMarketListings(pool *pgxpool.Pool, templateID string) Msg {
+	if pool == nil {
 		return msgMarketListings{err: fmt.Errorf("not connected")}
 	}
 
@@ -129,7 +131,7 @@ func cmdFetchMarketListings(templateID string) Msg {
 		args = append(args, templateID)
 	}
 
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT
 			o.id,
 			o.template_id,
@@ -172,11 +174,11 @@ func cmdFetchMarketListings(templateID string) Msg {
 }
 
 // cmdFetchMarketSales returns recent sales from bot listings (players buying from Revy).
-func cmdFetchMarketSales() Msg {
-	if globalDB == nil {
+func cmdFetchMarketSales(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgMarketSales{err: fmt.Errorf("not connected")}
 	}
-	rows, err := globalDB.Query(context.Background(), `
+	rows, err := pool.Query(context.Background(), `
 		SELECT
 			f.order_id,
 			o.template_id,
@@ -217,12 +219,12 @@ func cmdFetchMarketSales() Msg {
 }
 
 // cmdFetchMarketStats returns aggregate market statistics.
-func cmdFetchMarketStats() Msg {
-	if globalDB == nil {
+func cmdFetchMarketStats(pool *pgxpool.Pool) Msg {
+	if pool == nil {
 		return msgMarketStats{err: fmt.Errorf("not connected")}
 	}
 	var stats marketStats
-	err := globalDB.QueryRow(context.Background(), `
+	err := pool.QueryRow(context.Background(), `
 		SELECT
 			COUNT(*)                                                          AS total_listings,
 			COUNT(*) FILTER (WHERE o.is_npc_order)                           AS bot_listings,

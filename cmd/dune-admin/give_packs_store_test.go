@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -100,8 +101,15 @@ func TestGivePacksStore_OverwriteWithSave(t *testing.T) {
 	if !loaded {
 		t.Error("expected base_packs_loaded=true after second save")
 	}
-	if packsJSON != second {
-		t.Errorf("expected second packs JSON, got %q", packsJSON)
+	// loadConfig now re-marshals fully-populated structs from the typed tables,
+	// so byte equality against the sparse input no longer holds; assert the
+	// second save fully replaced the first and preserved order (b, then c).
+	var gotPacks []givePack
+	if err := json.Unmarshal([]byte(packsJSON), &gotPacks); err != nil {
+		t.Fatalf("unmarshal packsJSON %q: %v", packsJSON, err)
+	}
+	if len(gotPacks) != 2 || gotPacks[0].ID != "b" || gotPacks[1].ID != "c" {
+		t.Errorf("expected packs [b c], got %q", packsJSON)
 	}
 }
 

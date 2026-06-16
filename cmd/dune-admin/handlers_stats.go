@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -44,7 +43,8 @@ func buildPlayerStats(pg playerPgStats, sess sessionStats) playerStats {
 }
 
 func handleGetPlayerStats(w http.ResponseWriter, r *http.Request) {
-	if globalDB == nil {
+	db := dbFromCtx(r)
+	if db == nil {
 		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
 		return
 	}
@@ -55,18 +55,18 @@ func handleGetPlayerStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pg, err := cmdFetchPlayerPgStats(r.Context(), globalDB, accountID)
+	pg, err := cmdFetchPlayerPgStats(r.Context(), db, accountID)
 	if err != nil {
-		log.Printf("handleGetPlayerStats: pg stats: %v", err)
+		componentLog("handlers").Error().Int64("account_id", accountID).Err(err).Msg("fetch player pg stats failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
 
 	var sess sessionStats
 	if globalSessionDB != nil {
-		sess, err = getSessionStats(r.Context(), globalSessionDB, accountID)
+		sess, err = getSessionStats(r.Context(), globalSessionDB, storeScopeFromCtx(r), accountID)
 		if err != nil {
-			log.Printf("handleGetPlayerStats: session stats: %v", err)
+			componentLog("handlers").Warn().Int64("account_id", accountID).Err(err).Msg("fetch session stats failed")
 		}
 	}
 
@@ -74,7 +74,8 @@ func handleGetPlayerStats(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetSolarisHistory(w http.ResponseWriter, r *http.Request) {
-	if globalDB == nil {
+	db := dbFromCtx(r)
+	if db == nil {
 		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
 		return
 	}
@@ -85,9 +86,9 @@ func handleGetSolarisHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	points, err := cmdFetchSolarisHistory(r.Context(), globalDB, accountID)
+	points, err := cmdFetchSolarisHistory(r.Context(), db, accountID)
 	if err != nil {
-		log.Printf("handleGetSolarisHistory: %v", err)
+		componentLog("handlers").Error().Int64("account_id", accountID).Err(err).Msg("fetch solaris history failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
@@ -96,7 +97,8 @@ func handleGetSolarisHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetSessionHistory(w http.ResponseWriter, r *http.Request) {
-	if globalDB == nil {
+	db := dbFromCtx(r)
+	if db == nil {
 		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
 		return
 	}
@@ -109,9 +111,9 @@ func handleGetSessionHistory(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid account id"), http.StatusBadRequest)
 		return
 	}
-	recs, err := getSessionHistory(r.Context(), globalSessionDB, accountID, 200)
+	recs, err := getSessionHistory(r.Context(), globalSessionDB, storeScopeFromCtx(r), accountID, 200)
 	if err != nil {
-		log.Printf("handleGetSessionHistory: %v", err)
+		componentLog("handlers").Error().Int64("account_id", accountID).Err(err).Msg("fetch session history failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
@@ -128,9 +130,9 @@ func handleGetStatSnapshotHistory(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid account id"), http.StatusBadRequest)
 		return
 	}
-	snaps, err := getStatSnapshotHistory(r.Context(), globalSessionDB, accountID, 500)
+	snaps, err := getStatSnapshotHistory(r.Context(), globalSessionDB, storeScopeFromCtx(r), accountID, 500)
 	if err != nil {
-		log.Printf("handleGetStatSnapshotHistory: %v", err)
+		componentLog("handlers").Error().Int64("account_id", accountID).Err(err).Msg("fetch stat snapshot history failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}

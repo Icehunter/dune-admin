@@ -1,96 +1,133 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">Atreides Intel Token</title>
-  <desc id="desc">A transparent sci-fi rewards icon: hexagonal green intel token with muted gold bevels, concentric circuit rings, and a central node.</desc>
-  <defs>
-    <linearGradient id="outerBevel" x1="48" y1="32" x2="208" y2="224" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#c9b56d"/>
-      <stop offset="0.32" stop-color="#6f875f"/>
-      <stop offset="0.7" stop-color="#263f34"/>
-      <stop offset="1" stop-color="#b9a35d"/>
-    </linearGradient>
-    <linearGradient id="tokenFace" x1="70" y1="48" x2="188" y2="214" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#5f7755"/>
-      <stop offset="0.48" stop-color="#28473b"/>
-      <stop offset="1" stop-color="#11281f"/>
-    </linearGradient>
-    <linearGradient id="innerBevel" x1="81" y1="64" x2="175" y2="192" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#d8c77d" stop-opacity="0.95"/>
-      <stop offset="0.4" stop-color="#708960" stop-opacity="0.8"/>
-      <stop offset="1" stop-color="#0d211a" stop-opacity="0.95"/>
-    </linearGradient>
-    <radialGradient id="nodeGlow" cx="128" cy="128" r="54" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#d7ca86" stop-opacity="0.42"/>
-      <stop offset="0.38" stop-color="#8fa36e" stop-opacity="0.2"/>
-      <stop offset="1" stop-color="#0f261e" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#05100d" flood-opacity="0.42"/>
-    </filter>
-    <clipPath id="hexClip">
-      <path d="M128 18 220 72v112l-92 54-92-54V72z"/>
-    </clipPath>
-  </defs>
-
-  <g filter="url(#softShadow)">
-    <!-- Noble beveled hexagonal token -->
-    <path d="M128 18 220 72v112l-92 54-92-54V72z" fill="url(#outerBevel)"/>
-    <path d="M128 32 207 78v100l-79 46-79-46V78z" fill="#152c24" opacity="0.92"/>
-    <path d="M128 42 198 83v90l-70 41-70-41V83z" fill="url(#tokenFace)"/>
-
-    <!-- Refined military heraldry bevel facets -->
-    <g clip-path="url(#hexClip)" opacity="0.64">
-      <path d="M128 18 220 72l-22 11-70-41z" fill="#e0d08a" opacity="0.45"/>
-      <path d="M220 72v112l-22-11V83z" fill="#0a1c16" opacity="0.55"/>
-      <path d="M128 238 36 184l22-11 70 41z" fill="#071812" opacity="0.55"/>
-      <path d="M36 72v112l22-11V83z" fill="#94a66f" opacity="0.28"/>
-    </g>
-
-    <!-- Inner hexagonal ring -->
-    <path d="M128 62 181 93v70l-53 31-53-31V93z" fill="none" stroke="url(#innerBevel)" stroke-width="5" stroke-linejoin="round"/>
-    <path d="M128 74 170 99v58l-42 25-42-25V99z" fill="none" stroke="#b7a860" stroke-width="1.8" stroke-linejoin="round" opacity="0.72"/>
-
-    <!-- Concentric intel/circuit rings -->
-    <circle cx="128" cy="128" r="54" fill="url(#nodeGlow)"/>
-    <circle cx="128" cy="128" r="45" fill="none" stroke="#c6b86d" stroke-width="2.4" opacity="0.88" stroke-dasharray="38 10 9 10" stroke-linecap="round"/>
-    <circle cx="128" cy="128" r="32" fill="none" stroke="#9caf78" stroke-width="2" opacity="0.78" stroke-dasharray="22 8 5 8" stroke-linecap="round"/>
-    <circle cx="128" cy="128" r="20" fill="none" stroke="#d7c77b" stroke-width="1.8" opacity="0.92"/>
-
-    <!-- Circuit traces, balanced and heraldic -->
-    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M128 83v-16" stroke="#c9b76f" stroke-width="3"/>
-      <path d="M128 173v16" stroke="#c9b76f" stroke-width="3"/>
-      <path d="M83 128H67" stroke="#c9b76f" stroke-width="3"/>
-      <path d="M173 128h16" stroke="#c9b76f" stroke-width="3"/>
-
-      <path d="M96 96 84 84h-13" stroke="#91a271" stroke-width="2.5" opacity="0.9"/>
-      <path d="M160 96 172 84h13" stroke="#91a271" stroke-width="2.5" opacity="0.9"/>
-      <path d="M96 160 84 172h-13" stroke="#91a271" stroke-width="2.5" opacity="0.9"/>
-      <path d="M160 160 172 172h13" stroke="#91a271" stroke-width="2.5" opacity="0.9"/>
-
-      <path d="M111 90v18l-9 9" stroke="#d2c47a" stroke-width="2" opacity="0.76"/>
-      <path d="M145 90v18l9 9" stroke="#d2c47a" stroke-width="2" opacity="0.76"/>
-      <path d="M111 166v-18l-9-9" stroke="#d2c47a" stroke-width="2" opacity="0.76"/>
-      <path d="M145 166v-18l9-9" stroke="#d2c47a" stroke-width="2" opacity="0.76"/>
-    </g>
-
-    <!-- Terminal nodes -->
-    <g fill="#d5c77f">
-      <circle cx="128" cy="67" r="3.5"/>
-      <circle cx="128" cy="189" r="3.5"/>
-      <circle cx="67" cy="128" r="3.5"/>
-      <circle cx="189" cy="128" r="3.5"/>
-      <circle cx="71" cy="84" r="3" opacity="0.9"/>
-      <circle cx="185" cy="84" r="3" opacity="0.9"/>
-      <circle cx="71" cy="172" r="3" opacity="0.9"/>
-      <circle cx="185" cy="172" r="3" opacity="0.9"/>
-    </g>
-
-    <!-- Central protected intel node -->
-    <circle cx="128" cy="128" r="13" fill="#102820" stroke="#d9c982" stroke-width="3"/>
-    <circle cx="128" cy="128" r="5" fill="#d9c982"/>
-    <path d="M128 115 139 122v12l-11 7-11-7v-12z" fill="none" stroke="#89a06f" stroke-width="1.4" opacity="0.75"/>
-
-    <!-- Subtle top glint -->
-    <path d="M79 84 128 55l49 29" fill="none" stroke="#f0df9a" stroke-width="2" opacity="0.32" stroke-linecap="round"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-labelledby="title desc"
+  viewBox="0 0 256 256"
+><title>Atreides Intel Token</title><desc
+  >A transparent sci-fi rewards icon: hexagonal green intel token with muted gold bevels, concentric circuit rings, and a central node.</desc><defs
+  ><linearGradient id="b" x1="48" x2="208" y1="32" y2="224" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#c9b56d"
+      /><stop offset=".32" stop-color="#6f875f" /><stop offset=".7" stop-color="#263f34" /><stop
+        offset="1"
+        stop-color="#b9a35d"
+      /></linearGradient><linearGradient id="c" x1="70" x2="188" y1="48" y2="214" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#5f7755"
+      /><stop offset=".48" stop-color="#28473b" /><stop
+        offset="1"
+        stop-color="#11281f"
+      /></linearGradient><linearGradient id="e" x1="81" x2="175" y1="64" y2="192" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#d8c77d"
+        stop-opacity=".95"
+      /><stop offset=".4" stop-color="#708960" stop-opacity=".8" /><stop
+        offset="1"
+        stop-color="#0d211a"
+        stop-opacity=".95"
+      /></linearGradient><radialGradient id="f" cx="128" cy="128" r="54" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#d7ca86"
+        stop-opacity=".42"
+      /><stop offset=".38" stop-color="#8fa36e" stop-opacity=".2" /><stop
+        offset="1"
+        stop-color="#0f261e"
+        stop-opacity="0"
+      /></radialGradient><clipPath id="d"><path d="m128 18 92 54v112l-92 54-92-54V72z" /></clipPath><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="8" flood-color="#05100d" flood-opacity=".42" stdDeviation="7" /></filter></defs><g
+    filter="url(#a)"
+  ><path fill="url(#b)" d="m128 18 92 54v112l-92 54-92-54V72z" /><path
+      fill="#152c24"
+      d="m128 32 79 46v100l-79 46-79-46V78z"
+      opacity=".92"
+    /><path fill="url(#c)" d="m128 42 70 41v90l-70 41-70-41V83z" /><g clip-path="url(#d)" opacity=".64"><path
+        fill="#e0d08a"
+        d="m128 18 92 54-22 11-70-41z"
+        opacity=".45"
+      /><path fill="#0a1c16" d="M220 72v112l-22-11V83z" opacity=".55" /><path
+        fill="#071812"
+        d="m128 238-92-54 22-11 70 41z"
+        opacity=".55"
+      /><path fill="#94a66f" d="M36 72v112l22-11V83z" opacity=".28" /></g><path
+      fill="none"
+      stroke="url(#e)"
+      stroke-linejoin="round"
+      stroke-width="5"
+      d="m128 62 53 31v70l-53 31-53-31V93z"
+    /><path
+      fill="none"
+      stroke="#b7a860"
+      stroke-linejoin="round"
+      stroke-width="1.8"
+      d="m128 74 42 25v58l-42 25-42-25V99z"
+      opacity=".72"
+    /><circle cx="128" cy="128" r="54" fill="url(#f)" /><circle
+      cx="128"
+      cy="128"
+      r="45"
+      fill="none"
+      stroke="#c6b86d"
+      stroke-dasharray="38 10 9 10"
+      stroke-linecap="round"
+      stroke-width="2.4"
+      opacity=".88"
+    /><circle
+      cx="128"
+      cy="128"
+      r="32"
+      fill="none"
+      stroke="#9caf78"
+      stroke-dasharray="22 8 5 8"
+      stroke-linecap="round"
+      stroke-width="2"
+      opacity=".78"
+    /><circle cx="128" cy="128" r="20" fill="none" stroke="#d7c77b" stroke-width="1.8" opacity=".92" /><g
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    ><path stroke="#c9b76f" stroke-width="3" d="M128 83V67m0 106v16m-45-61H67m106 0h16" /><path
+        stroke="#91a271"
+        stroke-width="2.5"
+        d="M96 96 84 84H71m89 12 12-12h13m-89 76-12 12H71m89-12 12 12h13"
+        opacity=".9"
+      /><path
+        stroke="#d2c47a"
+        stroke-width="2"
+        d="M111 90v18l-9 9m43-27v18l9 9m-43 49v-18l-9-9m43 27v-18l9-9"
+        opacity=".76"
+      /></g><g fill="#d5c77f"><circle cx="128" cy="67" r="3.5" /><circle cx="128" cy="189" r="3.5" /><circle
+        cx="67"
+        cy="128"
+        r="3.5"
+      /><circle cx="189" cy="128" r="3.5" /><circle cx="71" cy="84" r="3" opacity=".9" /><circle
+        cx="185"
+        cy="84"
+        r="3"
+        opacity=".9"
+      /><circle cx="71" cy="172" r="3" opacity=".9" /><circle cx="185" cy="172" r="3" opacity=".9" /></g><circle
+      cx="128"
+      cy="128"
+      r="13"
+      fill="#102820"
+      stroke="#d9c982"
+      stroke-width="3"
+    /><circle cx="128" cy="128" r="5" fill="#d9c982" /><path
+      fill="none"
+      stroke="#89a06f"
+      stroke-width="1.4"
+      d="m128 115 11 7v12l-11 7-11-7v-12z"
+      opacity=".75"
+    /><path
+      fill="none"
+      stroke="#f0df9a"
+      stroke-linecap="round"
+      stroke-width="2"
+      d="m79 84 49-29 49 29"
+      opacity=".32"
+    /></g></svg>

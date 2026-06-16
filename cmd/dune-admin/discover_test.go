@@ -19,7 +19,14 @@ func TestAppConfigAutoDiscoverRoundTrip(t *testing.T) {
 
 func TestNeedsSetupAutoDiscoverAware(t *testing.T) {
 	origPass, origAuto, origCtrl := dbPass, autoDiscover, controlPlane
-	defer func() { dbPass, autoDiscover, controlPlane = origPass, origAuto, origCtrl }()
+	origCfg := loadedConfig
+	defer func() {
+		dbPass, autoDiscover, controlPlane = origPass, origAuto, origCtrl
+		loadedConfig = origCfg
+	}()
+	// needsSetupConfigured short-circuits when Servers[] is non-empty; this test
+	// exercises the flat-config path, so ensure no per-server entries leak in.
+	loadedConfig = appConfig{}
 
 	// auto-discover + kubectl + empty pass → no setup (discovery supplies it).
 	dbPass, autoDiscover, controlPlane = "", true, "kubectl"

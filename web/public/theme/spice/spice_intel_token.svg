@@ -1,100 +1,100 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Hexagonal sci-fi intel token icon">
-  <defs>
-    <linearGradient id="gold" x1="64" y1="34" x2="194" y2="224" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFE08A"/>
-      <stop offset="0.35" stop-color="#D88A19"/>
-      <stop offset="0.7" stop-color="#8C4B10"/>
-      <stop offset="1" stop-color="#F6C65B"/>
-    </linearGradient>
-    <linearGradient id="sand" x1="86" y1="44" x2="174" y2="210" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFD56E"/>
-      <stop offset="1" stop-color="#B86513"/>
-    </linearGradient>
-    <radialGradient id="core" cx="50%" cy="48%" r="56%">
-      <stop offset="0" stop-color="#54FFF0"/>
-      <stop offset="0.55" stop-color="#22BDBA"/>
-      <stop offset="1" stop-color="#087E80"/>
-    </radialGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#2A1305" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-
-  <!-- Transparent background intentionally omitted -->
-
-  <g filter="url(#softShadow)" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Outer hex token -->
-    <path d="M128 12 L226 69 L226 187 L128 244 L30 187 L30 69 Z"
-          fill="url(#gold)" stroke="#5B2B08" stroke-width="4"/>
-    <path d="M128 28 L211 76 L211 180 L128 228 L45 180 L45 76 Z"
-          fill="#5A2D0E" stroke="#F8C85E" stroke-width="5"/>
-    <path d="M128 40 L200 82 L200 174 L128 216 L56 174 L56 82 Z"
-          fill="#6F3B10" stroke="#271204" stroke-width="3" opacity="0.95"/>
-
-    <!-- Metallic side ornaments -->
-    <g fill="#F2B638" stroke="#6A3409" stroke-width="3">
-      <path d="M128 12 L154 27 L148 42 L128 31 L108 42 L102 27 Z"/>
-      <path d="M128 244 L102 229 L108 214 L128 225 L148 214 L154 229 Z"/>
-      <path d="M30 69 L55 55 L68 64 L45 78 L45 100 L30 91 Z"/>
-      <path d="M226 69 L201 55 L188 64 L211 78 L211 100 L226 91 Z"/>
-      <path d="M30 187 L55 201 L68 192 L45 178 L45 156 L30 165 Z"/>
-      <path d="M226 187 L201 201 L188 192 L211 178 L211 156 L226 165 Z"/>
-    </g>
-
-    <!-- Turquoise inlays -->
-    <g fill="url(#core)" stroke="#2A1606" stroke-width="3">
-      <path d="M123 33 L128 23 L133 33 L133 55 L128 65 L123 55 Z"/>
-      <path d="M123 201 L128 191 L133 201 L133 223 L128 233 L123 223 Z"/>
-      <path d="M34 123 L44 116 L66 116 L77 128 L66 140 L44 140 Z"/>
-      <path d="M222 123 L212 116 L190 116 L179 128 L190 140 L212 140 Z"/>
-    </g>
-
-    <!-- Inner circular tech field -->
-    <circle cx="128" cy="128" r="82" fill="#3F210B" stroke="#1C0D03" stroke-width="4"/>
-    <circle cx="128" cy="128" r="72" fill="none" stroke="#F5C653" stroke-width="5"/>
-    <circle cx="128" cy="128" r="56" fill="none" stroke="#D87810" stroke-width="10" stroke-dasharray="58 16 40 18" transform="rotate(-18 128 128)"/>
-    <circle cx="128" cy="128" r="45" fill="none" stroke="#FFE071" stroke-width="7" stroke-dasharray="36 14 46 12" transform="rotate(25 128 128)"/>
-    <circle cx="128" cy="128" r="29" fill="none" stroke="#F4BD45" stroke-width="5"/>
-    <circle cx="128" cy="128" r="18" fill="#7B4312" stroke="#F6CC60" stroke-width="4"/>
-
-    <!-- Circuit traces -->
-    <g stroke="#F8CF61" stroke-width="5" fill="none">
-      <path d="M128 64 L128 95"/>
-      <path d="M128 161 L128 192"/>
-      <path d="M64 128 L95 128"/>
-      <path d="M161 128 L192 128"/>
-      <path d="M83 83 L99 99"/>
-      <path d="M173 83 L157 99"/>
-      <path d="M83 173 L99 157"/>
-      <path d="M173 173 L157 157"/>
-    </g>
-
-    <!-- Node points -->
-    <g fill="#FFE071" stroke="#75400D" stroke-width="3">
-      <circle cx="128" cy="64" r="7"/>
-      <circle cx="128" cy="192" r="7"/>
-      <circle cx="64" cy="128" r="7"/>
-      <circle cx="192" cy="128" r="7"/>
-      <circle cx="83" cy="83" r="7"/>
-      <circle cx="173" cy="83" r="7"/>
-      <circle cx="83" cy="173" r="7"/>
-      <circle cx="173" cy="173" r="7"/>
-    </g>
-
-    <!-- Central intel node -->
-    <circle cx="128" cy="128" r="17" fill="url(#core)" stroke="#123A36" stroke-width="4"/>
-    <circle cx="128" cy="128" r="10" fill="#63E7D8" opacity="0.6"/>
-
-    <!-- Fine engraved details -->
-    <g stroke="#1E0E03" stroke-width="3" opacity="0.8" fill="none">
-      <path d="M68 72 L92 58"/>
-      <path d="M188 58 L212 72"/>
-      <path d="M68 184 L92 198"/>
-      <path d="M188 198 L212 184"/>
-      <path d="M70 102 L70 84"/>
-      <path d="M186 102 L186 84"/>
-      <path d="M70 154 L70 172"/>
-      <path d="M186 154 L186 172"/>
-    </g>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Hexagonal sci-fi intel token icon"
+  viewBox="0 0 256 256"
+><defs><radialGradient id="c" cx="50%" cy="48%" r="56%"><stop offset="0" stop-color="#54fff0" /><stop
+        offset=".55"
+        stop-color="#22bdba"
+      /><stop offset="1" stop-color="#087e80" /></radialGradient><linearGradient
+      id="b"
+      x1="64"
+      x2="194"
+      y1="34"
+      y2="224"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#ffe08a" /><stop offset=".35" stop-color="#d88a19" /><stop
+        offset=".7"
+        stop-color="#8c4b10"
+      /><stop offset="1" stop-color="#f6c65b" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="4" flood-color="#2a1305" flood-opacity=".35" stdDeviation="3" /></filter></defs><g
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    filter="url(#a)"
+  ><path fill="url(#b)" stroke="#5b2b08" stroke-width="4" d="m128 12 98 57v118l-98 57-98-57V69Z" /><path
+      fill="#5a2d0e"
+      stroke="#f8c85e"
+      stroke-width="5"
+      d="m128 28 83 48v104l-83 48-83-48V76Z"
+    /><path fill="#6f3b10" stroke="#271204" stroke-width="3" d="m128 40 72 42v92l-72 42-72-42V82Z" opacity=".95" /><path
+      fill="#f2b638"
+      stroke="#6a3409"
+      stroke-width="3"
+      d="m128 12 26 15-6 15-20-11-20 11-6-15Zm0 232-26-15 6-15 20 11 20-11 6 15ZM30 69l25-14 13 9-23 14v22l-15-9Zm196 0-25-14-13 9 23 14v22l15-9ZM30 187l25 14 13-9-23-14v-22l-15 9Zm196 0-25 14-13-9 23-14v-22l15 9Z"
+    /><g fill="url(#c)" stroke="#2a1606" stroke-width="3"><path d="m123 33 5-10 5 10v22l-5 10-5-10Z" /><path
+        d="m123 201 5-10 5 10v22l-5 10-5-10Z"
+      /><path d="m34 123 10-7h22l11 12-11 12H44Z" /><path d="m222 123-10-7h-22l-11 12 11 12h22Z" /></g><circle
+      cx="128"
+      cy="128"
+      r="82"
+      fill="#3f210b"
+      stroke="#1c0d03"
+      stroke-width="4"
+    /><circle cx="128" cy="128" r="72" fill="none" stroke="#f5c653" stroke-width="5" /><circle
+      cx="128"
+      cy="128"
+      r="56"
+      fill="none"
+      stroke="#d87810"
+      stroke-dasharray="58 16 40 18"
+      stroke-width="10"
+      transform="rotate(-18 128 128)"
+    /><circle
+      cx="128"
+      cy="128"
+      r="45"
+      fill="none"
+      stroke="#ffe071"
+      stroke-dasharray="36 14 46 12"
+      stroke-width="7"
+      transform="rotate(25 128 128)"
+    /><circle cx="128" cy="128" r="29" fill="none" stroke="#f4bd45" stroke-width="5" /><circle
+      cx="128"
+      cy="128"
+      r="18"
+      fill="#7b4312"
+      stroke="#f6cc60"
+      stroke-width="4"
+    /><path
+      fill="none"
+      stroke="#f8cf61"
+      stroke-width="5"
+      d="M128 64v31m0 66v31m-64-64h31m66 0h31M83 83l16 16m74-16-16 16m-74 74 16-16m74 16-16-16"
+    /><g fill="#ffe071" stroke="#75400d" stroke-width="3"><circle cx="128" cy="64" r="7" /><circle
+        cx="128"
+        cy="192"
+        r="7"
+      /><circle cx="64" cy="128" r="7" /><circle cx="192" cy="128" r="7" /><circle cx="83" cy="83" r="7" /><circle
+        cx="173"
+        cy="83"
+        r="7"
+      /><circle cx="83" cy="173" r="7" /><circle cx="173" cy="173" r="7" /></g><circle
+      cx="128"
+      cy="128"
+      r="17"
+      fill="url(#c)"
+      stroke="#123a36"
+      stroke-width="4"
+    /><circle cx="128" cy="128" r="10" fill="#63e7d8" opacity=".6" /><path
+      fill="none"
+      stroke="#1e0e03"
+      stroke-width="3"
+      d="m68 72 24-14m96 0 24 14M68 184l24 14m96 0 24-14M70 102V84m116 18V84M70 154v18m116-18v18"
+      opacity=".8"
+    /></g></svg>

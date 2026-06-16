@@ -1,10 +1,25 @@
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'>
-  <g fill='none' stroke-linecap='round'><path stroke='#4ea3e8' stroke-opacity='.75' stroke-width='2.1' d='M2 150 L2 38 A36 36 0 0 1 38 2 L150 2'/>
-  <circle stroke='#9ff4ff' stroke-opacity='.25' stroke-dasharray='3 6' cx='27' cy='27' r='15'><animateTransform attributeName='transform' type='rotate' from='0 27 27' to='360 27 27' dur='22s' repeatCount='indefinite'/>
-  </circle><circle cx='27' cy='27' r='2.8' fill='#bdd400' fill-opacity='.75' stroke='none'><animate attributeName='fill-opacity' values='.4;.9;.4' dur='3s' repeatCount='indefinite'/>
-  </circle><g><animateTransform attributeName='transform' type='rotate' from='0 27 27' to='360 27 27' dur='11s' repeatCount='indefinite'/>
-  <circle cx='38' cy='27' r='1.8' fill='#9ff4ff' fill-opacity='.6' stroke='none'/>
-  
-</g>
-</g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150"><g fill="none" stroke-linecap="round"><path
+      stroke="#4ea3e8"
+      stroke-opacity=".75"
+      stroke-width="2.1"
+      d="M2 150V38A36 36 0 0 1 38 2h112"
+    /><circle cx="27" cy="27" r="15" stroke="#9ff4ff" stroke-dasharray="3 6" stroke-opacity=".25"><animateTransform
+        attributeName="transform"
+        dur="22s"
+        from="0 27 27"
+        repeatCount="indefinite"
+        to="360 27 27"
+        type="rotate"
+      /></circle><circle cx="27" cy="27" r="2.8" fill="#bdd400" fill-opacity=".75"><animate
+        attributeName="fill-opacity"
+        dur="3s"
+        repeatCount="indefinite"
+        values=".4;.9;.4"
+      /></circle><g><animateTransform
+        attributeName="transform"
+        dur="11s"
+        from="0 27 27"
+        repeatCount="indefinite"
+        to="360 27 27"
+        type="rotate"
+      /><circle cx="38" cy="27" r="1.8" fill="#9ff4ff" fill-opacity=".6" /></g></g></svg>

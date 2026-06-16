@@ -2,20 +2,20 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 )
 
 // handleListMaps returns the distinct map names present in dune.actors, for use
 // as a dropdown in the event editor and other forms.
 func handleListMaps(w http.ResponseWriter, r *http.Request) {
-	if globalDB == nil {
+	db := dbFromCtx(r)
+	if db == nil {
 		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
 		return
 	}
-	maps, err := cmdFetchDistinctMaps(r.Context(), globalDB)
+	maps, err := cmdFetchDistinctMaps(r.Context(), db)
 	if err != nil {
-		log.Printf("handleListMaps: %v", err)
+		componentLog("handlers").Error().Err(err).Msg("fetch distinct maps failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
@@ -42,13 +42,14 @@ func handleGetMapMarkers(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, http.StatusBadRequest)
 		return
 	}
-	if globalDB == nil {
+	db := dbFromCtx(r)
+	if db == nil {
 		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
 		return
 	}
-	markers, err := cmdFetchMapMarkers(r.Context(), globalDB, mapKey)
+	markers, err := cmdFetchMapMarkers(r.Context(), db, mapKey)
 	if err != nil {
-		log.Printf("handleGetMapMarkers: %v", err)
+		componentLog("handlers").Error().Str("map_key", mapKey).Err(err).Msg("fetch map markers failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}

@@ -149,7 +149,14 @@ export const DirectorTab: React.FC = () => {
     return (
       <div className="flex flex-col h-full gap-3">
         <PageHeader title={t('director.title')} />
-        <div className="text-sm text-muted py-8 text-center">{t('director.unsupported')}</div>
+        <Panel>
+          <div className="flex items-center gap-4">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
+              <Icon name="triangle-alert" />
+            </div>
+            <p className="text-sm text-muted">{t('director.unsupported')}</p>
+          </div>
+        </Panel>
       </div>
     )
   }

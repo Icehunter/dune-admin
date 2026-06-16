@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,7 +52,7 @@ func loadWebInterfaces() {
 	}
 	var list []webInterface
 	if err := json.Unmarshal(data, &list); err != nil {
-		log.Printf("web-interfaces: config parse: %v", err)
+		componentLog("web_interfaces").Error().Err(err).Msg("config parse failed")
 		webIfaces = []webInterface{}
 		return
 	}

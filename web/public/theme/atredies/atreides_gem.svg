@@ -1,87 +1,115 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">Atreides Faceted Gem Reward Icon</title>
-  <desc id="desc">A transparent sci-fi rewards icon showing a faceted green gemstone framed in muted gold heraldic geometry.</desc>
-  <defs>
-    <linearGradient id="gold" x1="54" y1="18" x2="202" y2="238" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f2dc84"/>
-      <stop offset="0.36" stop-color="#b99a39"/>
-      <stop offset="0.72" stop-color="#d5bd61"/>
-      <stop offset="1" stop-color="#7f691d"/>
-    </linearGradient>
-    <linearGradient id="goldDark" x1="58" y1="24" x2="194" y2="226" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#866d21"/>
-      <stop offset="1" stop-color="#3e3515"/>
-    </linearGradient>
-    <linearGradient id="gemBase" x1="82" y1="36" x2="174" y2="219" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#9fc496"/>
-      <stop offset="0.34" stop-color="#3d7b4d"/>
-      <stop offset="0.74" stop-color="#17472b"/>
-      <stop offset="1" stop-color="#082918"/>
-    </linearGradient>
-    <linearGradient id="sage" x1="94" y1="50" x2="142" y2="144" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#e6f1c7" stop-opacity="0.92"/>
-      <stop offset="1" stop-color="#a5c791" stop-opacity="0.32"/>
-    </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#07130b" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-
-  <!-- Outer heraldic frame -->
-  <g filter="url(#softShadow)">
-    <path d="M128 14 151 47 204 72 197 129 222 170 181 188 160 232 128 244 96 232 75 188 34 170 59 129 52 72 105 47Z" fill="url(#gold)"/>
-    <path d="M128 31 144 56 188 78 181 130 199 160 166 174 148 215 128 225 108 215 90 174 57 160 75 130 68 78 112 56Z" fill="#0d321e"/>
-    <path d="M128 39 140 62 176 83 168 133 185 153 156 166 140 202 128 214 116 202 100 166 71 153 88 133 80 83 116 62Z" fill="url(#goldDark)" opacity="0.72"/>
-  </g>
-
-  <!-- Side protective plates -->
-  <g opacity="0.98">
-    <path d="M45 104 70 121 83 173 62 187 47 149Z" fill="url(#gold)"/>
-    <path d="M211 104 186 121 173 173 194 187 209 149Z" fill="url(#gold)"/>
-    <path d="M58 126 72 137 79 166 66 174 57 147Z" fill="#123b24"/>
-    <path d="M198 126 184 137 177 166 190 174 199 147Z" fill="#123b24"/>
-    <path d="M58 120 80 135" stroke="#f3df87" stroke-width="2" stroke-linecap="round" opacity="0.65"/>
-    <path d="M198 120 176 135" stroke="#f3df87" stroke-width="2" stroke-linecap="round" opacity="0.65"/>
-  </g>
-
-  <!-- Central gemstone silhouette -->
-  <g>
-    <path d="M128 45 174 76 164 158 128 219 92 158 82 76Z" fill="url(#gemBase)" stroke="#c6d89f" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M128 45 118 112 82 76Z" fill="#c9dfad" opacity="0.72"/>
-    <path d="M128 45 138 112 174 76Z" fill="#6fa165" opacity="0.62"/>
-    <path d="M82 76 118 112 92 158Z" fill="#76a96e" opacity="0.48"/>
-    <path d="M174 76 138 112 164 158Z" fill="#245b37" opacity="0.7"/>
-    <path d="M118 112 128 219 92 158Z" fill="#235f37" opacity="0.85"/>
-    <path d="M138 112 128 219 164 158Z" fill="#0f3d25" opacity="0.82"/>
-    <path d="M118 112 138 112 128 219Z" fill="#4d8952" opacity="0.72"/>
-    <path d="M128 45 118 112 138 112Z" fill="#9bbb80" opacity="0.7"/>
-    <path d="M94 79 117 101 89 92Z" fill="#eef7d2" opacity="0.7"/>
-    <path d="M162 80 139 101 168 92Z" fill="#d6e8bd" opacity="0.38"/>
-  </g>
-
-  <!-- Facet lines -->
-  <g fill="none" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M128 45 128 219" stroke="#d9ecc1" stroke-width="1.6" opacity="0.65"/>
-    <path d="M82 76 118 112 128 219 138 112 174 76" stroke="#cfe6ad" stroke-width="1.15" opacity="0.58"/>
-    <path d="M92 158 118 112 138 112 164 158" stroke="#b9d39e" stroke-width="1.1" opacity="0.45"/>
-    <path d="M104 61 118 112 92 158" stroke="#eff8d6" stroke-width="0.9" opacity="0.35"/>
-    <path d="M152 61 138 112 164 158" stroke="#eff8d6" stroke-width="0.9" opacity="0.28"/>
-  </g>
-
-  <!-- Top noble crest -->
-  <g>
-    <path d="M128 14 151 47 136 66 128 97 120 66 105 47Z" fill="url(#gold)"/>
-    <path d="M128 28 138 49 130 63 128 83 126 63 118 49Z" fill="#102f1d" opacity="0.9"/>
-    <path d="M128 22 128 65" stroke="#fff1a5" stroke-width="1.4" opacity="0.72"/>
-    <path d="M112 47 128 56 144 47" fill="none" stroke="#80681f" stroke-width="1.6" opacity="0.55"/>
-  </g>
-
-  <!-- Gold bevel highlights -->
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M63 78 106 57 128 23" stroke="#fff0a0" stroke-width="2" opacity="0.62"/>
-    <path d="M193 78 150 57 128 23" stroke="#fff0a0" stroke-width="2" opacity="0.42"/>
-    <path d="M97 226 128 236 159 226" stroke="#e5ce68" stroke-width="2" opacity="0.6"/>
-    <path d="M78 131 59 160" stroke="#e7d176" stroke-width="2" opacity="0.65"/>
-    <path d="M178 131 197 160" stroke="#e7d176" stroke-width="2" opacity="0.52"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-labelledby="title desc"
+  viewBox="0 0 256 256"
+><title>Atreides Faceted Gem Reward Icon</title><desc
+  >A transparent sci-fi rewards icon showing a faceted green gemstone framed in muted gold heraldic geometry.</desc><defs
+  ><linearGradient id="b" x1="54" x2="202" y1="18" y2="238" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#f2dc84"
+      /><stop offset=".36" stop-color="#b99a39" /><stop offset=".72" stop-color="#d5bd61" /><stop
+        offset="1"
+        stop-color="#7f691d"
+      /></linearGradient><linearGradient id="c" x1="58" x2="194" y1="24" y2="226" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#866d21"
+      /><stop offset="1" stop-color="#3e3515" /></linearGradient><linearGradient
+      id="d"
+      x1="82"
+      x2="174"
+      y1="36"
+      y2="219"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#9fc496" /><stop offset=".34" stop-color="#3d7b4d" /><stop
+        offset=".74"
+        stop-color="#17472b"
+      /><stop offset="1" stop-color="#082918" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="4" flood-color="#07130b" flood-opacity=".35" stdDeviation="3" /></filter></defs><g
+    filter="url(#a)"
+  ><path fill="url(#b)" d="m128 14 23 33 53 25-7 57 25 41-41 18-21 44-32 12-32-12-21-44-41-18 25-41-7-57 53-25Z" /><path
+      fill="#0d321e"
+      d="m128 31 16 25 44 22-7 52 18 30-33 14-18 41-20 10-20-10-18-41-33-14 18-30-7-52 44-22Z"
+    /><path
+      fill="url(#c)"
+      d="m128 39 12 23 36 21-8 50 17 20-29 13-16 36-12 12-12-12-16-36-29-13 17-20-8-50 36-21Z"
+      opacity=".72"
+    /></g><g opacity=".98"><path fill="url(#b)" d="m45 104 25 17 13 52-21 14-15-38Z" /><path
+      fill="url(#b)"
+      d="m211 104-25 17-13 52 21 14 15-38Z"
+    /><path fill="#123b24" d="m58 126 14 11 7 29-13 8-9-27Zm140 0-14 11-7 29 13 8 9-27Z" /><path
+      stroke="#f3df87"
+      stroke-linecap="round"
+      stroke-width="2"
+      d="m58 120 22 15m118-15-22 15"
+      opacity=".65"
+    /></g><path
+    fill="url(#d)"
+    stroke="#c6d89f"
+    stroke-linejoin="round"
+    stroke-width="2"
+    d="m128 45 46 31-10 82-36 61-36-61-10-82Z"
+  /><path fill="#c9dfad" d="m128 45-10 67-36-36Z" opacity=".72" /><path
+    fill="#6fa165"
+    d="m128 45 10 67 36-36Z"
+    opacity=".62"
+  /><path fill="#76a96e" d="m82 76 36 36-26 46Z" opacity=".48" /><path
+    fill="#245b37"
+    d="m174 76-36 36 26 46Z"
+    opacity=".7"
+  /><path fill="#235f37" d="m118 112 10 107-36-61Z" opacity=".85" /><path
+    fill="#0f3d25"
+    d="m138 112-10 107 36-61Z"
+    opacity=".82"
+  /><path fill="#4d8952" d="M118 112h20l-10 107Z" opacity=".72" /><path
+    fill="#9bbb80"
+    d="m128 45-10 67h20Z"
+    opacity=".7"
+  /><path fill="#eef7d2" d="m94 79 23 22-28-9Z" opacity=".7" /><path
+    fill="#d6e8bd"
+    d="m162 80-23 21 29-9Z"
+    opacity=".38"
+  /><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path
+      stroke="#d9ecc1"
+      stroke-width="1.6"
+      d="M128 45v174"
+      opacity=".65"
+    /><path stroke="#cfe6ad" stroke-width="1.15" d="m82 76 36 36 10 107 10-107 36-36" opacity=".58" /><path
+      stroke="#b9d39e"
+      stroke-width="1.1"
+      d="m92 158 26-46h20l26 46"
+      opacity=".45"
+    /><path stroke="#eff8d6" stroke-width=".9" d="m104 61 14 51-26 46" opacity=".35" /><path
+      stroke="#eff8d6"
+      stroke-width=".9"
+      d="m152 61-14 51 26 46"
+      opacity=".28"
+    /></g><path fill="url(#b)" d="m128 14 23 33-15 19-8 31-8-31-15-19Z" /><path
+    fill="#102f1d"
+    d="m128 28 10 21-8 14-2 20-2-20-8-14Z"
+    opacity=".9"
+  /><path stroke="#fff1a5" stroke-width="1.4" d="M128 22v43" opacity=".72" /><path
+    fill="none"
+    stroke="#80681f"
+    stroke-width="1.6"
+    d="m112 47 16 9 16-9"
+    opacity=".55"
+  /><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path
+      stroke="#fff0a0"
+      d="m63 78 43-21 22-34"
+      opacity=".62"
+    /><path stroke="#fff0a0" d="m193 78-43-21-22-34" opacity=".42" /><path
+      stroke="#e5ce68"
+      d="m97 226 31 10 31-10"
+      opacity=".6"
+    /><path stroke="#e7d176" d="m78 131-19 29" opacity=".65" /><path
+      stroke="#e7d176"
+      d="m178 131 19 29"
+      opacity=".52"
+    /></g></svg>

@@ -11,6 +11,115 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+// ── server context fakes ──────────────────────────────────────────────────────
+
+// statusFakeControl embeds stubControlPlane and scripts GetStatus for
+// discord-status tests. stubControlPlane is defined in
+// handlers_server_settings_ini_dir_test.go.
+type statusFakeControl struct {
+	stubControlPlane
+	statusResult *BattlegroupStatus
+	statusErr    error
+}
+
+func (f *statusFakeControl) GetStatus(_ context.Context, _ Executor) (*BattlegroupStatus, error) {
+	return f.statusResult, f.statusErr
+}
+
+// ── applyControlStatus ────────────────────────────────────────────────────────
+
+func TestApplyControlStatus_NilControl(t *testing.T) {
+	t.Parallel()
+	sc := &ServerContext{} // Control is nil
+	data := statusEmbedData{State: serverStateOffline}
+	applyControlStatus(context.Background(), sc, &data)
+	if data.State != serverStateOffline {
+		t.Errorf("state = %v, want offline (nil control must be a no-op)", data.State)
+	}
+}
+
+func TestApplyControlStatus_UsesServerContextControl(t *testing.T) {
+	t.Parallel()
+	ctrl := &statusFakeControl{
+		statusResult: &BattlegroupStatus{
+			Servers: []ServerRow{
+				{Map: "Hagga Basin", Phase: "Running", Ready: true, Players: 3},
+			},
+		},
+	}
+	sc := &ServerContext{Control: ctrl}
+	data := statusEmbedData{State: serverStateOffline}
+	applyControlStatus(context.Background(), sc, &data)
+	if data.State != serverStateOnline {
+		t.Errorf("state = %v, want online", data.State)
+	}
+	if data.CurrentOnline != 3 {
+		t.Errorf("CurrentOnline = %d, want 3", data.CurrentOnline)
+	}
+	if len(data.Maps) != 1 || data.Maps[0].Map != "Hagga Basin" {
+		t.Errorf("Maps = %+v, want [{Hagga Basin 3}]", data.Maps)
+	}
+}
+
+func TestApplyControlStatus_ControlError(t *testing.T) {
+	t.Parallel()
+	ctrl := &statusFakeControl{statusErr: errors.New("control plane error")}
+	sc := &ServerContext{Control: ctrl}
+	data := statusEmbedData{State: serverStateOffline}
+	applyControlStatus(context.Background(), sc, &data)
+	// error → offline, no panic
+	if data.State != serverStateOffline {
+		t.Errorf("state = %v, want offline on error", data.State)
+	}
+}
+
+// ── applyDBStats ──────────────────────────────────────────────────────────────
+
+func TestApplyDBStats_NilDB(t *testing.T) {
+	t.Parallel()
+	sc := &ServerContext{} // DB is nil
+	data := statusEmbedData{TotalPlayers: 99}
+	applyDBStats(context.Background(), sc, &data)
+	if data.TotalPlayers != 99 {
+		t.Errorf("TotalPlayers changed, want 99 got %d", data.TotalPlayers)
+	}
+}
+
+// ── collectStatusData ─────────────────────────────────────────────────────────
+
+func TestCollectStatusData_NilServerContext(t *testing.T) {
+	t.Parallel()
+	data := collectStatusData(context.Background(), nil, nil)
+	if data.State != serverStateOffline {
+		t.Errorf("state = %v, want offline for nil ServerContext", data.State)
+	}
+}
+
+func TestCollectStatusData_OnlineServerContext(t *testing.T) {
+	t.Parallel()
+	ctrl := &statusFakeControl{
+		statusResult: &BattlegroupStatus{
+			Servers: []ServerRow{
+				{Map: "Deep Desert", Phase: "Running", Ready: true, Players: 7},
+			},
+		},
+	}
+	sdb, err := openUnifiedStore(":memory:")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer func() { _ = sdb.Close() }()
+
+	sc := &ServerContext{Control: ctrl, StoreScope: defaultServerID}
+	data := collectStatusData(context.Background(), sc, sdb)
+	if data.State != serverStateOnline {
+		t.Errorf("state = %v, want online", data.State)
+	}
+	if data.CurrentOnline != 7 {
+		t.Errorf("CurrentOnline = %d, want 7", data.CurrentOnline)
+	}
+}
+
 // ── embed builder ─────────────────────────────────────────────────────────────
 
 func TestBuildStatusEmbed(t *testing.T) {
@@ -281,8 +390,11 @@ func TestSqliteStatusStore_RoundTrip(t *testing.T) {
 		t.Fatalf("open store: %v", err)
 	}
 	defer func() { _ = db.Close() }()
+	if _, err := db.Exec(`INSERT INTO servers (id, name, position) VALUES (?, 'srv', 0)`, defaultServerID); err != nil {
+		t.Fatalf("insert server: %v", err)
+	}
 
-	store := newSqliteStatusStore(db)
+	store := newSqliteStatusStore(db, defaultServerID)
 
 	// Fresh store: empty values, no error.
 	ch, msg, err := store.loadStatusMessage()
@@ -322,6 +434,9 @@ func TestCountUniquePlayers24h(t *testing.T) {
 		t.Fatalf("open store: %v", err)
 	}
 	defer func() { _ = db.Close() }()
+	if _, err := db.Exec(`INSERT INTO servers (id, name, position) VALUES (?, 'srv', 0)`, defaultServerID); err != nil {
+		t.Fatalf("insert server: %v", err)
+	}
 
 	now := time.Date(2026, 6, 13, 12, 0, 0, 0, time.UTC)
 	recent := now.Add(-2 * time.Hour).Format(time.RFC3339)
@@ -330,7 +445,7 @@ func TestCountUniquePlayers24h(t *testing.T) {
 
 	// account 1 appears twice (recent + old), account 2 once recent, account 3 old only.
 	insert := func(acct int64, started string) {
-		if _, e := db.Exec(`INSERT INTO play_sessions(account_id, started_at) VALUES(?, ?)`, acct, started); e != nil {
+		if _, e := db.Exec(`INSERT INTO play_sessions(server_id, account_id, started_at) VALUES(?, ?, ?)`, defaultServerID, acct, started); e != nil {
 			t.Fatalf("insert: %v", e)
 		}
 	}
@@ -339,7 +454,7 @@ func TestCountUniquePlayers24h(t *testing.T) {
 	insert(2, alsoRecent)
 	insert(3, old)
 
-	count, err := countUniquePlayers24h(context.Background(), db, now)
+	count, err := countUniquePlayers24h(context.Background(), db, defaultServerID, now)
 	if err != nil {
 		t.Fatalf("count: %v", err)
 	}
@@ -349,7 +464,7 @@ func TestCountUniquePlayers24h(t *testing.T) {
 }
 
 func TestCountUniquePlayers24h_NilDB(t *testing.T) {
-	count, err := countUniquePlayers24h(context.Background(), nil, time.Now())
+	count, err := countUniquePlayers24h(context.Background(), nil, defaultServerID, time.Now())
 	if err != nil {
 		t.Fatalf("nil db should be a graceful zero, got err: %v", err)
 	}
@@ -435,31 +550,63 @@ func TestRunStatusLoop_StopsOnContextCancel(t *testing.T) {
 	}
 }
 
-func TestApplyDiscordStatusLoop_TogglesCorrectly(t *testing.T) {
-	// Disabled config must not start a loop.
-	stopDiscordStatusLoop()
-	applyDiscordStatusLoop(appConfig{})
-	if statusLoopRunning() {
-		t.Error("loop should not be running when disabled")
+func TestApplyDiscordStatusLoops_TogglesCorrectly(t *testing.T) {
+	// Swap in an in-memory guilds store for the duration of the test.
+	prevStore := globalDiscordGuildsStore
+	t.Cleanup(func() {
+		globalDiscordGuildsStore = prevStore
+		stopDiscordStatusLoop()
+	})
+
+	db := openMemUnifiedStoreFK(t)
+	sid := int(insertTestServer(t, db, "S"))
+	store := newDiscordGuildsStore(db)
+	globalDiscordGuildsStore = store
+	if err := store.upsertGuild(discordGuild{GuildID: "g1"}); err != nil {
+		t.Fatalf("upsert guild: %v", err)
 	}
 
-	// Enabled but no channel → still no loop.
-	tr := true
-	applyDiscordStatusLoop(appConfig{DiscordStatusEnabled: &tr})
+	// No links → no loops.
+	stopDiscordStatusLoop()
+	applyDiscordStatusLoops()
+	if statusLoopRunning() {
+		t.Error("loop should not run with no links")
+	}
+
+	upsert := func(link discordServerLink) {
+		if err := store.upsertServerLink(link); err != nil {
+			t.Fatalf("upsert server link: %v", err)
+		}
+	}
+
+	// Status disabled → no loop.
+	upsert(discordServerLink{ServerID: sid, GuildID: "g1", StatusEnabled: false, StatusChannelID: "chan-1"})
+	applyDiscordStatusLoops()
+	if statusLoopRunning() {
+		t.Error("loop should not run when status disabled")
+	}
+
+	// Enabled but no channel → no loop.
+	upsert(discordServerLink{ServerID: sid, GuildID: "g1", StatusEnabled: true, StatusChannelID: ""})
+	applyDiscordStatusLoops()
 	if statusLoopRunning() {
 		t.Error("loop should not run without a channel id")
 	}
 
 	// Enabled with channel → loop runs.
-	applyDiscordStatusLoop(appConfig{DiscordStatusEnabled: &tr, DiscordStatusChannelID: "chan-1"})
+	upsert(discordServerLink{ServerID: sid, GuildID: "g1", StatusEnabled: true, StatusChannelID: "chan-1"})
+	applyDiscordStatusLoops()
 	if !statusLoopRunning() {
-		t.Error("loop should be running when enabled with a channel")
+		t.Error("loop should run when enabled with a channel")
 	}
 
-	// Disabling again stops it.
-	applyDiscordStatusLoop(appConfig{})
+	// Removing the link stops it.
+	if err := store.deleteServerLink(sid); err != nil {
+		t.Fatalf("delete server link: %v", err)
+	}
+	applyDiscordStatusLoops()
 	if statusLoopRunning() {
-		t.Error("loop should stop when toggled off")
+		t.Error("loop should stop when the only enabled link is removed")
 	}
 }
 

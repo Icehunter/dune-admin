@@ -383,9 +383,11 @@ spec:
 		fmt.Print(out.String())
 		return nil
 	}
+	// #nosec G703 G304 -- outPath is the operator-supplied --render-k8s CLI flag (the operator chooses where to write the manifest), not untrusted input.
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return fmt.Errorf("create output directory: %w", err)
 	}
+	// #nosec G703 G304 -- outPath is the operator-supplied --render-k8s CLI flag, not untrusted input.
 	if err := os.WriteFile(outPath, []byte(out.String()), 0o644); err != nil {
 		return fmt.Errorf("write manifest %s: %w", outPath, err)
 	}

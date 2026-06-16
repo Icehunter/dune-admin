@@ -1,110 +1,121 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Sci-fi reward loot crate icon">
-  <defs>
-    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#303234"/>
-      <stop offset="0.52" stop-color="#151719"/>
-      <stop offset="1" stop-color="#050607"/>
-    </linearGradient>
-    <linearGradient id="darkMetal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#24272a"/>
-      <stop offset="0.55" stop-color="#0c0e10"/>
-      <stop offset="1" stop-color="#010203"/>
-    </linearGradient>
-    <linearGradient id="redGlow" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#620006"/>
-      <stop offset="0.5" stop-color="#ff171f"/>
-      <stop offset="1" stop-color="#7a0008"/>
-    </linearGradient>
-    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur stdDeviation="2.2" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <style>
-      .outline{stroke:#020303;stroke-width:4;stroke-linejoin:round;stroke-linecap:round}
-      .edge{stroke:#55595b;stroke-width:2;stroke-linejoin:round;stroke-linecap:round;opacity:.75}
-      .seam{stroke:#0a0c0e;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
-      .red{fill:url(#redGlow);filter:url(#glow)}
-      .redStroke{stroke:#ef1119;stroke-width:3;filter:url(#glow);stroke-linejoin:round;stroke-linecap:round}
-    </style>
-  </defs>
-
-  <!-- Transparent canvas: no background rect. -->
-
-  <!-- Back body silhouette -->
-  <path class="outline" fill="url(#darkMetal)" d="M25 79 L48 43 H86 L101 60 H155 L170 43 H208 L231 79 L238 197 L219 220 H37 L18 197 Z"/>
-
-  <!-- Top left armor -->
-  <path class="outline" fill="url(#metal)" d="M28 82 L51 49 H82 L95 68 L85 108 H36 Z"/>
-  <path class="edge" fill="none" d="M51 49 L67 81 L36 108 M82 49 L95 68"/>
-  <path class="seam" fill="#0b0d0f" d="M93 66 L112 61 L104 109 L86 108 Z"/>
-
-  <!-- Top right armor -->
-  <path class="outline" fill="url(#metal)" d="M228 82 L205 49 H174 L161 68 L171 108 H220 Z"/>
-  <path class="edge" fill="none" d="M205 49 L189 81 L220 108 M174 49 L161 68"/>
-  <path class="seam" fill="#0b0d0f" d="M163 66 L144 61 L152 109 L170 108 Z"/>
-
-  <!-- Upper panels -->
-  <path class="outline" fill="#111416" d="M83 64 L111 57 L105 116 L64 117 L55 99 Z"/>
-  <path class="outline" fill="#111416" d="M173 64 L145 57 L151 116 L192 117 L201 99 Z"/>
-  <path class="edge" fill="none" d="M65 116 L84 92 L105 116 M191 116 L172 92 L151 116"/>
-
-  <!-- Crimson top slits -->
-  <path class="red" d="M79 78 L112 74 L110 81 L82 85 Z"/>
-  <path class="red" d="M177 78 L144 74 L146 81 L174 85 Z"/>
-  <path class="outline" fill="#050607" d="M80 91 L103 98 L99 106 L76 99 Z"/>
-  <path class="outline" fill="#050607" d="M176 91 L153 98 L157 106 L180 99 Z"/>
-  <path class="red" d="M84 93 L91 95 L88 103 L81 101 Z M95 97 L102 99 L99 107 L92 105 Z"/>
-  <path class="red" d="M172 93 L165 95 L168 103 L175 101 Z M161 97 L154 99 L157 107 L164 105 Z"/>
-
-  <!-- Main side boxes -->
-  <path class="outline" fill="url(#darkMetal)" d="M26 110 H82 L99 131 L95 213 H38 L23 194 Z"/>
-  <path class="outline" fill="url(#darkMetal)" d="M230 110 H174 L157 131 L161 213 H218 L233 194 Z"/>
-  <path class="edge" fill="none" d="M36 129 H76 L92 147 M220 129 H180 L164 147"/>
-
-  <!-- Red horizontal energy band -->
-  <path class="redStroke" fill="none" d="M25 123 H79 L99 139 H112"/>
-  <path class="redStroke" fill="none" d="M231 123 H177 L157 139 H144"/>
-  <path stroke="#4b0005" stroke-width="9" opacity=".8" fill="none" d="M25 132 H75 L96 148 H112 M231 132 H181 L160 148 H144"/>
-  <path class="redStroke" fill="none" d="M25 132 H75 L96 148 H112"/>
-  <path class="redStroke" fill="none" d="M231 132 H181 L160 148 H144"/>
-
-  <!-- Side vent frames -->
-  <path class="outline" fill="#080a0c" d="M45 158 L82 148 L93 172 L82 204 H49 L38 186 Z"/>
-  <path class="outline" fill="#080a0c" d="M211 158 L174 148 L163 172 L174 204 H207 L218 186 Z"/>
-  <g filter="url(#glow)">
-    <path fill="#ec1018" d="M53 168 H60 V196 H53 Z M66 163 H73 V196 H66 Z M79 169 H86 V196 H79 Z"/>
-    <path fill="#ec1018" d="M203 168 H196 V196 H203 Z M190 163 H183 V196 H190 Z M177 169 H170 V196 H177 Z"/>
-  </g>
-  <path opacity=".45" stroke="#2b0003" stroke-width="3" d="M54 191 L62 170 M67 191 L75 165 M80 191 L88 170 M202 191 L194 170 M189 191 L181 165 M176 191 L168 170"/>
-
-  <!-- Central spine / lock housing -->
-  <path class="outline" fill="url(#metal)" d="M111 45 H145 L153 84 L149 213 L135 229 H121 L107 213 L103 84 Z"/>
-  <path class="edge" fill="none" d="M111 45 L120 82 H136 L145 45 M107 213 L122 198 H134 L149 213"/>
-  <path class="outline" fill="#0b0d0f" d="M120 58 H136 L140 83 L133 94 H123 L116 83 Z"/>
-  <path class="red" d="M124 62 H132 L134 82 L129 89 H127 L122 82 Z"/>
-
-  <!-- Central shield plate -->
-  <path class="outline" fill="#090b0d" d="M128 102 L153 126 L143 196 L128 212 L113 196 L103 126 Z"/>
-  <path class="edge" fill="none" d="M128 102 L128 212 M105 127 H151" opacity=".35"/>
-
-  <!-- Emblem -->
-  <path class="red" d="M128 112 L136 154 L147 154 L134 165 L128 193 L122 165 L109 154 L120 154 Z"/>
-  <path class="red" fill="none" stroke="#e50912" stroke-width="5" filter="url(#glow)" d="M108 161 C109 144 116 134 128 128 C140 134 147 144 148 161"/>
-
-  <!-- Central lower red vents -->
-  <path class="outline" fill="#050607" d="M116 193 L128 181 L140 193 L135 219 H121 Z"/>
-  <path class="red" d="M121 193 L127 186 V215 H121 Z M135 193 L129 186 V215 H135 Z"/>
-
-  <!-- Lower armor and feet -->
-  <path class="outline" fill="url(#metal)" d="M26 198 L39 218 H95 L107 211 H149 L161 218 H217 L230 198 L220 228 H36 Z"/>
-  <path class="outline" fill="#090b0d" d="M96 216 H160 L150 235 H106 Z"/>
-  <path class="red" d="M117 224 H139 L143 230 H113 Z"/>
-
-  <!-- Angular highlights and small brutalist cuts -->
-  <path class="edge" fill="none" d="M42 85 L57 62 H79 M198 62 H214 L229 85 M39 207 H75 M181 207 H217"/>
-  <path fill="#020303" d="M35 188 L46 194 L39 201 Z M221 188 L210 194 L217 201 Z M51 213 L61 213 L55 221 Z M205 213 L195 213 L201 221 Z"/>
-  <path stroke="#1d2022" stroke-width="2" fill="none" d="M70 136 L90 153 L87 187 M186 136 L166 153 L169 187"/>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Sci-fi reward loot crate icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="metal" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#303234" /><stop
+        offset=".52"
+        stop-color="#151719"
+      /><stop offset="1" stop-color="#050607" /></linearGradient><linearGradient
+      id="darkMetal"
+      x1="0"
+      x2="1"
+      y1="0"
+      y2="1"
+    ><stop offset="0" stop-color="#24272a" /><stop offset=".55" stop-color="#0c0e10" /><stop
+        offset="1"
+        stop-color="#010203"
+      /></linearGradient><linearGradient id="redGlow" x1="0" x2="1" y1="0" y2="0"><stop
+        offset="0"
+        stop-color="#620006"
+      /><stop offset=".5" stop-color="#ff171f" /><stop offset="1" stop-color="#7a0008" /></linearGradient><filter
+      id="glow"
+      width="220%"
+      height="220%"
+      x="-60%"
+      y="-60%"
+    ><feGaussianBlur result="blur" stdDeviation="2.2" /><feMerge><feMergeNode in="blur" /><feMergeNode
+          in="SourceGraphic"
+        /></feMerge></filter><style
+    >.outline{stroke:#020303;stroke-width:4}.edge,.outline,.seam{stroke-linejoin:round;stroke-linecap:round}.edge{stroke:#55595b;stroke-width:2;opacity:.75}.seam{stroke:#0a0c0e;stroke-width:3}.red,.redStroke{filter:url(#glow)}.red{fill:url(#redGlow)}.redStroke{stroke:#ef1119;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}</style></defs><path
+    fill="url(#darkMetal)"
+    d="m25 79 23-36h38l15 17h54l15-17h38l23 36 7 118-19 23H37l-19-23Z"
+    class="outline"
+  /><path fill="url(#metal)" d="m28 82 23-33h31l13 19-10 40H36Z" class="outline" /><path
+    fill="none"
+    d="m51 49 16 32-31 27m46-59 13 19"
+    class="edge"
+  /><path fill="#0b0d0f" d="m93 66 19-5-8 48-18-1Z" class="seam" /><path
+    fill="url(#metal)"
+    d="m228 82-23-33h-31l-13 19 10 40h49Z"
+    class="outline"
+  /><path fill="none" d="m205 49-16 32 31 27m-46-59-13 19" class="edge" /><path
+    fill="#0b0d0f"
+    d="m163 66-19-5 8 48 18-1Z"
+    class="seam"
+  /><path fill="#111416" d="m83 64 28-7-6 59-41 1-9-18Zm90 0-28-7 6 59 41 1 9-18Z" class="outline" /><path
+    fill="none"
+    d="m65 116 19-24 21 24m86 0-19-24-21 24"
+    class="edge"
+  /><path d="m79 78 33-4-2 7-28 4Z" class="red" /><path d="m177 78-33-4 2 7 28 4Z" class="red" /><path
+    fill="#050607"
+    d="m80 91 23 7-4 8-23-7Zm96 0-23 7 4 8 23-7Z"
+    class="outline"
+  /><path d="m84 93 7 2-3 8-7-2Zm11 4 7 2-3 8-7-2Z" class="red" /><path
+    d="m172 93-7 2 3 8 7-2Zm-11 4-7 2 3 8 7-2Z"
+    class="red"
+  /><path fill="url(#darkMetal)" d="M26 110h56l17 21-4 82H38l-15-19Z" class="outline" /><path
+    fill="url(#darkMetal)"
+    d="M230 110h-56l-17 21 4 82h57l15-19Z"
+    class="outline"
+  /><path fill="none" d="M36 129h40l16 18m128-18h-40l-16 18" class="edge" /><path
+    fill="none"
+    d="M25 123h54l20 16h13"
+    class="redStroke"
+  /><path fill="none" d="M231 123h-54l-20 16h-13" class="redStroke" /><path
+    fill="none"
+    stroke="#4b0005"
+    stroke-width="9"
+    d="M25 132h50l21 16h16m119-16h-50l-21 16h-16"
+    opacity=".8"
+  /><path fill="none" d="M25 132h50l21 16h16" class="redStroke" /><path
+    fill="none"
+    d="M231 132h-50l-21 16h-16"
+    class="redStroke"
+  /><path fill="#080a0c" d="m45 158 37-10 11 24-11 32H49l-11-18Zm166 0-37-10-11 24 11 32h33l11-18Z" class="outline" /><g
+    filter="url(#glow)"
+  ><path
+      fill="#ec1018"
+      d="M53 168h7v28h-7Zm13-5h7v33h-7Zm13 6h7v27h-7Zm124-1h-7v28h7Zm-13-5h-7v33h7Zm-13 6h-7v27h7Z"
+    /></g><path
+    stroke="#2b0003"
+    stroke-width="3"
+    d="m54 191 8-21m5 21 8-26m5 26 8-21m114 21-8-21m-5 21-8-26m-5 26-8-21"
+    opacity=".45"
+  /><path fill="url(#metal)" d="M111 45h34l8 39-4 129-14 16h-14l-14-16-4-129Z" class="outline" /><path
+    fill="none"
+    d="m111 45 9 37h16l9-37m-38 168 15-15h12l15 15"
+    class="edge"
+  /><path fill="#0b0d0f" d="M120 58h16l4 25-7 11h-10l-7-11Z" class="outline" /><path
+    d="M124 62h8l2 20-5 7h-2l-5-7Z"
+    class="red"
+  /><path fill="#090b0d" d="m128 102 25 24-10 70-15 16-15-16-10-70Z" class="outline" /><path
+    fill="none"
+    d="M128 102v110m-23-85h46"
+    class="edge"
+    opacity=".35"
+  /><path d="m128 112 8 42h11l-13 11-6 28-6-28-13-11h11Z" class="red" /><path
+    fill="none"
+    stroke="#e50912"
+    stroke-width="5"
+    d="M108 161c1-17 8-27 20-33 12 6 19 16 20 33"
+    class="red"
+    filter="url(#glow)"
+  /><path fill="#050607" d="m116 193 12-12 12 12-5 26h-14Z" class="outline" /><path
+    d="m121 193 6-7v29h-6Zm14 0-6-7v29h6Z"
+    class="red"
+  /><path fill="url(#metal)" d="m26 198 13 20h56l12-7h42l12 7h56l13-20-10 30H36Z" class="outline" /><path
+    fill="#090b0d"
+    d="M96 216h64l-10 19h-44Z"
+    class="outline"
+  /><path d="M117 224h22l4 6h-30Z" class="red" /><path
+    fill="none"
+    d="m42 85 15-23h22m119 0h16l15 23M39 207h36m106 0h36"
+    class="edge"
+  /><path fill="#020303" d="m35 188 11 6-7 7Zm186 0-11 6 7 7ZM51 213h10l-6 8Zm154 0h-10l6 8Z" /><path
+    fill="none"
+    stroke="#1d2022"
+    stroke-width="2"
+    d="m70 136 20 17-3 34m99-51-20 17 3 34"
+  /></svg>

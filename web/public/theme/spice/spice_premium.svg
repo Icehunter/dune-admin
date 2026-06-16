@@ -1,87 +1,111 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Spice premium sci-fi rewards badge icon">
-  <defs>
-    <linearGradient id="gold" x1="50" y1="18" x2="206" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffe08a"/>
-      <stop offset="0.28" stop-color="#d88918"/>
-      <stop offset="0.62" stop-color="#8b3f0d"/>
-      <stop offset="1" stop-color="#f5b13f"/>
-    </linearGradient>
-    <linearGradient id="sand" x1="55" y1="88" x2="205" y2="190" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffd970"/>
-      <stop offset="0.52" stop-color="#c96d14"/>
-      <stop offset="1" stop-color="#6f2d0a"/>
-    </linearGradient>
-    <linearGradient id="starGold" x1="83" y1="64" x2="173" y2="198" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#fff0a6"/>
-      <stop offset="0.35" stop-color="#ffb329"/>
-      <stop offset="0.75" stop-color="#bb5310"/>
-      <stop offset="1" stop-color="#5d2409"/>
-    </linearGradient>
-    <linearGradient id="turquoise" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#9efff1"/>
-      <stop offset="0.48" stop-color="#20c8c9"/>
-      <stop offset="1" stop-color="#0c6570"/>
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#2b1104" flood-opacity="0.55"/>
-    </filter>
-  </defs>
-
-  <!-- Transparent outside icon; no background rectangle. -->
-  <g filter="url(#shadow)" stroke-linejoin="round" stroke-linecap="round">
-    <!-- Octagonal premium frame -->
-    <path d="M88 18h80l50 50v80l-50 50H88l-50-50V68z" fill="url(#gold)" stroke="#5a2307" stroke-width="5"/>
-    <path d="M94 33h68l41 41v68l-41 41H94l-41-41V74z" fill="#8f3d0b" stroke="#ffc95a" stroke-width="4"/>
-    <path d="M101 45h54l36 36v54l-36 36h-54l-36-36V81z" fill="none" stroke="#d77814" stroke-width="4"/>
-
-    <!-- Inner circular medallion -->
-    <circle cx="128" cy="128" r="72" fill="url(#sand)" stroke="#ffd76d" stroke-width="5"/>
-    <circle cx="128" cy="128" r="60" fill="none" stroke="#6f2d0a" stroke-width="4" opacity="0.75"/>
-    <circle cx="128" cy="128" r="48" fill="none" stroke="#e89222" stroke-width="2" opacity="0.65"/>
-
-    <!-- Desert dunes -->
-    <path d="M60 156c24-17 45-18 67-5 23 13 47 11 69-6-15 29-41 43-74 42-28-1-50-11-62-31z" fill="#f4b947" opacity="0.9"/>
-    <path d="M70 169c24-13 43-12 64 0 20 12 38 9 57-6-14 21-37 31-67 29-22-2-40-8-54-23z" fill="#b9550e" opacity="0.55"/>
-    <path d="M82 158c22-9 37-7 54 4" fill="none" stroke="#ffe08a" stroke-width="3" opacity="0.8"/>
-
-    <!-- Sci-fi ornament ticks and arcs -->
-    <path d="M77 78c18-16 34-23 51-23s33 7 51 23" fill="none" stroke="#ffb335" stroke-width="2" opacity="0.7"/>
-    <path d="M77 178c18 16 34 23 51 23s33-7 51-23" fill="none" stroke="#ffb335" stroke-width="2" opacity="0.55"/>
-    <g stroke="#ffcb57" stroke-width="3" opacity="0.8">
-      <path d="M74 96l-8-6"/><path d="M182 90l-8 6"/>
-      <path d="M74 160l-8 6"/><path d="M182 166l-8-6"/>
-      <path d="M103 55v9"/><path d="M153 55v9"/>
-      <path d="M103 192v9"/><path d="M153 192v9"/>
-    </g>
-
-    <!-- Central desert star -->
-    <g>
-      <path d="M128 54l13 55 50-25-25 50 55 13-55 13 25 50-50-25-13 55-13-55-50 25 25-50-55-13 55-13-25-50 50 25z" fill="url(#starGold)" stroke="#5a2307" stroke-width="2.5"/>
-      <path d="M128 54v93l13-38z" fill="#fff2aa" opacity="0.85"/>
-      <path d="M128 54l-13 55 13 38z" fill="#ffb22c" opacity="0.9"/>
-      <path d="M221 147h-93l38 13z" fill="#ffcf61" opacity="0.8"/>
-      <path d="M128 240v-93l-13 38z" fill="#7c3009" opacity="0.7"/>
-      <path d="M35 147h93l-38-13z" fill="#c75c0e" opacity="0.85"/>
-      <circle cx="128" cy="147" r="4" fill="#fff0a4"/>
-    </g>
-
-    <!-- Turquoise gem accents -->
-    <g>
-      <path d="M128 20l16 20-16 30-16-30z" fill="url(#turquoise)" stroke="#ffd76d" stroke-width="4"/>
-      <path d="M128 186l16 30-16 20-16-20z" fill="url(#turquoise)" stroke="#ffd76d" stroke-width="4"/>
-      <path d="M20 128l20-16 30 16-30 16z" fill="url(#turquoise)" stroke="#ffd76d" stroke-width="4"/>
-      <path d="M186 128l30-16 20 16-20 16z" fill="url(#turquoise)" stroke="#ffd76d" stroke-width="4"/>
-      <g stroke="#e6fffb" stroke-width="1.5" opacity="0.75">
-        <path d="M128 26v38M116 40h24"/>
-        <path d="M128 192v38M116 216h24"/>
-        <path d="M26 128h38M40 116v24"/>
-        <path d="M192 128h38M216 116v24"/>
-      </g>
-    </g>
-
-    <!-- Outer metallic highlights -->
-    <path d="M91 25h74l44 44" fill="none" stroke="#ffe79a" stroke-width="4" opacity="0.55"/>
-    <path d="M47 145v-69l43-43" fill="none" stroke="#ffbd39" stroke-width="3" opacity="0.5"/>
-    <path d="M165 191H91l-44-44" fill="none" stroke="#4b1b04" stroke-width="4" opacity="0.35"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Spice premium sci-fi rewards badge icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="b" x1="50" x2="206" y1="18" y2="230" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#ffe08a"
+      /><stop offset=".28" stop-color="#d88918" /><stop offset=".62" stop-color="#8b3f0d" /><stop
+        offset="1"
+        stop-color="#f5b13f"
+      /></linearGradient><linearGradient id="c" x1="55" x2="205" y1="88" y2="190" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#ffd970"
+      /><stop offset=".52" stop-color="#c96d14" /><stop
+        offset="1"
+        stop-color="#6f2d0a"
+      /></linearGradient><linearGradient id="d" x1="83" x2="173" y1="64" y2="198" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#fff0a6"
+      /><stop offset=".35" stop-color="#ffb329" /><stop offset=".75" stop-color="#bb5310" /><stop
+        offset="1"
+        stop-color="#5d2409"
+      /></linearGradient><linearGradient id="e" x1="0" x2="1" y1="0" y2="1"><stop
+        offset="0"
+        stop-color="#9efff1"
+      /><stop offset=".48" stop-color="#20c8c9" /><stop offset="1" stop-color="#0c6570" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="4" flood-color="#2b1104" flood-opacity=".55" stdDeviation="3" /></filter></defs><g
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    filter="url(#a)"
+  ><path fill="url(#b)" stroke="#5a2307" stroke-width="5" d="M88 18h80l50 50v80l-50 50H88l-50-50V68z" /><path
+      fill="#8f3d0b"
+      stroke="#ffc95a"
+      stroke-width="4"
+      d="M94 33h68l41 41v68l-41 41H94l-41-41V74z"
+    /><path fill="none" stroke="#d77814" stroke-width="4" d="M101 45h54l36 36v54l-36 36h-54l-36-36V81z" /><circle
+      cx="128"
+      cy="128"
+      r="72"
+      fill="url(#c)"
+      stroke="#ffd76d"
+      stroke-width="5"
+    /><circle cx="128" cy="128" r="60" fill="none" stroke="#6f2d0a" stroke-width="4" opacity=".75" /><circle
+      cx="128"
+      cy="128"
+      r="48"
+      fill="none"
+      stroke="#e89222"
+      stroke-width="2"
+      opacity=".65"
+    /><path
+      fill="#f4b947"
+      d="M60 156c24-17 45-18 67-5 23 13 47 11 69-6-15 29-41 43-74 42-28-1-50-11-62-31"
+      opacity=".9"
+    /><path
+      fill="#b9550e"
+      d="M70 169c24-13 43-12 64 0 20 12 38 9 57-6-14 21-37 31-67 29-22-2-40-8-54-23"
+      opacity=".55"
+    /><path fill="none" stroke="#ffe08a" stroke-width="3" d="M82 158c22-9 37-7 54 4" opacity=".8" /><path
+      fill="none"
+      stroke="#ffb335"
+      stroke-width="2"
+      d="M77 78c18-16 34-23 51-23s33 7 51 23"
+      opacity=".7"
+    /><path fill="none" stroke="#ffb335" stroke-width="2" d="M77 178c18 16 34 23 51 23s33-7 51-23" opacity=".55" /><path
+      stroke="#ffcb57"
+      stroke-width="3"
+      d="m74 96-8-6m116 0-8 6M74 160l-8 6m116 0-8-6M103 55v9m50-9v9m-50 128v9m50-9v9"
+      opacity=".8"
+    /><path
+      fill="url(#d)"
+      stroke="#5a2307"
+      stroke-width="2.5"
+      d="m128 54 13 55 50-25-25 50 55 13-55 13 25 50-50-25-13 55-13-55-50 25 25-50-55-13 55-13-25-50 50 25z"
+    /><path fill="#fff2aa" d="M128 54v93l13-38z" opacity=".85" /><path
+      fill="#ffb22c"
+      d="m128 54-13 55 13 38z"
+      opacity=".9"
+    /><path fill="#ffcf61" d="M221 147h-93l38 13z" opacity=".8" /><path
+      fill="#7c3009"
+      d="M128 240v-93l-13 38z"
+      opacity=".7"
+    /><path fill="#c75c0e" d="M35 147h93l-38-13z" opacity=".85" /><circle cx="128" cy="147" r="4" fill="#fff0a4" /><path
+      fill="url(#e)"
+      stroke="#ffd76d"
+      stroke-width="4"
+      d="m128 20 16 20-16 30-16-30z"
+    /><path fill="url(#e)" stroke="#ffd76d" stroke-width="4" d="m128 186 16 30-16 20-16-20z" /><path
+      fill="url(#e)"
+      stroke="#ffd76d"
+      stroke-width="4"
+      d="m20 128 20-16 30 16-30 16z"
+    /><path fill="url(#e)" stroke="#ffd76d" stroke-width="4" d="m186 128 30-16 20 16-20 16z" /><path
+      stroke="#e6fffb"
+      stroke-width="1.5"
+      d="M128 26v38m-12-24h24m-12 152v38m-12-14h24M26 128h38m-24-12v24m152-12h38m-14-12v24"
+      opacity=".75"
+    /><path fill="none" stroke="#ffe79a" stroke-width="4" d="M91 25h74l44 44" opacity=".55" /><path
+      fill="none"
+      stroke="#ffbd39"
+      stroke-width="3"
+      d="M47 145V76l43-43"
+      opacity=".5"
+    /><path fill="none" stroke="#4b1b04" stroke-width="4" d="M165 191H91l-44-44" opacity=".35" /></g></svg>

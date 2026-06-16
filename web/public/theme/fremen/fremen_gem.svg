@@ -1,92 +1,88 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Faceted blue gemstone reward icon">
-  <defs>
-    <linearGradient id="core" x1="128" y1="18" x2="128" y2="238" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#62f6ff"/>
-      <stop offset="0.45" stop-color="#0799ff"/>
-      <stop offset="1" stop-color="#003b9c"/>
-    </linearGradient>
-    <linearGradient id="leftDark" x1="42" y1="128" x2="128" y2="128" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#07122f"/>
-      <stop offset="0.55" stop-color="#083c8c"/>
-      <stop offset="1" stop-color="#0ab7ff"/>
-    </linearGradient>
-    <linearGradient id="rightDark" x1="214" y1="128" x2="128" y2="128" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#050b22"/>
-      <stop offset="0.55" stop-color="#07337f"/>
-      <stop offset="1" stop-color="#0aa9ff"/>
-    </linearGradient>
-    <linearGradient id="cyanFacet" x1="80" y1="44" x2="176" y2="212" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#79fbff"/>
-      <stop offset="0.48" stop-color="#17cfff"/>
-      <stop offset="1" stop-color="#006ee6"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="128" cy="132" r="66" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7effff" stop-opacity="0.9"/>
-      <stop offset="0.35" stop-color="#1ecfff" stop-opacity="0.38"/>
-      <stop offset="1" stop-color="#003b9c" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="2.2" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-
-  <!-- Transparent canvas by default: no background rect. -->
-
-  <g stroke-linejoin="round" stroke-linecap="round">
-    <!-- Outer crystal silhouette and facets -->
-    <path d="M128 14 L210 108 L128 242 L46 108 Z" fill="#061232"/>
-    <path d="M128 14 L82 72 L46 108 L92 119 Z" fill="url(#leftDark)"/>
-    <path d="M128 14 L174 72 L210 108 L164 119 Z" fill="url(#rightDark)"/>
-    <path d="M46 108 L92 119 L78 184 Z" fill="#06499d"/>
-    <path d="M210 108 L164 119 L178 184 Z" fill="#052b77"/>
-    <path d="M46 108 L78 184 L128 242 L92 119 Z" fill="#061b55"/>
-    <path d="M210 108 L178 184 L128 242 L164 119 Z" fill="#04133f"/>
-    <path d="M128 14 L92 119 L128 104 L164 119 Z" fill="url(#cyanFacet)" opacity="0.92"/>
-    <path d="M92 119 L128 104 L164 119 L128 176 Z" fill="#06276f"/>
-    <path d="M92 119 L78 184 L128 242 L128 176 Z" fill="#063783"/>
-    <path d="M164 119 L178 184 L128 242 L128 176 Z" fill="#041c5d"/>
-    <path d="M128 14 L128 104 L112 84 Z" fill="#9cffff" opacity="0.6"/>
-    <path d="M128 14 L128 104 L144 84 Z" fill="#009cff" opacity="0.68"/>
-    <path d="M128 104 L111 149 L128 176 L145 149 Z" fill="#0b5dc2"/>
-
-    <!-- Glow behind sacred water mark -->
-    <circle cx="128" cy="137" r="59" fill="url(#glow)"/>
-
-    <!-- Facet edge lines -->
-    <g fill="none" stroke="#37eaff" stroke-width="2.2" opacity="0.9">
-      <path d="M128 14 L46 108 L128 242 L210 108 Z"/>
-      <path d="M82 72 L92 119 L78 184"/>
-      <path d="M174 72 L164 119 L178 184"/>
-      <path d="M46 108 L92 119 L128 104 L164 119 L210 108"/>
-      <path d="M92 119 L128 176 L164 119"/>
-      <path d="M128 14 L128 242" opacity="0.75"/>
-      <path d="M78 184 L128 176 L178 184" opacity="0.75"/>
-    </g>
-
-    <!-- Central sacred water-discipline emblem -->
-    <g filter="url(#softGlow)">
-      <path d="M128 76 L164 128 L128 190 L92 128 Z" fill="none" stroke="#7effff" stroke-width="4"/>
-      <path d="M128 91 L150 128 L128 166 L106 128 Z" fill="#06163f" opacity="0.72" stroke="#2fe7ff" stroke-width="2"/>
-      <path d="M128 111 C141 128 146 139 146 150 C146 164 138 174 128 174 C118 174 110 164 110 150 C110 139 115 128 128 111 Z" fill="none" stroke="#8effff" stroke-width="6"/>
-      <path d="M128 121 C136 134 139 143 139 151 C139 158 134 164 128 164 C122 164 117 158 117 151 C117 143 120 134 128 121 Z" fill="#5ff7ff" opacity="0.85"/>
-      <path d="M128 80 L128 111" stroke="#d7ffff" stroke-width="4"/>
-      <path d="M128 174 L128 196" stroke="#d7ffff" stroke-width="4"/>
-      <path d="M118 88 L128 78 L138 88 L128 98 Z" fill="#8fffff"/>
-      <path d="M116 201 L128 189 L140 201 L128 213 Z" fill="#59f6ff"/>
-      <path d="M96 128 L84 128" stroke="#6cf9ff" stroke-width="4"/>
-      <path d="M160 128 L172 128" stroke="#6cf9ff" stroke-width="4"/>
-    </g>
-
-    <!-- Minimal glints -->
-    <g fill="#d8ffff" opacity="0.9">
-      <path d="M128 28 L133 61 L128 79 L123 61 Z"/>
-      <circle cx="128" cy="153" r="3"/>
-      <circle cx="75" cy="108" r="2.2"/>
-      <circle cx="181" cy="108" r="2.2"/>
-    </g>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Faceted blue gemstone reward icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="a" x1="42" x2="128" y1="128" y2="128" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#07122f"
+      /><stop offset=".55" stop-color="#083c8c" /><stop
+        offset="1"
+        stop-color="#0ab7ff"
+      /></linearGradient><linearGradient id="b" x1="214" x2="128" y1="128" y2="128" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#050b22"
+      /><stop offset=".55" stop-color="#07337f" /><stop
+        offset="1"
+        stop-color="#0aa9ff"
+      /></linearGradient><linearGradient id="c" x1="80" x2="176" y1="44" y2="212" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#79fbff"
+      /><stop offset=".48" stop-color="#17cfff" /><stop
+        offset="1"
+        stop-color="#006ee6"
+      /></linearGradient><radialGradient id="d" cx="128" cy="132" r="66" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#7effff"
+        stop-opacity=".9"
+      /><stop offset=".35" stop-color="#1ecfff" stop-opacity=".38" /><stop
+        offset="1"
+        stop-color="#003b9c"
+        stop-opacity="0"
+      /></radialGradient><filter id="e" width="160%" height="160%" x="-30%" y="-30%"><feGaussianBlur
+        result="blur"
+        stdDeviation="2.2"
+      /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs><g
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  ><path fill="#061232" d="m128 14 82 94-82 134-82-134Z" /><path fill="url(#a)" d="M128 14 82 72l-36 36 46 11Z" /><path
+      fill="url(#b)"
+      d="m128 14 46 58 36 36-46 11Z"
+    /><path fill="#06499d" d="m46 108 46 11-14 65Z" /><path fill="#052b77" d="m210 108-46 11 14 65Z" /><path
+      fill="#061b55"
+      d="m46 108 32 76 50 58-36-123Z"
+    /><path fill="#04133f" d="m210 108-32 76-50 58 36-123Z" /><path
+      fill="url(#c)"
+      d="M128 14 92 119l36-15 36 15Z"
+      opacity=".92"
+    /><path fill="#06276f" d="m92 119 36-15 36 15-36 57Z" /><path fill="#063783" d="m92 119-14 65 50 58v-66Z" /><path
+      fill="#041c5d"
+      d="m164 119 14 65-50 58v-66Z"
+    /><path fill="#9cffff" d="M128 14v90l-16-20Z" opacity=".6" /><path
+      fill="#009cff"
+      d="M128 14v90l16-20Z"
+      opacity=".68"
+    /><path fill="#0b5dc2" d="m128 104-17 45 17 27 17-27Z" /><circle cx="128" cy="137" r="59" fill="url(#d)" /><g
+      fill="none"
+      stroke="#37eaff"
+      stroke-width="2.2"
+      opacity=".9"
+    ><path d="m128 14-82 94 82 134 82-134Z" /><path d="m82 72 10 47-14 65m96-112-10 47 14 65" /><path
+        d="m46 108 46 11 36-15 36 15 46-11M92 119l36 57 36-57"
+      /><path d="M128 14v228m-50-58 50-8 50 8" opacity=".75" /></g><g filter="url(#e)"><path
+        fill="none"
+        stroke="#7effff"
+        stroke-width="4"
+        d="m128 76 36 52-36 62-36-62Z"
+      /><path fill="#06163f" stroke="#2fe7ff" stroke-width="2" d="m128 91 22 37-22 38-22-38Z" opacity=".72" /><path
+        fill="none"
+        stroke="#8effff"
+        stroke-width="6"
+        d="M128 111c13 17 18 28 18 39 0 14-8 24-18 24s-18-10-18-24c0-11 5-22 18-39"
+      /><path
+        fill="#5ff7ff"
+        d="M128 121c8 13 11 22 11 30 0 7-5 13-11 13s-11-6-11-13c0-8 3-17 11-30"
+        opacity=".85"
+      /><path stroke="#d7ffff" stroke-width="4" d="M128 80v31m0 63v22" /><path
+        fill="#8fffff"
+        d="m118 88 10-10 10 10-10 10Z"
+      /><path fill="#59f6ff" d="m116 201 12-12 12 12-12 12Z" /><path
+        stroke="#6cf9ff"
+        stroke-width="4"
+        d="M96 128H84m76 0h12"
+      /></g><g fill="#d8ffff" opacity=".9"><path d="m128 28 5 33-5 18-5-18Z" /><circle cx="128" cy="153" r="3" /><circle
+        cx="75"
+        cy="108"
+        r="2.2"
+      /><circle cx="181" cy="108" r="2.2" /></g></g></svg>

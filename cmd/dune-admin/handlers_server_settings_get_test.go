@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -119,5 +121,45 @@ func TestBuildServerSettingsRawSections(t *testing.T) {
 	}
 	if raw[1].Lines[0].Key != "Array" || raw[1].Lines[0].Prefix != "-" {
 		t.Fatalf("unexpected defaultEngine raw line: %+v", raw[1].Lines[0])
+	}
+}
+
+// TestHandleGetServerSettings_NilExecutor verifies 503 when no executor is connected.
+func TestHandleGetServerSettings_NilExecutor(t *testing.T) {
+	prevE := globalExecutor
+	globalExecutor = nil
+	t.Cleanup(func() { globalExecutor = prevE })
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/server-settings", nil)
+	rr := httptest.NewRecorder()
+	handleGetServerSettings(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("want 503, got %d", rr.Code)
+	}
+}
+
+// TestHandleGetServerSettings_CtxExecutorOverridesGlobal verifies that an
+// executor stashed in the request context prevents the 503 guard.
+func TestHandleGetServerSettings_CtxExecutorOverridesGlobal(t *testing.T) {
+	prevC, prevE := globalControl, globalExecutor
+	globalControl, globalExecutor = nil, nil
+	t.Cleanup(func() { globalControl, globalExecutor = prevC, prevE })
+
+	exec := &fnExecutor{fn: func(string) (string, error) { return "", nil }}
+	ctrl := &stubControlPlane{iniDir: t.TempDir()}
+	reg := newServerRegistry(nil)
+	sc := &ServerContext{ID: "s1", StoreScope: defaultServerID, Control: ctrl, Executor: exec}
+	reg.Register(sc)
+
+	inner := http.HandlerFunc(handleGetServerSettings)
+	h := serverSelectorMiddleware(reg, inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/server-settings", nil)
+	req.Header.Set("X-Dune-Server", "s1")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code == http.StatusServiceUnavailable {
+		t.Error("ctx executor should prevent 503 when globalExecutor is nil")
 	}
 }

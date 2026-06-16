@@ -142,6 +142,10 @@ export const BattlegroupTab: React.FC = () => {
   const bg = status?.battlegroup
   const servers = status?.servers ?? []
 
+  // First-load gate: show skeletons only while the very first status fetch is in
+  // flight (no data yet). Background polls keep rendering real values.
+  const firstLoad = statusLoading && !status
+
   // Backup/restore are only meaningful where the backend has a working backup
   // path: AMP (db-backup provider → pg_dump/.dump) and kubectl (battlegroup.sh →
   // .backup). docker/local would surface an erroring button, so hide it (#169).
@@ -173,9 +177,9 @@ export const BattlegroupTab: React.FC = () => {
 
         {/* Health card grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <BgVmCard bg={bg} servers={servers} />
-          <GameReadyCard bg={bg} servers={servers} />
-          <ComponentHealthCard bg={bg} servers={servers} status={connStatus} />
+          <BgVmCard bg={bg} servers={servers} loading={firstLoad} />
+          <GameReadyCard bg={bg} servers={servers} loading={firstLoad} />
+          <ComponentHealthCard bg={bg} servers={servers} status={connStatus} loading={firstLoad} />
           <WebInterfacesCard status={connStatus} />
         </div>
 
@@ -185,20 +189,12 @@ export const BattlegroupTab: React.FC = () => {
           icon="boxes"
           accessory={<span className="text-xs text-muted tabular-nums">{t('serverHealth.pods', { n: servers.length })}</span>}
         >
-          {statusLoading && !status
-            ? (
-                <div className="flex items-center gap-2 py-4 text-muted">
-                  <Spinner size="sm" color="current" />
-                  <span className="text-sm">{t('battlegroup.loadingStatus')}</span>
-                </div>
-              )
-            : (
-                <ServersTable
-                  servers={servers}
-                  isInitializing={isInitializing}
-                  emptyMessage={status ? t('battlegroup.noGameServers') : t('battlegroup.clickRefresh')}
-                />
-              )}
+          <ServersTable
+            servers={servers}
+            isInitializing={isInitializing}
+            loading={firstLoad}
+            emptyMessage={status ? t('battlegroup.noGameServers') : t('battlegroup.clickRefresh')}
+          />
         </HealthCard>
 
         {/* ── Server Control ───────────────────────────────────────────── */}

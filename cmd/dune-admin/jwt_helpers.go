@@ -44,7 +44,8 @@ func buildCaptureJWT(existingToken string) (hostID, token string, err error) {
 
 	secretB64 := captureJWTSecretB64
 	if secretB64 == "" {
-		secretB64 = loadedConfig.BrokerJWTSecret
+		// Per-server after the remodel — the global loadedConfig field is cleared.
+		secretB64 = activeServerCfg().BrokerJWTSecret
 	}
 	if envSecret := os.Getenv("BROKER_JWT_SECRET"); envSecret != "" {
 		secretB64 = envSecret

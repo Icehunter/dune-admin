@@ -1,7 +1,8 @@
 import * as React from 'react'
 
 export type TabId
-  = | 'battlegroup'
+  = | 'dashboard'
+    | 'battlegroup'
     | 'players'
     | 'database'
     | 'logs'

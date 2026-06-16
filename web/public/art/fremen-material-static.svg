@@ -1,14 +1,21 @@
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'>
-  <g fill='none'>
-  <circle stroke='#4ea3e8' stroke-opacity='.07' stroke-width='1.5' cx='150' cy='150' r='48'/>
-  <circle stroke='#4ea3e8' stroke-opacity='.05' stroke-width='1.5' cx='150' cy='150' r='82'/>
-  <circle stroke='#9ff4ff' stroke-opacity='.05' stroke-dasharray='8 11' cx='150' cy='150' r='64'>
-  </circle><g>
-  <circle cx='198' cy='150' r='3.5' fill='#9ff4ff' fill-opacity='.25'/>
-  
-</g><g>
-  <circle cx='232' cy='150' r='2.5' fill='#4ea3e8' fill-opacity='.22'/>
-  
-</g>
-</g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><g fill="none"><circle
+      cx="150"
+      cy="150"
+      r="48"
+      stroke="#4ea3e8"
+      stroke-opacity=".07"
+      stroke-width="1.5"
+    /><circle cx="150" cy="150" r="82" stroke="#4ea3e8" stroke-opacity=".05" stroke-width="1.5" /><circle
+      cx="150"
+      cy="150"
+      r="64"
+      stroke="#9ff4ff"
+      stroke-dasharray="8 11"
+      stroke-opacity=".05"
+    /><circle cx="198" cy="150" r="3.5" fill="#9ff4ff" fill-opacity=".25" /><circle
+      cx="232"
+      cy="150"
+      r="2.5"
+      fill="#4ea3e8"
+      fill-opacity=".22"
+    /></g></svg>

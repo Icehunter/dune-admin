@@ -61,7 +61,10 @@
   },
   "pnpm": {
     "overrides": {
-      "@internationalized/date": "3.12.2"
+      "@internationalized/date": "3.12.2",
+      "tar@<=7.5.15": ">=7.5.16",
+      "vite@>=8.0.0 <=8.0.15": ">=8.0.16",
+      "dompurify@<3.4.9": ">=3.4.9"
     }
   },
   "devDependencies": {

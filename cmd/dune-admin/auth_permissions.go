@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -21,8 +22,30 @@ var permissionsState struct {
 	matrix map[string][]string
 }
 
-// permissionsPathOverride lets tests redirect persistence; empty → default.
+// permissionsPathOverride lets tests redirect the legacy permissions.yaml path
+// (still read by the file→DB migration and the file round-trip helpers).
 var permissionsPathOverride string
+
+// permissionsStore is the DB seam for the role→capability matrix. Defaults to
+// globalStore at boot; tests inject an in-memory store. When nil the resolver
+// falls back to whatever is already cached in permissionsState.matrix.
+var permissionsStore *sql.DB
+
+// permissionsDB returns the active permissions store (override or globalStore).
+func permissionsDB() *sql.DB {
+	if permissionsStore != nil {
+		return permissionsStore
+	}
+	return globalStore
+}
+
+// withPermissionsStore redirects permissions persistence to db for the test's
+// lifetime, restoring the previous store afterward.
+func withPermissionsStore(t interface{ Cleanup(func()) }, db *sql.DB) {
+	old := permissionsStore
+	permissionsStore = db
+	t.Cleanup(func() { permissionsStore = old })
+}
 
 func permissionsPath() string {
 	if permissionsPathOverride != "" {
@@ -147,6 +170,15 @@ func savePermissionsMatrix(path string, m map[string][]string) error {
 	return nil
 }
 
+// persistPermissionMatrix writes the matrix to the DB store, falling back to
+// the legacy permissions.yaml file only when no DB store is open.
+func persistPermissionMatrix(matrix map[string][]string) error {
+	if db := permissionsDB(); db != nil {
+		return savePermissionMatrix(db, matrix)
+	}
+	return savePermissionsMatrix(permissionsPath(), matrix)
+}
+
 // defaultSeedCaps is the read-only baseline written to the "default" matrix
 // row on first run. It is seeded into the matrix — not hardcoded into the
 // resolver — so it is visible and fully editable in the Permissions UI. An
@@ -161,11 +193,37 @@ func defaultSeedCaps() []string {
 	}
 }
 
-// initPermissionsMatrix loads the persisted matrix at startup. On a fresh
-// install (no permissions file yet) it seeds the "default" row with a
-// read-only baseline and persists it, so the cascade has a sensible starting
-// point that the operator can then tighten or expand.
+// initPermissionsMatrix loads the persisted matrix from the DB into the cached
+// in-memory matrix at startup. On a fresh install (empty table) it seeds the
+// "default" row with a read-only baseline and persists it, so the cascade has a
+// sensible starting point that the operator can then tighten or expand. When no
+// DB is available it falls back to the legacy permissions.yaml so single-binary
+// installs without the store still resolve auth.
 func initPermissionsMatrix() {
+	db := permissionsDB()
+	if db == nil {
+		initPermissionsMatrixFromFile()
+		return
+	}
+	m, ok, err := loadPermissionMatrix(db)
+	if err != nil {
+		logAuthError("permissions matrix DB load failed (deny-by-default applies): " + err.Error())
+		return
+	}
+	if !ok {
+		seed := map[string][]string{pseudoRoleDefault: defaultSeedCaps()}
+		if err := savePermissionMatrix(db, seed); err != nil {
+			logAuthError("seed permissions matrix: " + err.Error())
+		}
+		setPermissionsMatrix(seed)
+		return
+	}
+	setPermissionsMatrix(m)
+}
+
+// initPermissionsMatrixFromFile is the legacy fallback used only when no DB
+// store is open. Mirrors the original file-backed behaviour.
+func initPermissionsMatrixFromFile() {
 	path := permissionsPath()
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		seed := map[string][]string{pseudoRoleDefault: defaultSeedCaps()}
@@ -228,7 +286,7 @@ func handleGetPermissions(w http.ResponseWriter, r *http.Request) {
 	// Guild roles are best-effort decoration for the editor; the matrix is
 	// editable by raw role ID even when Discord is unavailable. Uses the
 	// gateway bot when running, REST-only bot token otherwise.
-	if fetch, guildID := discordRolesFetcher(); fetch != nil && guildID != "" {
+	if fetch, guildID := discordRolesFetcher(""); fetch != nil && guildID != "" {
 		if roles, err := cmdListDiscordRoles(guildID, fetch); err == nil {
 			resp.GuildRoles = roles
 		}
@@ -274,7 +332,7 @@ func handlePutPermissions(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if err := savePermissionsMatrix(permissionsPath(), req.Matrix); err != nil {
+	if err := persistPermissionMatrix(req.Matrix); err != nil {
 		jsonErr(w, err, http.StatusInternalServerError)
 		return
 	}

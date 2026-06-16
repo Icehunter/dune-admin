@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -23,14 +22,14 @@ func handleGetGivePacksConfig(w http.ResponseWriter, _ *http.Request) {
 	}
 	_, packsJSON, ok, err := givePacksStoreDB.loadConfig()
 	if err != nil {
-		log.Printf("handleGetGivePacksConfig: %v", err)
+		componentLog("handlers").Error().Err(err).Msg("load give-packs config failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
 	packs := make([]givePack, 0)
 	if ok && packsJSON != "" && packsJSON != "null" {
 		if err := json.Unmarshal([]byte(packsJSON), &packs); err != nil {
-			log.Printf("handleGetGivePacksConfig: unmarshal packs: %v", err)
+			componentLog("handlers").Error().Err(err).Msg("unmarshal give-packs failed")
 			jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 			return
 		}
@@ -60,14 +59,14 @@ func handlePutGivePacksConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	packsJSON, err := json.Marshal(req.Packs)
 	if err != nil {
-		log.Printf("handlePutGivePacksConfig: marshal: %v", err)
+		componentLog("handlers").Error().Err(err).Msg("marshal give-packs failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
 	// Always persist with base_packs_loaded=true — this is a deliberate operator
 	// action, including an explicit empty list.
 	if err := givePacksStoreDB.saveConfig(string(packsJSON), true); err != nil {
-		log.Printf("handlePutGivePacksConfig: save: %v", err)
+		componentLog("handlers").Error().Err(err).Msg("save give-packs config failed")
 		jsonErr(w, fmt.Errorf("failed to save packs"), http.StatusInternalServerError)
 		return
 	}

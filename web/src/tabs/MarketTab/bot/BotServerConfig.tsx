@@ -4,21 +4,32 @@ import { useTranslation } from 'react-i18next'
 import { api, MASKED } from '../../../api/client'
 import type { AppConfig } from '../../../api/client'
 import { Panel, SectionLabel } from '../../../dune-ui'
+import { useActiveServer } from '../../../context/useActiveServer'
 import type { BotServerConfigHandle, StringAppConfigKey } from './types'
 
 export const BotServerConfig = React.forwardRef<BotServerConfigHandle>((_, ref) => {
   const { t } = useTranslation()
+  const { activeID, servers } = useActiveServer()
+  const serverID = activeID || servers[0]?.id || 0
+  const activeName = servers.find((s) => s.id === serverID)?.name ?? ''
   const [cfg, setCfg] = React.useState<AppConfig | null>(null)
   const [loading, setLoading] = React.useState(false)
 
   React.useEffect(() => {
     Promise.resolve()
       .then(() => setLoading(true))
-      .then(() => api.config.get())
-      .then(setCfg)
+      .then(() => Promise.all([
+        api.config.get(),
+        api.servers.getConfig(serverID).catch(() => null),
+      ]))
+      .then(([global, server]) => {
+        // The market_bot_enabled toggle is PER SERVER; the rest of the config is
+        // global/shared. Overlay the active server's toggle onto the global cfg.
+        setCfg({ ...global, market_bot_enabled: server?.market_bot_enabled ?? global.market_bot_enabled })
+      })
       .catch(() => toast.danger(t('market.bot.serverConfig.loadFailed')))
       .finally(() => setLoading(false))
-  }, [t])
+  }, [t, serverID])
 
   const set = (key: StringAppConfigKey) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setCfg((prev) => prev ? { ...prev, [key]: e.target.value } : prev)
@@ -29,16 +40,27 @@ export const BotServerConfig = React.forwardRef<BotServerConfigHandle>((_, ref) 
   React.useImperativeHandle(ref, () => ({
     save: async () => {
       if (!cfg) return
-      // Sends the full AppConfig. The backend treats MASKED sentinel values as
-      // "unchanged" for credential fields so they are never overwritten on save.
-      await api.config.save(cfg)
-        .then(() => toast.success(t('market.bot.serverConfig.savedConfig')))
-        .catch((e: unknown) => {
-          toast.danger(t('market.bot.serverConfig.saveFailed', { message: e instanceof Error ? e.message : String(e) }))
-          throw e
-        })
+      try {
+        // Global/shared bot config (cache, item data, state, remote) is saved via
+        // /config. For the default (single-server) install this also applies the
+        // per-server toggle via the legacy mapping. For a non-default active
+        // server, the toggle is saved through its per-server config endpoint.
+        await api.config.save(cfg)
+        if (serverID !== 0) {
+          await api.servers.saveConfig(serverID, {
+            id: serverID,
+            name: activeName,
+            market_bot_enabled: cfg.market_bot_enabled,
+          })
+        }
+        toast.success(t('market.bot.serverConfig.savedConfig'))
+      }
+      catch (e: unknown) {
+        toast.danger(t('market.bot.serverConfig.saveFailed', { message: e instanceof Error ? e.message : String(e) }))
+        throw e
+      }
     },
-  }), [cfg, t])
+  }), [cfg, t, serverID, activeName])
 
   if (loading) {
     return <div className="flex justify-center py-8"><Spinner size="sm" /></div>

@@ -1,93 +1,141 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">Fremen Desert Tower Icon</title>
-  <desc id="desc">Transparent sci-fi desert tower and hidden sietch fortress icon in deep navy and cyan.</desc>
-  <defs>
-    <linearGradient id="towerGrad" x1="0" y1="18" x2="0" y2="224" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#082A63"/>
-      <stop offset="0.48" stop-color="#03183C"/>
-      <stop offset="1" stop-color="#010817"/>
-    </linearGradient>
-    <linearGradient id="cyanGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#64F5FF"/>
-      <stop offset="1" stop-color="#008BFF"/>
-    </linearGradient>
-    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="1.5" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-
-  <!-- Sacred crescent frame -->
-  <path d="M45 180C25 111 57 47 107 33C65 61 44 108 54 167C58 190 72 211 94 230C73 221 55 205 45 180Z" fill="#020A1D"/>
-  <path d="M211 180C231 111 199 47 149 33C191 61 212 108 202 167C198 190 184 211 162 230C183 221 201 205 211 180Z" fill="#020A1D"/>
-  <path d="M56 174C43 113 67 62 105 42" fill="none" stroke="#11BFFF" stroke-width="3" stroke-linecap="round" opacity=".85"/>
-  <path d="M200 174C213 113 189 62 151 42" fill="none" stroke="#11BFFF" stroke-width="3" stroke-linecap="round" opacity=".85"/>
-
-  <!-- Twin moons -->
-  <path d="M80 94C64 103 60 124 75 138C66 136 58 128 56 117C54 104 63 93 80 94Z" fill="#0DA8FF" opacity=".9"/>
-  <path d="M176 94C192 103 196 124 181 138C190 136 198 128 200 117C202 104 193 93 176 94Z" fill="#0DA8FF" opacity=".9"/>
-
-  <!-- Star over tower -->
-  <path d="M128 12L132 28L146 33L132 38L128 55L124 38L110 33L124 28Z" fill="url(#cyanGrad)" filter="url(#softGlow)"/>
-
-  <!-- Desert dunes / hidden sietch base -->
-  <path d="M25 195C54 187 73 190 97 202C119 213 137 212 160 201C181 191 205 188 231 195L211 215C183 208 161 217 134 230C111 219 91 210 64 216Z" fill="#031231"/>
-  <path d="M31 195C59 199 78 199 99 190C122 181 137 184 158 196C181 209 201 204 225 195C202 214 177 216 151 205C129 196 111 196 89 207C66 218 48 211 31 195Z" fill="#0B2D69" opacity=".85"/>
-  <path d="M58 203C83 208 105 195 126 193C150 191 170 207 199 202" fill="none" stroke="#28B9FF" stroke-width="3" stroke-linecap="round" opacity=".8"/>
-
-  <!-- Fortress body blocks -->
-  <path d="M47 158H81V195H47Z" fill="#031338"/>
-  <path d="M175 158H209V195H175Z" fill="#031338"/>
-  <path d="M72 143H110V200H72Z" fill="#061B48"/>
-  <path d="M146 143H184V200H146Z" fill="#061B48"/>
-  <path d="M97 131H159V205H97Z" fill="#08265E"/>
-  <path d="M83 122H104V173H83Z" fill="#04183D"/>
-  <path d="M152 122H173V173H152Z" fill="#04183D"/>
-
-  <!-- Main tower silhouette -->
-  <path d="M103 57L121 43V91L128 97L135 91V43L153 57V125L166 137V199H90V137L103 125Z" fill="url(#towerGrad)"/>
-  <path d="M111 81L123 91V38L103 51V126L91 138V199H106V132L111 126Z" fill="#020D28" opacity=".75"/>
-  <path d="M145 81L133 91V38L153 51V126L165 138V199H150V132L145 126Z" fill="#0C3A7D" opacity=".5"/>
-
-  <!-- Sacred central banner -->
-  <path d="M113 96C121 104 135 104 143 96V163L128 184L113 163Z" fill="#073477" stroke="#1BBFFF" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M113 96C121 109 135 109 143 96" fill="none" stroke="#36DBFF" stroke-width="3" stroke-linecap="round" opacity=".85"/>
-
-  <!-- Water glyph -->
-  <path d="M128 106C128 106 141 123 141 134C141 142 135 148 128 148C121 148 115 142 115 134C115 123 128 106 128 106Z" fill="none" stroke="#56F2FF" stroke-width="5" stroke-linejoin="round" filter="url(#softGlow)"/>
-  <path d="M124 139C127 143 132 144 136 140" fill="none" stroke="#56F2FF" stroke-width="2" stroke-linecap="round" opacity=".75"/>
-  <circle cx="128" cy="157" r="3" fill="#56F2FF"/>
-  <path d="M128 164V174" stroke="#56F2FF" stroke-width="3" stroke-linecap="round"/>
-
-  <!-- Entrance -->
-  <path d="M109 198V181C109 171 117 162 128 156C139 162 147 171 147 181V198Z" fill="#020A1E" stroke="#21C8FF" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M118 198V184C118 177 122 172 128 168C134 172 138 177 138 184V198Z" fill="#0B2D69"/>
-
-  <!-- Hooded stealth guardian as abstract emblem -->
-  <path d="M93 220C100 201 112 190 128 187C144 190 156 201 163 220C151 232 139 239 128 244C117 239 105 232 93 220Z" fill="#020A1B"/>
-  <path d="M102 224C108 209 117 199 128 196C139 199 148 209 154 224C144 233 136 238 128 241C120 238 112 233 102 224Z" fill="#06245A" opacity=".9"/>
-  <path d="M112 218C118 215 124 215 128 218C132 215 138 215 144 218" fill="none" stroke="#1F9DFF" stroke-width="3" stroke-linecap="round" opacity=".8"/>
-  <path d="M115 214L124 212L120 217Z" fill="#52F3FF"/>
-  <path d="M141 214L132 212L136 217Z" fill="#52F3FF"/>
-
-  <!-- Windows and cyan slits -->
-  <g fill="#1FD5FF">
-    <rect x="65" y="169" width="3" height="11" rx="1"/>
-    <rect x="81" y="169" width="3" height="11" rx="1"/>
-    <rect x="179" y="169" width="3" height="11" rx="1"/>
-    <rect x="193" y="169" width="3" height="11" rx="1"/>
-    <rect x="91" y="141" width="3" height="10" rx="1"/>
-    <rect x="162" y="141" width="3" height="10" rx="1"/>
-    <rect x="110" y="76" width="3" height="13" rx="1" opacity=".75"/>
-    <rect x="143" y="76" width="3" height="13" rx="1" opacity=".75"/>
-  </g>
-
-  <!-- Tiny spires -->
-  <path d="M55 158L58 128L61 158Z" fill="#020A1D"/>
-  <path d="M75 146L78 118L81 146Z" fill="#020A1D"/>
-  <path d="M195 146L198 118L201 146Z" fill="#020A1D"/>
-  <path d="M175 158L178 128L181 158Z" fill="#020A1D"/>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-labelledby="title desc"
+  viewBox="0 0 256 256"
+><title>Fremen Desert Tower Icon</title><desc
+  >Transparent sci-fi desert tower and hidden sietch fortress icon in deep navy and cyan.</desc><defs><linearGradient
+      id="c"
+      x1="0"
+      x2="0"
+      y1="18"
+      y2="224"
+      gradientUnits="userSpaceOnUse"
+    ><stop offset="0" stop-color="#082a63" /><stop offset=".48" stop-color="#03183c" /><stop
+        offset="1"
+        stop-color="#010817"
+      /></linearGradient><linearGradient id="a" x1="0" x2="0" y1="0" y2="1"><stop
+        offset="0"
+        stop-color="#64f5ff"
+      /><stop offset="1" stop-color="#008bff" /></linearGradient><filter
+      id="b"
+      width="160%"
+      height="160%"
+      x="-30%"
+      y="-30%"
+    ><feGaussianBlur result="blur" stdDeviation="1.5" /><feMerge><feMergeNode in="blur" /><feMergeNode
+          in="SourceGraphic"
+        /></feMerge></filter></defs><path
+    fill="#020a1d"
+    d="M45 180C25 111 57 47 107 33c-42 28-63 75-53 134 4 23 18 44 40 63-21-9-39-25-49-50m166 0c20-69-12-133-62-147 42 28 63 75 53 134-4 23-18 44-40 63 21-9 39-25 49-50"
+  /><path
+    fill="none"
+    stroke="#11bfff"
+    stroke-linecap="round"
+    stroke-width="3"
+    d="M56 174C43 113 67 62 105 42m95 132c13-61-11-112-49-132"
+    opacity=".85"
+  /><path
+    fill="#0da8ff"
+    d="M80 94c-16 9-20 30-5 44-9-2-17-10-19-21-2-13 7-24 24-23m96 0c16 9 20 30 5 44 9-2 17-10 19-21 2-13-7-24-24-23"
+    opacity=".9"
+  /><path fill="url(#a)" d="m128 12 4 16 14 5-14 5-4 17-4-17-14-5 14-5Z" filter="url(#b)" /><path
+    fill="#031231"
+    d="M25 195c29-8 48-5 72 7 22 11 40 10 63-1 21-10 45-13 71-6l-20 20c-28-7-50 2-77 15-23-11-43-20-70-14Z"
+  /><path
+    fill="#0b2d69"
+    d="M31 195c28 4 47 4 68-5 23-9 38-6 59 6 23 13 43 8 67-1-23 19-48 21-74 10-22-9-40-9-62 2-23 11-41 4-58-12"
+    opacity=".85"
+  /><path
+    fill="none"
+    stroke="#28b9ff"
+    stroke-linecap="round"
+    stroke-width="3"
+    d="M58 203c25 5 47-8 68-10 24-2 44 14 73 9"
+    opacity=".8"
+  /><path fill="#031338" d="M47 158h34v37H47Zm128 0h34v37h-34Z" /><path
+    fill="#061b48"
+    d="M72 143h38v57H72Zm74 0h38v57h-38Z"
+  /><path fill="#08265e" d="M97 131h62v74H97Z" /><path fill="#04183d" d="M83 122h21v51H83Zm69 0h21v51h-21Z" /><path
+    fill="url(#c)"
+    d="m103 57 18-14v48l7 6 7-6V43l18 14v68l13 12v62H90v-62l13-12Z"
+  /><path fill="#020d28" d="m111 81 12 10V38l-20 13v75l-12 12v61h15v-67l5-6Z" opacity=".75" /><path
+    fill="#0c3a7d"
+    d="m145 81-12 10V38l20 13v75l12 12v61h-15v-67l-5-6Z"
+    opacity=".5"
+  /><path
+    fill="#073477"
+    stroke="#1bbfff"
+    stroke-linejoin="round"
+    stroke-width="3"
+    d="M113 96c8 8 22 8 30 0v67l-15 21-15-21Z"
+  /><path
+    fill="none"
+    stroke="#36dbff"
+    stroke-linecap="round"
+    stroke-width="3"
+    d="M113 96c8 13 22 13 30 0"
+    opacity=".85"
+  /><path
+    fill="none"
+    stroke="#56f2ff"
+    stroke-linejoin="round"
+    stroke-width="5"
+    d="M128 106s13 17 13 28c0 8-6 14-13 14s-13-6-13-14c0-11 13-28 13-28Z"
+    filter="url(#b)"
+  /><path
+    fill="none"
+    stroke="#56f2ff"
+    stroke-linecap="round"
+    stroke-width="2"
+    d="M124 139c3 4 8 5 12 1"
+    opacity=".75"
+  /><circle cx="128" cy="157" r="3" fill="#56f2ff" /><path
+    stroke="#56f2ff"
+    stroke-linecap="round"
+    stroke-width="3"
+    d="M128 164v10"
+  /><path
+    fill="#020a1e"
+    stroke="#21c8ff"
+    stroke-linejoin="round"
+    stroke-width="5"
+    d="M109 198v-17c0-10 8-19 19-25 11 6 19 15 19 25v17Z"
+  /><path fill="#0b2d69" d="M118 198v-14c0-7 4-12 10-16 6 4 10 9 10 16v14Z" /><path
+    fill="#020a1b"
+    d="M93 220c7-19 19-30 35-33 16 3 28 14 35 33-12 12-24 19-35 24-11-5-23-12-35-24"
+  /><path
+    fill="#06245a"
+    d="M102 224c6-15 15-25 26-28 11 3 20 13 26 28-10 9-18 14-26 17-8-3-16-8-26-17"
+    opacity=".9"
+  /><path
+    fill="none"
+    stroke="#1f9dff"
+    stroke-linecap="round"
+    stroke-width="3"
+    d="M112 218c6-3 12-3 16 0 4-3 10-3 16 0"
+    opacity=".8"
+  /><path fill="#52f3ff" d="m115 214 9-2-4 5Zm26 0-9-2 4 5Z" /><g fill="#1fd5ff"><rect
+      width="3"
+      height="11"
+      x="65"
+      y="169"
+      rx="1"
+    /><rect width="3" height="11" x="81" y="169" rx="1" /><rect width="3" height="11" x="179" y="169" rx="1" /><rect
+      width="3"
+      height="11"
+      x="193"
+      y="169"
+      rx="1"
+    /><rect width="3" height="10" x="91" y="141" rx="1" /><rect width="3" height="10" x="162" y="141" rx="1" /><rect
+      width="3"
+      height="13"
+      x="110"
+      y="76"
+      opacity=".75"
+      rx="1"
+    /><rect width="3" height="13" x="143" y="76" opacity=".75" rx="1" /></g><path
+    fill="#020a1d"
+    d="m55 158 3-30 3 30Zm20-12 3-28 3 28Zm120 0 3-28 3 28Zm-20 12 3-30 3 30Z"
+  /></svg>

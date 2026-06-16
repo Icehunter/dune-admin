@@ -1,141 +1,136 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">Fremen blue spice crystal rewards icon</title>
-  <desc id="desc">A transparent vector icon showing a centered cluster of blue spice crystals with sacred minimal sci-fi tribal accents.</desc>
-  <defs>
-    <linearGradient id="crystalA" x1="96" y1="42" x2="154" y2="202" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4ff7ff"/>
-      <stop offset="0.45" stop-color="#0984f2"/>
-      <stop offset="1" stop-color="#031542"/>
-    </linearGradient>
-    <linearGradient id="crystalB" x1="41" y1="95" x2="103" y2="213" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#39e9ff"/>
-      <stop offset="0.5" stop-color="#0a5ce0"/>
-      <stop offset="1" stop-color="#021232"/>
-    </linearGradient>
-    <linearGradient id="crystalC" x1="157" y1="91" x2="213" y2="207" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4cf2ff"/>
-      <stop offset="0.48" stop-color="#0a6ff0"/>
-      <stop offset="1" stop-color="#020f2d"/>
-    </linearGradient>
-    <linearGradient id="glow" x1="52" y1="52" x2="204" y2="228" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#57f6ff" stop-opacity="0.95"/>
-      <stop offset="1" stop-color="#0054ff" stop-opacity="0.15"/>
-    </linearGradient>
-    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="1.4" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-
-  <!-- transparent background intentionally omitted -->
-
-  <!-- sacred minimal frame -->
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M47 139c-17 33 2 70 44 83" stroke="#03183c" stroke-width="7"/>
-    <path d="M209 139c17 33-2 70-44 83" stroke="#03183c" stroke-width="7"/>
-    <path d="M57 132c8-30 28-54 54-66" stroke="#082258" stroke-width="2.6" opacity="0.9"/>
-    <path d="M199 132c-8-30-28-54-54-66" stroke="#082258" stroke-width="2.6" opacity="0.9"/>
-    <path d="M70 205c34 33 82 33 116 0" stroke="#03183c" stroke-width="5"/>
-  </g>
-
-  <!-- base shards -->
-  <g opacity="0.98">
-    <path d="M39 181l40 29 50 31-12-25-40-28z" fill="#03183c"/>
-    <path d="M217 181l-40 29-50 31 12-25 40-28z" fill="#03183c"/>
-    <path d="M58 206l44 15 26 21-4-21-38-20z" fill="#051f58"/>
-    <path d="M198 206l-44 15-26 21 4-21 38-20z" fill="#051f58"/>
-  </g>
-
-  <!-- left crystal cluster -->
-  <g filter="url(#softGlow)">
-    <path d="M73 111l36 43-8 66-34-35z" fill="url(#crystalB)"/>
-    <path d="M73 111l24 49 12-6z" fill="#4df4ff" opacity="0.88"/>
-    <path d="M97 160l12-6-8 66-16-38z" fill="#07317d"/>
-    <path d="M67 185l18-3 16 38z" fill="#0054d7"/>
-    <path d="M90 157l-23 28 6-74z" fill="#0ea8ff"/>
-
-    <path d="M96 162l25 31-4 36-27-20z" fill="#0b61e4"/>
-    <path d="M96 162l16 38 9-7z" fill="#49f3ff"/>
-    <path d="M112 200l9-7-4 36z" fill="#022058"/>
-
-    <path d="M48 169l28 35-5 28-25-25z" fill="#0758d7"/>
-    <path d="M48 169l18 40 10-5z" fill="#30e5ff"/>
-    <path d="M66 209l10-5-5 28z" fill="#03183c"/>
-  </g>
-
-  <!-- central crystal -->
-  <g filter="url(#softGlow)">
-    <path d="M128 36l38 82-12 103-26 23-27-24-12-102z" fill="url(#crystalA)"/>
-    <path d="M128 36l-39 82 39 31z" fill="#16c9ff"/>
-    <path d="M128 36l38 82-38 31z" fill="#0a73e7"/>
-    <path d="M89 118l39 31-27 71z" fill="#083eaa"/>
-    <path d="M166 118l-38 31 26 72z" fill="#031846"/>
-    <path d="M128 149v95l-27-24z" fill="#045ad3"/>
-    <path d="M128 149v95l26-23z" fill="#01215d"/>
-    <path d="M101 95l27 54 28-54-28-59z" fill="#5af8ff" opacity="0.22"/>
-    <path d="M97 119l31 24 31-24" fill="none" stroke="#5ef7ff" stroke-width="4" opacity="0.75"/>
-  </g>
-
-  <!-- right crystal cluster -->
-  <g filter="url(#softGlow)">
-    <path d="M183 111l-36 43 8 66 34-35z" fill="url(#crystalC)"/>
-    <path d="M183 111l-24 49-12-6z" fill="#4af0ff" opacity="0.9"/>
-    <path d="M159 160l-12-6 8 66 16-38z" fill="#06296f"/>
-    <path d="M189 185l-18-3-16 38z" fill="#004ad4"/>
-    <path d="M166 157l23 28-6-74z" fill="#0aa6ff"/>
-
-    <path d="M160 162l-25 31 4 36 27-20z" fill="#0b61e4"/>
-    <path d="M160 162l-16 38-9-7z" fill="#4df4ff"/>
-    <path d="M144 200l-9-7 4 36z" fill="#022058"/>
-
-    <path d="M208 169l-28 35 5 28 25-25z" fill="#0758d7"/>
-    <path d="M208 169l-18 40-10-5z" fill="#35e9ff"/>
-    <path d="M190 209l-10-5 5 28z" fill="#03183c"/>
-  </g>
-
-  <!-- front small shards -->
-  <g filter="url(#softGlow)">
-    <path d="M126 180l13 28-11 34-13-35z" fill="#0889f5"/>
-    <path d="M126 180l2 62-13-35z" fill="#46f2ff"/>
-    <path d="M139 208l-11 34-2-62z" fill="#04307d"/>
-
-    <path d="M109 191l13 23-6 24-19-18z" fill="#09a4ff"/>
-    <path d="M109 191l7 47-19-18z" fill="#49f3ff" opacity="0.78"/>
-    <path d="M147 191l-13 23 6 24 19-18z" fill="#09a4ff"/>
-    <path d="M147 191l-7 47 19-18z" fill="#49f3ff" opacity="0.78"/>
-  </g>
-
-  <!-- ritual dots and water-discipline accents -->
-  <g fill="#083d95">
-    <circle cx="128" cy="18" r="2.6"/>
-    <circle cx="128" cy="28" r="1.8"/>
-    <circle cx="128" cy="225" r="2.8"/>
-    <circle cx="128" cy="235" r="2"/>
-    <path d="M128 3l6 15-6 18-6-18z" fill="#052765"/>
-    <path d="M128 241l5 12-5 12-5-12z" fill="#0ba6ff"/>
-    <path d="M128 53c8 8 12 12 12 18s-5 13-12 13-12-7-12-13 4-10 12-18z" fill="#0a71e6"/>
-    <path d="M105 48c-8 6-13 15-13 25 0 14 10 26 24 28-24 1-42-13-42-32 0-12 8-23 31-21z" fill="#03183c"/>
-    <path d="M151 48c8 6 13 15 13 25 0 14-10 26-24 28 24 1 42-13 42-32 0-12-8-23-31-21z" fill="#03183c"/>
-    <circle cx="128" cy="92" r="2.8"/>
-    <path d="M90 120l5 8-5 8-5-8z" fill="#0b99ff"/>
-    <path d="M166 120l5 8-5 8-5-8z" fill="#0b99ff"/>
-    <path d="M55 133l6 11-6 13-6-13z" fill="#082258"/>
-    <path d="M201 133l6 11-6 13-6-13z" fill="#082258"/>
-  </g>
-
-  <g fill="#0a64d8">
-    <circle cx="70" cy="102" r="2"/><circle cx="62" cy="113" r="2"/><circle cx="56" cy="125" r="2"/><circle cx="53" cy="138" r="2"/>
-    <circle cx="186" cy="102" r="2"/><circle cx="194" cy="113" r="2"/><circle cx="200" cy="125" r="2"/><circle cx="203" cy="138" r="2"/>
-    <circle cx="84" cy="82" r="2"/><circle cx="77" cy="91" r="1.8"/><circle cx="172" cy="82" r="2"/><circle cx="179" cy="91" r="1.8"/>
-  </g>
-
-  <g fill="none" stroke="url(#glow)" stroke-width="2" stroke-linecap="round" opacity="0.7">
-    <path d="M86 74v37"/>
-    <path d="M170 74v37"/>
-    <path d="M71 82c-13 13-22 31-25 51"/>
-    <path d="M185 82c13 13 22 31 25 51"/>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-labelledby="title desc"
+  viewBox="0 0 256 256"
+><title>Fremen blue spice crystal rewards icon</title><desc
+  >A transparent vector icon showing a centered cluster of blue spice crystals with sacred minimal sci-fi tribal accents.</desc><defs
+  ><linearGradient id="c" x1="96" x2="154" y1="42" y2="202" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#4ff7ff"
+      /><stop offset=".45" stop-color="#0984f2" /><stop
+        offset="1"
+        stop-color="#031542"
+      /></linearGradient><linearGradient id="b" x1="41" x2="103" y1="95" y2="213" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#39e9ff"
+      /><stop offset=".5" stop-color="#0a5ce0" /><stop
+        offset="1"
+        stop-color="#021232"
+      /></linearGradient><linearGradient id="d" x1="157" x2="213" y1="91" y2="207" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#4cf2ff"
+      /><stop offset=".48" stop-color="#0a6ff0" /><stop
+        offset="1"
+        stop-color="#020f2d"
+      /></linearGradient><linearGradient id="e" x1="52" x2="204" y1="52" y2="228" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#57f6ff"
+        stop-opacity=".95"
+      /><stop offset="1" stop-color="#0054ff" stop-opacity=".15" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feGaussianBlur result="blur" stdDeviation="1.4" /><feMerge><feMergeNode in="blur" /><feMergeNode
+          in="SourceGraphic"
+        /></feMerge></filter></defs><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path
+      stroke="#03183c"
+      stroke-width="7"
+      d="M47 139c-17 33 2 70 44 83m118-83c17 33-2 70-44 83"
+    /><path
+      stroke="#082258"
+      stroke-width="2.6"
+      d="M57 132c8-30 28-54 54-66m88 66c-8-30-28-54-54-66"
+      opacity=".9"
+    /><path stroke="#03183c" stroke-width="5" d="M70 205c34 33 82 33 116 0" /></g><g opacity=".98"><path
+      fill="#03183c"
+      d="m39 181 40 29 50 31-12-25-40-28z"
+    /><path fill="#03183c" d="m217 181-40 29-50 31 12-25 40-28z" /><path
+      fill="#051f58"
+      d="m58 206 44 15 26 21-4-21-38-20zm140 0-44 15-26 21 4-21 38-20z"
+    /></g><g filter="url(#a)"><path fill="url(#b)" d="m73 111 36 43-8 66-34-35z" /><path
+      fill="#4df4ff"
+      d="m73 111 24 49 12-6z"
+      opacity=".88"
+    /><path fill="#07317d" d="m97 160 12-6-8 66-16-38z" /><path fill="#0054d7" d="m67 185 18-3 16 38z" /><path
+      fill="#0ea8ff"
+      d="m90 157-23 28 6-74z"
+    /><path fill="#0b61e4" d="m96 162 25 31-4 36-27-20z" /><path fill="#49f3ff" d="m96 162 16 38 9-7z" /><path
+      fill="#022058"
+      d="m112 200 9-7-4 36z"
+    /><path fill="#0758d7" d="m48 169 28 35-5 28-25-25z" /><path fill="#30e5ff" d="m48 169 18 40 10-5z" /><path
+      fill="#03183c"
+      d="m66 209 10-5-5 28z"
+    /></g><g filter="url(#a)"><path fill="url(#c)" d="m128 36 38 82-12 103-26 23-27-24-12-102z" /><path
+      fill="#16c9ff"
+      d="m128 36-39 82 39 31z"
+    /><path fill="#0a73e7" d="m128 36 38 82-38 31z" /><path fill="#083eaa" d="m89 118 39 31-27 71z" /><path
+      fill="#031846"
+      d="m166 118-38 31 26 72z"
+    /><path fill="#045ad3" d="M128 149v95l-27-24z" /><path fill="#01215d" d="M128 149v95l26-23z" /><path
+      fill="#5af8ff"
+      d="m101 95 27 54 28-54-28-59z"
+      opacity=".22"
+    /><path fill="none" stroke="#5ef7ff" stroke-width="4" d="m97 119 31 24 31-24" opacity=".75" /></g><g
+    filter="url(#a)"
+  ><path fill="url(#d)" d="m183 111-36 43 8 66 34-35z" /><path
+      fill="#4af0ff"
+      d="m183 111-24 49-12-6z"
+      opacity=".9"
+    /><path fill="#06296f" d="m159 160-12-6 8 66 16-38z" /><path fill="#004ad4" d="m189 185-18-3-16 38z" /><path
+      fill="#0aa6ff"
+      d="m166 157 23 28-6-74z"
+    /><path fill="#0b61e4" d="m160 162-25 31 4 36 27-20z" /><path fill="#4df4ff" d="m160 162-16 38-9-7z" /><path
+      fill="#022058"
+      d="m144 200-9-7 4 36z"
+    /><path fill="#0758d7" d="m208 169-28 35 5 28 25-25z" /><path fill="#35e9ff" d="m208 169-18 40-10-5z" /><path
+      fill="#03183c"
+      d="m190 209-10-5 5 28z"
+    /></g><g filter="url(#a)"><path fill="#0889f5" d="m126 180 13 28-11 34-13-35z" /><path
+      fill="#46f2ff"
+      d="m126 180 2 62-13-35z"
+    /><path fill="#04307d" d="m139 208-11 34-2-62z" /><path fill="#09a4ff" d="m109 191 13 23-6 24-19-18z" /><path
+      fill="#49f3ff"
+      d="m109 191 7 47-19-18z"
+      opacity=".78"
+    /><path fill="#09a4ff" d="m147 191-13 23 6 24 19-18z" /><path
+      fill="#49f3ff"
+      d="m147 191-7 47 19-18z"
+      opacity=".78"
+    /></g><g fill="#083d95"><circle cx="128" cy="18" r="2.6" /><circle cx="128" cy="28" r="1.8" /><circle
+      cx="128"
+      cy="225"
+      r="2.8"
+    /><circle cx="128" cy="235" r="2" /><path fill="#052765" d="m128 3 6 15-6 18-6-18z" /><path
+      fill="#0ba6ff"
+      d="m128 241 5 12-5 12-5-12z"
+    /><path fill="#0a71e6" d="M128 53c8 8 12 12 12 18s-5 13-12 13-12-7-12-13 4-10 12-18" /><path
+      fill="#03183c"
+      d="M105 48c-8 6-13 15-13 25 0 14 10 26 24 28-24 1-42-13-42-32 0-12 8-23 31-21m46 0c8 6 13 15 13 25 0 14-10 26-24 28 24 1 42-13 42-32 0-12-8-23-31-21"
+    /><circle cx="128" cy="92" r="2.8" /><path fill="#0b99ff" d="m90 120 5 8-5 8-5-8zm76 0 5 8-5 8-5-8z" /><path
+      fill="#082258"
+      d="m55 133 6 11-6 13-6-13zm146 0 6 11-6 13-6-13z"
+    /></g><g fill="#0a64d8"><circle cx="70" cy="102" r="2" /><circle cx="62" cy="113" r="2" /><circle
+      cx="56"
+      cy="125"
+      r="2"
+    /><circle cx="53" cy="138" r="2" /><circle cx="186" cy="102" r="2" /><circle cx="194" cy="113" r="2" /><circle
+      cx="200"
+      cy="125"
+      r="2"
+    /><circle cx="203" cy="138" r="2" /><circle cx="84" cy="82" r="2" /><circle cx="77" cy="91" r="1.8" /><circle
+      cx="172"
+      cy="82"
+      r="2"
+    /><circle cx="179" cy="91" r="1.8" /></g><g
+    fill="none"
+    stroke="url(#e)"
+    stroke-linecap="round"
+    stroke-width="2"
+    opacity=".7"
+  ><path d="M86 74v37" /><path d="M170 74v37" /><path d="M71 82c-13 13-22 31-25 51" /><path
+      d="M185 82c13 13 22 31 25 51"
+    /></g></svg>

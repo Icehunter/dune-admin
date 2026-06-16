@@ -24,6 +24,7 @@ const (
 
 const battlepassGrantLedgerSchema = `
 CREATE TABLE IF NOT EXISTS battlepass_grant_ledger (
+	server_id       INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
 	tier_key        TEXT    NOT NULL,
 	account_id      INTEGER NOT NULL,
 	status          TEXT    NOT NULL DEFAULT 'pending',
@@ -31,7 +32,7 @@ CREATE TABLE IF NOT EXISTS battlepass_grant_ledger (
 	last_error      TEXT    NOT NULL DEFAULT '',
 	next_attempt_at TEXT    NOT NULL DEFAULT '',
 	updated_at      TEXT    NOT NULL,
-	PRIMARY KEY (tier_key, account_id)
+	PRIMARY KEY (server_id, tier_key, account_id)
 );`
 
 // battlepassGrantLedgerRow is one row from battlepass_grant_ledger.
@@ -52,10 +53,10 @@ func (s *battlepassStore) recordPendingGrant(tierKey string, accountID int64) er
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := s.db.Exec(`
 		INSERT INTO battlepass_grant_ledger
-			(tier_key, account_id, status, attempts, last_error, next_attempt_at, updated_at)
-		VALUES (?, ?, ?, 0, '', '', ?)
-		ON CONFLICT(tier_key, account_id) DO NOTHING`,
-		tierKey, accountID, battlepassGrantPending, now)
+			(server_id, tier_key, account_id, status, attempts, last_error, next_attempt_at, updated_at)
+		VALUES (?, ?, ?, ?, 0, '', '', ?)
+		ON CONFLICT(server_id, tier_key, account_id) DO NOTHING`,
+		s.serverID, tierKey, accountID, battlepassGrantPending, now)
 	if err != nil {
 		return fmt.Errorf("record pending battlepass grant %s/%d: %w", tierKey, accountID, err)
 	}
@@ -67,14 +68,14 @@ func (s *battlepassStore) recordGrantLedgerSuccess(tierKey string, accountID int
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := s.db.Exec(`
 		INSERT INTO battlepass_grant_ledger
-			(tier_key, account_id, status, attempts, last_error, next_attempt_at, updated_at)
-		VALUES (?, ?, 'granted', 1, '', '', ?)
-		ON CONFLICT(tier_key, account_id) DO UPDATE SET
+			(server_id, tier_key, account_id, status, attempts, last_error, next_attempt_at, updated_at)
+		VALUES (?, ?, ?, 'granted', 1, '', '', ?)
+		ON CONFLICT(server_id, tier_key, account_id) DO UPDATE SET
 			status          = 'granted',
 			last_error      = '',
 			next_attempt_at = '',
 			updated_at      = excluded.updated_at`,
-		tierKey, accountID, now)
+		s.serverID, tierKey, accountID, now)
 	if err != nil {
 		return fmt.Errorf("record battlepass grant success %s/%d: %w", tierKey, accountID, err)
 	}
@@ -92,21 +93,21 @@ func (s *battlepassStore) recordGrantLedgerFailure(tierKey string, accountID int
 	// On insert this is attempt 1; on conflict it's existing attempts+1.
 	_, err := s.db.Exec(`
 		INSERT INTO battlepass_grant_ledger
-			(tier_key, account_id, status, attempts, last_error, next_attempt_at, updated_at)
+			(server_id, tier_key, account_id, status, attempts, last_error, next_attempt_at, updated_at)
 		VALUES (
-			?, ?,
+			?, ?, ?,
 			CASE WHEN 1 >= ? THEN ? ELSE ? END,
 			1, ?,
 			CASE WHEN 1 >= ? THEN '' ELSE ? END,
 			?)
-		ON CONFLICT(tier_key, account_id) DO UPDATE SET
+		ON CONFLICT(server_id, tier_key, account_id) DO UPDATE SET
 			status = CASE WHEN battlepass_grant_ledger.attempts + 1 >= ? THEN ? ELSE ? END,
 			attempts = battlepass_grant_ledger.attempts + 1,
 			last_error = excluded.last_error,
 			next_attempt_at = CASE WHEN battlepass_grant_ledger.attempts + 1 >= ? THEN '' ELSE ? END,
 			updated_at = excluded.updated_at`,
 		// VALUES (insert / attempt 1)
-		tierKey, accountID,
+		s.serverID, tierKey, accountID,
 		deferredGrantMaxAttempts, battlepassGrantExhausted, battlepassGrantPending,
 		errMsg,
 		deferredGrantMaxAttempts, nextStr,
@@ -129,9 +130,9 @@ func (s *battlepassStore) listRetryableGrantLedger(now time.Time) ([]battlepassG
 	rows, err := s.db.Query(`
 		SELECT tier_key, account_id, status, attempts, last_error, next_attempt_at, updated_at
 		FROM battlepass_grant_ledger
-		WHERE status = ? AND attempts < ? AND next_attempt_at <= ?
+		WHERE server_id = ? AND status = ? AND attempts < ? AND next_attempt_at <= ?
 		ORDER BY next_attempt_at ASC`,
-		battlepassGrantPending, deferredGrantMaxAttempts, nowStr)
+		s.serverID, battlepassGrantPending, deferredGrantMaxAttempts, nowStr)
 	if err != nil {
 		return nil, fmt.Errorf("list retryable battlepass grants: %w", err)
 	}

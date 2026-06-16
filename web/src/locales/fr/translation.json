@@ -205,7 +205,7 @@
     "signIn": "Se connecter",
     "switchToSidenav": "Passer à la navigation latérale",
     "switchToTopnav": "Passer à la navigation supérieure",
-    "title": "DUNE ADMIN",
+    "title": "UNE ADMIN",
     "updateAvailable": "Mise à jour disponible",
     "updateAvailableBody": "Une nouvelle version est disponible : v{{current}} → v{{latest}}.",
     "updated": "Mis à jour vers {{version}}. Le serveur redémarre…",
@@ -371,7 +371,9 @@
     "deleteSelected": "Supprimer la sélection",
     "clearSelection": "Effacer la sélection",
     "noItems": "Aucun élément pour l'instant.",
-    "beta": "Bêta"
+    "beta": "Bêta",
+    "back": "Retour",
+    "dismiss": "Ignorer"
   },
   "database": {
     "columnColumn": "Colonne",
@@ -677,7 +679,8 @@
     "groups": {
       "economy": "Économie",
       "operations": "Opérations",
-      "playerWorld": "Monde des joueurs"
+      "playerWorld": "Monde des joueurs",
+      "dashboard": "Accueil"
     },
     "liveMap": "Carte en direct",
     "logs": "Journaux",
@@ -689,7 +692,8 @@
     "events": "Événements en direct",
     "menu": "Navigation",
     "battlepass": "Passe de combat",
-    "permissions": "Permissions"
+    "permissions": "Permissions",
+    "dashboard": "Tableau de bord"
   },
   "players": {
     "actions": {
@@ -771,7 +775,21 @@
         "wipeInventory": "Effacer l'inventaire",
         "wipeInventoryConfirmDesc": "Cela détruira tous les objets dans l'inventaire de {{player}}. Cette action est irréversible.",
         "wipeInventoryDesc": "Détruit tous les objets dans l'inventaire du joueur",
-        "wipeInventoryTitle": "Effacer définitivement l'inventaire ?"
+        "wipeInventoryTitle": "Effacer définitivement l'inventaire ?",
+        "deleteCharacter": "Supprimer le personnage",
+        "deleteCharacterDesc": "Supprimer définitivement ce personnage du serveur.",
+        "deleteCharacterButton": "Supprimer le personnage",
+        "deleteCharacterIrreversible": "Cela supprime définitivement le personnage, ses acteurs, la propriété des bâtiments et le compte. Cette action est irréversible.",
+        "deleteCharacterTitle": "Supprimer définitivement le personnage ?",
+        "deleteCharacterWarning": "Cela supprimera définitivement {{player}} et toutes les données associées : acteurs, balises de réapparition et compte. Un enregistrement d’audit est conservé. Cette action est irréversible.",
+        "deleteCharacterOnlineWarning": "Ce joueur semble être en ligne. Expulsez-le d’abord pour que la suppression se termine proprement.",
+        "deleteCharacterReasonLabel": "Motif (enregistré dans le journal d’audit)",
+        "deleteCharacterReasonPlaceholder": "Pourquoi ce personnage est-il supprimé ?",
+        "deleteCharacterConfirmLabel": "Tapez « {{phrase}} » pour confirmer",
+        "deleteCharacterConfirm": "Supprimer définitivement",
+        "deleteCharacterCountdown": "Patientez {{seconds}} s…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Personnage {{player}} supprimé"
       },
       "contracts": {
         "applyContracts_one": "Appliquer les contrats ({{count}})",
@@ -1220,7 +1238,11 @@
       "serverIniDir": "Répertoire INI serveur",
       "serverIniDirHint": "emplacement de UserGame.ini",
       "url": "URL",
-      "urlHint": "stockée dans le navigateur, pas sur le serveur"
+      "urlHint": "stockée dans le navigateur, pas sur le serveur",
+      "dangerZone": "Zone de danger",
+      "deleteServer": "Supprimer le serveur",
+      "deleteServerNamed": "Supprimer le serveur « {{name}} »",
+      "deleteServerHint": "Supprimer définitivement ce serveur et toutes ses données stockées. Cette action est irréversible."
     },
     "amp": {
       "containerName": "Nom de conteneur",
@@ -1303,7 +1325,9 @@
       "authDashboard": "Connexion au tableau de bord",
       "authDiscord": "Connexion Discord (OAuth)",
       "authOwners": "Propriétaires",
-      "discordStatus": "Embed de statut"
+      "discordStatus": "Embed de statut",
+      "marketBot": "Bot de marché",
+      "discordGuilds": "Guildes Discord"
     },
     "ssh": {
       "hostPort": "Hôte : port",
@@ -1318,7 +1342,8 @@
       "connection": "Connexion",
       "control": "Contrôle",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Guildes"
     },
     "discord": {
       "hint": "Créez un bot sur discord.com/developers/applications, activez-le, copiez le token et invitez-le sur votre serveur avec le scope applications.commands.",
@@ -1348,7 +1373,8 @@
       "statusChannel": "ID du salon de statut",
       "statusChannelHint": "Clic droit sur le salon → Copier l’identifiant du salon (nécessite le Mode développeur).",
       "statusInterval": "Intervalle de mise à jour (secondes)",
-      "statusIntervalHint": "Fréquence de rafraîchissement de l'embed. Minimum 30 secondes ; 60 par défaut."
+      "statusIntervalHint": "Fréquence de rafraîchissement de l'embed. Minimum 30 secondes ; 60 par défaut.",
+      "perGuildMoved": "La configuration par guilde — rôles de capacité et serveurs surveillés par chaque guilde (avec leurs salons) — se gère dans l’onglet Guildes."
     },
     "auth": {
       "hint": "Exiger une connexion pour le tableau de bord et l'API. Recommandé dès que dune-admin est accessible hors de votre LAN.",
@@ -1383,6 +1409,14 @@
       "cookieStrictDesc": "Le cookie n'est jamais envoyé sur une requête intersite — protection CSRF maximale. Incompatible avec la connexion Discord (la redirection OAuth ne peut pas le transporter) ; à utiliser uniquement avec des comptes locaux.",
       "cookieNone": "Aucun",
       "cookieNoneDesc": "Le cookie est envoyé sur toutes les requêtes, y compris cross-origin. Nécessaire uniquement si l'UI et le backend sont sur des domaines différents (ex. séparation CDN). Nécessite HTTPS."
+    },
+    "scope": {
+      "server": "Serveur",
+      "admin": "DuneAdmin"
+    },
+    "marketBot": {
+      "enabled": "Activer le bot de marché pour ce serveur",
+      "enabledHint": "Exécute le bot de marché intégré sur ce serveur. Les réglages sont partagés entre les serveurs et se trouvent dans l’onglet Marché."
     }
   },
   "storage": {
@@ -1611,7 +1645,8 @@
       "config": "Configuration",
       "factionScrip": "Bons de faction",
       "rewards": "Récompenses",
-      "solari": "Solari"
+      "solari": "Solari",
+      "currencyXp": "Monnaie et XP"
     },
     "signals": {
       "level": "Niveau du personnage",
@@ -1878,5 +1913,157 @@
     "placeholder": "Rechercher des joueurs…",
     "loadFailed": "Échec du chargement des joueurs : {{message}}",
     "loading": "Chargement des joueurs…"
+  },
+  "servers": {
+    "removeTitle": "Supprimer le serveur",
+    "removeDesc": "Supprimer définitivement « {{name}} » et toutes ses données stockées ? Cette action est irréversible.",
+    "removeConfirm": "Supprimer",
+    "removeFailed": "Échec de la suppression",
+    "removeWarning": "Supprimer définitivement « {{name}} » et toutes ses données stockées. Action irréversible.",
+    "removeConfirmLabel": "Saisissez {{name}} pour confirmer",
+    "removeCountdown": "Patientez {{seconds}}s…"
+  },
+  "setup": {
+    "discovering": "Détection automatique des paramètres du serveur…",
+    "connecting": "Connexion…",
+    "saveAndConnect": "Enregistrer et connecter",
+    "serverName": "Nom du serveur",
+    "serverNamePlaceholder": "ex. Production",
+    "nameRequired": "Le nom du serveur est requis",
+    "nameInvalid": "Le nom du serveur doit contenir des lettres ou des chiffres",
+    "connectTimeout": "Toujours pas connecté — vérifiez vos paramètres et réessayez.",
+    "addServerTitle": "Ajouter un serveur"
+  },
+  "discovery": {
+    "title": "Détection automatique des paramètres",
+    "subtitle": "Lecture des valeurs depuis votre serveur…",
+    "failed": "Détection automatique impossible — saisissez les valeurs manuellement.",
+    "steps": {
+      "connect": "Connexion via SSH",
+      "namespace": "Détection de l’espace de noms",
+      "dbPod": "Localisation du pod de base de données",
+      "dbCreds": "Lecture des identifiants de base de données",
+      "brokers": "Localisation des pods broker",
+      "gameProc": "Localisation du processus du serveur de jeu",
+      "containers": "Inspection des conteneurs",
+      "finalize": "Finalisation"
+    }
+  },
+  "manage": {
+    "title": "Gérer le serveur",
+    "serverName": "Nom du serveur"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "subtitle": "Serveurs et configuration en un coup d’œil",
+    "loadFailed": "Échec du chargement de l’état du serveur : {{message}}",
+    "running": "En cours",
+    "offline": "Hors ligne",
+    "playersOnline": "{{count}} en ligne",
+    "view": "Voir",
+    "manage": "Gérer",
+    "empty": {
+      "title": "Aucun serveur pour l’instant",
+      "body": "Ajoutez votre premier serveur de jeu pour commencer. Vous pouvez aussi configurer l’auth ou Discord ci-dessous — tout est optionnel.",
+      "addServer": "Ajouter votre premier serveur",
+      "guestBody": "Aucun serveur n’a encore été configuré."
+    },
+    "onboarding": {
+      "auth": {
+        "title": "Configurer la connexion / auth",
+        "body": "Exiger une connexion pour accéder au tableau de bord. Optionnel — à laisser désactivé sur un réseau local de confiance.",
+        "cta": "Configurer l’auth"
+      },
+      "discord": {
+        "title": "Connecter un bot Discord",
+        "body": "Envoyez des notifications et mappez les rôles aux permissions. Optionnel.",
+        "cta": "Connecter Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Guildes Discord",
+    "subtitle": "Configurez les rôles de capacité de chaque guilde Discord. Un seul jeton de bot sert toutes les guildes ; les serveurs se lient à une guilde depuis leur propre onglet Discord.",
+    "ariaLabel": "Guildes Discord",
+    "add": "Ajouter une guilde",
+    "addTitle": "Ajouter une guilde",
+    "editTitle": "Modifier la guilde",
+    "empty": "Aucune guilde Discord configurée pour l’instant.",
+    "on": "Activé",
+    "off": "Désactivé",
+    "loadRoles": "Charger les rôles",
+    "guildId": "ID de guilde",
+    "guildIdHint": "Clic droit sur l’icône du serveur → Copier l’ID du serveur (Mode développeur requis)",
+    "guildIdRequired": "L’ID de guilde est requis",
+    "serverRequired": "Chaque serveur surveillé doit être sélectionné",
+    "roleCount": "{{count}} rôles",
+    "addServer": "Ajouter un serveur",
+    "server": "Serveur",
+    "serverHint": "Le serveur de jeu surveillé par cette guilde",
+    "selectServer": "Sélectionnez un serveur…",
+    "noServers": "Cette guilde ne surveille encore aucun serveur.",
+    "watchedServersHint": "Chaque serveur surveillé publie ses embeds de statut/annonce dans les salons ci-dessous.",
+    "announceChannel": "ID du salon d’annonces",
+    "announceChannelHint": "Salon pour les annonces du serveur (redémarrages, événements)",
+    "statusEnabled": "Embed de statut persistant",
+    "statusEnabledHint": "Maintient à jour un embed de statut en direct dans un salon",
+    "statusChannel": "ID du salon de statut",
+    "statusChannelHint": "Salon où l’embed de statut est publié",
+    "statusInterval": "Intervalle de statut (secondes)",
+    "statusIntervalHint": "Fréquence d’actualisation de l’embed. Minimum 30 secondes ; 60 par défaut.",
+    "rolesHint": "Rôles Discord accordant chaque niveau de capacité dans cette guilde. Chargez les rôles après avoir saisi un ID de guilde.",
+    "rolesViewer": "Rôles observateur",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Rôles économie",
+    "rolesEconomyHint": "commandes de marché et d’économie",
+    "rolesAdmin": "Rôles admin",
+    "rolesAdminHint": "commandes administratives",
+    "saved": "Guilde enregistrée",
+    "saveFailed": "Échec de l’enregistrement : {{message}}",
+    "loadFailed": "Échec du chargement des guildes : {{message}}",
+    "removed": "Guilde supprimée",
+    "removeFailed": "Échec de la suppression : {{message}}",
+    "removeTitle": "Supprimer la guilde",
+    "removeConfirm": "Supprimer la guilde {{guild}} ? Le bot cessera de la servir, elle et ses serveurs surveillés.",
+    "columns": {
+      "guildId": "ID de guilde",
+      "servers": "Serveurs surveillés",
+      "roles": "Rôles"
+    },
+    "sections": {
+      "guild": "Guilde",
+      "roles": "Rôles de capacité",
+      "watchedServers": "Serveurs surveillés"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Liez ce serveur à une guilde Discord et définissez ses canaux d’annonce et de statut. Les rôles de capacité de cette guilde se configurent dans Paramètres → Guildes.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Dissocier ce serveur de sa guilde Discord ? Ses canaux sont effacés ; la guilde et ses rôles restent intacts.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
+      },
+      "noGuilds": "Aucune guilde ajoutée — ajoutez-en une dans Paramètres → Guildes, puis sélectionnez-la ici."
+    },
+    "selectGuild": "Rechercher des guildes…",
+    "selectChannel": "Rechercher des salons…",
+    "guildExists": "Cette guilde est déjà configurée."
   }
 }

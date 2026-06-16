@@ -69,13 +69,13 @@ func TestDiscoverViaControlDefaultDir(t *testing.T) {
 		return "", nil
 	}}
 
-	if got := discoverViaControlDefaultDir("", "DefaultGame.ini"); !strings.Contains(got, "Key=val") {
+	if got := discoverViaControlDefaultDir("", "DefaultGame.ini", globalControl, globalExecutor); !strings.Contains(got, "Key=val") {
 		t.Errorf("expected content from %s, got %q", wantDir, got)
 	}
 
 	// Non-provider control plane → no derivation.
 	globalControl = &localControl{}
-	if got := discoverViaControlDefaultDir("", "DefaultGame.ini"); got != "" {
+	if got := discoverViaControlDefaultDir("", "DefaultGame.ini", globalControl, globalExecutor); got != "" {
 		t.Errorf("expected empty for non-AMP control, got %q", got)
 	}
 }

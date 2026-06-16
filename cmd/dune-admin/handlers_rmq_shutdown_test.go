@@ -30,14 +30,10 @@ func TestShutdownVerb(t *testing.T) {
 // actually drives the control plane (#205 — previously it only announced and the
 // server kept running).
 func TestFireBroadcastShutdown_InvokesExecCommand(t *testing.T) {
-	prevC, prevE := globalControl, globalExecutor
-	t.Cleanup(func() { globalControl, globalExecutor = prevC, prevE })
-
 	ctrl := &recordingControl{}
-	globalControl = ctrl
-	globalExecutor = &fnExecutor{fn: func(string) (string, error) { return "", nil }}
+	exec := &fnExecutor{fn: func(string) (string, error) { return "", nil }}
 
-	fireBroadcastShutdown(context.Background(), "restart")
+	fireBroadcastShutdown(context.Background(), "restart", ctrl, exec)
 
 	if len(ctrl.execCmds) != 1 || ctrl.execCmds[0] != "restart" {
 		t.Fatalf("expected ExecCommand(\"restart\"), got %v", ctrl.execCmds)
@@ -47,11 +43,7 @@ func TestFireBroadcastShutdown_InvokesExecCommand(t *testing.T) {
 // TestFireBroadcastShutdown_NoControlPlane is a no-op (and must not panic) when
 // the control plane isn't connected.
 func TestFireBroadcastShutdown_NoControlPlane(t *testing.T) {
-	prevC, prevE := globalControl, globalExecutor
-	t.Cleanup(func() { globalControl, globalExecutor = prevC, prevE })
-	globalControl, globalExecutor = nil, nil
-
-	fireBroadcastShutdown(context.Background(), "restart") // must not panic
+	fireBroadcastShutdown(context.Background(), "restart", nil, nil) // must not panic
 }
 
 // TestScheduleAndCancelBroadcastShutdown verifies the armed control-plane action
@@ -64,7 +56,7 @@ func TestScheduleAndCancelBroadcastShutdown(t *testing.T) {
 		t.Fatal("expected no pending shutdown before scheduling")
 	}
 
-	scheduleBroadcastShutdownExec(time.Hour, "restart")
+	scheduleBroadcastShutdownExec(time.Hour, "restart", nil, nil)
 	shutdownExecMu.Lock()
 	armed := shutdownExecTimer != nil
 	shutdownExecMu.Unlock()

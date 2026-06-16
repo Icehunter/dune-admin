@@ -33,7 +33,7 @@ func TestWriteStatSnapshot_StoresSolarisBalance(t *testing.T) {
 		SnappedAt:      "2026-01-01T12:00:00Z",
 		SolarisBalance: ptr(int64(313_183_207)),
 	}
-	if err := writeStatSnapshot(ctx, db, snap); err != nil {
+	if err := writeStatSnapshot(ctx, db, snap, defaultServerID); err != nil {
 		t.Fatalf("writeStatSnapshot: %v", err)
 	}
 
@@ -59,12 +59,12 @@ func TestGetStatSnapshotHistory_ReturnsSolarisBalance(t *testing.T) {
 		{AccountID: 7, SnappedAt: "2026-01-01T10:10:00Z", SolarisBalance: ptr(int64(1200))},
 	}
 	for _, s := range snaps {
-		if err := writeStatSnapshot(ctx, db, s); err != nil {
+		if err := writeStatSnapshot(ctx, db, s, defaultServerID); err != nil {
 			t.Fatalf("writeStatSnapshot: %v", err)
 		}
 	}
 
-	got, err := getStatSnapshotHistory(ctx, db, 7, 500)
+	got, err := getStatSnapshotHistory(ctx, db, defaultServerID, 7, 500)
 	if err != nil {
 		t.Fatalf("getStatSnapshotHistory: %v", err)
 	}
@@ -89,11 +89,11 @@ func TestGetStatSnapshotHistory_NilSolarisBalanceWhenNotSet(t *testing.T) {
 	ctx := context.Background()
 
 	snap := statSnapshot{AccountID: 5, SnappedAt: "2026-01-01T10:00:00Z"}
-	if err := writeStatSnapshot(ctx, db, snap); err != nil {
+	if err := writeStatSnapshot(ctx, db, snap, defaultServerID); err != nil {
 		t.Fatalf("writeStatSnapshot: %v", err)
 	}
 
-	got, err := getStatSnapshotHistory(ctx, db, 5, 1)
+	got, err := getStatSnapshotHistory(ctx, db, defaultServerID, 5, 1)
 	if err != nil {
 		t.Fatalf("getStatSnapshotHistory: %v", err)
 	}
@@ -105,53 +105,7 @@ func TestGetStatSnapshotHistory_NilSolarisBalanceWhenNotSet(t *testing.T) {
 	}
 }
 
-func TestOpenSessionDB_MigratesExistingDBToAddSolarisBalance(t *testing.T) {
-	t.Parallel()
-	// Simulate a pre-existing DB without the solaris_balance column.
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	// Create schema as it existed before the solaris column was added.
-	if _, err := db.Exec(`
-		CREATE TABLE stat_snapshots (
-			id             INTEGER PRIMARY KEY AUTOINCREMENT,
-			account_id     INTEGER NOT NULL,
-			snapped_at     TEXT    NOT NULL,
-			char_xp        INTEGER,
-			skill_points   INTEGER,
-			intel_points   INTEGER,
-			combat_xp      INTEGER,
-			crafting_xp    INTEGER,
-			gathering_xp   INTEGER,
-			exploration_xp INTEGER,
-			sabotage_xp    INTEGER
-		);
-		CREATE TABLE play_sessions (
-			id            INTEGER PRIMARY KEY AUTOINCREMENT,
-			account_id    INTEGER NOT NULL,
-			started_at    TEXT    NOT NULL,
-			ended_at      TEXT,
-			duration_secs INTEGER
-		);
-	`); err != nil {
-		t.Fatalf("create legacy schema: %v", err)
-	}
-
-	// Running initSessionSchema should add the missing column without error.
-	if err := initSessionSchema(db); err != nil {
-		t.Fatalf("initSessionSchema on existing db: %v", err)
-	}
-
-	var count int
-	if err := db.QueryRow(
-		`SELECT COUNT(*) FROM pragma_table_info('stat_snapshots') WHERE name='solaris_balance'`,
-	).Scan(&count); err != nil {
-		t.Fatalf("pragma: %v", err)
-	}
-	if count != 1 {
-		t.Fatal("migration did not add solaris_balance to existing stat_snapshots table")
-	}
-}
+// Note: the in-place initSessionSchema column-add migration was removed. The
+// legacy 0.39.5 → unified (text/missing server_id → int-FK, plus solaris_balance)
+// conversion now runs in migrateUnifiedRemodel (covered by store_migration_test.go),
+// so a standalone initSessionSchema no longer mutates a pre-existing legacy table.

@@ -1,68 +1,122 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none" role="img" aria-label="Fremen sci-fi hexagonal intel token icon">
-  <defs>
-    <linearGradient id="edge" x1="62" y1="44" x2="194" y2="212" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#071224"/>
-      <stop offset="0.46" stop-color="#0B2442"/>
-      <stop offset="1" stop-color="#05101F"/>
-    </linearGradient>
-    <linearGradient id="cyanStroke" x1="78" y1="54" x2="178" y2="202" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#5EEBFF"/>
-      <stop offset="0.48" stop-color="#128CFF"/>
-      <stop offset="1" stop-color="#0A2B66"/>
-    </linearGradient>
-    <radialGradient id="coreGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(128 128) rotate(90) scale(46)">
-      <stop stop-color="#74F7FF" stop-opacity="0.95"/>
-      <stop offset="0.36" stop-color="#179DFF" stop-opacity="0.45"/>
-      <stop offset="1" stop-color="#04101F" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="glow" x="32" y="24" width="192" height="208" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="2.8" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.02 0 0 0 0 0.75 0 0 0 0 1 0 0 0 0.55 0" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <clipPath id="hexClip">
-      <path d="M128 30 211.14 78v100L128 226 44.86 178V78L128 30Z"/>
-    </clipPath>
-  </defs>
-
-  <g filter="url(#glow)">
-    <path d="M128 30 211.14 78v100L128 226 44.86 178V78L128 30Z" fill="url(#edge)"/>
-    <path d="M128 35 206.81 80.5v95L128 221 49.19 175.5v-95L128 35Z" stroke="url(#cyanStroke)" stroke-width="3" stroke-linejoin="round"/>
-    <path d="M128 48 195.55 87v78L128 204 60.45 165V87L128 48Z" stroke="#071C36" stroke-width="8" stroke-linejoin="round" opacity="0.78"/>
-    <path d="M128 49.5 194.25 87.75v76.5L128 202.5 61.75 164.25v-76.5L128 49.5Z" stroke="#2BCFFF" stroke-width="1.4" stroke-linejoin="round" opacity="0.86"/>
-  </g>
-
-  <g clip-path="url(#hexClip)">
-    <path d="M31 196 104 70M63 216 157 50M182 216 225 141" stroke="#071B32" stroke-width="12" opacity="0.38"/>
-    <path d="M128 64v22M128 170v22M64 128h24M168 128h24" stroke="#0D82D9" stroke-width="2" stroke-linecap="round" opacity="0.68"/>
-    <path d="M88 88h21l12 12M168 88h-21l-12 12M88 168h21l12-12M168 168h-21l-12-12" stroke="#3EE7FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.86"/>
-    <path d="M101 75h18M137 75h18M101 181h18M137 181h18" stroke="#116FBF" stroke-width="2" stroke-linecap="round" opacity="0.72"/>
-  </g>
-
-  <circle cx="128" cy="128" r="48" fill="url(#coreGlow)" opacity="0.85"/>
-
-  <g stroke-linecap="round" stroke-linejoin="round">
-    <path d="M128 76a52 52 0 0 1 48.75 34M76 128a52 52 0 0 1 34-48.75M128 180a52 52 0 0 1-48.75-34M180 128a52 52 0 0 1-34 48.75" stroke="#4AEAFF" stroke-width="3" opacity="0.86"/>
-    <path d="M101.5 101.5a37.5 37.5 0 0 1 53 0M154.5 154.5a37.5 37.5 0 0 1-53 0" stroke="#116FFF" stroke-width="3" opacity="0.9"/>
-    <path d="M91 128h19M146 128h19M128 91v19M128 146v19" stroke="#58F4FF" stroke-width="2.6" opacity="0.95"/>
-    <path d="M112 112l8 8M144 112l-8 8M112 144l8-8M144 144l-8-8" stroke="#0E5AA8" stroke-width="2.2" opacity="0.88"/>
-  </g>
-
-  <g>
-    <circle cx="128" cy="128" r="17" fill="#041225" stroke="#36E8FF" stroke-width="2.5"/>
-    <circle cx="128" cy="128" r="7" fill="#76F8FF"/>
-    <circle cx="128" cy="128" r="3" fill="#E7FEFF" opacity="0.95"/>
-  </g>
-
-  <g fill="#48EAFF">
-    <circle cx="128" cy="84" r="3" opacity="0.95"/>
-    <circle cx="172" cy="128" r="3" opacity="0.95"/>
-    <circle cx="128" cy="172" r="3" opacity="0.95"/>
-    <circle cx="84" cy="128" r="3" opacity="0.95"/>
-  </g>
-
-  <path d="M128 30 211.14 78v100L128 226 44.86 178V78L128 30Z" stroke="#6FF7FF" stroke-width="1" stroke-linejoin="round" opacity="0.4"/>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  fill="none"
+  aria-label="Fremen sci-fi hexagonal intel token icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="b" x1="62" x2="194" y1="44" y2="212" gradientUnits="userSpaceOnUse"><stop
+        stop-color="#071224"
+      /><stop offset=".46" stop-color="#0b2442" /><stop
+        offset="1"
+        stop-color="#05101f"
+      /></linearGradient><linearGradient id="c" x1="78" x2="178" y1="54" y2="202" gradientUnits="userSpaceOnUse"><stop
+        stop-color="#5eebff"
+      /><stop offset=".48" stop-color="#128cff" /><stop
+        offset="1"
+        stop-color="#0a2b66"
+      /></linearGradient><radialGradient
+      id="e"
+      cx="0"
+      cy="0"
+      r="1"
+      gradientTransform="rotate(90 0 128)scale(46)"
+      gradientUnits="userSpaceOnUse"
+    ><stop stop-color="#74f7ff" stop-opacity=".95" /><stop offset=".36" stop-color="#179dff" stop-opacity=".45" /><stop
+        offset="1"
+        stop-color="#04101f"
+        stop-opacity="0"
+      /></radialGradient><clipPath id="d"><path d="m128 30 83.14 48v100L128 226l-83.14-48V78z" /></clipPath><filter
+      id="a"
+      width="192"
+      height="208"
+      x="32"
+      y="24"
+      color-interpolation-filters="sRGB"
+      filterUnits="userSpaceOnUse"
+    ><feGaussianBlur result="blur" stdDeviation="2.8" /><feColorMatrix
+        in="blur"
+        result="coloredBlur"
+        values="0 0 0 0 0.02 0 0 0 0 0.75 0 0 0 0 1 0 0 0 0.55 0"
+      /><feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs><g
+    filter="url(#a)"
+  ><path fill="url(#b)" d="m128 30 83.14 48v100L128 226l-83.14-48V78z" /><path
+      stroke="url(#c)"
+      stroke-linejoin="round"
+      stroke-width="3"
+      d="m128 35 78.81 45.5v95L128 221l-78.81-45.5v-95z"
+    /><path
+      stroke="#071c36"
+      stroke-linejoin="round"
+      stroke-width="8"
+      d="m128 48 67.55 39v78L128 204l-67.55-39V87z"
+      opacity=".78"
+    /><path
+      stroke="#2bcfff"
+      stroke-linejoin="round"
+      stroke-width="1.4"
+      d="m128 49.5 66.25 38.25v76.5L128 202.5l-66.25-38.25v-76.5z"
+      opacity=".86"
+    /></g><g clip-path="url(#d)"><path
+      stroke="#071b32"
+      stroke-width="12"
+      d="m31 196 73-126M63 216l94-166m25 166 43-75"
+      opacity=".38"
+    /><path
+      stroke="#0d82d9"
+      stroke-linecap="round"
+      stroke-width="2"
+      d="M128 64v22m0 84v22m-64-64h24m80 0h24"
+      opacity=".68"
+    /><path
+      stroke="#3ee7ff"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M88 88h21l12 12m47-12h-21l-12 12m-47 68h21l12-12m47 12h-21l-12-12"
+      opacity=".86"
+    /><path
+      stroke="#116fbf"
+      stroke-linecap="round"
+      stroke-width="2"
+      d="M101 75h18m18 0h18m-54 106h18m18 0h18"
+      opacity=".72"
+    /></g><circle cx="128" cy="128" r="48" fill="url(#e)" opacity=".85" /><g
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  ><path
+      stroke="#4aeaff"
+      stroke-width="3"
+      d="M128 76a52 52 0 0 1 48.75 34M76 128a52 52 0 0 1 34-48.75M128 180a52 52 0 0 1-48.75-34M180 128a52 52 0 0 1-34 48.75"
+      opacity=".86"
+    /><path
+      stroke="#116fff"
+      stroke-width="3"
+      d="M101.5 101.5a37.5 37.5 0 0 1 53 0m0 53a37.5 37.5 0 0 1-53 0"
+      opacity=".9"
+    /><path stroke="#58f4ff" stroke-width="2.6" d="M91 128h19m36 0h19m-37-37v19m0 36v19" opacity=".95" /><path
+      stroke="#0e5aa8"
+      stroke-width="2.2"
+      d="m112 112 8 8m24-8-8 8m-24 24 8-8m24 8-8-8"
+      opacity=".88"
+    /></g><circle cx="128" cy="128" r="17" fill="#041225" stroke="#36e8ff" stroke-width="2.5" /><circle
+    cx="128"
+    cy="128"
+    r="7"
+    fill="#76f8ff"
+  /><circle cx="128" cy="128" r="3" fill="#e7feff" opacity=".95" /><g fill="#48eaff"><circle
+      cx="128"
+      cy="84"
+      r="3"
+      opacity=".95"
+    /><circle cx="172" cy="128" r="3" opacity=".95" /><circle cx="128" cy="172" r="3" opacity=".95" /><circle
+      cx="84"
+      cy="128"
+      r="3"
+      opacity=".95"
+    /></g><path
+    stroke="#6ff7ff"
+    stroke-linejoin="round"
+    d="m128 30 83.14 48v100L128 226l-83.14-48V78z"
+    opacity=".4"
+  /></svg>

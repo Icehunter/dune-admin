@@ -2,14 +2,17 @@ package main
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
 )
 
-// authLogf is indirected so tests can silence auth logging.
-var authLogf = log.Printf
+// authLogf is indirected so tests can silence auth logging. It defaults to a
+// zerolog-backed sink that emits an error-level "auth" log; tests may reassign
+// it to a no-op.
+var authLogf = func(msg string) {
+	componentLog("auth").Error().Msg(msg)
+}
 
 // sessionSecretStore guards the HMAC signing key so a live config save (which
 // runs on a request goroutine) can initialize it without racing reads.
@@ -267,6 +270,6 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 }
 
 func logAuthError(msg string) {
-	// log import indirection so tests can run without spamming output.
-	authLogf("[AUTH ERROR] %s", msg)
+	// authLogf indirection so tests can run without spamming output.
+	authLogf(msg)
 }

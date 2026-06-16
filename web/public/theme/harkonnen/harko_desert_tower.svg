@@ -1,156 +1,113 @@
-<!--?xml version="1.0" encoding="UTF-8"?-->
-<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Harko sci-fi rewards citadel icon">
-  <defs>
-    <linearGradient id="blackMetal" x1="67" y1="22" x2="185" y2="237" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#28292c"></stop>
-      <stop offset="0.42" stop-color="#09090b"></stop>
-      <stop offset="1" stop-color="#17181b"></stop>
-    </linearGradient>
-
-    <linearGradient id="blackMetal2" x1="120" y1="28" x2="154" y2="235" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#191a1d"></stop>
-      <stop offset="0.45" stop-color="#050506"></stop>
-      <stop offset="1" stop-color="#101114"></stop>
-    </linearGradient>
-
-    <linearGradient id="edgeMetal" x1="72" y1="138" x2="174" y2="232" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#414247"></stop>
-      <stop offset="0.45" stop-color="#202125"></stop>
-      <stop offset="1" stop-color="#09090a"></stop>
-    </linearGradient>
-
-    <linearGradient id="redCore" x1="128" y1="54" x2="128" y2="227" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ff1d26"></stop>
-      <stop offset="0.52" stop-color="#b80011"></stop>
-      <stop offset="1" stop-color="#550006"></stop>
-    </linearGradient>
-
-    <filter id="redGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="1.15" result="blur"></feGaussianBlur>
-      <feMerge>
-        <feMergeNode in="blur"></feMergeNode>
-        <feMergeNode in="SourceGraphic"></feMergeNode>
-      </feMerge>
-    </filter>
-  </defs>
-
-  <!-- Transparent background intentionally omitted -->
-
-  <!-- rear monolithic silhouette -->
-  <path d="M128 9L145 35L151 72L171 102L188 157L225 237H31L68 157L85 102L105 72L111 35L128 9Z" fill="#030304"></path>
-
-  <!-- tall rear blades -->
-  <path d="M86 205L96 76L112 35L119 223H88Z" fill="#090a0c"></path>
-  <path d="M170 205L160 76L144 35L137 223H168Z" fill="#090a0c"></path>
-  <path d="M94 78L111 35L114 97L96 117Z" fill="#242529"></path>
-  <path d="M162 78L145 35L142 97L160 117Z" fill="#242529"></path>
-
-  <!-- tallest split crown -->
-  <path d="M111 224L117 45L128 17L139 45L145 224Z" fill="url(#blackMetal2)"></path>
-  <path d="M118 45L128 17V224H111Z" fill="#111215"></path>
-  <path d="M128 17L138 45L145 224H128Z" fill="#050506"></path>
-
-  <!-- upper center turret -->
-  <path d="M119 76L123 43L128 30L133 43L137 76Z" fill="#0a0a0c"></path>
-  <path d="M122 76H134L132 118H124Z" fill="#111215"></path>
-
-  <!-- main central citadel body -->
-  <path d="M93 229L101 103L116 72H140L155 103L163 229Z" fill="url(#blackMetal)"></path>
-  <path d="M105 229L113 106L123 80H133L143 106L151 229Z" fill="#070708"></path>
-  <path d="M94 229L101 104L116 72L113 229Z" fill="#191a1d"></path>
-  <path d="M162 229L155 104L140 72L143 229Z" fill="#050506"></path>
-
-  <!-- circular reward emblem -->
-  <circle cx="128" cy="88" r="36" fill="#050506"></circle>
-  <circle cx="128" cy="88" r="32" fill="#15161a" stroke="#292a2e" stroke-width="3"></circle>
-  <circle cx="128" cy="88" r="25" fill="url(#redCore)" filter="url(#redGlow)"></circle>
-  <path d="M128 60L155 88L128 116L101 88Z" fill="#080809" stroke="#e31220" stroke-width="2"></path>
-  <path d="M128 55L132 88L128 123L124 88Z" fill="#ff1b26"></path>
-  <path d="M96 88H160" stroke="#bf0713" stroke-width="2"></path>
-  <path d="M117 88H139M128 77V99" stroke="#ff2833" stroke-width="1.5"></path>
-
-  <!-- upper red slit -->
-  <rect x="124" y="44" width="8" height="28" fill="#070708"></rect>
-  <rect x="126" y="48" width="4" height="22" fill="url(#redCore)" filter="url(#redGlow)"></rect>
-
-  <!-- vertical slits below emblem -->
-  <g fill="#ec1420" filter="url(#redGlow)">
-    <rect x="118" y="119" width="4" height="17"></rect>
-    <rect x="126" y="119" width="4" height="17"></rect>
-    <rect x="134" y="119" width="4" height="17"></rect>
-  </g>
-
-  <!-- central front pillars -->
-  <path d="M105 226L108 136L119 121L124 226Z" fill="#202126" stroke="#37383d" stroke-width="1.5"></path>
-  <path d="M151 226L148 136L137 121L132 226Z" fill="#202126" stroke="#37383d" stroke-width="1.5"></path>
-  <path d="M110 136L119 121L121 226H111Z" fill="#34353a" opacity=".85"></path>
-  <path d="M146 136L137 121L135 226H145Z" fill="#34353a" opacity=".55"></path>
-
-  <!-- central red banner -->
-  <path d="M118 138H138V187L128 174L118 187Z" fill="url(#redCore)" filter="url(#redGlow)"></path>
-  <path d="M121 137H135V145H121Z" fill="#ff202b"></path>
-
-  <!-- side massive walls -->
-  <path d="M29 237L62 160L89 128L104 231Z" fill="#070708"></path>
-  <path d="M227 237L194 160L167 128L152 231Z" fill="#070708"></path>
-  <path d="M54 232L78 178L107 153L92 237Z" fill="#151619"></path>
-  <path d="M202 232L178 178L149 153L164 237Z" fill="#151619"></path>
-  <path d="M79 177L107 153L101 186L88 212Z" fill="#2a2b30"></path>
-  <path d="M177 177L149 153L155 186L168 212Z" fill="#2a2b30"></path>
-
-  <!-- diagonal front buttresses -->
-  <path d="M71 240L107 169L123 169L94 240Z" fill="url(#edgeMetal)" stroke="#44454a" stroke-width="1.5"></path>
-  <path d="M185 240L149 169L133 169L162 240Z" fill="url(#edgeMetal)" stroke="#44454a" stroke-width="1.5"></path>
-  <path d="M94 240L119 197H137L162 240Z" fill="#101114" stroke="#34353a" stroke-width="1.5"></path>
-  <path d="M103 240L121 205H135L153 240Z" fill="#060607"></path>
-
-  <!-- bottom red gate -->
-  <path d="M120 205H136V229H120Z" fill="#070708"></path>
-  <rect x="123" y="210" width="10" height="25" fill="url(#redCore)" filter="url(#redGlow)"></rect>
-  <path d="M112 238H144L136 229H120Z" fill="#030304"></path>
-  <path d="M111 234H145M114 229H142M117 224H139" stroke="#28292e" stroke-width="2"></path>
-
-  <!-- side towers -->
-  <path d="M58 219L64 125L70 219Z" fill="#060607"></path>
-  <path d="M198 219L192 125L186 219Z" fill="#060607"></path>
-  <path d="M53 219L62 142H75L82 230H52Z" fill="#121316"></path>
-  <path d="M203 219L194 142H181L174 230H204Z" fill="#121316"></path>
-  <path d="M39 229L45 166L51 229Z" fill="#070708"></path>
-  <path d="M217 229L211 166L205 229Z" fill="#070708"></path>
-
-  <!-- red side banners and vents -->
-  <g fill="#e51220" filter="url(#redGlow)">
-    <path d="M61 158H71V190L66 181L61 190Z"></path>
-    <path d="M195 158H185V190L190 181L195 190Z"></path>
-
-    <rect x="79" y="153" width="5" height="6"></rect>
-    <rect x="89" y="153" width="5" height="6"></rect>
-    <rect x="99" y="153" width="5" height="6"></rect>
-
-    <rect x="152" y="153" width="5" height="6"></rect>
-    <rect x="162" y="153" width="5" height="6"></rect>
-    <rect x="172" y="153" width="5" height="6"></rect>
-
-    <rect x="59" y="207" width="5" height="8"></rect>
-    <rect x="65" y="207" width="5" height="8"></rect>
-    <rect x="192" y="207" width="5" height="8"></rect>
-    <rect x="186" y="207" width="5" height="8"></rect>
-
-    <path d="M63 226L80 190H84L67 226Z"></path>
-    <path d="M193 226L176 190H172L189 226Z"></path>
-    <path d="M83 225L103 210L106 214L91 225Z"></path>
-    <path d="M173 225L153 210L150 214L165 225Z"></path>
-
-    <rect x="44" y="183" width="3" height="14"></rect>
-    <rect x="209" y="183" width="3" height="14"></rect>
-  </g>
-
-  <!-- dark horizontal ledges -->
-  <path d="M71 144H107L103 153H75Z" fill="#050506"></path>
-  <path d="M185 144H149L153 153H181Z" fill="#050506"></path>
-  <path d="M66 161H109L106 167H69Z" fill="#151619"></path>
-  <path d="M190 161H147L150 167H187Z" fill="#151619"></path>
-
-  <!-- black outline cleanup -->
-  <path d="M31 237H225" stroke="#050506" stroke-width="4"></path>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-label="Harko sci-fi rewards citadel icon"
+  viewBox="0 0 256 256"
+><defs><linearGradient id="b" x1="67" x2="185" y1="22" y2="237" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#28292c"
+      /><stop offset=".42" stop-color="#09090b" /><stop
+        offset="1"
+        stop-color="#17181b"
+      /></linearGradient><linearGradient id="a" x1="120" x2="154" y1="28" y2="235" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#191a1d"
+      /><stop offset=".45" stop-color="#050506" /><stop
+        offset="1"
+        stop-color="#101114"
+      /></linearGradient><linearGradient id="e" x1="72" x2="174" y1="138" y2="232" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#414247"
+      /><stop offset=".45" stop-color="#202125" /><stop
+        offset="1"
+        stop-color="#09090a"
+      /></linearGradient><linearGradient id="c" x1="128" x2="128" y1="54" y2="227" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#ff1d26"
+      /><stop offset=".52" stop-color="#b80011" /><stop offset="1" stop-color="#550006" /></linearGradient><filter
+      id="d"
+      width="160%"
+      height="160%"
+      x="-30%"
+      y="-30%"
+    ><feGaussianBlur result="blur" stdDeviation="1.15" /><feMerge><feMergeNode in="blur" /><feMergeNode
+          in="SourceGraphic"
+        /></feMerge></filter></defs><path
+    fill="#030304"
+    d="m128 9 17 26 6 37 20 30 17 55 37 80H31l37-80 17-55 20-30 6-37z"
+  /><path fill="#090a0c" d="M86 205 96 76l16-41 7 188H88Zm84 0L160 76l-16-41-7 188h31Z" /><path
+    fill="#242529"
+    d="m94 78 17-43 3 62-18 20Zm68 0-17-43-3 62 18 20Z"
+  /><path fill="url(#a)" d="m111 224 6-179 11-28 11 28 6 179Z" /><path fill="#111215" d="m118 45 10-28v207h-17Z" /><path
+    fill="#050506"
+    d="m128 17 10 28 7 179h-17Z"
+  /><path fill="#0a0a0c" d="m119 76 4-33 5-13 5 13 4 33Z" /><path fill="#111215" d="M122 76h12l-2 42h-8Z" /><path
+    fill="url(#b)"
+    d="m93 229 8-126 15-31h24l15 31 8 126Z"
+  /><path fill="#070708" d="m105 229 8-123 10-26h10l10 26 8 123Z" /><path
+    fill="#191a1d"
+    d="m94 229 7-125 15-32-3 157Z"
+  /><path fill="#050506" d="m162 229-7-125-15-32 3 157Z" /><circle cx="128" cy="88" r="36" fill="#050506" /><circle
+    cx="128"
+    cy="88"
+    r="32"
+    fill="#15161a"
+    stroke="#292a2e"
+    stroke-width="3"
+  /><circle cx="128" cy="88" r="25" fill="url(#c)" filter="url(#d)" /><path
+    fill="#080809"
+    stroke="#e31220"
+    stroke-width="2"
+    d="m128 60 27 28-27 28-27-28Z"
+  /><path fill="#ff1b26" d="m128 55 4 33-4 35-4-35Z" /><path stroke="#bf0713" stroke-width="2" d="M96 88h64" /><path
+    stroke="#ff2833"
+    stroke-width="1.5"
+    d="M117 88h22m-11-11v22"
+  /><path fill="#070708" d="M124 44h8v28h-8z" /><path fill="url(#c)" d="M126 48h4v22h-4z" filter="url(#d)" /><g
+    fill="#ec1420"
+    filter="url(#d)"
+  ><path d="M118 119h4v17h-4zm8 0h4v17h-4zm8 0h4v17h-4z" /></g><path
+    fill="#202126"
+    stroke="#37383d"
+    stroke-width="1.5"
+    d="m105 226 3-90 11-15 5 105Zm46 0-3-90-11-15-5 105Z"
+  /><path fill="#34353a" d="m110 136 9-15 2 105h-10Z" opacity=".85" /><path
+    fill="#34353a"
+    d="m146 136-9-15-2 105h10Z"
+    opacity=".55"
+  /><path fill="url(#c)" d="M118 138h20v49l-10-13-10 13Z" filter="url(#d)" /><path
+    fill="#ff202b"
+    d="M121 137h14v8h-14Z"
+  /><path fill="#070708" d="m29 237 33-77 27-32 15 103Zm198 0-33-77-27-32-15 103Z" /><path
+    fill="#151619"
+    d="m54 232 24-54 29-25-15 84Zm148 0-24-54-29-25 15 84Z"
+  /><path fill="#2a2b30" d="m79 177 28-24-6 33-13 26Zm98 0-28-24 6 33 13 26Z" /><path
+    fill="url(#e)"
+    stroke="#44454a"
+    stroke-width="1.5"
+    d="m71 240 36-71h16l-29 71Z"
+  /><path fill="url(#e)" stroke="#44454a" stroke-width="1.5" d="m185 240-36-71h-16l29 71Z" /><path
+    fill="#101114"
+    stroke="#34353a"
+    stroke-width="1.5"
+    d="m94 240 25-43h18l25 43Z"
+  /><path fill="#060607" d="m103 240 18-35h14l18 35Z" /><path fill="#070708" d="M120 205h16v24h-16Z" /><path
+    fill="url(#c)"
+    d="M123 210h10v25h-10z"
+    filter="url(#d)"
+  /><path fill="#030304" d="M112 238h32l-8-9h-16Z" /><path
+    stroke="#28292e"
+    stroke-width="2"
+    d="M111 234h34m-31-5h28m-25-5h22"
+  /><path fill="#060607" d="m58 219 6-94 6 94Zm140 0-6-94-6 94Z" /><path
+    fill="#121316"
+    d="m53 219 9-77h13l7 88H52Zm150 0-9-77h-13l-7 88h30Z"
+  /><path fill="#070708" d="m39 229 6-63 6 63Zm178 0-6-63-6 63Z" /><g fill="#e51220" filter="url(#d)"><path
+      d="M61 158h10v32l-5-9-5 9Zm134 0h-10v32l5-9 5 9Zm-116-5h5v6h-5zm10 0h5v6h-5zm10 0h5v6h-5zm53 0h5v6h-5zm10 0h5v6h-5zm10 0h5v6h-5zM59 207h5v8h-5zm6 0h5v8h-5zm127 0h5v8h-5zm-6 0h5v8h-5z"
+    /><path
+      d="m63 226 17-36h4l-17 36Zm130 0-17-36h-4l17 36Zm-110-1 20-15 3 4-15 11Zm90 0-20-15-3 4 15 11ZM44 183h3v14h-3zm165 0h3v14h-3z"
+    /></g><path fill="#050506" d="M71 144h36l-4 9H75Zm114 0h-36l4 9h28Z" /><path
+    fill="#151619"
+    d="M66 161h43l-3 6H69Zm124 0h-43l3 6h37Z"
+  /><path stroke="#050506" stroke-width="4" d="M31 237h194" /></svg>

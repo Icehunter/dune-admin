@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/bwmarrin/discordgo"
@@ -57,7 +56,7 @@ func handleSearchDiscordMembers(w http.ResponseWriter, r *http.Request) {
 func handleSearchDiscordMembersInner(w http.ResponseWriter, guildID, query string, search memberSearchFn) {
 	members, err := search(guildID, query, 10)
 	if err != nil {
-		log.Printf("handleSearchDiscordMembers: %v", err)
+		componentLog("discord").Error().Err(err).Msg("handleSearchDiscordMembers failed")
 		jsonErr(w, fmt.Errorf("member search failed"), http.StatusInternalServerError)
 		return
 	}

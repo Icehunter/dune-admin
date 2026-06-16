@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -102,20 +101,21 @@ func handleRMQFillWater(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
+	pool := dbFromCtx(r)
 	err := processFillWater(fillWaterParams{
 		flsID:       req.FlsID,
 		waterAmount: req.WaterAmount,
 		isOnline:    func(id string) bool { return isHexIDOnline(ctx, id) },
 		sendRMQ:     func(id string, amt int) error { return rmqUpdateAllWaterFillables(id, amt) },
 		resolveActor: func(id string) (int64, error) {
-			return cmdActorIDFromFlsID(ctx, id)
+			return cmdActorIDFromFlsID(ctx, pool, id)
 		},
 		refillDB: func(actorID int64) (int64, error) {
-			return cmdRefillWaterOffline(ctx, actorID)
+			return cmdRefillWaterOffline(ctx, pool, actorID)
 		},
 	})
 	if err != nil {
-		log.Printf("handleRMQFillWater: %v", err)
+		componentLog("rmq").Error().Err(err).Msg("fill water failed")
 		jsonErr(w, fmt.Errorf("fill water failed: %w", err), http.StatusInternalServerError)
 		return
 	}
@@ -224,7 +224,7 @@ func handleRMQBroadcastShutdown(w http.ResponseWriter, r *http.Request) {
 	// countdown elapses (#205 — previously nothing happened in game).
 	if !req.Cancel {
 		delay := time.Duration(req.DelayMinutes) * time.Minute
-		scheduleBroadcastShutdownExec(delay, shutdownVerb(req.ShutdownType))
+		scheduleBroadcastShutdownExec(delay, shutdownVerb(req.ShutdownType), controlFromCtx(r), executorFromCtx(r))
 	}
 	action := "shutdown broadcast sent"
 	if req.Cancel {
@@ -253,8 +253,9 @@ func shutdownVerb(shutdownType string) string {
 }
 
 // scheduleBroadcastShutdownExec arms a one-shot timer to run the control-plane
-// action after delay, cancelling any previously-armed action first.
-func scheduleBroadcastShutdownExec(delay time.Duration, verb string) {
+// action after delay, cancelling any previously-armed action first. ctrl and
+// exec are captured at call time so the goroutine uses the right server.
+func scheduleBroadcastShutdownExec(delay time.Duration, verb string, ctrl ControlPlane, exec Executor) {
 	shutdownExecMu.Lock()
 	defer shutdownExecMu.Unlock()
 	if shutdownExecTimer != nil {
@@ -266,7 +267,7 @@ func scheduleBroadcastShutdownExec(delay time.Duration, verb string) {
 		shutdownExecTimer = nil
 		shutdownExecAt = 0
 		shutdownExecMu.Unlock()
-		fireBroadcastShutdown(context.Background(), verb)
+		fireBroadcastShutdown(context.Background(), verb, ctrl, exec)
 	})
 }
 
@@ -291,13 +292,13 @@ func pendingBroadcastShutdown() (at int64, pending bool) {
 
 // fireBroadcastShutdown runs the lifecycle command against the control plane.
 // Mirrors fireScheduledRestart: a no-op (logged) when nothing is connected.
-func fireBroadcastShutdown(ctx context.Context, verb string) {
-	if globalControl == nil || globalExecutor == nil {
-		log.Printf("broadcast-shutdown: control plane not connected; %s skipped", verb)
+func fireBroadcastShutdown(ctx context.Context, verb string, ctrl ControlPlane, exec Executor) {
+	if ctrl == nil || exec == nil {
+		componentLog("rmq").Warn().Str("verb", verb).Msg("broadcast-shutdown: control plane not connected; skipped")
 		return
 	}
-	if _, err := globalControl.ExecCommand(ctx, globalExecutor, verb); err != nil {
-		log.Printf("broadcast-shutdown: %s failed: %v", verb, err)
+	if _, err := ctrl.ExecCommand(ctx, exec, verb); err != nil {
+		componentLog("rmq").Error().Err(err).Str("verb", verb).Msg("broadcast-shutdown failed")
 	}
 }
 
@@ -556,7 +557,8 @@ func processWhisper(ctx context.Context, accountID int64, message string, d whis
 // attributed to the seeded GM/Server persona. The exact wire shape is pinned by
 // buildWhisperBody against the live-confirmed protocol.
 func handleRMQWhisper(w http.ResponseWriter, r *http.Request) {
-	if globalDB == nil {
+	db := dbFromCtx(r)
+	if db == nil {
 		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
 		return
 	}
@@ -583,7 +585,7 @@ func handleRMQWhisper(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		log.Printf("handleRMQWhisper: %v", err)
+		componentLog("rmq").Error().Err(err).Msg("failed to send whisper")
 		jsonErr(w, fmt.Errorf("failed to send whisper"), http.StatusInternalServerError)
 		return
 	}

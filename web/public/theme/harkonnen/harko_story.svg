@@ -1,60 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
-  <title>Sci-fi brutalist open book story progression icon</title>
-  <desc>Transparent SVG icon: sharp angular black-metal open book with deep crimson militaristic accents.</desc>
-
-  <defs>
-    <linearGradient id="metal" x1="54" y1="52" x2="202" y2="202" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#242126"/>
-      <stop offset="0.45" stop-color="#070608"/>
-      <stop offset="1" stop-color="#161218"/>
-    </linearGradient>
-    <linearGradient id="page" x1="60" y1="70" x2="196" y2="190" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1B171B"/>
-      <stop offset="1" stop-color="#050405"/>
-    </linearGradient>
-    <filter id="hardShadow" x="25" y="33" width="206" height="187" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="6" stdDeviation="4" flood-color="#000000" flood-opacity="0.75"/>
-    </filter>
-  </defs>
-
-  <!-- Outer brutalist crest / armored silhouette -->
-  <g filter="url(#hardShadow)">
-    <path d="M128 35 L213 72 L201 178 L128 218 L55 178 L43 72 Z" fill="url(#metal)"/>
-    <path d="M128 35 L213 72 L201 178 L128 218 L55 178 L43 72 Z" stroke="#3B3238" stroke-width="5" stroke-linejoin="miter"/>
-    <path d="M128 45 L200 77 L190 171 L128 205 L66 171 L56 77 Z" stroke="#8C0714" stroke-width="4" stroke-linejoin="miter"/>
-  </g>
-
-  <!-- Aggressive top horns / angular military marks -->
-  <path d="M74 76 L102 61 L118 76 L91 82 Z" fill="#0B090B" stroke="#4A0A12" stroke-width="3" stroke-linejoin="miter"/>
-  <path d="M182 76 L154 61 L138 76 L165 82 Z" fill="#0B090B" stroke="#4A0A12" stroke-width="3" stroke-linejoin="miter"/>
-  <path d="M128 54 L139 74 L128 83 L117 74 Z" fill="#930716"/>
-
-  <!-- Open book, left page -->
-  <path d="M48 96 L118 73 L128 95 L128 183 L110 166 L55 183 Z" fill="url(#page)" stroke="#B60A1B" stroke-width="5" stroke-linejoin="miter"/>
-  <path d="M60 106 L106 91 L119 102 L119 157 L103 145 L64 156 Z" fill="#111014" stroke="#31272D" stroke-width="3" stroke-linejoin="miter"/>
-
-  <!-- Open book, right page -->
-  <path d="M208 96 L138 73 L128 95 L128 183 L146 166 L201 183 Z" fill="url(#page)" stroke="#B60A1B" stroke-width="5" stroke-linejoin="miter"/>
-  <path d="M196 106 L150 91 L137 102 L137 157 L153 145 L192 156 Z" fill="#111014" stroke="#31272D" stroke-width="3" stroke-linejoin="miter"/>
-
-  <!-- Central spine, like a blade -->
-  <path d="M128 91 L139 116 L135 187 L128 199 L121 187 L117 116 Z" fill="#060506" stroke="#C20A1C" stroke-width="4" stroke-linejoin="miter"/>
-  <path d="M128 103 L132 124 L130 176 L128 184 L126 176 L124 124 Z" fill="#7F0612"/>
-
-  <!-- Page cuts / progression chevrons -->
-  <path d="M72 122 L105 112 L113 119 L78 132 Z" fill="#650711"/>
-  <path d="M75 145 L103 137 L113 145 L79 156 Z" fill="#650711"/>
-  <path d="M184 122 L151 112 L143 119 L178 132 Z" fill="#650711"/>
-  <path d="M181 145 L153 137 L143 145 L177 156 Z" fill="#650711"/>
-
-  <!-- Lower militaristic armor teeth -->
-  <path d="M62 185 L92 178 L112 193 L84 199 Z" fill="#0A080A" stroke="#4A0A12" stroke-width="3" stroke-linejoin="miter"/>
-  <path d="M194 185 L164 178 L144 193 L172 199 Z" fill="#0A080A" stroke="#4A0A12" stroke-width="3" stroke-linejoin="miter"/>
-  <path d="M105 199 L128 214 L151 199 L128 192 Z" fill="#A50818"/>
-
-  <!-- Small rivet-like crimson points -->
-  <path d="M73 84 L81 80 L88 85 L81 91 Z" fill="#D00B20"/>
-  <path d="M183 84 L175 80 L168 85 L175 91 Z" fill="#D00B20"/>
-  <path d="M50 116 L58 111 L66 116 L58 122 Z" fill="#8C0714"/>
-  <path d="M206 116 L198 111 L190 116 L198 122 Z" fill="#8C0714"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" fill="none" viewBox="0 0 256 256"><title
+  >Sci-fi brutalist open book story progression icon</title><desc
+  >Transparent SVG icon: sharp angular black-metal open book with deep crimson militaristic accents.</desc><defs
+  ><linearGradient id="b" x1="54" x2="202" y1="52" y2="202" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#242126"
+      /><stop offset=".45" stop-color="#070608" /><stop
+        offset="1"
+        stop-color="#161218"
+      /></linearGradient><linearGradient id="c" x1="60" x2="196" y1="70" y2="190" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#1b171b"
+      /><stop offset="1" stop-color="#050405" /></linearGradient><filter
+      id="a"
+      width="206"
+      height="187"
+      x="25"
+      y="33"
+      color-interpolation-filters="sRGB"
+      filterUnits="userSpaceOnUse"
+    ><feDropShadow dx="0" dy="6" flood-color="#000" flood-opacity=".75" stdDeviation="4" /></filter></defs><g
+    filter="url(#a)"
+  ><path fill="url(#b)" d="m128 35 85 37-12 106-73 40-73-40L43 72Z" /><path
+      stroke="#3b3238"
+      stroke-width="5"
+      d="m128 35 85 37-12 106-73 40-73-40L43 72Z"
+    /><path stroke="#8c0714" stroke-width="4" d="m128 45 72 32-10 94-62 34-62-34-10-94Z" /></g><path
+    fill="#0b090b"
+    stroke="#4a0a12"
+    stroke-width="3"
+    d="m74 76 28-15 16 15-27 6Zm108 0-28-15-16 15 27 6Z"
+  /><path fill="#930716" d="m128 54 11 20-11 9-11-9Z" /><path
+    fill="url(#c)"
+    stroke="#b60a1b"
+    stroke-width="5"
+    d="m48 96 70-23 10 22v88l-18-17-55 17Z"
+  /><path fill="#111014" stroke="#31272d" stroke-width="3" d="m60 106 46-15 13 11v55l-16-12-39 11Z" /><path
+    fill="url(#c)"
+    stroke="#b60a1b"
+    stroke-width="5"
+    d="m208 96-70-23-10 22v88l18-17 55 17Z"
+  /><path fill="#111014" stroke="#31272d" stroke-width="3" d="m196 106-46-15-13 11v55l16-12 39 11Z" /><path
+    fill="#060506"
+    stroke="#c20a1c"
+    stroke-width="4"
+    d="m128 91 11 25-4 71-7 12-7-12-4-71Z"
+  /><path fill="#7f0612" d="m128 103 4 21-2 52-2 8-2-8-2-52Z" /><path
+    fill="#650711"
+    d="m72 122 33-10 8 7-35 13Zm3 23 28-8 10 8-34 11Zm109-23-33-10-8 7 35 13Zm-3 23-28-8-10 8 34 11Z"
+  /><path fill="#0a080a" stroke="#4a0a12" stroke-width="3" d="m62 185 30-7 20 15-28 6Zm132 0-30-7-20 15 28 6Z" /><path
+    fill="#a50818"
+    d="m105 199 23 15 23-15-23-7Z"
+  /><path fill="#d00b20" d="m73 84 8-4 7 5-7 6Zm110 0-8-4-7 5 7 6Z" /><path
+    fill="#8c0714"
+    d="m50 116 8-5 8 5-8 6Zm156 0-8-5-8 5 8 6Z"
+  /></svg>

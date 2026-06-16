@@ -116,7 +116,7 @@ func publishNotification(routingKey string, keywords []string, content string) e
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/notify [post]
 func handleNotify(w http.ResponseWriter, r *http.Request) {
-	if globalExecutor == nil {
+	if executorFromCtx(r) == nil {
 		jsonErr(w, fmt.Errorf("not connected"), http.StatusServiceUnavailable)
 		return
 	}

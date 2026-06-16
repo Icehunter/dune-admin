@@ -141,10 +141,10 @@ func TestEnsureGiveItemVolumeCapacity(t *testing.T) {
 	inv := giveItemInventory{hasVolumeCap: true, maxVolume: 10}
 	state := giveItemInventoryState{usedVolume: 4}
 
-	if err := ensureGiveItemVolumeCapacity(t.Context(), inv, state, "Dune.Item", 3); err != nil {
+	if err := ensureGiveItemVolumeCapacity(t.Context(), nil, inv, state, "Dune.Item", 3); err != nil {
 		t.Fatalf("expected capacity to fit, got %v", err)
 	}
-	err := ensureGiveItemVolumeCapacity(t.Context(), inv, state, "Dune.Item", 4)
+	err := ensureGiveItemVolumeCapacity(t.Context(), nil, inv, state, "Dune.Item", 4)
 	if err == nil {
 		t.Fatalf("expected volume-capacity error")
 	}

@@ -205,7 +205,7 @@
     "signIn": "Войти",
     "switchToSidenav": "Переключить на боковую навигацию",
     "switchToTopnav": "Переключить на верхнюю навигацию",
-    "title": "DUNE ADMIN",
+    "title": "UNE ADMIN",
     "updateAvailable": "Доступно обновление",
     "updateAvailableBody": "Доступна новая версия: v{{current}} → v{{latest}}.",
     "updated": "Обновлено до {{version}}. Сервер перезапускается…",
@@ -373,7 +373,9 @@
     "deleteSelected": "Удалить выбранные",
     "clearSelection": "Снять выделение",
     "noItems": "Предметов пока нет.",
-    "beta": "Бета"
+    "beta": "Бета",
+    "back": "Назад",
+    "dismiss": "Закрыть"
   },
   "database": {
     "columnColumn": "Столбец",
@@ -684,7 +686,8 @@
     "groups": {
       "economy": "Экономика",
       "operations": "Операции",
-      "playerWorld": "Мир игрока"
+      "playerWorld": "Мир игрока",
+      "dashboard": "Главная"
     },
     "liveMap": "Карта в реальном времени",
     "logs": "Логи",
@@ -696,7 +699,8 @@
     "events": "Живые события",
     "menu": "Навигация",
     "battlepass": "Боевой пропуск",
-    "permissions": "Права доступа"
+    "permissions": "Права доступа",
+    "dashboard": "Панель"
   },
   "players": {
     "actions": {
@@ -778,7 +782,21 @@
         "wipeInventory": "Очистить инвентарь",
         "wipeInventoryConfirmDesc": "Это уничтожит все предметы в инвентаре {{player}}. Действие нельзя отменить.",
         "wipeInventoryDesc": "Уничтожает все предметы в инвентаре игрока",
-        "wipeInventoryTitle": "Очистить инвентарь навсегда?"
+        "wipeInventoryTitle": "Очистить инвентарь навсегда?",
+        "deleteCharacter": "Удалить персонажа",
+        "deleteCharacterDesc": "Безвозвратно удалить этого персонажа с сервера.",
+        "deleteCharacterButton": "Удалить персонажа",
+        "deleteCharacterIrreversible": "Это безвозвратно удалит персонажа, его акторов, владение постройками и учётную запись. Это действие нельзя отменить.",
+        "deleteCharacterTitle": "Удалить персонажа навсегда?",
+        "deleteCharacterWarning": "Это безвозвратно удалит {{player}} и все связанные данные: акторов, маяки возрождения и учётную запись. Запись аудита сохраняется. Это действие нельзя отменить.",
+        "deleteCharacterOnlineWarning": "Похоже, этот игрок в сети. Сначала отключите его, чтобы удаление прошло корректно.",
+        "deleteCharacterReasonLabel": "Причина (записывается в журнал аудита)",
+        "deleteCharacterReasonPlaceholder": "Почему этот персонаж удаляется?",
+        "deleteCharacterConfirmLabel": "Введите «{{phrase}}» для подтверждения",
+        "deleteCharacterConfirm": "Удалить навсегда",
+        "deleteCharacterCountdown": "Подождите {{seconds}} с…",
+        "deleteCharacterPhrase": "DELETE",
+        "deleteCharacterDone": "Персонаж {{player}} удалён"
       },
       "contracts": {
         "applyContracts_one": "Применить контракт(ы) ({{count}})",
@@ -1241,7 +1259,11 @@
       "serverIniDir": "Каталог INI сервера",
       "serverIniDirHint": "расположение UserGame.ini",
       "url": "URL",
-      "urlHint": "сохранён в браузере, не на сервере"
+      "urlHint": "сохранён в браузере, не на сервере",
+      "dangerZone": "Опасная зона",
+      "deleteServer": "Удалить сервер",
+      "deleteServerNamed": "Удалить сервер «{{name}}»",
+      "deleteServerHint": "Безвозвратно удалить этот сервер и все его сохранённые данные. Это действие нельзя отменить."
     },
     "amp": {
       "containerName": "Название контейнера",
@@ -1324,7 +1346,9 @@
       "authDashboard": "Вход в панель",
       "authDiscord": "Вход через Discord (OAuth)",
       "authOwners": "Владельцы",
-      "discordStatus": "Встраиваемое сообщение о статусе"
+      "discordStatus": "Встраиваемое сообщение о статусе",
+      "marketBot": "Рыночный бот",
+      "discordGuilds": "Гильдии Discord"
     },
     "ssh": {
       "hostPort": "Хост : порт",
@@ -1339,7 +1363,8 @@
       "connection": "Подключение",
       "control": "Управление",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Гильдии"
     },
     "discord": {
       "hint": "Создайте бота на discord.com/developers/applications, включите его, скопируйте токен и пригласите на сервер с областью applications.commands.",
@@ -1369,7 +1394,8 @@
       "statusChannel": "ID канала статуса",
       "statusChannelHint": "Щёлкните правой кнопкой по каналу → «Копировать ID канала» (требуется режим разработчика).",
       "statusInterval": "Интервал обновления (секунды)",
-      "statusIntervalHint": "Как часто обновляется сообщение. Минимум 30 секунд; по умолчанию 60."
+      "statusIntervalHint": "Как часто обновляется сообщение. Минимум 30 секунд; по умолчанию 60.",
+      "perGuildMoved": "Настройки гильдии — роли возможностей и серверы, отслеживаемые каждой гильдией (с их каналами) — управляются на вкладке «Гильдии»."
     },
     "auth": {
       "hint": "Требовать вход для панели и API. Рекомендуется, если dune-admin доступен извне вашей локальной сети.",
@@ -1404,6 +1430,14 @@
       "cookieStrictDesc": "Cookie никогда не отправляется при межсайтовых запросах — максимальная защита от CSRF. Несовместимо со входом через Discord (OAuth-редирект не может его передать); используйте только с локальными аккаунтами.",
       "cookieNone": "None (нет)",
       "cookieNoneDesc": "Cookie отправляется при всех запросах, включая межисточниковые. Нужно только когда UI и бэкенд на разных доменах (например, разделение через CDN). Требует HTTPS."
+    },
+    "scope": {
+      "server": "Сервер",
+      "admin": "DuneAdmin"
+    },
+    "marketBot": {
+      "enabled": "Включить рыночного бота для этого сервера",
+      "enabledHint": "Запускает встроенного рыночного бота для этого сервера. Настройки общие для всех серверов и находятся на вкладке «Рынок»."
     }
   },
   "storage": {
@@ -1634,7 +1668,8 @@
       "config": "Конфигурация",
       "factionScrip": "Скрип фракции",
       "rewards": "Награды",
-      "solari": "Солари"
+      "solari": "Солари",
+      "currencyXp": "Валюта и XP"
     },
     "signals": {
       "level": "Уровень персонажа",
@@ -1901,5 +1936,157 @@
     "placeholder": "Поиск игроков…",
     "loadFailed": "Не удалось загрузить игроков: {{message}}",
     "loading": "Загрузка игроков…"
+  },
+  "servers": {
+    "removeTitle": "Удалить сервер",
+    "removeDesc": "Безвозвратно удалить «{{name}}» и все его сохранённые данные? Это действие нельзя отменить.",
+    "removeConfirm": "Удалить",
+    "removeFailed": "Не удалось удалить",
+    "removeWarning": "Безвозвратно удалить «{{name}}» и все его сохранённые данные. Это действие нельзя отменить.",
+    "removeConfirmLabel": "Введите {{name}} для подтверждения",
+    "removeCountdown": "Подождите {{seconds}} с…"
+  },
+  "setup": {
+    "discovering": "Автоматическое определение настроек сервера…",
+    "connecting": "Подключение…",
+    "saveAndConnect": "Сохранить и подключиться",
+    "serverName": "Имя сервера",
+    "serverNamePlaceholder": "напр. Production",
+    "nameRequired": "Имя сервера обязательно",
+    "nameInvalid": "Имя сервера должно содержать буквы или цифры",
+    "connectTimeout": "Подключение всё ещё не установлено — проверьте настройки и повторите попытку.",
+    "addServerTitle": "Добавить сервер"
+  },
+  "discovery": {
+    "title": "Автоматическое определение настроек",
+    "subtitle": "Чтение значений с сервера…",
+    "failed": "Не удалось определить автоматически — введите значения вручную.",
+    "steps": {
+      "connect": "Подключение по SSH",
+      "namespace": "Определение пространства имён",
+      "dbPod": "Поиск пода базы данных",
+      "dbCreds": "Чтение учётных данных базы данных",
+      "brokers": "Поиск подов брокера",
+      "gameProc": "Поиск процесса игрового сервера",
+      "containers": "Проверка контейнеров",
+      "finalize": "Завершение"
+    }
+  },
+  "manage": {
+    "title": "Управление сервером",
+    "serverName": "Имя сервера"
+  },
+  "dashboard": {
+    "title": "Панель",
+    "subtitle": "Серверы и настройка с первого взгляда",
+    "loadFailed": "Не удалось загрузить состояние сервера: {{message}}",
+    "running": "Работает",
+    "offline": "Не в сети",
+    "playersOnline": "{{count}} онлайн",
+    "view": "Открыть",
+    "manage": "Управление",
+    "empty": {
+      "title": "Серверов пока нет",
+      "body": "Добавьте первый игровой сервер, чтобы начать. Ниже также можно настроить auth или Discord — всё необязательно.",
+      "addServer": "Добавить первый сервер",
+      "guestBody": "Серверы ещё не настроены."
+    },
+    "onboarding": {
+      "auth": {
+        "title": "Настроить вход / auth",
+        "body": "Требовать вход для доступа к панели. Необязательно — можно не включать в доверенной локальной сети.",
+        "cta": "Настроить auth"
+      },
+      "discord": {
+        "title": "Подключить бота Discord",
+        "body": "Отправляйте уведомления и сопоставляйте роли с правами. Необязательно.",
+        "cta": "Подключить Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Гильдии Discord",
+    "subtitle": "Настройте роли возможностей каждой гильдии Discord. Один токен бота обслуживает все гильдии; серверы привязываются к гильдии на своёй вкладке Discord.",
+    "ariaLabel": "Гильдии Discord",
+    "add": "Добавить гильдию",
+    "addTitle": "Добавить гильдию",
+    "editTitle": "Изменить гильдию",
+    "empty": "Гильдии Discord ещё не настроены.",
+    "on": "Вкл",
+    "off": "Выкл",
+    "loadRoles": "Загрузить роли",
+    "guildId": "ID гильдии",
+    "guildIdHint": "ПКМ по значку сервера → Копировать ID сервера (нужен режим разработчика)",
+    "guildIdRequired": "Требуется ID гильдии",
+    "serverRequired": "Каждый отслеживаемый сервер должен быть выбран",
+    "roleCount": "ролей: {{count}}",
+    "addServer": "Добавить сервер",
+    "server": "Сервер",
+    "serverHint": "Игровой сервер, отслеживаемый этой гильдией",
+    "selectServer": "Выберите сервер…",
+    "noServers": "Эта гильдия пока не отслеживает серверы.",
+    "watchedServersHint": "Каждый отслеживаемый сервер публикует свои встраивания статуса/объявлений в указанные ниже каналы.",
+    "announceChannel": "ID канала объявлений",
+    "announceChannelHint": "Канал для объявлений сервера (перезапуски, события)",
+    "statusEnabled": "Постоянное встраивание статуса",
+    "statusEnabledHint": "Поддерживает актуальное встраивание статуса в канале",
+    "statusChannel": "ID канала статуса",
+    "statusChannelHint": "Канал, в котором публикуется встраивание статуса",
+    "statusInterval": "Интервал статуса (секунды)",
+    "statusIntervalHint": "Как часто обновляется встраивание. Минимум 30 секунд; по умолчанию 60.",
+    "rolesHint": "Роли Discord, дающие каждый уровень возможностей в этой гильдии. Загрузите роли после ввода ID гильдии.",
+    "rolesViewer": "Роли просмотра",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Роли экономики",
+    "rolesEconomyHint": "команды рынка и экономики",
+    "rolesAdmin": "Роли администратора",
+    "rolesAdminHint": "административные команды",
+    "saved": "Гильдия сохранена",
+    "saveFailed": "Не удалось сохранить: {{message}}",
+    "loadFailed": "Не удалось загрузить гильдии: {{message}}",
+    "removed": "Гильдия удалена",
+    "removeFailed": "Не удалось удалить: {{message}}",
+    "removeTitle": "Удалить гильдию",
+    "removeConfirm": "Удалить гильдию {{guild}}? Бот перестанет обслуживать её и её отслеживаемые серверы.",
+    "columns": {
+      "guildId": "ID гильдии",
+      "servers": "Отслеживаемые серверы",
+      "roles": "Роли"
+    },
+    "sections": {
+      "guild": "Гильдия",
+      "roles": "Роли возможностей",
+      "watchedServers": "Отслеживаемые серверы"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Привяжите этот сервер к одной гильдии Discord и задайте его каналы объявлений и статуса. Роли возможностей этой гильдии настраиваются в Настройки → Гильдии.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Отвязать этот сервер от его гильдии Discord? Его каналы будут очищены; гильдия и её роли останутся нетронутыми.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
+      },
+      "noGuilds": "Гильдии ещё не добавлены — добавьте одну в Настройки → Гильдии, затем выберите её здесь."
+    },
+    "selectGuild": "Поиск гильдий…",
+    "selectChannel": "Поиск каналов…",
+    "guildExists": "Эта гильдия уже настроена."
   }
 }

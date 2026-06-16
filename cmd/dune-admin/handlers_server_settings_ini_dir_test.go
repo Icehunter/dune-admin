@@ -64,7 +64,7 @@ func TestIniDir_PrefersControlPlaneOverConfigured(t *testing.T) {
 	globalControl = &stubControlPlane{iniDir: "/discovered/ue5-saved/UserSettings"}
 	loadedConfig.ServerIniDir = "/configured/state"
 
-	dir, err := iniDir()
+	dir, err := iniDir(globalControl, globalExecutor)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestIniDir_FallsBackToConfiguredWhenControlPlaneFails(t *testing.T) {
 	globalControl = &stubControlPlane{iniErr: errors.New("control plane cannot discover ini dir")}
 	loadedConfig.ServerIniDir = "/configured/state"
 
-	dir, err := iniDir()
+	dir, err := iniDir(globalControl, globalExecutor)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestIniDir_UsesConfiguredWhenNoControlPlane(t *testing.T) {
 	globalExecutor = nil
 	loadedConfig.ServerIniDir = "/configured/state"
 
-	dir, err := iniDir()
+	dir, err := iniDir(globalControl, globalExecutor)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestIniDir_ErrorsWhenNothingConfigured(t *testing.T) {
 	loadedConfig.ServerIniDir = ""
 	serverIniDir = ""
 
-	_, err := iniDir()
+	_, err := iniDir(globalControl, globalExecutor)
 	if err == nil {
 		t.Fatal("expected error when nothing is configured, got nil")
 	}

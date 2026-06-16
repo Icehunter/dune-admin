@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"time"
 )
 
@@ -75,12 +74,12 @@ func runDeferredGrantLoop(ctx context.Context, src deferredGrantSource, attempt 
 func processDeferredGrantTick(ctx context.Context, src deferredGrantSource, attempt deferredAttemptFunc, now time.Time) {
 	claims, err := src.listRetryableDeferredClaims(now)
 	if err != nil {
-		log.Printf("deferred-grant: list retryable claims: %v", err)
+		componentLog("deferred_grant").Error().Err(err).Msg("list retryable claims failed")
 		return
 	}
 	for _, claim := range claims {
 		if err := attempt(ctx, claim); err != nil {
-			log.Printf("deferred-grant: retry owner %d (attempt %d): %v", claim.OwnerID, claim.Attempts, err)
+			componentLog("deferred_grant").Warn().Err(err).Int64("account_id", claim.OwnerID).Int("attempt", claim.Attempts).Msg("retry failed")
 		}
 	}
 }

@@ -4,6 +4,7 @@ import type { Column } from '../../dune-ui'
 export type ServersTableProps = {
   servers: ServerRow[]
   isInitializing: boolean
+  loading?: boolean
   emptyMessage?: string
 }
 

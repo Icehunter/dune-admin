@@ -1,102 +1,110 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title desc">
-  <title id="title">Atreides Premium Badge</title>
-  <desc id="desc">Transparent sci-fi rewards premium badge with noble octagonal frame, central star, deep green, sage, and muted gold heraldic geometry.</desc>
-  <defs>
-    <linearGradient id="gold" x1="48" y1="28" x2="208" y2="228" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f3d989"/>
-      <stop offset="0.36" stop-color="#b8953d"/>
-      <stop offset="0.7" stop-color="#e1c46c"/>
-      <stop offset="1" stop-color="#806421"/>
-    </linearGradient>
-    <linearGradient id="goldSoft" x1="80" y1="56" x2="176" y2="206" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffe9a3"/>
-      <stop offset="0.5" stop-color="#d2ad4f"/>
-      <stop offset="1" stop-color="#8c6f26"/>
-    </linearGradient>
-    <linearGradient id="green" x1="64" y1="36" x2="198" y2="222" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#173b28"/>
-      <stop offset="0.58" stop-color="#0e2f22"/>
-      <stop offset="1" stop-color="#071f18"/>
-    </linearGradient>
-    <linearGradient id="sage" x1="58" y1="82" x2="198" y2="218" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#c4c999"/>
-      <stop offset="0.56" stop-color="#7f8e62"/>
-      <stop offset="1" stop-color="#455c3f"/>
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#000000" flood-opacity="0.35"/>
-    </filter>
-    <path id="oct" d="M128 10 L199 39 L246 110 L246 146 L199 217 L128 246 L57 217 L10 146 L10 110 L57 39 Z"/>
-  </defs>
-
-  <g filter="url(#shadow)">
-    <use href="#oct" fill="url(#gold)"/>
-    <path d="M128 23 L190 48 L232 112 L232 144 L190 208 L128 233 L66 208 L24 144 L24 112 L66 48 Z" fill="#102f21"/>
-    <path d="M128 31 L184 54 L222 114 L222 142 L184 202 L128 225 L72 202 L34 142 L34 114 L72 54 Z" fill="none" stroke="url(#goldSoft)" stroke-width="5"/>
-    <path d="M128 43 L176 63 L209 116 L209 140 L176 193 L128 213 L80 193 L47 140 L47 116 L80 63 Z" fill="url(#green)" stroke="#92a06b" stroke-width="4"/>
-    <path d="M128 52 L170 69 L199 118 L199 138 L170 187 L128 204 L86 187 L57 138 L57 118 L86 69 Z" fill="none" stroke="#d1b45c" stroke-width="1.8" opacity="0.9"/>
-
-    <!-- outer military-heraldic bars -->
-    <g fill="none" stroke="#d8bd61" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.95">
-      <path d="M53 94 L53 78 L76 59"/>
-      <path d="M203 94 L203 78 L180 59"/>
-      <path d="M53 162 L53 178 L76 197"/>
-      <path d="M203 162 L203 178 L180 197"/>
-      <path d="M78 48 H112" opacity="0.8"/>
-      <path d="M144 48 H178" opacity="0.8"/>
-      <path d="M78 208 H112" opacity="0.8"/>
-      <path d="M144 208 H178" opacity="0.8"/>
-    </g>
-
-    <!-- side and cardinal gold caps -->
-    <g fill="url(#goldSoft)" stroke="#6f551b" stroke-width="1.5">
-      <path d="M118 20 L128 10 L138 20 L138 42 L128 52 L118 42 Z"/>
-      <path d="M118 214 L128 204 L138 214 L138 236 L128 246 L118 236 Z"/>
-      <path d="M20 118 L10 128 L20 138 L42 138 L52 128 L42 118 Z"/>
-      <path d="M236 118 L246 128 L236 138 L214 138 L204 128 L214 118 Z"/>
-      <rect x="56" y="56" width="14" height="14" transform="rotate(0 63 63)"/>
-      <rect x="186" y="56" width="14" height="14"/>
-      <rect x="56" y="186" width="14" height="14"/>
-      <rect x="186" y="186" width="14" height="14"/>
-    </g>
-
-    <!-- circular honor ring -->
-    <g fill="none" stroke="url(#goldSoft)" stroke-width="3" stroke-linecap="round">
-      <path d="M69 115 A61 61 0 0 1 119 68"/>
-      <path d="M137 68 A61 61 0 0 1 187 115"/>
-      <path d="M187 141 A61 61 0 0 1 137 188"/>
-      <path d="M119 188 A61 61 0 0 1 69 141"/>
-    </g>
-
-    <!-- central faceted star -->
-    <g stroke="#6f551b" stroke-width="1.25" stroke-linejoin="round">
-      <path d="M128 54 L138 112 L128 128 L118 112 Z" fill="#ffe9a3"/>
-      <path d="M202 128 L144 138 L128 128 L144 118 Z" fill="#d0ab4a"/>
-      <path d="M128 202 L118 144 L128 128 L138 144 Z" fill="#a78634"/>
-      <path d="M54 128 L112 118 L128 128 L112 138 Z" fill="#edcf72"/>
-      <path d="M181 75 L144 118 L128 128 L138 112 Z" fill="#f3d989"/>
-      <path d="M181 181 L138 144 L128 128 L144 138 Z" fill="#967628"/>
-      <path d="M75 181 L112 138 L128 128 L118 144 Z" fill="#c49c3e"/>
-      <path d="M75 75 L118 112 L128 128 L112 118 Z" fill="#f6dea0"/>
-      <circle cx="128" cy="128" r="3.4" fill="#fff0b6" stroke="none"/>
-    </g>
-
-    <!-- sage protective laurel / wing geometry -->
-    <g fill="url(#sage)" stroke="#d4bf6a" stroke-width="1.6" stroke-linejoin="round">
-      <path d="M65 147 C78 178 98 197 124 208 C104 182 89 158 82 132 C78 146 72 151 65 147 Z"/>
-      <path d="M191 147 C178 178 158 197 132 208 C152 182 167 158 174 132 C178 146 184 151 191 147 Z"/>
-      <path d="M81 177 C94 190 106 198 121 204 L103 181 Z" fill="#536b47"/>
-      <path d="M175 177 C162 190 150 198 135 204 L153 181 Z" fill="#536b47"/>
-      <path d="M101 205 L128 222 L155 205 L145 226 L128 238 L111 226 Z" fill="#2f5135"/>
-      <path d="M128 198 L137 224 L128 238 L119 224 Z" fill="url(#goldSoft)"/>
-    </g>
-
-    <!-- subtle inner highlights -->
-    <g fill="none" stroke="#f1d984" stroke-width="1" opacity="0.5">
-      <path d="M40 118 L40 112 L75 59"/>
-      <path d="M216 118 L216 112 L181 59"/>
-      <path d="M40 138 L40 144 L75 197"/>
-      <path d="M216 138 L216 144 L181 197"/>
-    </g>
-  </g>
-</svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  aria-labelledby="title desc"
+  viewBox="0 0 256 256"
+><title>Atreides Premium Badge</title><desc
+  >Transparent sci-fi rewards premium badge with noble octagonal frame, central star, deep green, sage, and muted gold heraldic geometry.</desc><defs
+  ><linearGradient id="b" x1="48" x2="208" y1="28" y2="228" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#f3d989"
+      /><stop offset=".36" stop-color="#b8953d" /><stop offset=".7" stop-color="#e1c46c" /><stop
+        offset="1"
+        stop-color="#806421"
+      /></linearGradient><linearGradient id="e" x1="80" x2="176" y1="56" y2="206" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#ffe9a3"
+      /><stop offset=".5" stop-color="#d2ad4f" /><stop
+        offset="1"
+        stop-color="#8c6f26"
+      /></linearGradient><linearGradient id="f" x1="64" x2="198" y1="36" y2="222" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#173b28"
+      /><stop offset=".58" stop-color="#0e2f22" /><stop
+        offset="1"
+        stop-color="#071f18"
+      /></linearGradient><linearGradient id="g" x1="58" x2="198" y1="82" y2="218" gradientUnits="userSpaceOnUse"><stop
+        offset="0"
+        stop-color="#c4c999"
+      /><stop offset=".56" stop-color="#7f8e62" /><stop offset="1" stop-color="#455c3f" /></linearGradient><filter
+      id="a"
+      width="140%"
+      height="140%"
+      x="-20%"
+      y="-20%"
+    ><feDropShadow dx="0" dy="3" flood-color="#000" flood-opacity=".35" stdDeviation="2.2" /></filter><path
+      id="d"
+      d="m128 10 71 29 47 71v36l-47 71-71 29-71-29-47-71v-36l47-71Z"
+    /></defs><g filter="url(#a)"><use fill="url(#b)" href="#d" /><path
+      fill="#102f21"
+      d="m128 23 62 25 42 64v32l-42 64-62 25-62-25-42-64v-32l42-64Z"
+    /><path
+      fill="none"
+      stroke="url(#e)"
+      stroke-width="5"
+      d="m128 31 56 23 38 60v28l-38 60-56 23-56-23-38-60v-28l38-60Z"
+    /><path
+      fill="url(#f)"
+      stroke="#92a06b"
+      stroke-width="4"
+      d="m128 43 48 20 33 53v24l-33 53-48 20-48-20-33-53v-24l33-53Z"
+    /><path
+      fill="none"
+      stroke="#d1b45c"
+      stroke-width="1.8"
+      d="m128 52 42 17 29 49v20l-29 49-42 17-42-17-29-49v-20l29-49Z"
+      opacity=".9"
+    /><g
+      fill="none"
+      stroke="#d8bd61"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2.4"
+      opacity=".95"
+    ><path d="M53 94V78l23-19m127 35V78l-23-19M53 162v16l23 19m127-35v16l-23 19" /><path
+        d="M78 48h34m32 0h34M78 208h34m32 0h34"
+        opacity=".8"
+      /></g><g fill="url(#e)" stroke="#6f551b" stroke-width="1.5"><path d="m118 20 10-10 10 10v22l-10 10-10-10Z" /><path
+        d="m118 214 10-10 10 10v22l-10 10-10-10Z"
+      /><path d="m20 118-10 10 10 10h22l10-10-10-10Z" /><path d="m236 118 10 10-10 10h-22l-10-10 10-10Z" /><path
+        d="M56 56h14v14H56z"
+      /><path d="M186 56h14v14h-14z" /><path d="M56 186h14v14H56z" /><path d="M186 186h14v14h-14z" /></g><g
+      fill="none"
+      stroke="url(#e)"
+      stroke-linecap="round"
+      stroke-width="3"
+    ><path d="M69 115a61 61 0 0 1 50-47" /><path d="M137 68a61 61 0 0 1 50 47" /><path
+        d="M187 141a61 61 0 0 1-50 47"
+      /><path d="M119 188a61 61 0 0 1-50-47" /></g><g stroke="#6f551b" stroke-linejoin="round" stroke-width="1.25"><path
+        fill="#ffe9a3"
+        d="m128 54 10 58-10 16-10-16Z"
+      /><path fill="#d0ab4a" d="m202 128-58 10-16-10 16-10Z" /><path
+        fill="#a78634"
+        d="m128 202-10-58 10-16 10 16Z"
+      /><path fill="#edcf72" d="m54 128 58-10 16 10-16 10Z" /><path
+        fill="#f3d989"
+        d="m181 75-37 43-16 10 10-16Z"
+      /><path fill="#967628" d="m181 181-43-37-10-16 16 10Z" /><path
+        fill="#c49c3e"
+        d="m75 181 37-43 16-10-10 16Z"
+      /><path fill="#f6dea0" d="m75 75 43 37 10 16-16-10Z" /><circle
+        cx="128"
+        cy="128"
+        r="3.4"
+        fill="#fff0b6"
+        stroke="none"
+      /></g><g fill="url(#g)" stroke="#d4bf6a" stroke-linejoin="round" stroke-width="1.6"><path
+        d="M65 147c13 31 33 50 59 61-20-26-35-50-42-76-4 14-10 19-17 15Z"
+      /><path d="M191 147c-13 31-33 50-59 61 20-26 35-50 42-76 4 14 10 19 17 15Z" /><path
+        fill="#536b47"
+        d="M81 177c13 13 25 21 40 27l-18-23Zm94 0c-13 13-25 21-40 27l18-23Z"
+      /><path fill="#2f5135" d="m101 205 27 17 27-17-10 21-17 12-17-12Z" /><path
+        fill="url(#e)"
+        d="m128 198 9 26-9 14-9-14Z"
+      /></g><path
+      fill="none"
+      stroke="#f1d984"
+      d="M40 118v-6l35-53m141 59v-6l-35-53M40 138v6l35 53m141-59v6l-35 53"
+      opacity=".5"
+    /></g></svg>

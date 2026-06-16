@@ -220,6 +220,21 @@
       "targetLabel": "設定されたバックエンド",
       "title": "dune-admin バックエンドに接続できません",
       "urlLabel": "バックエンド URL の上書き（自動検出する場合は空欄）"
+    },
+    "disableAnimations": "アニメーションを無効にする",
+    "enableAnimations": "アニメーションを有効にする",
+    "updateProgress": {
+      "title": "アップデートを適用中",
+      "dismiss": "閉じる",
+      "downloading": "アップデートをダウンロード中…",
+      "verifying": "チェックサムを検証中…",
+      "extracting": "バイナリを展開中…",
+      "restarting": "サーバーを再起動中…",
+      "waiting": "サーバーの復帰を待機中…",
+      "waitingLong": "サーバーの起動に予想以上の時間がかかっています — 引き続き待機中…",
+      "ready": "アップデート完了！再読み込み中…",
+      "error": "アップデートに失敗しました",
+      "timeout": "サーバーが予定時間内に復帰しませんでした。まだ再起動中の可能性があります — 準備が整い次第ページを再読み込みします。"
     }
   },
   "bases": {
@@ -686,7 +701,8 @@
     "menu": "ナビゲーション",
     "battlepass": "バトルパス",
     "permissions": "権限",
-    "dashboard": "ダッシュボード"
+    "dashboard": "ダッシュボード",
+    "diagnostics": "診断"
   },
   "players": {
     "actions": {
@@ -1088,7 +1104,8 @@
       "quality": "品質",
       "searchTemplates": "テンプレートを検索...",
       "selectTemplate": "テンプレートを選択",
-      "skipped": "✕ {{template}} をスキップ：{{reason}}"
+      "skipped": "✕ {{template}} をスキップ：{{reason}}",
+      "qualityWarning": "品質が 0 より高いアイテムはデータベースに書き込まれますが、プレイヤーが再ログインするまで表示されず、空きインベントリスロット外に配置される場合があります。品質 0 のアイテムは即時追加されます。"
     },
     "givePacks": {
       "addItem": "アイテムを追加",
@@ -1322,7 +1339,9 @@
       "control": "コントロール",
       "discord": "Discord",
       "auth": "認証",
-      "guilds": "ギルド"
+      "guilds": "ギルド",
+      "ssh": "SSH",
+      "server": "サーバーとブローカー"
     },
     "discord": {
       "hint": "discord.com/developers/applications でボットを作成し、有効化してトークンをコピーし、applications.commands スコープでサーバーに招待してください。",
@@ -1527,7 +1546,13 @@
       "leaveEnabledLabel": "プレイヤーがリージョンを去ったときに通知する",
       "leaveEnabledHint": "プレイヤーが去った瞬間、そのリージョンに残っている全員へささやかれます。",
       "leaveTemplateLabel": "退場メッセージ",
-      "leaveTemplatePlaceholder": "{player} が {region} を去りました。"
+      "leaveTemplatePlaceholder": "{player} が {region} を去りました。",
+      "introMap": "dune-admin は、誰かが参加または退出したときに、リージョンのマップチャットチャンネルにこの通知を投稿します。プレイヤー名には {player}、リージョン名には {region} を使用してください。",
+      "channelLabel": "配信チャンネル",
+      "channelWhisper": "ウィスパー（非公開・プレイヤー個別）",
+      "channelWhisperHint": "リージョン内の各プレイヤーに個別のウィスパーが届きます。送信元プレイヤーアカウントが必要です。",
+      "channelMap": "マップチャット（リージョナルチャンネル）",
+      "channelMapHint": "1 回の送信でリージョン全体のマップチャットに届きます。GM のIDを使用するため、送信元プレイヤーは不要です。"
     }
   },
   "events": {
@@ -1797,7 +1822,8 @@
       "status": "ステータス",
       "earnedAt": "獲得日時",
       "grantedAt": "付与日時",
-      "lastError": "最終エラー"
+      "lastError": "最終エラー",
+      "items": "アイテム"
     },
     "importDialog": {
       "title": "カタログを置き換えますか？",
@@ -1889,7 +1915,9 @@
   "playerSearch": {
     "placeholder": "プレイヤーを検索…",
     "loadFailed": "プレイヤーの読み込みに失敗しました: {{message}}",
-    "loading": "プレイヤーを読み込み中…"
+    "loading": "プレイヤーを読み込み中…",
+    "noResults": "プレイヤーが見つかりません",
+    "hint": "上位 {{limit}} 件 · 入力して絞り込み"
   },
   "servers": {
     "removeTitle": "サーバーを削除",
@@ -2042,5 +2070,17 @@
     "selectGuild": "ギルドを検索…",
     "selectChannel": "チャンネルを検索…",
     "guildExists": "そのギルドは既に設定されています。"
+  },
+  "diagnostics": {
+    "title": "診断",
+    "subtitle": "実行環境とライブサーバーログ",
+    "failedToLoad": "診断の読み込みに失敗しました: {{message}}",
+    "version": "バージョン",
+    "controlPlane": "コントロールプレーン",
+    "osArch": "OS / Arch",
+    "activeServers": "稼働中サーバー",
+    "live": "接続中",
+    "disconnected": "切断",
+    "reportIssue": "問題を報告"
   }
 }

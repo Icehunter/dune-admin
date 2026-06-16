@@ -220,6 +220,21 @@
       "targetLabel": "Yapılandırılan arka uç",
       "title": "dune-admin arka ucuna ulaşılamıyor",
       "urlLabel": "Arka uç URL geçersiz kılma (otomatik algılama için boş bırakın)"
+    },
+    "disableAnimations": "Animasyonları devre dışı bırak",
+    "enableAnimations": "Animasyonları etkinleştir",
+    "updateProgress": {
+      "title": "Güncelleme Uygulanıyor",
+      "dismiss": "Kapat",
+      "downloading": "Güncelleme indiriliyor…",
+      "verifying": "Sağlama toplamı doğrulanıyor…",
+      "extracting": "İkili dosya çıkartılıyor…",
+      "restarting": "Sunucu yeniden başlatılıyor…",
+      "waiting": "Sunucunun geri gelmesi bekleniyor…",
+      "waitingLong": "Sunucu beklenenden uzun sürdü — hâlâ bekleniyor…",
+      "ready": "Güncelleme tamamlandı! Yeniden yükleniyor…",
+      "error": "Güncelleme başarısız",
+      "timeout": "Sunucu beklenen sürede geri dönmedi. Hâlâ yeniden başlıyor olabilir — hazır olduğunda sayfa yeniden yüklenecek."
     }
   },
   "bases": {
@@ -686,7 +701,8 @@
     "menu": "Gezinti",
     "battlepass": "Savaş Geçişi",
     "permissions": "İzinler",
-    "dashboard": "Panel"
+    "dashboard": "Panel",
+    "diagnostics": "Tanılama"
   },
   "players": {
     "actions": {
@@ -1088,7 +1104,8 @@
       "quality": "Kalite",
       "searchTemplates": "Şablonları ara...",
       "selectTemplate": "Bir şablon seçin",
-      "skipped": "✕ {{template}} atlandı: {{reason}}"
+      "skipped": "✕ {{template}} atlandı: {{reason}}",
+      "qualityWarning": "Kalitesi 0'ın üzerinde olan eşyalar veritabanına yazılır; ancak yalnızca oyuncu yeniden giriş yaptıktan sonra görünür ve boş envanter slotlarının dışına yerleştirilebilir. Kalite 0 eşyalar anında eklenir."
     },
     "givePacks": {
       "addItem": "Eşya ekle",
@@ -1322,7 +1339,9 @@
       "control": "Kontrol",
       "discord": "Discord",
       "auth": "Auth",
-      "guilds": "Loncalar"
+      "guilds": "Loncalar",
+      "ssh": "SSH",
+      "server": "Sunucu & Broker"
     },
     "discord": {
       "hint": "discord.com/developers/applications adresinde bir bot oluşturun, botu etkinleştirin, tokenı kopyalayın ve applications.commands kapsamıyla sunucunuza davet edin.",
@@ -1527,7 +1546,13 @@
       "leaveEnabledLabel": "Bir oyuncu bölgeden ayrıldığında duyur",
       "leaveEnabledHint": "Bir oyuncu ayrıldığı anda o bölgede hâlâ bulunan herkese fısıldanır.",
       "leaveTemplateLabel": "Ayrılma mesajı",
-      "leaveTemplatePlaceholder": "{player}, {region} bölgesinden ayrıldı."
+      "leaveTemplatePlaceholder": "{player}, {region} bölgesinden ayrıldı.",
+      "introMap": "dune-admin, birisi katıldığında veya ayrıldığında bölgenin harita sohbet kanalına bu bildirimi gönderir. Oyuncunun adı için {player}, bölge adı için {region} kullanın.",
+      "channelLabel": "Gönderim kanalı",
+      "channelWhisper": "Fısıltı (özel, oyuncu başına)",
+      "channelWhisperHint": "Bölgedeki her oyuncuya özel fısıltı gönderilir. Kaynak oyuncu hesabı gerektirir.",
+      "channelMap": "Harita sohbeti (bölgesel kanal)",
+      "channelMapHint": "Tek bir yayın tüm bölgenin harita sohbetine ulaşır. GM kimliğini kullanır — kaynak oyuncu gerekmez."
     }
   },
   "events": {
@@ -1797,7 +1822,8 @@
       "status": "Durum",
       "earnedAt": "Kazanıldı",
       "grantedAt": "Verildi",
-      "lastError": "Son Hata"
+      "lastError": "Son Hata",
+      "items": "eşya"
     },
     "importDialog": {
       "title": "Kataloğu değiştir?",
@@ -1889,7 +1915,9 @@
   "playerSearch": {
     "placeholder": "Oyuncu ara…",
     "loadFailed": "Oyuncular yüklenemedi: {{message}}",
-    "loading": "Oyuncular yükleniyor…"
+    "loading": "Oyuncular yükleniyor…",
+    "noResults": "Oyuncu bulunamadı",
+    "hint": "en fazla {{limit}} · filtrelemek için yazın"
   },
   "servers": {
     "removeTitle": "Sunucuyu Kaldır",
@@ -2042,5 +2070,17 @@
     "selectGuild": "Loncaları ara…",
     "selectChannel": "Kanalları ara…",
     "guildExists": "Bu lonca zaten yapılandırılmış."
+  },
+  "diagnostics": {
+    "title": "Tanılama",
+    "subtitle": "Çalışma zamanı ortamı ve canlı sunucu günlükleri",
+    "failedToLoad": "Tanılama yüklenemedi: {{message}}",
+    "version": "Sürüm",
+    "controlPlane": "Kontrol düzlemi",
+    "osArch": "OS / Arch",
+    "activeServers": "Aktif sunucular",
+    "live": "Canlı",
+    "disconnected": "Bağlantı kesildi",
+    "reportIssue": "Sorun bildir"
   }
 }

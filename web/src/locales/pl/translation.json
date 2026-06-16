@@ -220,6 +220,21 @@
       "targetLabel": "Skonfigurowany backend",
       "title": "Nie można połączyć się z backendem dune-admin",
       "urlLabel": "Nadpisanie URL backendu (zostaw puste dla automatycznego wykrywania)"
+    },
+    "disableAnimations": "Wyłącz animacje",
+    "enableAnimations": "Włącz animacje",
+    "updateProgress": {
+      "title": "Stosowanie aktualizacji",
+      "dismiss": "Zamknij",
+      "downloading": "Pobieranie aktualizacji…",
+      "verifying": "Weryfikacja sumy kontrolnej…",
+      "extracting": "Rozpakowywanie pliku binarnego…",
+      "restarting": "Ponowne uruchamianie serwera…",
+      "waiting": "Oczekiwanie na powrót serwera…",
+      "waitingLong": "Serwer uruchamia się dłużej niż oczekiwano — nadal czekam…",
+      "ready": "Aktualizacja zakończona! Ponowne ładowanie…",
+      "error": "Aktualizacja nie powiodła się",
+      "timeout": "Serwer nie wrócił w oczekiwanym czasie. Może nadal się uruchamiać — strona zostanie odświeżona, gdy będzie gotowy."
     }
   },
   "bases": {
@@ -700,7 +715,8 @@
     "menu": "Nawigacja",
     "battlepass": "Battlepass",
     "permissions": "Uprawnienia",
-    "dashboard": "Pulpit"
+    "dashboard": "Pulpit",
+    "diagnostics": "Diagnostyka"
   },
   "players": {
     "actions": {
@@ -1122,7 +1138,8 @@
       "quality": "Jakość",
       "searchTemplates": "Szukaj szablonów...",
       "selectTemplate": "Wybierz szablon",
-      "skipped": "✕ {{template}} pominięto: {{reason}}"
+      "skipped": "✕ {{template}} pominięto: {{reason}}",
+      "qualityWarning": "Przedmioty o jakości powyżej 0 są zapisywane do bazy danych, ale pojawiają się dopiero po ponownym zalogowaniu gracza i mogą zostać umieszczone poza wolnymi miejscami w ekwipunku. Przedmioty o jakości 0 są dodawane natychmiast."
     },
     "givePacks": {
       "addItem": "Dodaj przedmiot",
@@ -1364,7 +1381,9 @@
       "control": "Sterowanie",
       "discord": "Discord",
       "auth": "Auth",
-      "guilds": "Gildie"
+      "guilds": "Gildie",
+      "ssh": "SSH",
+      "server": "Serwer i broker"
     },
     "discord": {
       "hint": "Utwórz bota na discord.com/developers/applications, włącz go, skopiuj token i zaproś na swój serwer z zakresem applications.commands.",
@@ -1573,7 +1592,13 @@
       "leaveEnabledLabel": "Ogłaszaj, gdy gracz opuszcza region",
       "leaveEnabledHint": "Szeptane do wszystkich nadal obecnych w regionie w chwili odejścia gracza.",
       "leaveTemplateLabel": "Wiadomość wyjścia",
-      "leaveTemplatePlaceholder": "{player} opuścił {region}."
+      "leaveTemplatePlaceholder": "{player} opuścił {region}.",
+      "introMap": "dune-admin wysyła to powiadomienie na kanał czatu mapy regionu, gdy ktoś dołącza lub opuszcza region. Użyj {player} jako nazwy gracza i {region} jako nazwy regionu.",
+      "channelLabel": "Kanał dostarczania",
+      "channelWhisper": "Szept (prywatny, per gracz)",
+      "channelWhisperHint": "Każdy gracz w regionie otrzymuje prywatny szept. Wymaga konta gracza-źródła.",
+      "channelMap": "Czat mapy (kanał regionalny)",
+      "channelMapHint": "Jedna wiadomość dociera do całego czatu mapy regionu. Używa tożsamości GM — nie potrzeba gracza-źródła."
     }
   },
   "events": {
@@ -1843,7 +1868,8 @@
       "status": "Status",
       "earnedAt": "Zdobyto",
       "grantedAt": "Przyznano",
-      "lastError": "Ostatni Błąd"
+      "lastError": "Ostatni Błąd",
+      "items": "przedmioty"
     },
     "importDialog": {
       "title": "Zastąpić katalog?",
@@ -1935,7 +1961,9 @@
   "playerSearch": {
     "placeholder": "Szukaj graczy…",
     "loadFailed": "Nie udało się załadować graczy: {{message}}",
-    "loading": "Ładowanie graczy…"
+    "loading": "Ładowanie graczy…",
+    "noResults": "Nie znaleziono graczy",
+    "hint": "top {{limit}} · wpisz, aby filtrować"
   },
   "servers": {
     "removeTitle": "Usuń serwer",
@@ -2088,5 +2116,17 @@
     "selectGuild": "Szukaj gildii…",
     "selectChannel": "Szukaj kanałów…",
     "guildExists": "Ta gildia jest już skonfigurowana."
+  },
+  "diagnostics": {
+    "title": "Diagnostyka",
+    "subtitle": "Środowisko uruchomieniowe i logi serwera na żywo",
+    "failedToLoad": "Nie udało się załadować diagnostyki: {{message}}",
+    "version": "Wersja",
+    "controlPlane": "Płaszczyzna kontrolna",
+    "osArch": "OS / Arch",
+    "activeServers": "Aktywne serwery",
+    "live": "Na żywo",
+    "disconnected": "Rozłączono",
+    "reportIssue": "Zgłoś problem"
   }
 }

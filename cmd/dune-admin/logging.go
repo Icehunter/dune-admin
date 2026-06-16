@@ -4,6 +4,7 @@ import (
 	"io"
 	stdlog "log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -14,6 +15,19 @@ import (
 // through it too (see initLogging), so output is uniform during the migration.
 var appLogger zerolog.Logger
 
+// globalLogRing captures recent log events in memory for the Diagnostics tab.
+var globalLogRing *logRing
+
+// logBufferSize returns the ring capacity from DIAG_LOG_BUFFER (default 2000).
+func logBufferSize() int {
+	if v := os.Getenv("DIAG_LOG_BUFFER"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 2000
+}
+
 // initLogging builds the root zerolog logger and bridges the standard library
 // logger into it. Configured via env:
 //   - LOG_FORMAT=json → structured JSON lines (prod / log shipping); anything
@@ -22,11 +36,13 @@ var appLogger zerolog.Logger
 func initLogging() {
 	zerolog.SetGlobalLevel(parseLogLevel(os.Getenv("LOG_LEVEL")))
 
-	var w io.Writer = os.Stderr
+	var base io.Writer = os.Stderr
 	if !strings.EqualFold(os.Getenv("LOG_FORMAT"), "json") {
-		w = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05"}
+		base = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05"}
 	}
-	appLogger = zerolog.New(w).With().Timestamp().Logger()
+	globalLogRing = newLogRing(logBufferSize())
+	appLogger = zerolog.New(zerolog.MultiLevelWriter(base, globalLogRing)).
+		With().Timestamp().Logger()
 
 	// Bridge stdlib log (every not-yet-migrated log.Printf) through zerolog so
 	// all output shares one format. zerolog.Logger implements io.Writer.

@@ -19,6 +19,7 @@ export const TAB_IDS = [
   'events',
   'battlepass',
   'permissions',
+  'diagnostics',
 ] as const
 
 export const DEFAULT_TAB: TabId = 'dashboard'
@@ -48,6 +49,7 @@ export const TAB_ICONS: Record<TabId, string> = {
   events: 'calendar-clock',
   battlepass: 'medal',
   permissions: 'lock',
+  diagnostics: 'stethoscope',
 }
 
 // Read-level capability required to see each tab when backend auth is on.
@@ -72,6 +74,10 @@ export const TAB_CAPABILITIES: Record<TabId, string> = {
   events: 'events:read',
   battlepass: 'battlepass:track',
   permissions: 'owner',
+  // Real capability (not the 'owner' pseudo-cap) so the tab is visible in
+  // local/no-auth dev (can() is always true) and, when auth is on, owners
+  // bypass the matrix while non-owners need diagnostics:read granted.
+  diagnostics: 'diagnostics:read',
 }
 
 export const BETA_TABS = new Set<TabId>(['events', 'battlepass'])

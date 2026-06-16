@@ -248,6 +248,12 @@ func buildMux() *http.ServeMux {
 	handleAPI(mux, "GET /api/v1/logs/stream", capLogsRead, handleLogStream)
 	handleAPI(mux, "GET /api/v1/logs/cheats", capLogsRead, handleGetCheatLog)
 
+	// ── diagnostics (dune-admin self-logs) ───────────────────────────────────
+	handleAPI(mux, "GET /api/v1/diagnostics/environment", capDiagnosticsRead, handleDiagnosticsEnvironment)
+	handleAPI(mux, "GET /api/v1/diagnostics/report", capDiagnosticsRead, handleDiagnosticsReport)
+	handleAPI(mux, "GET /api/v1/diagnostics/bundle", capDiagnosticsRead, handleDiagnosticsBundle)
+	handleAPI(mux, "GET /api/v1/diagnostics/logs/stream", capDiagnosticsRead, handleDiagnosticsLogStream)
+
 	// ── notifications ────────────────────────────────────────────────────────
 	handleAPI(mux, "POST /api/v1/notify", capBroadcastSend, handleNotify)
 

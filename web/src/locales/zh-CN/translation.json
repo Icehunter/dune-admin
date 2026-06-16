@@ -220,6 +220,21 @@
       "targetLabel": "已配置的后端",
       "title": "无法连接到 dune-admin 后端",
       "urlLabel": "后端 URL 覆盖（留空以自动检测）"
+    },
+    "disableAnimations": "关闭动画",
+    "enableAnimations": "开启动画",
+    "updateProgress": {
+      "title": "正在应用更新",
+      "dismiss": "关闭",
+      "downloading": "正在下载更新…",
+      "verifying": "正在校验校验和…",
+      "extracting": "正在解压文件…",
+      "restarting": "正在重启服务器…",
+      "waiting": "等待服务器恢复…",
+      "waitingLong": "服务器启动时间超出预期 — 继续等待…",
+      "ready": "更新完成！正在重新加载…",
+      "error": "更新失败",
+      "timeout": "服务器未在预期时间内恢复，可能仍在重启中 — 就绪后页面将自动刷新。"
     }
   },
   "bases": {
@@ -686,7 +701,8 @@
     "menu": "导航",
     "battlepass": "战斗通行证",
     "permissions": "权限",
-    "dashboard": "仪表板"
+    "dashboard": "仪表板",
+    "diagnostics": "诊断"
   },
   "players": {
     "actions": {
@@ -1088,7 +1104,8 @@
       "quality": "品质",
       "searchTemplates": "搜索模板...",
       "selectTemplate": "选择一个模板",
-      "skipped": "✕ 跳过 {{template}}：{{reason}}"
+      "skipped": "✕ 跳过 {{template}}：{{reason}}",
+      "qualityWarning": "品质高于 0 的物品会写入数据库，但须玩家重新登录后才会显示，且可能放置在背包空位之外。品质为 0 的物品将立即生效。"
     },
     "givePacks": {
       "addItem": "添加物品",
@@ -1322,7 +1339,9 @@
       "control": "控制",
       "discord": "Discord",
       "auth": "认证",
-      "guilds": "公会"
+      "guilds": "公会",
+      "ssh": "SSH",
+      "server": "服务器与消息代理"
     },
     "discord": {
       "hint": "在 discord.com/developers/applications 创建机器人，启用后复制令牌，并以 applications.commands 权限范围将其邀请至服务器。",
@@ -1527,7 +1546,13 @@
       "leaveEnabledLabel": "当玩家离开区域时广播",
       "leaveEnabledHint": "玩家离开的那一刻，私聊发送给仍在该区域内的所有人。",
       "leaveTemplateLabel": "离开消息",
-      "leaveTemplatePlaceholder": "{player} 已离开 {region}。"
+      "leaveTemplatePlaceholder": "{player} 已离开 {region}。",
+      "introMap": "dune-admin 会在有玩家加入或离开时，向该区域的地图聊天频道发布此通知。使用 {player} 代表玩家名称，{region} 代表区域名称。",
+      "channelLabel": "发送渠道",
+      "channelWhisper": "私聊（私密，每位玩家单独发送）",
+      "channelWhisperHint": "区域内每位玩家将收到一条私聊消息，需要配置来源玩家账号。",
+      "channelMap": "地图聊天（区域频道）",
+      "channelMapHint": "一次发布即可覆盖整个区域的地图聊天，使用 GM 身份发送，无需来源玩家账号。"
     }
   },
   "events": {
@@ -1797,7 +1822,8 @@
       "status": "状态",
       "earnedAt": "获得时间",
       "grantedAt": "发放时间",
-      "lastError": "最后错误"
+      "lastError": "最后错误",
+      "items": "件物品"
     },
     "importDialog": {
       "title": "替换目录？",
@@ -1889,7 +1915,9 @@
   "playerSearch": {
     "placeholder": "搜索玩家…",
     "loadFailed": "加载玩家失败：{{message}}",
-    "loading": "正在加载玩家…"
+    "loading": "正在加载玩家…",
+    "noResults": "未找到玩家",
+    "hint": "最多 {{limit}} 条 · 输入以筛选"
   },
   "servers": {
     "removeTitle": "移除服务器",
@@ -2042,5 +2070,17 @@
     "selectGuild": "搜索公会…",
     "selectChannel": "搜索频道…",
     "guildExists": "该公会已配置。"
+  },
+  "diagnostics": {
+    "title": "诊断",
+    "subtitle": "运行环境与实时服务器日志",
+    "failedToLoad": "诊断信息加载失败：{{message}}",
+    "version": "版本",
+    "controlPlane": "控制平面",
+    "osArch": "OS / Arch",
+    "activeServers": "活跃服务器",
+    "live": "在线",
+    "disconnected": "已断开",
+    "reportIssue": "反馈问题"
   }
 }

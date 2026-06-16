@@ -220,6 +220,21 @@
       "targetLabel": "Konfiguriertes Backend",
       "title": "dune-admin-Backend nicht erreichbar",
       "urlLabel": "Backend-URL-Überschreibung (leer lassen für automatische Erkennung)"
+    },
+    "disableAnimations": "Animationen deaktivieren",
+    "enableAnimations": "Animationen aktivieren",
+    "updateProgress": {
+      "title": "Update wird angewendet",
+      "dismiss": "Schließen",
+      "downloading": "Update wird heruntergeladen…",
+      "verifying": "Prüfsumme wird verifiziert…",
+      "extracting": "Binary wird entpackt…",
+      "restarting": "Server wird neu gestartet…",
+      "waiting": "Warten auf Server-Neustart…",
+      "waitingLong": "Server braucht länger als erwartet — wird weiter gewartet…",
+      "ready": "Update abgeschlossen! Wird neu geladen…",
+      "error": "Update fehlgeschlagen",
+      "timeout": "Der Server ist nicht innerhalb der erwarteten Zeit zurückgekehrt. Er startet möglicherweise noch — die Seite wird neu geladen, sobald er bereit ist."
     }
   },
   "bases": {
@@ -686,7 +701,8 @@
     "menu": "Navigation",
     "battlepass": "Battlepass",
     "permissions": "Berechtigungen",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "diagnostics": "Diagnose"
   },
   "players": {
     "actions": {
@@ -1088,7 +1104,8 @@
       "quality": "Qualität",
       "searchTemplates": "Vorlagen suchen...",
       "selectTemplate": "Vorlage auswählen",
-      "skipped": "✕ {{template}} übersprungen: {{reason}}"
+      "skipped": "✕ {{template}} übersprungen: {{reason}}",
+      "qualityWarning": "Gegenstände mit einer Qualität über 0 werden in die Datenbank geschrieben, erscheinen aber erst nach dem nächsten Einloggen des Spielers und können außerhalb der freien Inventarplätze abgelegt werden. Gegenstände mit Qualität 0 werden sofort hinzugefügt."
     },
     "givePacks": {
       "addItem": "Gegenstand hinzufügen",
@@ -1322,7 +1339,9 @@
       "control": "Steuerung",
       "discord": "Discord",
       "auth": "Auth",
-      "guilds": "Gilden"
+      "guilds": "Gilden",
+      "ssh": "SSH",
+      "server": "Server & Broker"
     },
     "discord": {
       "hint": "Erstelle einen Bot unter discord.com/developers/applications, aktiviere den Bot, kopiere das Token und lade ihn mit dem Scope applications.commands in deinen Server ein.",
@@ -1527,7 +1546,13 @@
       "leaveEnabledLabel": "Ankündigen, wenn ein Spieler eine Region verlässt",
       "leaveEnabledHint": "Wird allen verbleibenden Spielern in dieser Region zugeflüstert, sobald ein Spieler sie verlässt.",
       "leaveTemplateLabel": "Verlassen-Nachricht",
-      "leaveTemplatePlaceholder": "{player} hat {region} verlassen."
+      "leaveTemplatePlaceholder": "{player} hat {region} verlassen.",
+      "introMap": "dune-admin sendet diese Meldung in den Karten-Chat der Region, wenn jemand beitritt oder die Region verlässt. Verwende {player} für den Spielernamen und {region} für den Regionsnamen.",
+      "channelLabel": "Zustellkanal",
+      "channelWhisper": "Flüstern (privat, pro Spieler)",
+      "channelWhisperHint": "Jeder Spieler in der Region erhält eine private Nachricht. Erfordert ein Quellspieler-Konto.",
+      "channelMap": "Karten-Chat (regionaler Kanal)",
+      "channelMapHint": "Eine Nachricht erreicht den gesamten Karten-Chat der Region. Verwendet die GM-Identität — kein Quellspieler erforderlich."
     }
   },
   "events": {
@@ -1797,7 +1822,8 @@
       "status": "Status",
       "earnedAt": "Verdient am",
       "grantedAt": "Vergeben am",
-      "lastError": "Letzter Fehler"
+      "lastError": "Letzter Fehler",
+      "items": "Gegenstände"
     },
     "importDialog": {
       "title": "Katalog ersetzen?",
@@ -1889,7 +1915,9 @@
   "playerSearch": {
     "placeholder": "Spieler suchen…",
     "loadFailed": "Spieler konnten nicht geladen werden: {{message}}",
-    "loading": "Spieler werden geladen…"
+    "loading": "Spieler werden geladen…",
+    "noResults": "Keine Spieler gefunden",
+    "hint": "top {{limit}} · zum Filtern tippen"
   },
   "servers": {
     "removeTitle": "Server entfernen",
@@ -2042,5 +2070,17 @@
     "selectGuild": "Gilden suchen…",
     "selectChannel": "Kanäle suchen…",
     "guildExists": "Diese Gilde ist bereits konfiguriert."
+  },
+  "diagnostics": {
+    "title": "Diagnose",
+    "subtitle": "Laufzeitumgebung und Live-Server-Logs",
+    "failedToLoad": "Diagnose konnte nicht geladen werden: {{message}}",
+    "version": "Version",
+    "controlPlane": "Control Plane",
+    "osArch": "OS / Arch",
+    "activeServers": "Aktive Server",
+    "live": "Live",
+    "disconnected": "Getrennt",
+    "reportIssue": "Problem melden"
   }
 }

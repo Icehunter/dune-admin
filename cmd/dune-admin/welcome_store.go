@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,58 @@ import (
 // that ALTER TABLE ADD COLUMN returns when the column already exists.
 func isDuplicateColumnErr(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "duplicate column name")
+}
+
+// flexInt is a sql.Scanner that tolerates the empty string "" stored in SQLite
+// INTEGER columns — a legacy migration artefact where rebuildLegacyServerIDToInt
+// copied TEXT "" values from an old schema into a new INTEGER column. Real int64
+// values pass through unchanged; nil and "" both yield 0.
+type flexInt struct{ p *int }
+
+func (f *flexInt) Scan(src any) error {
+	switch v := src.(type) {
+	case int64:
+		*f.p = int(v)
+	case string:
+		if v == "" {
+			*f.p = 0
+			return nil
+		}
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf("scan int column: unexpected string value %q", v)
+		}
+		*f.p = n
+	case nil:
+		*f.p = 0
+	default:
+		return fmt.Errorf("scan int column: unsupported type %T", src)
+	}
+	return nil
+}
+
+// repairWelcomeConfigIntegerColumns fixes rows where a legacy TEXT→int migration
+// left ” (empty string) stored in INTEGER columns. Idempotent: no-op when all
+// values are already proper integers. Called during unified store initialisation.
+func repairWelcomeConfigIntegerColumns(db *sql.DB) error {
+	_, err := db.Exec(`
+		UPDATE welcome_config SET
+			enabled                 = CASE WHEN TYPEOF(enabled) = 'text' THEN 0 ELSE enabled END,
+			scan_secs               = CASE WHEN TYPEOF(scan_secs) = 'text' THEN 30 ELSE scan_secs END,
+			welcome_message_enabled = CASE WHEN TYPEOF(welcome_message_enabled) = 'text' THEN 0 ELSE welcome_message_enabled END,
+			motd_enabled            = CASE WHEN TYPEOF(motd_enabled) = 'text' THEN 0 ELSE motd_enabled END,
+			region_join_enabled     = CASE WHEN TYPEOF(region_join_enabled) = 'text' THEN 0 ELSE region_join_enabled END,
+			region_leave_enabled    = CASE WHEN TYPEOF(region_leave_enabled) = 'text' THEN 0 ELSE region_leave_enabled END
+		WHERE TYPEOF(enabled) = 'text'
+		   OR TYPEOF(scan_secs) = 'text'
+		   OR TYPEOF(welcome_message_enabled) = 'text'
+		   OR TYPEOF(motd_enabled) = 'text'
+		   OR TYPEOF(region_join_enabled) = 'text'
+		   OR TYPEOF(region_leave_enabled) = 'text'`)
+	if err != nil {
+		return fmt.Errorf("repair welcome_config integer columns: %w", err)
+	}
+	return nil
 }
 
 // welcomeStore is the SQLite ledger that makes welcome-package grants idempotent.
@@ -371,7 +424,7 @@ func decodeJSONList(blob string, out any) error {
 // it exists, or (zero, false, nil) if the table is empty (first boot).
 func (s *welcomeStore) loadConfig() (welcomeConfigRow, bool, error) {
 	var row welcomeConfigRow
-	var enabledInt, msgEnabledInt, motdEnabledInt int
+	var enabledInt, scanSecsInt, msgEnabledInt, motdEnabledInt int
 	var regionJoinEnabledInt, regionLeaveEnabledInt int
 	err := s.db.QueryRow(`
 		SELECT enabled, scan_secs, active_version,
@@ -380,10 +433,10 @@ func (s *welcomeStore) loadConfig() (welcomeConfigRow, bool, error) {
 		       region_join_enabled, region_leave_enabled, region_join_template, region_leave_template,
 		       region_chat_channel
 		FROM welcome_config WHERE server_id = ?`, s.serverID).
-		Scan(&enabledInt, &row.ScanSecs, &row.ActiveVersion,
-			&msgEnabledInt, &row.WelcomeMessage, &row.WelcomeWhisperSourcePlayer,
-			&motdEnabledInt, &row.MotdMessage, &row.MotdSourcePlayer,
-			&regionJoinEnabledInt, &regionLeaveEnabledInt, &row.RegionJoinTemplate, &row.RegionLeaveTemplate,
+		Scan(&flexInt{&enabledInt}, &flexInt{&scanSecsInt}, &row.ActiveVersion,
+			&flexInt{&msgEnabledInt}, &row.WelcomeMessage, &row.WelcomeWhisperSourcePlayer,
+			&flexInt{&motdEnabledInt}, &row.MotdMessage, &row.MotdSourcePlayer,
+			&flexInt{&regionJoinEnabledInt}, &flexInt{&regionLeaveEnabledInt}, &row.RegionJoinTemplate, &row.RegionLeaveTemplate,
 			&row.RegionChatChannel)
 	if errors.Is(err, sql.ErrNoRows) {
 		return welcomeConfigRow{}, false, nil
@@ -392,6 +445,7 @@ func (s *welcomeStore) loadConfig() (welcomeConfigRow, bool, error) {
 		return welcomeConfigRow{}, false, fmt.Errorf("load welcome config: %w", err)
 	}
 	row.Enabled = enabledInt != 0
+	row.ScanSecs = scanSecsInt
 	row.WelcomeMessageEnabled = msgEnabledInt != 0
 	row.MotdEnabled = motdEnabledInt != 0
 	row.RegionJoinEnabled = regionJoinEnabledInt != 0

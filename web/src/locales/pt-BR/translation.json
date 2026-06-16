@@ -220,6 +220,21 @@
       "targetLabel": "Backend configurado",
       "title": "Não foi possível acessar o backend do dune-admin",
       "urlLabel": "Substituição de URL do backend (deixe em branco para detecção automática)"
+    },
+    "disableAnimations": "Desativar animações",
+    "enableAnimations": "Ativar animações",
+    "updateProgress": {
+      "title": "Aplicando Atualização",
+      "dismiss": "Dispensar",
+      "downloading": "Baixando atualização…",
+      "verifying": "Verificando checksum…",
+      "extracting": "Extraindo binário…",
+      "restarting": "Reiniciando servidor…",
+      "waiting": "Aguardando o servidor voltar…",
+      "waitingLong": "O servidor está demorando mais que o esperado — ainda aguardando…",
+      "ready": "Atualização concluída! Recarregando…",
+      "error": "Falha na atualização",
+      "timeout": "O servidor não voltou dentro do tempo esperado. Ele pode ainda estar reiniciando — a página será recarregada quando estiver pronto."
     }
   },
   "bases": {
@@ -693,7 +708,8 @@
     "menu": "Navegação",
     "battlepass": "Passe de batalha",
     "permissions": "Permissões",
-    "dashboard": "Painel"
+    "dashboard": "Painel",
+    "diagnostics": "Diagnósticos"
   },
   "players": {
     "actions": {
@@ -1105,7 +1121,8 @@
       "quality": "Qualidade",
       "searchTemplates": "Pesquisar templates...",
       "selectTemplate": "Selecionar um template",
-      "skipped": "✕ {{template}} ignorado: {{reason}}"
+      "skipped": "✕ {{template}} ignorado: {{reason}}",
+      "qualityWarning": "Itens com qualidade acima de 0 são gravados no banco de dados, mas só aparecem após o jogador reconectar, e podem ser colocados fora dos slots livres do inventário. Itens com qualidade 0 são adicionados instantaneamente."
     },
     "givePacks": {
       "addItem": "Adicionar item",
@@ -1343,7 +1360,9 @@
       "control": "Controle",
       "discord": "Discord",
       "auth": "Auth",
-      "guilds": "Guildas"
+      "guilds": "Guildas",
+      "ssh": "SSH",
+      "server": "Servidor & Broker"
     },
     "discord": {
       "hint": "Crie um bot em discord.com/developers/applications, ative-o, copie o token e convide-o para seu servidor com o escopo applications.commands.",
@@ -1550,7 +1569,13 @@
       "leaveEnabledLabel": "Anunciar quando um jogador sai de uma região",
       "leaveEnabledHint": "Sussurrado a todos ainda presentes na região no momento em que um jogador sai.",
       "leaveTemplateLabel": "Mensagem de saída",
-      "leaveTemplatePlaceholder": "{player} saiu de {region}."
+      "leaveTemplatePlaceholder": "{player} saiu de {region}.",
+      "introMap": "dune-admin publica este aviso no canal de chat do mapa da região quando alguém entra ou sai. Use {player} para o nome do jogador e {region} para o nome da região.",
+      "channelLabel": "Canal de entrega",
+      "channelWhisper": "Sussurro (privado, por jogador)",
+      "channelWhisperHint": "Cada jogador na região recebe um sussurro privado. Requer uma conta de jogador de origem.",
+      "channelMap": "Chat do mapa (canal regional)",
+      "channelMapHint": "Uma publicação alcança o chat do mapa de toda a região. Usa a identidade de GM — nenhum jogador de origem necessário."
     }
   },
   "events": {
@@ -1820,7 +1845,8 @@
       "status": "Status",
       "earnedAt": "Ganho em",
       "grantedAt": "Concedido em",
-      "lastError": "Último Erro"
+      "lastError": "Último Erro",
+      "items": "itens"
     },
     "importDialog": {
       "title": "Substituir catálogo?",
@@ -1912,7 +1938,9 @@
   "playerSearch": {
     "placeholder": "Buscar jogadores…",
     "loadFailed": "Falha ao carregar jogadores: {{message}}",
-    "loading": "Carregando jogadores…"
+    "loading": "Carregando jogadores…",
+    "noResults": "Nenhum jogador encontrado",
+    "hint": "top {{limit}} · digite para filtrar"
   },
   "servers": {
     "removeTitle": "Remover servidor",
@@ -2065,5 +2093,17 @@
     "selectGuild": "Buscar guildas…",
     "selectChannel": "Buscar canais…",
     "guildExists": "Essa guilda já está configurada."
+  },
+  "diagnostics": {
+    "title": "Diagnósticos",
+    "subtitle": "Ambiente de execução e logs do servidor em tempo real",
+    "failedToLoad": "Falha ao carregar diagnósticos: {{message}}",
+    "version": "Versão",
+    "controlPlane": "Plano de controle",
+    "osArch": "OS / Arch",
+    "activeServers": "Servidores ativos",
+    "live": "Ao vivo",
+    "disconnected": "Desconectado",
+    "reportIssue": "Reportar um problema"
   }
 }

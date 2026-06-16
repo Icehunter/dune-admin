@@ -118,7 +118,7 @@ func vmHostIP() string {
 func webInterfacesFromAddresses(vmHost, directorAddr, fileBrowserAddr string) []webInterface {
 	var out []webInterface
 	if url := webInterfaceURL(vmHost, directorAddr); url != "" {
-		out = append(out, webInterface{Label: "Battlegroup Director", URL: url, Target: strings.TrimSpace(directorAddr)})
+		out = append(out, webInterface{Label: directorInterfaceLabel, URL: url, Target: strings.TrimSpace(directorAddr)})
 	}
 	if url := webInterfaceURL(vmHost, fileBrowserAddr); url != "" {
 		out = append(out, webInterface{Label: "File Browser", URL: url, Target: strings.TrimSpace(fileBrowserAddr)})

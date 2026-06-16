@@ -371,7 +371,7 @@ func (i *Instance) injectXP(ctx context.Context, factionID int, guildID int64, t
 		INSERT INTO dune.landsraad_task_progress (faction_id, task_id, faction_progress, guild_progress, player_progress, timestamp)
 		VALUES ($1, $2, $3, $4, $5, NOW())
 		RETURNING id
-	`, factionID, tid, xp, 0, 0).Scan(&progressID)
+	`, factionID, tid, xp, xp, 0).Scan(&progressID)
 	if err != nil {
 		i.cfg.Log.Error().Err(err).Msg("landsraadbot: failed to insert progress")
 		return

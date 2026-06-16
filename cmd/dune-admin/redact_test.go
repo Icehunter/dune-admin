@@ -36,3 +36,23 @@ func TestRedactLineLeavesSafeTextAlone(t *testing.T) {
 		t.Errorf("redactLine altered safe text: %q -> %q", in, got)
 	}
 }
+
+func TestRedactLineIPv6(t *testing.T) {
+	cases := []struct {
+		in   string
+		gone string
+	}{
+		{"connecting to [2001:db8::1]:8080 ok", "2001:db8::1"},
+		{"peer fe80::1ff:fe23:4567:890a down", "fe80::1ff:fe23:4567:890a"},
+		{"loopback ::1 reached", "::1"},
+	}
+	for _, c := range cases {
+		got := redactLine(c.in)
+		if contains(got, c.gone) {
+			t.Errorf("redactLine(%q) = %q, must not contain %q", c.in, got, c.gone)
+		}
+		if !contains(got, "[redacted-host]") {
+			t.Errorf("redactLine(%q) = %q, want [redacted-host]", c.in, got)
+		}
+	}
+}

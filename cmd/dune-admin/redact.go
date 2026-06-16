@@ -15,6 +15,9 @@ var redactRules = []redactRule{
 	{regexp.MustCompile(`(?i)(serviceauthtoken|token|api[_-]?key|key|password|passwd|secret)\s*[=:]\s*\S+`), "$1=[redacted-token]"},
 	{regexp.MustCompile(`(?i)(account_id|player_id|fls_id|owner_id)\s*[=:]\s*\d+`), "$1=[redacted-id]"},
 	{regexp.MustCompile(`(?i)(/home/|/Users/|C:\\Users\\)[^\s"']+`), "[redacted-path]"},
+	// IPv6 (compressed or full, optional brackets, optional :port). Runs before the
+	// IPv4/user@host rules so bracketed [ipv6]:port and bare forms are caught first.
+	{regexp.MustCompile(`\[?(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}\]?(?::\d+)?`), "[redacted-host]"},
 	{regexp.MustCompile(`\b[A-Za-z0-9._\-]+@[A-Za-z0-9.\-]+(:\d+)?\b`), "[redacted-host]"},
 	{regexp.MustCompile(`\b\d{1,3}(\.\d{1,3}){3}(:\d+)?\b`), "[redacted-host]"},
 }

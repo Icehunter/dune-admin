@@ -44,6 +44,7 @@ func startServerLandsraadBot(sc *ServerContext) {
 	botCtx, botCancel := context.WithCancel(context.Background())
 	
 	botCfg := landsraadbot.BotConfig{
+		Log:                  serverLog("landsraadbot", sc),
 		Enabled:              cfg.Enabled,
 		ProgressRate:         cfg.ProgressRate,
 		SimultaneousTargets:  cfg.SimultaneousTargets,

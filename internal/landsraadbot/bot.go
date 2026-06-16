@@ -3,12 +3,12 @@ package landsraadbot
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog"
 )
 
 func slicesEqual(a, b []int) bool {
@@ -24,6 +24,7 @@ func slicesEqual(a, b []int) bool {
 }
 
 type BotConfig struct {
+	Log                  *zerolog.Logger
 	Enabled              bool
 	ProgressRate         float64
 	SimultaneousTargets  int
@@ -127,7 +128,7 @@ func (i *Instance) runLoop(ctx context.Context) {
 					if delaySec < 1 {
 						delaySec = 1
 					}
-					log.Printf("landsraadbot: overriding next tick to exactly 60s after daily reveal (in %ds)", delaySec)
+					i.cfg.Log.Info().Msgf("landsraadbot: overriding next tick to exactly 60s after daily reveal (in %ds)", delaySec)
 				}
 			}
 		}
@@ -156,7 +157,7 @@ func (i *Instance) tick(ctx context.Context) {
 		return
 	}
 
-	log.Printf("landsraadbot: running simulation tick")
+	i.cfg.Log.Info().Msg("running simulation tick")
 
 	// Dynamic XP Scaling with Jitter
 	interval := cfg.TickIntervalSeconds
@@ -170,7 +171,7 @@ func (i *Instance) tick(ctx context.Context) {
 	var termEnd time.Time
 	err := i.pool.QueryRow(ctx, "SELECT start_time, end_time FROM dune.landsraad_decree_term ORDER BY start_time DESC LIMIT 1").Scan(&termStart, &termEnd)
 	if err != nil {
-		log.Printf("landsraadbot: failed to fetch active term for pacing calculation: %v", err)
+		i.cfg.Log.Error().Err(err).Msg("failed to fetch active term for pacing calculation")
 		return
 	}
 
@@ -238,7 +239,7 @@ func (i *Instance) simulateFaction(ctx context.Context, factionID int, guildID i
 	`).Scan(&termID, &winningFactionID, &electedDecreeID)
 	
 	if err != nil {
-		log.Printf("landsraadbot: failed to fetch term: %v", err)
+		i.cfg.Log.Error().Err(err).Msg("landsraadbot: failed to fetch term")
 		return injectedTargets
 	}
 
@@ -261,7 +262,7 @@ func (i *Instance) simulateFaction(ctx context.Context, factionID int, guildID i
 						ORDER BY RANDOM() LIMIT 1
 					`).Scan(&finalDecree)
 					if err != nil {
-						log.Printf("landsraadbot: failed to auto-pick decree: %v", err)
+						i.cfg.Log.Error().Err(err).Msg("landsraadbot: failed to auto-pick decree")
 						finalDecree = 0
 					}
 				}
@@ -273,7 +274,7 @@ func (i *Instance) simulateFaction(ctx context.Context, factionID int, guildID i
 						ON CONFLICT(decree_id, guild_id, player_id) DO UPDATE SET influence = excluded.influence
 					`, finalDecree, guildID, *influence)
 					if err != nil {
-						log.Printf("landsraadbot: failed to cast vote for guild %d: %v", guildID, err)
+						i.cfg.Log.Error().Err(err).Msgf("landsraadbot: failed to cast vote for guild %d", guildID)
 					}
 				}
 			}
@@ -372,7 +373,7 @@ func (i *Instance) injectXP(ctx context.Context, factionID int, guildID int64, t
 		RETURNING id
 	`, factionID, tid, xp, 0, 0).Scan(&progressID)
 	if err != nil {
-		log.Printf("landsraadbot: failed to insert progress: %v", err)
+		i.cfg.Log.Error().Err(err).Msg("landsraadbot: failed to insert progress")
 		return
 	}
 	
@@ -381,13 +382,13 @@ func (i *Instance) injectXP(ctx context.Context, factionID int, guildID int64, t
 		VALUES ($1, $2)
 	`, progressID, guildID)
 	if err != nil {
-		log.Printf("landsraadbot: failed to insert progress: %v", err)
+		i.cfg.Log.Error().Err(err).Msg("landsraadbot: failed to insert progress")
 		return
 	}
 	
 	// Force game server aggregation logic
 	_, err = i.pool.Exec(ctx, `SELECT dune.landsraad_process_task_progress(100)`)
 	if err != nil {
-		log.Printf("landsraadbot: failed to process progress: %v", err)
+		i.cfg.Log.Error().Err(err).Msg("landsraadbot: failed to process progress")
 	}
 }

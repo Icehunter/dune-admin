@@ -10,7 +10,6 @@ type landsraadBotConfig struct {
 	Enabled               bool    `json:"enabled"`
 	ProgressRate          float64 `json:"progress_rate"`
 	SimultaneousTargets   int     `json:"simultaneous_targets"`
-	TargetCompletionDays  float64 `json:"target_completion_days"`
 	AtreidesGuildID       int64   `json:"atreides_guild_id"`
 	HarkonnenGuildID      int64   `json:"harkonnen_guild_id"`
 	AtreidesStrategy      string  `json:"atreides_strategy"`
@@ -21,9 +20,6 @@ type landsraadBotConfig struct {
 	HarkonnenTargetDecree int     `json:"harkonnen_target_decree"`
 	TickIntervalSeconds   int     `json:"tick_interval_seconds"`
 	TickJitterSeconds     int     `json:"tick_jitter_seconds"`
-	EnableRaidHours       bool    `json:"enable_raid_hours"`
-	RaidStartHour         int     `json:"raid_start_hour"`
-	RaidDurationHours     int     `json:"raid_duration_hours"`
 	AtreidesTargets       []int   `json:"atreides_targets"`
 	HarkonnenTargets      []int   `json:"harkonnen_targets"`
 }
@@ -33,14 +29,10 @@ func defaultLandsraadBotConfig() landsraadBotConfig {
 		Enabled:              false,
 		ProgressRate:         100.0,
 		SimultaneousTargets:  1,
-		TargetCompletionDays: 3.0,
 		AtreidesStrategy:     "auto",
 		HarkonnenStrategy:    "auto",
 		TickIntervalSeconds:  300,
 		TickJitterSeconds:    10,
-		EnableRaidHours:      false,
-		RaidStartHour:        18,
-		RaidDurationHours:    4,
 		AtreidesTargets:      make([]int, 0),
 		HarkonnenTargets:     make([]int, 0),
 	}
@@ -62,7 +54,6 @@ func initLandsraadBotSchema(db *sql.DB) error {
 			enabled BOOLEAN NOT NULL DEFAULT 0,
 			progress_rate REAL NOT NULL DEFAULT 100.0,
 			simultaneous_targets INTEGER NOT NULL DEFAULT 1,
-			target_completion_days REAL NOT NULL DEFAULT 3.0,
 			atreides_guild_id INTEGER NOT NULL DEFAULT 0,
 			harkonnen_guild_id INTEGER NOT NULL DEFAULT 0,
 			atreides_strategy TEXT NOT NULL DEFAULT 'auto',
@@ -73,12 +64,14 @@ func initLandsraadBotSchema(db *sql.DB) error {
 			harkonnen_target_decree INTEGER NOT NULL DEFAULT 0,
 			tick_interval_seconds INTEGER NOT NULL DEFAULT 300,
 			tick_jitter_seconds INTEGER NOT NULL DEFAULT 10,
-			enable_raid_hours BOOLEAN NOT NULL DEFAULT 0,
-			raid_start_hour INTEGER NOT NULL DEFAULT 18,
-			raid_duration_hours INTEGER NOT NULL DEFAULT 4,
 			FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE
 		)
 	`)
+	// Attempt to drop legacy columns to clean up older databases
+	_, _ = db.Exec(`ALTER TABLE landsraad_bot_config DROP COLUMN target_completion_days`)
+	_, _ = db.Exec(`ALTER TABLE landsraad_bot_config DROP COLUMN enable_raid_hours`)
+	_, _ = db.Exec(`ALTER TABLE landsraad_bot_config DROP COLUMN raid_start_hour`)
+	_, _ = db.Exec(`ALTER TABLE landsraad_bot_config DROP COLUMN raid_duration_hours`)
 	if err != nil {
 		return err
 	}
@@ -102,18 +95,18 @@ func getLandsraadBotConfig(db *sql.DB, serverID int) (landsraadBotConfig, error)
 	var atreidesTargetsJSON, harkonnenTargetsJSON string
 	err := db.QueryRow(`
 		SELECT 
-			enabled, progress_rate, simultaneous_targets, target_completion_days,
+			enabled, progress_rate, simultaneous_targets,
 			atreides_guild_id, harkonnen_guild_id, atreides_strategy, harkonnen_strategy,
 			atreides_target_task, harkonnen_target_task, atreides_target_decree, harkonnen_target_decree,
-			tick_interval_seconds, tick_jitter_seconds, enable_raid_hours, raid_start_hour, raid_duration_hours,
+			tick_interval_seconds, tick_jitter_seconds,
 			atreides_targets, harkonnen_targets
 		FROM landsraad_bot_config 
 		WHERE server_id = $1
 	`, serverID).Scan(
-		&cfg.Enabled, &cfg.ProgressRate, &cfg.SimultaneousTargets, &cfg.TargetCompletionDays,
+		&cfg.Enabled, &cfg.ProgressRate, &cfg.SimultaneousTargets,
 		&cfg.AtreidesGuildID, &cfg.HarkonnenGuildID, &cfg.AtreidesStrategy, &cfg.HarkonnenStrategy,
 		&cfg.AtreidesTargetTask, &cfg.HarkonnenTargetTask, &cfg.AtreidesTargetDecree, &cfg.HarkonnenTargetDecree,
-		&cfg.TickIntervalSeconds, &cfg.TickJitterSeconds, &cfg.EnableRaidHours, &cfg.RaidStartHour, &cfg.RaidDurationHours,
+		&cfg.TickIntervalSeconds, &cfg.TickJitterSeconds,
 		&atreidesTargetsJSON, &harkonnenTargetsJSON,
 	)
 	if err != nil {
@@ -152,19 +145,18 @@ func saveLandsraadBotConfig(db *sql.DB, serverID int, cfg landsraadBotConfig) er
 
 	_, err := db.Exec(`
 		INSERT INTO landsraad_bot_config (
-			server_id, enabled, progress_rate, simultaneous_targets, target_completion_days,
+			server_id, enabled, progress_rate, simultaneous_targets,
 			atreides_guild_id, harkonnen_guild_id, atreides_strategy, harkonnen_strategy,
 			atreides_target_task, harkonnen_target_task, atreides_target_decree, harkonnen_target_decree,
-			tick_interval_seconds, tick_jitter_seconds, enable_raid_hours, raid_start_hour, raid_duration_hours,
+			tick_interval_seconds, tick_jitter_seconds,
 			atreides_targets, harkonnen_targets
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
 		)
 		ON CONFLICT(server_id) DO UPDATE SET 
 			enabled = excluded.enabled,
 			progress_rate = excluded.progress_rate,
 			simultaneous_targets = excluded.simultaneous_targets,
-			target_completion_days = excluded.target_completion_days,
 			atreides_guild_id = excluded.atreides_guild_id,
 			harkonnen_guild_id = excluded.harkonnen_guild_id,
 			atreides_strategy = excluded.atreides_strategy,
@@ -175,16 +167,13 @@ func saveLandsraadBotConfig(db *sql.DB, serverID int, cfg landsraadBotConfig) er
 			harkonnen_target_decree = excluded.harkonnen_target_decree,
 			tick_interval_seconds = excluded.tick_interval_seconds,
 			tick_jitter_seconds = excluded.tick_jitter_seconds,
-			enable_raid_hours = excluded.enable_raid_hours,
-			raid_start_hour = excluded.raid_start_hour,
-			raid_duration_hours = excluded.raid_duration_hours,
 			atreides_targets = excluded.atreides_targets,
 			harkonnen_targets = excluded.harkonnen_targets
 	`,
-		serverID, cfg.Enabled, cfg.ProgressRate, cfg.SimultaneousTargets, cfg.TargetCompletionDays,
+		serverID, cfg.Enabled, cfg.ProgressRate, cfg.SimultaneousTargets,
 		cfg.AtreidesGuildID, cfg.HarkonnenGuildID, cfg.AtreidesStrategy, cfg.HarkonnenStrategy,
 		cfg.AtreidesTargetTask, cfg.HarkonnenTargetTask, cfg.AtreidesTargetDecree, cfg.HarkonnenTargetDecree,
-		cfg.TickIntervalSeconds, cfg.TickJitterSeconds, cfg.EnableRaidHours, cfg.RaidStartHour, cfg.RaidDurationHours,
+		cfg.TickIntervalSeconds, cfg.TickJitterSeconds,
 		string(bAtreides), string(bHarkonnen),
 	)
 	return err

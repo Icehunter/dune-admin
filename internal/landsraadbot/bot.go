@@ -27,7 +27,6 @@ type BotConfig struct {
 	Enabled              bool
 	ProgressRate         float64
 	SimultaneousTargets  int
-	TargetCompletionDays float64
 	AtreidesGuildID      int64
 	HarkonnenGuildID     int64
 	AtreidesStrategy     string

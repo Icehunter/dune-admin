@@ -47,7 +47,6 @@ func startServerLandsraadBot(sc *ServerContext) {
 		Enabled:              cfg.Enabled,
 		ProgressRate:         cfg.ProgressRate,
 		SimultaneousTargets:  cfg.SimultaneousTargets,
-		TargetCompletionDays: cfg.TargetCompletionDays,
 		AtreidesGuildID:      cfg.AtreidesGuildID,
 		HarkonnenGuildID:     cfg.HarkonnenGuildID,
 		AtreidesStrategy:     cfg.AtreidesStrategy,

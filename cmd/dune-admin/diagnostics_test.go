@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"fmt"
 	"io"
 	"runtime"
 	"strings"
@@ -102,5 +103,27 @@ func TestWriteDiagnosticsBundleContents(t *testing.T) {
 	}
 	if !strings.Contains(names["environment.txt"], "9.9.9") {
 		t.Errorf("environment.txt missing version")
+	}
+}
+
+func TestBuildReportKeepsNewestLines(t *testing.T) {
+	var lines []ringLine
+	for i := 0; i < 500; i++ {
+		lines = append(lines, ringLine{Level: "info", Line: fmt.Sprintf("line-%03d", i)})
+	}
+	_, body := buildReport(lines, environmentSummary{}, 1200)
+	// The newest line must be present...
+	if !strings.Contains(body, "line-499") {
+		t.Errorf("body should contain the newest line line-499:\n%s", body)
+	}
+	// ...and an old line must have been dropped (truncated).
+	if strings.Contains(body, "line-000") {
+		t.Errorf("oldest line line-000 should have been dropped")
+	}
+	if !strings.Contains(body, "truncated") {
+		t.Errorf("dropped lines must be signalled with a truncation marker")
+	}
+	if len(body) > 1200 {
+		t.Errorf("body = %d bytes, want <= 1200", len(body))
 	}
 }

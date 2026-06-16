@@ -36,32 +36,51 @@ func buildEnvironment() environmentSummary {
 }
 
 // buildReport returns a GitHub issue title and a redacted markdown body
-// (environment summary + recent log lines). The body is trimmed to maxBytes;
-// when content exceeds that budget a truncation marker points at the bundle.
+// (environment summary + the most recent log lines that fit within maxBytes).
+// The newest lines are preferred; if older lines are dropped a truncation
+// marker points the reader at the attached bundle.
 func buildReport(lines []ringLine, env environmentSummary, maxBytes int) (title, body string) {
 	title = fmt.Sprintf("[bug] dune-admin %s", env.Version)
 
-	var b strings.Builder
-	b.WriteString("## Environment\n\n")
-	b.WriteString(environmentMarkdown(env))
-	b.WriteString("\n## Recent logs\n\n```\n")
+	header := "## Environment\n\n" + environmentMarkdown(env) + "\n## Recent logs\n\n```\n"
+	const fence = "```\n"
+	const marker = "... (truncated, see attached bundle)\n"
 
-	for _, e := range lines {
-		b.WriteString(redactLine(e.Line))
-		b.WriteByte('\n')
+	// Reserve room for the closing fence and a possible truncation marker so
+	// the assembled body never exceeds maxBytes.
+	budget := maxBytes - len(header) - len(fence) - len(marker)
+	if budget < 0 {
+		budget = 0
 	}
-	b.WriteString("```\n")
 
-	body = b.String()
-	if len(body) > maxBytes {
-		marker := "\n... (truncated, see attached bundle)\n```\n"
-		cut := maxBytes - len(marker)
-		if cut < 0 {
-			cut = 0
+	// Walk newest-to-oldest, keeping redacted lines that fit the budget.
+	var chosen []string
+	used := 0
+	truncated := false
+	for i := len(lines) - 1; i >= 0; i-- {
+		ln := redactLine(lines[i].Line) + "\n"
+		if used+len(ln) > budget {
+			truncated = true
+			break
 		}
-		body = body[:cut] + marker
+		chosen = append(chosen, ln)
+		used += len(ln)
 	}
-	return title, body
+	// chosen is newest-first; reverse to chronological order.
+	for l, r := 0, len(chosen)-1; l < r; l, r = l+1, r-1 {
+		chosen[l], chosen[r] = chosen[r], chosen[l]
+	}
+
+	var b strings.Builder
+	b.WriteString(header)
+	if truncated {
+		b.WriteString(marker)
+	}
+	for _, ln := range chosen {
+		b.WriteString(ln)
+	}
+	b.WriteString(fence)
+	return title, b.String()
 }
 
 func environmentMarkdown(env environmentSummary) string {

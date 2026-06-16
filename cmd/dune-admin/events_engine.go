@@ -713,7 +713,7 @@ func productionEventDeps(pool *pgxpool.Pool, serverID int) eventDeps {
 			if pool == nil {
 				return fmt.Errorf("database not connected")
 			}
-			return cmdGiveItemCtx(ctx, pool, actorID, template, qty, quality)
+			return cmdGiveItemSmartCtx(ctx, pool, actorID, template, qty, quality)
 		},
 		grantXP: func(ctx context.Context, actorID int64, track string, amount int32) error {
 			if pool == nil {

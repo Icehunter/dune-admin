@@ -116,7 +116,7 @@ func productionBattlepassGrantDeps(pool *pgxpool.Pool) battlepassGrantDeps {
 			return cmdAwardIntelCtx(ctx, pool, pawnID, amount)
 		},
 		giveItem: func(ctx context.Context, actorID int64, template string, qty, quality int64) error {
-			return cmdGiveItemCtx(ctx, pool, actorID, template, qty, quality)
+			return cmdGiveItemSmartCtx(ctx, pool, actorID, template, qty, quality)
 		},
 		resolveGrantTarget: func(ctx context.Context, accountID int64) (int64, error) {
 			if pool == nil {

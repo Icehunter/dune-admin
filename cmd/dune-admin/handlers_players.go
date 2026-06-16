@@ -338,6 +338,33 @@ func handleGetJourney(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/give-item [post]
+// cmdGiveItemSmartCtx attempts to deliver an item live via RMQ if the player is
+// online, the item quality is 0, and the item type allows it. Falls back to the
+// DB path if the player is offline or the item requires a DB explicitly.
+func cmdGiveItemSmartCtx(ctx context.Context, pool *pgxpool.Pool, actorID int64, template string, qty, quality int64) error {
+	if quality == 0 && !itemNeedsDBPath(template) {
+		err := checkPlayerOfflinePool(ctx, pool, actorID)
+		if err != nil && strings.Contains(err.Error(), "player is currently") {
+			// Player is online, try RMQ.
+			if capErr := checkInventoryCapacityPool(ctx, pool, actorID, template, qty); capErr != nil {
+				return capErr
+			}
+			flsID, resolveErr := flsIDFromActorID(ctx, actorID)
+			if resolveErr != nil {
+				return fmt.Errorf("resolve player for live grant: %w", resolveErr)
+			}
+			if rmqErr := rmqAddItemToInventory(flsID, template, int(qty), 1.0); rmqErr == nil {
+				// Successfully sent via RMQ.
+				return nil
+			} else {
+				return fmt.Errorf("live grant failed: %w", rmqErr)
+			}
+		}
+	}
+	// Fall back to DB path
+	return cmdGiveItemCtx(ctx, pool, actorID, template, qty, quality)
+}
+
 // tryGiveItemViaRMQ attempts to deliver an item to an online player via the RMQ
 // server command path (instant, no relog needed). Returns true if the request
 // was handled (success or error written to w), false if the caller should fall

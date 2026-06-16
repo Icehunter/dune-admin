@@ -27,6 +27,30 @@ func discoveredWebInterfaces(ctx context.Context, ctrl ControlPlane, exec Execut
 	return d.discoverWebInterfaces(ctx, exec)
 }
 
+// directorInterfaceLabel is the label the kubectl control plane assigns the
+// discovered Battlegroup Director (see control_kubectl.go). It doubles as the
+// dedupe key in withoutDiscoveredDirector.
+const directorInterfaceLabel = "Battlegroup Director"
+
+// withoutDiscoveredDirector drops the control-plane-discovered Battlegroup
+// Director when director_url is configured, preserving the invariant that the
+// Director is shown from director_url (the same-origin /director/ proxy) rather
+// than the discovered list — otherwise the card renders it twice. With no
+// director_url the list is returned unchanged (no allocation).
+func withoutDiscoveredDirector(discovered []webInterface, directorURL string) []webInterface {
+	if directorURL == "" {
+		return discovered
+	}
+	out := make([]webInterface, 0, len(discovered))
+	for _, wi := range discovered {
+		if wi.Label == directorInterfaceLabel {
+			continue
+		}
+		out = append(out, wi)
+	}
+	return out
+}
+
 // @Summary List configured web interfaces
 // @Tags web-interfaces
 // @Produce json
@@ -39,6 +63,13 @@ func handleGetWebInterfaces(w http.ResponseWriter, r *http.Request) {
 	// can open it via dune-admin's own host instead of an unreachable game-side URL.
 	ifaces := getWebInterfaces()
 	discovered := discoveredWebInterfaces(r.Context(), controlFromCtx(r), executorFromCtx(r))
+	// When director_url is set the card shows the Director as its own DirectorRow,
+	// so drop the discovered copy to avoid rendering it twice (dedupe by label).
+	// Key off the ACTIVE server's director_url — the same source as /status (which
+	// the DirectorRow reads) and as the proxy ports (currentTargets) — so the
+	// dedupe can't disagree with the rendered DirectorRow during a view-switch
+	// where the request server differs from the active one.
+	discovered = withoutDiscoveredDirector(discovered, activeServerCfg().DirectorURL)
 	// Ports come from the running proxy set for the active server (single source
 	// of truth). When the request's server is the active one, the discovered dial
 	// addresses match and each entry gets its proxy port; otherwise proxyPort is 0.
@@ -73,5 +104,10 @@ func handleUpdateWebInterfaces(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("could not save web interfaces"), http.StatusInternalServerError)
 		return
 	}
+	// A newly saved hand-configured absolute-URL interface needs a proxy port to
+	// be reachable; rebuild the active server's proxy set now instead of leaving
+	// it stale until the next server switch / restart. Mirrors the rebuild call
+	// every other state change makes (boot, switch, delete, reconnect).
+	rebuildWebProxiesForActive()
 	jsonOK(w, map[string]string{"ok": "web interfaces saved"})
 }

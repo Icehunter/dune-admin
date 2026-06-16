@@ -168,8 +168,15 @@ func newRootProxy(target *url.URL, transport http.RoundTripper) http.HandlerFunc
 }
 
 // withProxyAuth enforces the same dashboard session as the main UI when auth is
-// enabled. Session cookies are host-scoped (not port-scoped), so the login on the
-// main port is presented to the proxy ports too.
+// enabled. Session cookies are host-scoped (not port-scoped), so on a plain-HTTP
+// deployment the login on the main port is presented to the proxy ports too.
+//
+// Known limitation: behind a TLS-terminating reverse proxy (X-Forwarded-Proto:
+// https) the session cookie is set Secure, and browsers will not send a Secure
+// cookie to the plain-HTTP proxy ports — so authenticateRequest sees no session
+// and every proxied interface returns 401. The proxy ports terminate no TLS
+// themselves; supporting auth behind TLS termination needs a non-cookie scheme
+// (e.g. a per-target token) and is intentionally out of scope for this change.
 func withProxyAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if authEnabled(loadedConfig) {
@@ -181,13 +188,16 @@ func withProxyAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// startWebProxies launches one root-proxy http.Server per target and returns a
-// func that shuts them all down. Each listener is bound synchronously (so the
-// port is open before this returns); a bind failure is logged and that single
-// proxy skipped — never fatal. dial is injected for testability.
-func startWebProxies(targets []proxyTarget, dial func(network, addr string) (net.Conn, error)) func() {
+// startWebProxies launches one root-proxy http.Server per target and returns the
+// subset of targets whose listener actually bound, plus a func that shuts them
+// all down. Each listener is bound synchronously (so the port is open before this
+// returns); a bind failure is logged and that single proxy skipped — never fatal.
+// The returned subset is what the manager stores, so the SPA is never told a
+// proxyPort for a listener that failed to start. dial is injected for testability.
+func startWebProxies(targets []proxyTarget, dial func(network, addr string) (net.Conn, error)) ([]proxyTarget, func()) {
 	host := listenHost()
 	var servers []*http.Server
+	var started []proxyTarget
 	for _, t := range targets {
 		scheme := t.scheme
 		if scheme == "" {
@@ -209,9 +219,10 @@ func startWebProxies(targets []proxyTarget, dial func(network, addr string) (net
 		}
 		log.Printf("web-proxy: %s → %s (upstream %s://%s)", t.label, addr, scheme, t.dialAddr)
 		servers = append(servers, srv)
+		started = append(started, t)
 		go func() { _ = srv.Serve(ln) }()
 	}
-	return func() {
+	return started, func() {
 		// Close (not graceful Shutdown): on a server switch the old server is no
 		// longer active, so its proxy connections should drop at once. Shutdown
 		// would block on in-flight responses (e.g. a File Browser download) for up
@@ -264,8 +275,17 @@ func (m *webProxyManager) apply(targets []proxyTarget, dial func(network, addr s
 		m.targets = nil
 		return
 	}
-	m.targets = targets
-	m.stop = startWebProxies(targets, dial)
+	// Store only the targets whose listener actually bound, so currentTargets /
+	// withProxyPorts never advertise a proxyPort for a dead listener. If none
+	// bound, stay in the stopped state (keeping the invariant targets==nil iff
+	// stop==nil that the empty-targets branch above establishes).
+	started, stop := startWebProxies(targets, dial)
+	if len(started) == 0 {
+		stop()
+		m.targets, m.stop = nil, nil
+		return
+	}
+	m.targets, m.stop = started, stop
 }
 
 // currentTargets returns a copy of the proxy targets for the active server, or

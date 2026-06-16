@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -148,7 +149,7 @@ func TestStartWebProxies_BindsToListenHost(t *testing.T) {
 	listenAddr = "127.0.0.1:18080"
 
 	port := freePort(t)
-	stop := startWebProxies([]proxyTarget{{label: "x", scheme: "http", dialAddr: uu.Host, port: port}}, net.Dial)
+	_, stop := startWebProxies([]proxyTarget{{label: "x", scheme: "http", dialAddr: uu.Host, port: port}}, net.Dial)
 	defer stop()
 
 	// reachable on the bound loopback interface
@@ -202,7 +203,7 @@ func TestStartWebProxies_StartStop(t *testing.T) {
 
 	port := freePort(t)
 	tgt := proxyTarget{label: "x", dialAddr: uu.Host, port: port}
-	stop := startWebProxies([]proxyTarget{tgt}, net.Dial)
+	_, stop := startWebProxies([]proxyTarget{tgt}, net.Dial)
 
 	base := fmt.Sprintf("http://127.0.0.1:%d/", port)
 	if body := httpGet(t, base); body != "ok" {
@@ -214,6 +215,47 @@ func TestStartWebProxies_StartStop(t *testing.T) {
 	client := &http.Client{Timeout: time.Second}
 	if _, err := client.Get(base); err == nil {
 		t.Errorf("expected error after stop, got none")
+	}
+}
+
+// startWebProxies returns only the targets whose listener actually bound. A
+// target whose port is already taken is skipped (logged), so the manager never
+// stores — and the SPA is never told — a proxyPort for a dead listener.
+// (Icehunter review point 2.)
+func TestStartWebProxies_ReturnsOnlyStarted(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(w, "ok")
+	}))
+	defer upstream.Close()
+	uu, _ := url.Parse(upstream.URL)
+
+	prevCfg := loadedConfig
+	prevAddr := listenAddr
+	t.Cleanup(func() { loadedConfig = prevCfg; listenAddr = prevAddr })
+	loadedConfig = appConfig{} // auth off
+	listenAddr = "127.0.0.1:18083"
+
+	// Occupy a port on the bind host so the "bad" target's listener fails.
+	occupied := freePort(t)
+	busy, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(occupied)))
+	if err != nil {
+		t.Fatalf("occupy port: %v", err)
+	}
+	defer func() { _ = busy.Close() }()
+
+	good := freePort(t)
+	targets := []proxyTarget{
+		{label: "good", scheme: "http", dialAddr: uu.Host, port: good},
+		{label: "bad", scheme: "http", dialAddr: uu.Host, port: occupied},
+	}
+	started, stop := startWebProxies(targets, net.Dial)
+	defer stop()
+
+	if len(started) != 1 || started[0].label != "good" {
+		t.Fatalf("started = %+v, want only the 'good' target", started)
+	}
+	if body := httpGet(t, fmt.Sprintf("http://127.0.0.1:%d/", good)); body != "ok" {
+		t.Fatalf("good proxy body = %q, want ok", body)
 	}
 }
 

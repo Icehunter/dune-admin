@@ -39,7 +39,7 @@ var winPaths = [][]int{
 	{4, 8, 12, 16, 20},
 }
 
-func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID int) []ScoredTask {
+func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID int, strategy string) []ScoredTask {
 	// First fetch the active term ID
 	var activeTermID int64
 	err := i.pool.QueryRow(ctx, "SELECT term_id FROM dune.landsraad_decree_term ORDER BY start_time DESC LIMIT 1").Scan(&activeTermID)
@@ -119,48 +119,60 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 	}
 
 	// 2. Calculate Offensive Scores
-	if len(primaryPath) > 0 {
-		for _, idx := range primaryPath {
-			if !tasks[idx].Completed {
-				scores[tasks[idx].ID] += 1000.0                             // Base primary path bias
-				scores[tasks[idx].ID] += float64(bestFriendlyCount) * 200.0 // Momentum bonus
+	if strategy != "focus_blocking" {
+		if len(primaryPath) > 0 {
+			for _, idx := range primaryPath {
+				if !tasks[idx].Completed {
+					scores[tasks[idx].ID] += 1000.0                             // Base primary path bias
+					if strategy == "focus_aggressive" {
+						scores[tasks[idx].ID] += float64(bestFriendlyCount) * 400.0 // Aggressive momentum bonus (double)
+					} else {
+						scores[tasks[idx].ID] += float64(bestFriendlyCount) * 200.0 // Momentum bonus
+					}
+				}
 			}
 		}
 	}
 
 	// 3. Defensive Blocking Threat (Evaluate all paths)
-	for _, path := range winPaths {
-		oppCount := 0
-		uncompletedCount := 0
-		var uncompletedIDs []int
+	if strategy != "focus_aggressive" {
+		for _, path := range winPaths {
+			oppCount := 0
+			uncompletedCount := 0
+			var uncompletedIDs []int
 
-		for _, idx := range path {
-			t := tasks[idx]
-			if t.Completed {
-				if t.WinningFactionID != nil && *t.WinningFactionID != myFactionID {
-					oppCount++
+			for _, idx := range path {
+				t := tasks[idx]
+				if t.Completed {
+					if t.WinningFactionID != nil && *t.WinningFactionID != myFactionID {
+						oppCount++
+					}
+				} else {
+					uncompletedCount++
+					uncompletedIDs = append(uncompletedIDs, t.ID)
 				}
-			} else {
-				uncompletedCount++
-				uncompletedIDs = append(uncompletedIDs, t.ID)
-			}
-		}
-
-		if uncompletedCount > 0 {
-			blockScore := 0.0
-			if oppCount == 2 {
-				blockScore = 200.0
-			} else if oppCount == 3 {
-				// 3/5: Competitive block, might be worth it over our own path
-				blockScore = 800.0
-			} else if oppCount == 4 {
-				// 4/5: Drop everything and block with all might
-				blockScore = 100000.0 // Critical block
 			}
 
-			// Apply block score to all uncompleted tasks in that path
-			for _, id := range uncompletedIDs {
-				scores[id] += blockScore
+			if uncompletedCount > 0 {
+				blockScore := 0.0
+				if oppCount == 2 {
+					blockScore = 200.0
+				} else if oppCount == 3 {
+					// 3/5: Competitive block, might be worth it over our own path
+					blockScore = 800.0
+				} else if oppCount == 4 {
+					// 4/5: Drop everything and block with all might
+					blockScore = 100000.0 // Critical block
+				}
+
+				if strategy == "focus_blocking" {
+					blockScore *= 10.0 // Massive multiplier to prioritize any threat immediately
+				}
+
+				// Apply block score to all uncompleted tasks in that path
+				for _, id := range uncompletedIDs {
+					scores[id] += blockScore
+				}
 			}
 		}
 	}

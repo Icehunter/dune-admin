@@ -288,8 +288,8 @@ func (i *Instance) simulateFaction(ctx context.Context, factionID int, guildID i
 	if strategy == "manual" && targetTask > 0 {
 		i.injectXP(ctx, factionID, guildID, targetTask, xp)
 		injectedTargets = append(injectedTargets, targetTask)
-	} else if strategy == "auto" {
-		scoredTasks := i.calculateTaskDesirability(ctx, factionID)
+	} else if strategy == "auto" || strategy == "focus_blocking" || strategy == "focus_aggressive" {
+		scoredTasks := i.calculateTaskDesirability(ctx, factionID, strategy)
 		if len(scoredTasks) == 0 {
 			return injectedTargets
 		}

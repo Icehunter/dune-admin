@@ -69,14 +69,11 @@ func cmdFetchPlayers(pool *pgxpool.Pool) Msg {
 		       a.class,
 		       COALESCE(a.map, ''),
 		       COALESCE(af.faction_id, 0),
-		       COALESCE(ps.online_status::text, 'Offline'),
-		       COALESCE(dl.discord_user_id, ''),
-		       COALESCE(dl.avatar_url, '')
+		       COALESCE(ps.online_status::text, 'Offline')
 		FROM dune.actors a
 		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
 		LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
 		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id`+factionByAccountJoin+`
-		LEFT JOIN dune.discord_links dl ON dl.account_id = a.owner_account_id
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
 		ORDER BY a.id`, gmIdentityAccountID)
 	if err != nil {
@@ -87,7 +84,7 @@ func cmdFetchPlayers(pool *pgxpool.Pool) Msg {
 	var players []playerInfo
 	for rows.Next() {
 		var p playerInfo
-		if err := rows.Scan(&p.ID, &p.AccountID, &p.Name, &p.ControllerID, &p.FLSID, &p.Class, &p.Map, &p.FactionID, &p.OnlineStatus, &p.DiscordUserID, &p.DiscordAvatar); err != nil {
+		if err := rows.Scan(&p.ID, &p.AccountID, &p.Name, &p.ControllerID, &p.FLSID, &p.Class, &p.Map, &p.FactionID, &p.OnlineStatus); err != nil {
 			continue
 		}
 		p.Class = shortClass(p.Class)
@@ -97,6 +94,29 @@ func cmdFetchPlayers(pool *pgxpool.Pool) Msg {
 		return msgPlayers{err: rows.Err()}
 	}
 	return msgPlayers{rows: players}
+}
+
+// enrichPlayersWithDiscord fills DiscordUserID/DiscordAvatar on each player from
+// the SQLite discord_user_links rows scoped to serverID. The players query is
+// per-server (each pool is one game server), so the caller passes the store
+// scope of the pool being queried. Best-effort: a store error leaves the Discord
+// fields empty rather than failing the whole player list.
+func enrichPlayersWithDiscord(players []playerInfo, serverID int) []playerInfo {
+	if len(players) == 0 || globalDiscordGuildsStore == nil {
+		return players
+	}
+	links, err := globalDiscordGuildsStore.userLinksForServer(serverID)
+	if err != nil {
+		componentLog("discord").Warn().Int("server_id", serverID).Err(err).Msg("player-list discord enrichment failed")
+		return players
+	}
+	for i := range players {
+		if info, ok := links[players[i].AccountID]; ok {
+			players[i].DiscordUserID = info.discordUserID
+			players[i].DiscordAvatar = info.avatar
+		}
+	}
+	return players
 }
 
 // labeledCount is one (label, count) row of a server-wide distribution on the
@@ -6329,73 +6349,41 @@ func cmdRefillWaterOffline(ctx context.Context, pool *pgxpool.Pool, actorID int6
 	return tag.RowsAffected(), nil
 }
 
-// ── Discord link table ────────────────────────────────────────────────────────
-
-// cmdEnsureDiscordLinksTable creates the discord_links table if it doesn't
-// exist. Called once at bot startup; safe to call concurrently.
-func cmdEnsureDiscordLinksTable(ctx context.Context, db *pgxpool.Pool) error {
-	_, err := db.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS dune.discord_links (
-			discord_user_id TEXT        PRIMARY KEY,
-			account_id      BIGINT      NOT NULL,
-			character_name  TEXT        NOT NULL,
-			avatar_url      TEXT        NOT NULL DEFAULT '',
-			registered_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-		)`)
-	if err != nil {
-		return fmt.Errorf("ensure discord_links table: %w", err)
+// cmdReadLegacyDiscordLinks reads the legacy Postgres dune.discord_links table
+// (pre-multi-guild registrations) for one-time migration into the SQLite
+// discord_user_links store. Returns an empty slice (no error) when the table
+// doesn't exist, so the migration treats "no legacy table" as nothing to copy.
+// Distinct (discord_user_id) is collapsed to one row per user (the new model is
+// one global character per user), keeping the most-recently-registered row.
+func cmdReadLegacyDiscordLinks(ctx context.Context, db *pgxpool.Pool) ([]legacyUserLink, error) {
+	if db == nil {
+		return nil, fmt.Errorf("database not connected")
 	}
-	// Add avatar_url to existing tables that were created before this column existed.
-	_, _ = db.Exec(ctx, `
-		ALTER TABLE dune.discord_links
-		ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT ''`)
-	return nil
-}
-
-// cmdRegisterDiscordLink upserts a Discord user → in-game character mapping.
-func cmdRegisterDiscordLink(ctx context.Context, db *pgxpool.Pool, discordUserID string, accountID int64, charName, avatarURL string) error {
-	_, err := db.Exec(ctx, `
-		INSERT INTO dune.discord_links (discord_user_id, account_id, character_name, avatar_url)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (discord_user_id) DO UPDATE
-		  SET account_id     = EXCLUDED.account_id,
-		      character_name = EXCLUDED.character_name,
-		      avatar_url     = EXCLUDED.avatar_url,
-		      registered_at  = now()`,
-		discordUserID, accountID, charName, avatarURL)
-	if err != nil {
-		return fmt.Errorf("register discord link %s: %w", discordUserID, err)
+	var exists bool
+	if err := db.QueryRow(ctx, `SELECT to_regclass('dune.discord_links') IS NOT NULL`).Scan(&exists); err != nil {
+		return nil, fmt.Errorf("check discord_links table: %w", err)
 	}
-	return nil
-}
-
-// cmdGetDiscordLink returns the (accountID, charName) for the given Discord
-// user. Returns (0, "", nil) when no row exists.
-func cmdGetDiscordLink(ctx context.Context, db *pgxpool.Pool, discordUserID string) (int64, string, error) {
-	var accountID int64
-	var charName string
-	err := db.QueryRow(ctx, `
-		SELECT account_id, character_name
+	if !exists {
+		return nil, nil
+	}
+	rows, err := db.Query(ctx, `
+		SELECT DISTINCT ON (discord_user_id)
+		       discord_user_id, account_id, character_name, COALESCE(avatar_url, '')
 		FROM dune.discord_links
-		WHERE discord_user_id = $1`, discordUserID).Scan(&accountID, &charName)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, "", nil
-	}
+		ORDER BY discord_user_id, registered_at DESC`)
 	if err != nil {
-		return 0, "", fmt.Errorf("get discord link %s: %w", discordUserID, err)
+		return nil, fmt.Errorf("read legacy discord_links: %w", err)
 	}
-	return accountID, charName, nil
-}
-
-// cmdDeleteDiscordLink removes the link for the given Discord user. Returns
-// true if a row was deleted, false if none was found.
-func cmdDeleteDiscordLink(ctx context.Context, db *pgxpool.Pool, discordUserID string) (bool, error) {
-	tag, err := db.Exec(ctx, `
-		DELETE FROM dune.discord_links WHERE discord_user_id = $1`, discordUserID)
-	if err != nil {
-		return false, fmt.Errorf("delete discord link %s: %w", discordUserID, err)
+	defer rows.Close()
+	var out []legacyUserLink
+	for rows.Next() {
+		var l legacyUserLink
+		if err := rows.Scan(&l.discordUserID, &l.accountID, &l.characterName, &l.avatarURL); err != nil {
+			return nil, fmt.Errorf("scan legacy discord_link: %w", err)
+		}
+		out = append(out, l)
 	}
-	return tag.RowsAffected() > 0, nil
+	return out, rows.Err()
 }
 
 // cmdFetchPlayerCurrencyCtx returns all currency balances for a single player

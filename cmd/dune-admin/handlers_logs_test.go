@@ -27,7 +27,7 @@ func TestHandleListLogSources_CtxControlOverridesGlobal(t *testing.T) {
 
 	ctrl := &statusFakeControl{}
 	reg := newServerRegistry(nil)
-	sc := &ServerContext{ID: "s1", StoreScope: "s1", Control: ctrl}
+	sc := &ServerContext{ID: "s1", StoreScope: defaultServerID, Control: ctrl}
 	reg.Register(sc)
 
 	inner := http.HandlerFunc(handleLogPods)

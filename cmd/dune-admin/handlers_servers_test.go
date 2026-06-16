@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -163,7 +162,7 @@ func TestHandleDeleteServer_ActiveAllowedReassigns(t *testing.T) {
 // Deleting the last remaining server empties the store so needsSetup() flips
 // true and the SPA returns to the wizard. Global settings are preserved.
 func TestHandleDeleteServer_LastResetsToSetup(t *testing.T) {
-	db := openSharedScopeDB(t)
+	db := openMemUnifiedStore(t)
 	useTestServerStores(t, db)
 	id1, _ := globalServersStore.insertServer(ServerConfig{Name: "Default"}, 0)
 	s1 := serverScope(id1)
@@ -317,65 +316,6 @@ func TestHandleAddServer_StoreUnavailable(t *testing.T) {
 	}
 }
 
-// ── cmdPurgeServerData ────────────────────────────────────────────────────────
-
-func TestCmdPurgeServerData_ClearsAllScopedTables(t *testing.T) {
-	db := openSharedScopeDB(t)
-
-	sA := newWelcomeStore(db, "srv-a")
-	if err := sA.insertGranted("FLS1", "v1", 1, "Paul"); err != nil {
-		t.Fatalf("insertGranted: %v", err)
-	}
-
-	epA := newEventStore(db, "srv-a")
-	if err := epA.recordGranted(1, 1, 42); err != nil {
-		t.Fatalf("recordGranted: %v", err)
-	}
-
-	if err := cmdPurgeServerData(context.Background(), db, "srv-a"); err != nil {
-		t.Fatalf("purge: %v", err)
-	}
-
-	ex, err := sA.grantExists("FLS1", "v1", 1)
-	if err != nil {
-		t.Fatalf("grantExists after purge: %v", err)
-	}
-	if ex {
-		t.Error("welcome_grants should be purged for srv-a")
-	}
-
-	ex, err = epA.claimExists(1, 1, 42)
-	if err != nil {
-		t.Fatalf("claimExists after purge: %v", err)
-	}
-	if ex {
-		t.Error("event_award_claims should be purged for srv-a")
-	}
-}
-
-func TestCmdPurgeServerData_DoesNotAffectOtherServer(t *testing.T) {
-	db := openSharedScopeDB(t)
-
-	sA := newWelcomeStore(db, "srv-a")
-	sB := newWelcomeStore(db, "srv-b")
-
-	if err := sA.insertGranted("FLS1", "v1", 1, "Paul"); err != nil {
-		t.Fatalf("sA.insertGranted: %v", err)
-	}
-	if err := sB.insertGranted("FLS2", "v1", 2, "Chani"); err != nil {
-		t.Fatalf("sB.insertGranted: %v", err)
-	}
-
-	if err := cmdPurgeServerData(context.Background(), db, "srv-a"); err != nil {
-		t.Fatalf("purge srv-a: %v", err)
-	}
-
-	// srv-b data must be untouched
-	ex, err := sB.grantExists("FLS2", "v1", 2)
-	if err != nil {
-		t.Fatalf("sB.grantExists: %v", err)
-	}
-	if !ex {
-		t.Error("srv-b welcome_grants should NOT be purged when srv-a is deleted")
-	}
-}
+// Note: per-server purge is now covered by FK ON DELETE CASCADE; see
+// TestServerDeleteCascade in store_server_scope_test.go. The former
+// cmdPurgeServerData tests were removed with that helper.

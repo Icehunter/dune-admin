@@ -17,6 +17,16 @@ func openMemUnifiedStore(t *testing.T) *sql.DB {
 	return db
 }
 
+// seedDefaultServer inserts the default server row (id 1) so scoped rows imported
+// from legacy files satisfy their server_id FK in the FK-enforced unified store.
+func seedDefaultServer(t *testing.T, db *sql.DB) {
+	t.Helper()
+	if _, err := db.Exec(
+		`INSERT INTO servers (id, name, position) VALUES (1, 'Default', 0)`); err != nil {
+		t.Fatalf("seed default server: %v", err)
+	}
+}
+
 func tableExists(t *testing.T, db *sql.DB, name string) bool {
 	t.Helper()
 	var found string
@@ -55,14 +65,15 @@ func seedLegacyStores(t *testing.T, dir string) []legacySource {
 	locationsPath := filepath.Join(dir, "locations.db")
 	givePacksPath := filepath.Join(dir, "give-packs.db")
 
-	// Sessions: one completed play session.
+	// Sessions: one completed play session. server_id is stamped to the default
+	// server id (1) just as a real per-server legacy file would carry it.
 	sdb, err := openSessionDB(sessionsPath)
 	if err != nil {
 		t.Fatalf("openSessionDB: %v", err)
 	}
 	if _, err := sdb.Exec(
-		`INSERT INTO play_sessions(account_id, started_at, ended_at, duration_secs)
-		 VALUES (29, '2026-01-01T00:00:00Z', '2026-01-01T01:00:00Z', 3600)`); err != nil {
+		`INSERT INTO play_sessions(server_id, account_id, started_at, ended_at, duration_secs)
+		 VALUES (1, 29, '2026-01-01T00:00:00Z', '2026-01-01T01:00:00Z', 3600)`); err != nil {
 		t.Fatalf("seed play_sessions: %v", err)
 	}
 	_ = sdb.Close()
@@ -90,18 +101,16 @@ func seedLegacyStores(t *testing.T, dir string) []legacySource {
 	}
 	_ = ls.close()
 
-	// Give-packs: a config row as a REAL pre-refactor file looks — packs live in
-	// the give_packs_config.packs_json blob, the typed give_packs tables don't
-	// exist yet. Seed packs_json directly (the current saveConfig would write
-	// '[]' there). The typed tables are derived later by migrateGivePacksColumns.
+	// Give-packs: a config row stamped to the default server id. The packs
+	// themselves live in the typed give_packs/give_pack_items tables now; the
+	// config row only carries base_packs_loaded + updated_at presence.
 	gps, err := openGivePacksStore(givePacksPath)
 	if err != nil {
 		t.Fatalf("openGivePacksStore: %v", err)
 	}
-	const packsJSON = `[{"id":"t6-starter","name":"T6","category":"Starter","tier":6,"items":[]}]`
 	if _, err := gps.db.Exec(
-		`INSERT INTO give_packs_config (server_id, base_packs_loaded, packs_json, updated_at)
-		 VALUES ('default', 1, ?, '')`, packsJSON); err != nil {
+		`INSERT INTO give_packs_config (server_id, base_packs_loaded, updated_at)
+		 VALUES (1, 1, '')`); err != nil {
 		t.Fatalf("seed give-packs: %v", err)
 	}
 	_ = gps.close()
@@ -130,6 +139,7 @@ func TestMigrateLegacyStores_ImportsData(t *testing.T) {
 	sources := seedLegacyStores(t, dir)
 
 	db := openMemUnifiedStore(t)
+	seedDefaultServer(t, db)
 	if err := migrateLegacyStores(db, sources); err != nil {
 		t.Fatalf("migrateLegacyStores: %v", err)
 	}
@@ -143,15 +153,14 @@ func TestMigrateLegacyStores_ImportsData(t *testing.T) {
 	if n := countRows(t, db, "welcome_config"); n != 1 {
 		t.Errorf("welcome_config: want 1, got %d", n)
 	}
-	// give-packs config imported (with its legacy packs_json). The typed
-	// give_packs tables are derived separately by migrateGivePacksColumns, which
-	// has its own coverage (TestMigrateGivePacksColumns).
-	var packsJSON string
-	if err := db.QueryRow(`SELECT packs_json FROM give_packs_config WHERE server_id = 'default'`).Scan(&packsJSON); err != nil {
+	// give-packs config row imported and stamped to the default server id. Packs
+	// themselves live in the typed give_packs tables (no packs_json blob anymore).
+	var basePacksLoaded int
+	if err := db.QueryRow(`SELECT base_packs_loaded FROM give_packs_config WHERE server_id = 1`).Scan(&basePacksLoaded); err != nil {
 		t.Fatalf("read imported give_packs_config: %v", err)
 	}
-	if packsJSON == "" || packsJSON == "[]" {
-		t.Errorf("expected imported packs json, got %q", packsJSON)
+	if basePacksLoaded != 1 {
+		t.Errorf("expected imported give_packs_config base_packs_loaded=1, got %d", basePacksLoaded)
 	}
 	// the custom location should be present.
 	var locCount int
@@ -178,6 +187,7 @@ func TestMigrateLegacyStores_Idempotent(t *testing.T) {
 	sources := seedLegacyStores(t, dir)
 
 	db := openMemUnifiedStore(t)
+	seedDefaultServer(t, db)
 	if err := migrateLegacyStores(db, sources); err != nil {
 		t.Fatalf("first migrate: %v", err)
 	}

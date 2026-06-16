@@ -1326,7 +1326,8 @@
       "authDiscord": "Inicio de sesión con Discord (OAuth)",
       "authOwners": "Propietarios",
       "discordStatus": "Embed de estado",
-      "marketBot": "Bot de mercado"
+      "marketBot": "Bot de mercado",
+      "discordGuilds": "Gremios de Discord"
     },
     "ssh": {
       "hostPort": "Host : puerto",
@@ -1341,7 +1342,8 @@
       "connection": "Conexión",
       "control": "Control",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Gremios"
     },
     "discord": {
       "hint": "Crea un bot en discord.com/developers/applications, actívalo, copia el token e invítalo a tu servidor con el scope applications.commands.",
@@ -1371,7 +1373,8 @@
       "statusChannel": "ID del canal de estado",
       "statusChannelHint": "Clic derecho en el canal → Copiar ID del canal (requiere el Modo de desarrollador).",
       "statusInterval": "Intervalo de actualización (segundos)",
-      "statusIntervalHint": "Con qué frecuencia se actualiza el embed. Mínimo 30 segundos; predeterminado 60."
+      "statusIntervalHint": "Con qué frecuencia se actualiza el embed. Mínimo 30 segundos; predeterminado 60.",
+      "perGuildMoved": "La configuración por gremio — roles de capacidad y los servidores que vigila cada gremio (con sus canales) — se gestiona en la pestaña Gremios."
     },
     "auth": {
       "hint": "Requerir inicio de sesión para el panel y la API. Recomendado siempre que dune-admin sea accesible desde fuera de tu LAN.",
@@ -1642,7 +1645,8 @@
       "config": "Configuración",
       "factionScrip": "Vales de facción",
       "rewards": "Recompensas",
-      "solari": "Solari"
+      "solari": "Solari",
+      "currencyXp": "Moneda y XP"
     },
     "signals": {
       "level": "Nivel de personaje",
@@ -1974,6 +1978,87 @@
         "title": "Conectar un bot de Discord",
         "body": "Envía notificaciones y asigna roles a permisos. Opcional.",
         "cta": "Conectar Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Gremios de Discord",
+    "subtitle": "Configura los roles de capacidad de cada gremio de Discord. Un solo token de bot sirve a todos los gremios; los servidores se vinculan a un gremio desde su propia pestaña de Discord.",
+    "ariaLabel": "Gremios de Discord",
+    "add": "Añadir gremio",
+    "addTitle": "Añadir gremio",
+    "editTitle": "Editar gremio",
+    "empty": "Aún no hay gremios de Discord configurados.",
+    "on": "Activado",
+    "off": "Desactivado",
+    "loadRoles": "Cargar roles",
+    "guildId": "ID del gremio",
+    "guildIdHint": "Clic derecho en el icono del servidor → Copiar ID del servidor (requiere Modo desarrollador)",
+    "guildIdRequired": "Se requiere el ID del gremio",
+    "serverRequired": "Cada servidor vigilado debe estar seleccionado",
+    "roleCount": "{{count}} roles",
+    "addServer": "Añadir servidor",
+    "server": "Servidor",
+    "serverHint": "El servidor de juego que vigila este gremio",
+    "selectServer": "Selecciona un servidor…",
+    "noServers": "Este gremio aún no vigila ningún servidor.",
+    "watchedServersHint": "Cada servidor vigilado publica sus embeds de estado/anuncios en los canales indicados abajo.",
+    "announceChannel": "ID del canal de anuncios",
+    "announceChannelHint": "Canal para anuncios del servidor (reinicios, eventos)",
+    "statusEnabled": "Embed de estado persistente",
+    "statusEnabledHint": "Mantiene actualizado un embed de estado en vivo en un canal",
+    "statusChannel": "ID del canal de estado",
+    "statusChannelHint": "Canal donde se publica el embed de estado",
+    "statusInterval": "Intervalo de estado (segundos)",
+    "statusIntervalHint": "Con qué frecuencia se actualiza el embed. Mínimo 30 segundos; por defecto 60.",
+    "rolesHint": "Roles de Discord que otorgan cada nivel de capacidad en este gremio. Carga los roles tras introducir un ID de gremio.",
+    "rolesViewer": "Roles de visor",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Roles de economía",
+    "rolesEconomyHint": "comandos de mercado y economía",
+    "rolesAdmin": "Roles de administrador",
+    "rolesAdminHint": "comandos administrativos",
+    "saved": "Gremio guardado",
+    "saveFailed": "Error al guardar: {{message}}",
+    "loadFailed": "No se pudieron cargar los gremios: {{message}}",
+    "removed": "Gremio eliminado",
+    "removeFailed": "Error al eliminar: {{message}}",
+    "removeTitle": "Eliminar gremio",
+    "removeConfirm": "¿Eliminar el gremio {{guild}}? El bot dejará de servirlo a él y a sus servidores vigilados.",
+    "columns": {
+      "guildId": "ID del gremio",
+      "servers": "Servidores vigilados",
+      "roles": "Roles"
+    },
+    "sections": {
+      "guild": "Gremio",
+      "roles": "Roles de capacidad",
+      "watchedServers": "Servidores vigilados"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Vincula este servidor a un gremio de Discord y define sus canales de anuncios y estado. Los roles de capacidad de ese gremio se configuran en Ajustes → Gremios.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "¿Desvincular este servidor de su gremio de Discord? Se borran sus canales; el gremio y sus roles permanecen intactos.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
       }
     }
   }

@@ -24,7 +24,7 @@ const (
 
 const battlepassGrantLedgerSchema = `
 CREATE TABLE IF NOT EXISTS battlepass_grant_ledger (
-	server_id       TEXT    NOT NULL DEFAULT 'default',
+	server_id       INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
 	tier_key        TEXT    NOT NULL,
 	account_id      INTEGER NOT NULL,
 	status          TEXT    NOT NULL DEFAULT 'pending',

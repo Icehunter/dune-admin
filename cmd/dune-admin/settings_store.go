@@ -2,10 +2,8 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 )
 
 // settingsStore persists the global (non-per-server) settings as a single-row
@@ -31,45 +29,26 @@ func initSettingsSchema(db *sql.DB) error {
 func newSettingsStore(db *sql.DB) *settingsStore { return &settingsStore{db: db} }
 
 // globalSettingsOnly returns a copy of cfg with all per-server fields cleared so
-// the settings blob holds only global config (auth, Discord, market-bot tuning,
-// feature flags, listen addr, scrip currency).
+// the app-config tables hold only app-level config (auth, Discord, market-bot
+// tuning, feature flags, listen addr, scrip currency). DefaultServerName is kept
+// as it is an app-level display field.
 func globalSettingsOnly(cfg appConfig) appConfig {
 	cfg.Servers = nil
 	cfg.DefaultServer = ""
-	cfg.DefaultServerName = ""
 	clearFlatConnectionConfig(&cfg) // drop flat connection + secrets (per-server)
 	return cfg
 }
 
-// saveSettings upserts the global settings into the typed settings_* tables
-// (per-server/connection fields stripped via globalSettingsOnly). The legacy
-// app_settings.config_json blob is no longer written.
+// saveSettings upserts the app-level settings into the app_config_* tables
+// (per-server/connection fields stripped via globalSettingsOnly).
 func (s *settingsStore) saveSettings(cfg appConfig) error {
-	return saveSettingsColumns(s.db, globalSettingsOnly(cfg))
+	return saveAppConfigColumns(s.db, globalSettingsOnly(cfg))
 }
 
-// loadSettings reads the global settings from the typed settings_* tables.
+// loadSettings reads the app-level settings from the app_config_* tables.
 // ok=false on first boot (no settings persisted yet).
 func (s *settingsStore) loadSettings() (appConfig, bool, error) {
-	return loadSettingsColumns(s.db)
-}
-
-// saveSettingsBlob writes the legacy app_settings.config_json blob. Retained for
-// migration-source seeding (tests) and as the rollback-safe blob; the live read
-// path uses the typed settings_* tables.
-func (s *settingsStore) saveSettingsBlob(cfg appConfig) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	blob, err := json.Marshal(globalSettingsOnly(cfg))
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-	if _, err := s.db.Exec(
-		`INSERT INTO app_settings (id, config_json, updated_at) VALUES (1, ?, ?)
-		 ON CONFLICT(id) DO UPDATE SET config_json = excluded.config_json, updated_at = excluded.updated_at`,
-		string(blob), now); err != nil {
-		return fmt.Errorf("save settings blob: %w", err)
-	}
-	return nil
+	return loadAppConfigColumns(s.db)
 }
 
 // active server id (string scope form) persisted across restarts via meta.

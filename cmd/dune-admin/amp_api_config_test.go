@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"testing"
 )
 
@@ -26,47 +25,19 @@ func TestNewControlPlane_AMPWiresAPICredentials(t *testing.T) {
 }
 
 // TestMaskSecrets_MasksAmpAPIPass ensures the AMP API password is never exposed
-// through the /api/v1/config GET endpoint.
+// through the /api/v1/config GET endpoint. AmpAPIPass is now a per-server secret,
+// so masking happens on each Servers[] entry (via maskServerSecrets).
 func TestMaskSecrets_MasksAmpAPIPass(t *testing.T) {
 	t.Parallel()
-	cfg := appConfig{AmpAPIPass: "secret"}
+	cfg := appConfig{Servers: []ServerConfig{{AmpAPIPass: "secret"}}}
 	maskSecrets(&cfg)
-	if cfg.AmpAPIPass != masked {
-		t.Errorf("AmpAPIPass = %q, want masked", cfg.AmpAPIPass)
+	if cfg.Servers[0].AmpAPIPass != masked {
+		t.Errorf("Servers[0].AmpAPIPass = %q, want masked", cfg.Servers[0].AmpAPIPass)
 	}
 	// An empty password stays empty (not masked) so the UI shows "unset".
-	empty := appConfig{}
+	empty := appConfig{Servers: []ServerConfig{{}}}
 	maskSecrets(&empty)
-	if empty.AmpAPIPass != "" {
-		t.Errorf("empty AmpAPIPass = %q, want empty", empty.AmpAPIPass)
-	}
-}
-
-// TestPreserveMaskedSecrets_RestoresAmpAPIPass verifies that when the client
-// posts back the masked placeholder, the stored AMP API password is restored
-// (here from the in-memory loadedConfig fallback when the file is unreadable).
-func TestPreserveMaskedSecrets_RestoresAmpAPIPass(t *testing.T) {
-	orig := loadedConfig
-	t.Cleanup(func() { loadedConfig = orig })
-	loadedConfig = appConfig{AmpAPIPass: "stored-amp-pass"}
-
-	cfg := appConfig{AmpAPIPass: masked}
-	preserveMaskedSecrets(&cfg, func(string) ([]byte, error) { return nil, errors.New("no file") }, "ignored")
-	if cfg.AmpAPIPass != "stored-amp-pass" {
-		t.Errorf("AmpAPIPass = %q, want restored stored-amp-pass", cfg.AmpAPIPass)
-	}
-}
-
-// TestPreserveMaskedSecrets_KeepsExplicitAmpAPIPass verifies an explicitly-set
-// (non-masked) password is written through unchanged.
-func TestPreserveMaskedSecrets_KeepsExplicitAmpAPIPass(t *testing.T) {
-	orig := loadedConfig
-	t.Cleanup(func() { loadedConfig = orig })
-	loadedConfig = appConfig{AmpAPIPass: "stored"}
-
-	cfg := appConfig{AmpAPIPass: "new-pass"}
-	preserveMaskedSecrets(&cfg, func(string) ([]byte, error) { return nil, errors.New("no file") }, "ignored")
-	if cfg.AmpAPIPass != "new-pass" {
-		t.Errorf("AmpAPIPass = %q, want new-pass (explicit value preserved)", cfg.AmpAPIPass)
+	if empty.Servers[0].AmpAPIPass != "" {
+		t.Errorf("empty AmpAPIPass = %q, want empty", empty.Servers[0].AmpAPIPass)
 	}
 }

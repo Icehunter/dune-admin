@@ -11,10 +11,18 @@ import (
 // surfaces the configured director_url and listen_addr so the Server Health
 // page can render the Web Interfaces card and port chips without guessing.
 func TestHandleStatus_IncludesDirectorAndListen(t *testing.T) {
-	// Not parallel: handleStatus reads the loadedConfig package global.
+	// Not parallel: handleStatus reads the loadedConfig package global + registry.
 	prev := loadedConfig
-	t.Cleanup(func() { loadedConfig = prev })
-	loadedConfig = appConfig{DirectorURL: "http://127.0.0.1:11717", ListenAddr: ":9090"}
+	prevReg := globalRegistry
+	t.Cleanup(func() { loadedConfig = prev; globalRegistry = prevReg })
+	// director_url is per-server (active server's ServerConfig) after the remodel;
+	// listen_addr stays global.
+	loadedConfig = appConfig{ListenAddr: ":9090"}
+	globalRegistry = newServerRegistry(nil)
+	globalRegistry.Register(&ServerContext{ID: "1", Cfg: ServerConfig{ID: 1, DirectorURL: "http://127.0.0.1:11717"}})
+	if err := globalRegistry.SetActive("1"); err != nil {
+		t.Fatalf("SetActive: %v", err)
+	}
 
 	rec := httptest.NewRecorder()
 	handleStatus(rec, httptest.NewRequest(http.MethodGet, "/api/v1/status", nil))

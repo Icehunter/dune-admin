@@ -23,11 +23,11 @@ func TestWelcomeColumnsRoundTrip(t *testing.T) {
 	}
 	activeVersions := []string{"v2", "v1"}
 
-	if err := saveWelcomePackagesColumns(db, "default", packages, activeVersions); err != nil {
+	if err := saveWelcomePackagesColumns(db, scopeA, packages, activeVersions); err != nil {
 		t.Fatalf("saveWelcomePackagesColumns: %v", err)
 	}
 
-	gotPkgs, gotActive, err := loadWelcomePackagesColumns(db, "default")
+	gotPkgs, gotActive, err := loadWelcomePackagesColumns(db, scopeA)
 	if err != nil {
 		t.Fatalf("loadWelcomePackagesColumns: %v", err)
 	}
@@ -62,11 +62,11 @@ func TestWelcomeColumns_ServerScoped(t *testing.T) {
 	db := openSharedScopeDB(t)
 
 	pkgsA := []welcomePackage{{Version: "a1", Items: []welcomePackageItem{{Template: "AX", Qty: 1, Quality: 0}}}}
-	if err := saveWelcomePackagesColumns(db, "srv-a", pkgsA, []string{"a1"}); err != nil {
+	if err := saveWelcomePackagesColumns(db, scopeA, pkgsA, []string{"a1"}); err != nil {
 		t.Fatalf("save srv-a: %v", err)
 	}
 
-	gotB, activeB, err := loadWelcomePackagesColumns(db, "srv-b")
+	gotB, activeB, err := loadWelcomePackagesColumns(db, scopeB)
 	if err != nil {
 		t.Fatalf("load srv-b: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestWelcomeColumns_ServerScoped(t *testing.T) {
 		t.Fatalf("srv-b should see nothing, got %d pkgs, %d active", len(gotB), len(activeB))
 	}
 
-	gotA, activeA, err := loadWelcomePackagesColumns(db, "srv-a")
+	gotA, activeA, err := loadWelcomePackagesColumns(db, scopeA)
 	if err != nil {
 		t.Fatalf("load srv-a: %v", err)
 	}
@@ -86,54 +86,13 @@ func TestWelcomeColumns_ServerScoped(t *testing.T) {
 	}
 }
 
-// TestMigrateWelcomeColumns seeds a legacy welcome_config row with JSON blobs and
-// verifies the migration decomposes them into the typed child tables once.
-func TestMigrateWelcomeColumns(t *testing.T) {
-	t.Parallel()
-	db := openSharedScopeDB(t)
-
-	const packagesJSON = `[{"version":"v1","items":[{"template":"Tmpl_X","qty":3,"quality":2}]}]`
-	const activeVersionsJSON = `["v1"]`
-	if _, err := db.Exec(`INSERT INTO welcome_config
-		(server_id, enabled, scan_secs, active_version, active_versions_json, packages_json, updated_at)
-		VALUES ('default', 1, 30, 'v1', ?, ?, '')`, activeVersionsJSON, packagesJSON); err != nil {
-		t.Fatalf("seed welcome_config: %v", err)
-	}
-
-	if err := migrateWelcomeColumns(db); err != nil {
-		t.Fatalf("migrateWelcomeColumns: %v", err)
-	}
-
-	pkgs, active, err := loadWelcomePackagesColumns(db, "default")
-	if err != nil {
-		t.Fatalf("loadWelcomePackagesColumns: %v", err)
-	}
-	if len(pkgs) != 1 || pkgs[0].Version != "v1" {
-		t.Fatalf("migrated packages = %+v", pkgs)
-	}
-	if len(pkgs[0].Items) != 1 || pkgs[0].Items[0] != (welcomePackageItem{Template: "Tmpl_X", Qty: 3, Quality: 2}) {
-		t.Fatalf("migrated items = %+v", pkgs[0].Items)
-	}
-	if len(active) != 1 || active[0] != "v1" {
-		t.Fatalf("migrated active = %v", active)
-	}
-
-	marker, err := metaGet(db, "migrated:welcome_columns")
-	if err != nil {
-		t.Fatalf("metaGet: %v", err)
-	}
-	if marker == "" {
-		t.Error("migration marker migrated:welcome_columns not set")
-	}
-}
-
 // TestWelcomeStore_PackagesRoundTripThroughAPI verifies the store's public
 // saveConfig/loadConfig API still round-trips packages now that they are stored
 // in typed columns rather than the packages_json blob.
 func TestWelcomeStore_PackagesRoundTripThroughAPI(t *testing.T) {
 	t.Parallel()
 	db := openSharedScopeDB(t)
-	s := newWelcomeStore(db, "default")
+	s := newWelcomeStore(db, scopeA)
 
 	packages := []welcomePackage{
 		{Version: "v1", Items: []welcomePackageItem{{Template: "Item_A", Qty: 2, Quality: 1}}},

@@ -73,14 +73,9 @@ func TestConfigYAML_WrittenOnceThenNeverAgain(t *testing.T) {
 	}
 }
 
-func TestImportConfigYAML_MultiServerRemapsScopedData(t *testing.T) {
+func TestImportConfigYAML_MultiServerSeedsServers(t *testing.T) {
 	db := openSharedScopeDB(t)
 	useTestServerStores(t, db)
-
-	// Seed per-feature data under the legacy string scope "s1".
-	if err := newWelcomeStore(db, "s1").insertGranted("FLS1", "v1", 1, "Paul"); err != nil {
-		t.Fatalf("seed grant: %v", err)
-	}
 
 	seed := appConfig{
 		ListenAddr: ":9090", // global setting → app_settings
@@ -107,16 +102,16 @@ func TestImportConfigYAML_MultiServerRemapsScopedData(t *testing.T) {
 		t.Errorf("settings not persisted: ok=%v listen=%q", ok, cfg.ListenAddr)
 	}
 
-	// Per-feature data remapped from "s1" to the new numeric scope of server One.
+	// The new server's numeric scope is usable for per-feature data.
 	newScope := serverScope(list[0].ID)
-	if ex, _ := newWelcomeStore(db, newScope).grantExists("FLS1", "v1", 1); !ex {
-		t.Errorf("welcome grant not remapped to scope %q", newScope)
+	if err := newWelcomeStore(db, list[0].ID).insertGranted("FLS1", "v1", 1, "Paul"); err != nil {
+		t.Fatalf("insert grant under new scope: %v", err)
 	}
-	if ex, _ := newWelcomeStore(db, "s1").grantExists("FLS1", "v1", 1); ex {
-		t.Error("welcome grant still under legacy scope s1 after remap")
+	if ex, _ := newWelcomeStore(db, list[0].ID).grantExists("FLS1", "v1", 1); !ex {
+		t.Errorf("welcome grant not visible under new scope %q", newScope)
 	}
 
-	// Active server + marker set.
+	// Active server + marker set (active marker is the first server's string scope).
 	if v, _ := metaGet(db, activeServerMetaKey); v != newScope {
 		t.Errorf("active = %q, want %q", v, newScope)
 	}
@@ -128,11 +123,6 @@ func TestImportConfigYAML_MultiServerRemapsScopedData(t *testing.T) {
 func TestImportConfigYAML_LegacyFlatSingleServer(t *testing.T) {
 	db := openSharedScopeDB(t)
 	useTestServerStores(t, db)
-
-	// Seed data under the legacy "default" scope.
-	if err := newWelcomeStore(db, "default").insertGranted("FLS9", "v1", 7, "Chani"); err != nil {
-		t.Fatalf("seed grant: %v", err)
-	}
 
 	// No Servers[] — a flat single-server config. Stub the flag globals that
 	// flatConfigHasConnection inspects.
@@ -148,9 +138,12 @@ func TestImportConfigYAML_LegacyFlatSingleServer(t *testing.T) {
 	if len(list) != 1 {
 		t.Fatalf("servers = %d, want 1 (legacy flat → one server)", len(list))
 	}
-	newScope := serverScope(list[0].ID)
-	if ex, _ := newWelcomeStore(db, newScope).grantExists("FLS9", "v1", 7); !ex {
-		t.Errorf("welcome grant not remapped from default to %q", newScope)
+	// The single server's numeric scope is usable for per-feature data.
+	if err := newWelcomeStore(db, list[0].ID).insertGranted("FLS9", "v1", 7, "Chani"); err != nil {
+		t.Fatalf("insert grant under flat server scope: %v", err)
+	}
+	if ex, _ := newWelcomeStore(db, list[0].ID).grantExists("FLS9", "v1", 7); !ex {
+		t.Errorf("welcome grant not visible under flat server scope %d", list[0].ID)
 	}
 }
 
@@ -159,7 +152,7 @@ func TestImportConfigYAML_LegacyFlatSingleServer(t *testing.T) {
 // config.yaml dropped in later still imports on its first boot).
 func TestHydrateConfigFromStore_NoConfigYAMLImportsNothing(t *testing.T) {
 	t.Setenv("DUNE_ADMIN_CONFIG_DIR", t.TempDir()) // empty dir → no config.yaml
-	db := openSharedScopeDB(t)
+	db := openMemUnifiedStore(t)
 	useTestServerStores(t, db)
 
 	origCfg := loadedConfig

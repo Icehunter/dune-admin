@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -68,12 +67,13 @@ func dbFromCtx(r *http.Request) *pgxpool.Pool {
 	return globalDB
 }
 
-// storeScopeFromCtx returns the SQLite server_id scope for the request's server
-// context. Falls back to "default" so callers that skip the middleware are safe.
-func storeScopeFromCtx(r *http.Request) string {
+// storeScopeFromCtx returns the SQLite server_id scope (servers.id) for the
+// request's server context. Falls back to the default server id so callers that
+// skip the middleware are safe.
+func storeScopeFromCtx(r *http.Request) int {
 	sc := serverFromCtx(r)
 	if sc == nil {
-		return "default"
+		return defaultServerID
 	}
 	return sc.StoreScope
 }
@@ -152,34 +152,6 @@ func handleSetActiveServer(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]int{"active": body.ID})
 }
 
-// cmdPurgeServerData removes all SQLite rows scoped to serverID across every
-// server-scoped table. Called from handleDeleteServer so that removing a server
-// from the registry also cleans up its stored data.
-func cmdPurgeServerData(ctx context.Context, store *sql.DB, serverID string) error {
-	if store == nil {
-		return nil
-	}
-	tables := []string{
-		"welcome_grants",
-		"welcome_config",
-		"give_packs_config",
-		"event_award_claims",
-		"battlepass_claims",
-		"battlepass_accounts",
-		"battlepass_grant_ledger",
-	}
-	for _, tbl := range tables {
-		if _, err := store.ExecContext(ctx, `DELETE FROM `+tbl+` WHERE server_id = ?`, serverID); err != nil { //nolint:gosec // tbl is a hardcoded constant
-			return fmt.Errorf("purge %s for %s: %w", tbl, serverID, err)
-		}
-	}
-	metaKey := "discord_status_message:" + serverID
-	if _, err := store.ExecContext(ctx, `DELETE FROM meta WHERE key = ?`, metaKey); err != nil {
-		return fmt.Errorf("purge meta for %s: %w", serverID, err)
-	}
-	return nil
-}
-
 // handleDeleteServer removes a server from the registry, purges its stored data,
 // and persists the updated config. Deleting the active server is allowed: the
 // registry reassigns active to the next server (and the global aliases follow).
@@ -199,19 +171,25 @@ func handleDeleteServer(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("server %d not found", id), http.StatusNotFound)
 		return
 	}
-	// DB is the source of truth: drop the row, then purge its per-feature data.
+	// DB is the source of truth: drop the row; the server_id FK ON DELETE CASCADE
+	// purges every scoped child row automatically (welcome/give/event/battlepass/
+	// sessions/discord-status, and the server's discord_servers link +
+	// discord_user_links). Guilds themselves are NOT deleted — a guild can still
+	// hold other servers.
 	if globalServersStore != nil {
 		if derr := globalServersStore.deleteServer(id); derr != nil {
 			componentLog("server_selector").Error().Err(derr).Int("server_id", id).Msg("delete server failed")
 		}
 	}
-	if perr := cmdPurgeServerData(r.Context(), globalStore, scope); perr != nil {
-		componentLog("server_selector").Error().Err(perr).Int("server_id", id).Msg("purge store data failed")
-	}
 
 	reassignActiveAfterDelete()
 	removeServerFromMirror(id)
 	invalidateServerHealth(scope) // drop the removed server's cached health
+
+	// Refresh status loops: the deleted server's discord_servers link is gone via
+	// FK cascade, so its loop must stop. Slash commands stay (guilds are not
+	// deleted by a server delete).
+	applyDiscordStatusLoops()
 
 	jsonOK(w, map[string]bool{"deleted": true})
 }
@@ -321,7 +299,7 @@ func handleAddServer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		componentLog("server_selector").Error().Err(err).Int("server_id", newID).Msg("add server connect failed")
 		// Register with what we have — caller can reconnect later.
-		sc = &ServerContext{ID: scope, Name: cfg.Name, Cfg: cfg, StoreScope: scope}
+		sc = &ServerContext{ID: scope, Name: cfg.Name, Cfg: cfg, StoreScope: storeScopeForID(newID)}
 	}
 	globalRegistry.Register(sc)
 	// Start the market bot if this server has it enabled and a live DB.

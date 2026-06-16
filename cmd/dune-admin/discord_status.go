@@ -37,12 +37,6 @@ const (
 // limits and pointless churn. The configured value is clamped up to this.
 const statusMinInterval = 30 * time.Second
 
-// statusMessageMetaKey returns the meta-table key for a given server's posted
-// embed "channelID:messageID" so restarts edit, not duplicate.
-func statusMessageMetaKey(serverID string) string {
-	return "discord_status_message:" + serverID
-}
-
 // ── Embed data ────────────────────────────────────────────────────────────────
 
 // mapPlayerCount is the player population on a single active map.
@@ -192,7 +186,7 @@ func aggregateMapCounts(servers []ServerRow) []mapPlayerCount {
 // countUniquePlayers24h returns the number of distinct accounts that started a
 // play session in the 24 hours preceding now. A nil db yields 0 with no error
 // (session tracking disabled — the embed degrades gracefully).
-func countUniquePlayers24h(ctx context.Context, db *sql.DB, serverID string, now time.Time) (int64, error) {
+func countUniquePlayers24h(ctx context.Context, db *sql.DB, serverID int, now time.Time) (int64, error) {
 	if db == nil {
 		return 0, nil
 	}
@@ -216,36 +210,45 @@ type statusMessageStore interface {
 	saveStatusMessage(channelID, messageID string) error
 }
 
-// sqliteStatusStore implements statusMessageStore on the unified store's meta
-// table, storing "channelID:messageID" under statusMessageMetaKey(serverID).
+// sqliteStatusStore implements statusMessageStore on the server_discord_status
+// table (keyed by (servers.id, guild_id) with an FK on server_id so server
+// deletion cascades all its rows). guildID scopes the posted-message pointer so
+// multiple guilds mapped to the same server each track their own embed.
 type sqliteStatusStore struct {
 	db       *sql.DB
-	serverID string
+	serverID int
+	guildID  string
 }
 
-func newSqliteStatusStore(db *sql.DB, serverID string) *sqliteStatusStore {
+func newSqliteStatusStore(db *sql.DB, serverID int) *sqliteStatusStore {
 	return &sqliteStatusStore{db: db, serverID: serverID}
 }
 
+// newSqliteStatusStoreForGuild scopes the status-message pointer to a single
+// (server, guild) pair so per-guild loops never clobber each other.
+func newSqliteStatusStoreForGuild(db *sql.DB, serverID int, guildID string) *sqliteStatusStore {
+	return &sqliteStatusStore{db: db, serverID: serverID, guildID: guildID}
+}
+
 func (s *sqliteStatusStore) loadStatusMessage() (string, string, error) {
-	var raw string
-	err := s.db.QueryRow(`SELECT value FROM meta WHERE key = ?`, statusMessageMetaKey(s.serverID)).Scan(&raw)
+	var channelID, messageID string
+	err := s.db.QueryRow(
+		`SELECT channel_id, message_id FROM server_discord_status WHERE server_id = ? AND guild_id = ?`,
+		s.serverID, s.guildID).Scan(&channelID, &messageID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", "", nil
 	}
 	if err != nil {
 		return "", "", fmt.Errorf("load status message: %w", err)
 	}
-	channelID, messageID, _ := strings.Cut(raw, ":")
 	return channelID, messageID, nil
 }
 
 func (s *sqliteStatusStore) saveStatusMessage(channelID, messageID string) error {
-	value := channelID + ":" + messageID
 	_, err := s.db.Exec(
-		`INSERT INTO meta(key, value) VALUES(?, ?)
-		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-		statusMessageMetaKey(s.serverID), value)
+		`INSERT INTO server_discord_status (server_id, guild_id, channel_id, message_id) VALUES (?, ?, ?, ?)
+		 ON CONFLICT(server_id, guild_id) DO UPDATE SET channel_id = excluded.channel_id, message_id = excluded.message_id`,
+		s.serverID, s.guildID, channelID, messageID)
 	if err != nil {
 		return fmt.Errorf("save status message: %w", err)
 	}
@@ -329,6 +332,86 @@ func isUnknownMessageErr(err error) bool {
 	return false
 }
 
+// isMissingPermissionsErr reports whether err is a Discord permission/access
+// failure (Missing Permissions / Missing Access). These are configuration
+// problems — the bot can't view or post in the channel — not transient, so
+// retrying won't help until an operator fixes the channel permissions.
+func isMissingPermissionsErr(err error) bool {
+	var rest *discordgo.RESTError
+	if errors.As(err, &rest) && rest.Message != nil {
+		return rest.Message.Code == discordgo.ErrCodeMissingPermissions ||
+			rest.Message.Code == discordgo.ErrCodeMissingAccess
+	}
+	return false
+}
+
+// statusLogAction is what to log after a status post attempt, given whether the
+// previous attempt for the same server was already failing.
+type statusLogAction int
+
+const (
+	statusLogSuppress  statusLogAction = iota // same state as last tick — stay quiet
+	statusLogWarn                             // newly failing — warn once
+	statusLogRecovered                        // failing → succeeded — note the recovery
+)
+
+// statusPostFailed remembers, per server, whether the last status post failed so
+// a persistent failure (e.g. missing permissions in an announcement channel)
+// warns once instead of every tick, and a recovery is logged once.
+var (
+	statusPostFailMu sync.Mutex
+	statusPostFailed = map[int]bool{}
+)
+
+// nextStatusLogAction records the latest outcome for serverID and reports what to
+// log: warn on the first failure, suppress while the state is unchanged, and note
+// a recovery when a previously-failing server posts successfully again.
+func nextStatusLogAction(serverID int, failed bool) statusLogAction {
+	statusPostFailMu.Lock()
+	defer statusPostFailMu.Unlock()
+	was := statusPostFailed[serverID]
+	statusPostFailed[serverID] = failed
+	switch {
+	case failed && !was:
+		return statusLogWarn
+	case !failed && was:
+		return statusLogRecovered
+	default:
+		return statusLogSuppress
+	}
+}
+
+// resetStatusFailState forgets a server's failure memory so the next failure
+// warns again. Called when a status loop (re)starts so reconfiguring a broken
+// channel surfaces fresh feedback.
+func resetStatusFailState(serverID int) {
+	statusPostFailMu.Lock()
+	delete(statusPostFailed, serverID)
+	statusPostFailMu.Unlock()
+}
+
+// logStatusPostResult emits a throttled, actionable log line for a status post
+// outcome so a misconfigured channel doesn't spam a warning every interval.
+func logStatusPostResult(link discordServerLink, err error) {
+	switch nextStatusLogAction(link.ServerID, err != nil) {
+	case statusLogWarn:
+		evt := componentLog("discord").Warn().
+			Str("guild_id", link.GuildID).Int("server_id", link.ServerID).
+			Str("channel_id", link.StatusChannelID).Err(err)
+		if isMissingPermissionsErr(err) {
+			evt = evt.Str("fix", "give the bot View Channel + Send Messages + Embed Links in the status channel; "+
+				"announcement channels restrict who can post by default, so add the bot's role there or use a normal text channel")
+		}
+		evt.Msg("status: post/edit failed (further identical failures suppressed until it recovers)")
+	case statusLogRecovered:
+		componentLog("discord").Info().
+			Str("guild_id", link.GuildID).Int("server_id", link.ServerID).
+			Msg("status: posting recovered")
+	case statusLogSuppress:
+		// Same state as the previous tick — already logged; stay quiet.
+	}
+}
+
 // ── Loop lifecycle ────────────────────────────────────────────────────────────
 
 // statusLoopDeps are the injectable inputs to runStatusLoop.
@@ -337,11 +420,12 @@ type statusLoopDeps struct {
 	tick     func(ctx context.Context)
 }
 
-// globalStatusCancel stops the running status loop; guarded by statusLoopMu.
+// statusLoopCancels holds one cancel func per running per-server status loop,
+// keyed by server_id; guarded by statusLoopMu. Each server links to exactly one
+// guild, so server_id alone keys the loop.
 var (
-	statusLoopMu        sync.Mutex
-	globalStatusCancel  context.CancelFunc
-	statusLoopIsRunning bool
+	statusLoopMu      sync.Mutex
+	statusLoopCancels = map[int]context.CancelFunc{}
 )
 
 // runStatusLoop ticks at deps.interval and invokes deps.tick until ctx is done.
@@ -390,56 +474,90 @@ func discordStatusInterval(cfg appConfig) time.Duration {
 	return d
 }
 
-// statusLoopRunning reports whether the status loop goroutine is active.
+// statusLoopRunning reports whether any per-guild status loop is active.
 func statusLoopRunning() bool {
 	statusLoopMu.Lock()
 	defer statusLoopMu.Unlock()
-	return statusLoopIsRunning
+	return len(statusLoopCancels) > 0
 }
 
-// stopDiscordStatusLoop cancels the running status loop (if any).
+// stopDiscordStatusLoop cancels every running per-server status loop.
 func stopDiscordStatusLoop() {
 	statusLoopMu.Lock()
 	defer statusLoopMu.Unlock()
-	if globalStatusCancel != nil {
-		globalStatusCancel()
-		globalStatusCancel = nil
+	for sid, cancel := range statusLoopCancels {
+		cancel()
+		delete(statusLoopCancels, sid)
 	}
-	statusLoopIsRunning = false
 }
 
-// applyDiscordStatusLoop stops any running status loop and starts a new one if
-// the config enables it and a channel is set. Mirrors applyEventEngine /
-// applyDiscordConfig so toggling takes effect without a process restart.
-func applyDiscordStatusLoop(cfg appConfig) {
-	stopDiscordStatusLoop()
-
-	if !discordStatusEnabled(cfg) || cfg.DiscordStatusChannelID == "" {
-		return
+// statusIntervalFromSeconds clamps a per-guild configured interval (seconds) to
+// the same defaults/floor as the legacy global path.
+func statusIntervalFromSeconds(seconds int) time.Duration {
+	if seconds <= 0 {
+		return 60 * time.Second
 	}
+	d := time.Duration(seconds) * time.Second
+	if d < statusMinInterval {
+		return statusMinInterval
+	}
+	return d
+}
 
-	channelID := cfg.DiscordStatusChannelID
+// listStatusServerLinks returns every discord_servers link, or nil when the
+// store is unavailable.
+func listStatusServerLinks() []discordServerLink {
+	if globalDiscordGuildsStore == nil {
+		return nil
+	}
+	rows, err := globalDiscordGuildsStore.listServerLinks()
+	if err != nil {
+		componentLog("discord").Warn().Err(err).Msg("list server links for status loops failed")
+		return nil
+	}
+	return rows
+}
+
+// applyDiscordStatusLoops stops all running status loops and starts one per
+// status-enabled discord_servers link (keyed by server_id). Each server posts
+// its own embed to its status channel in its guild. Toggling/CRUD takes effect
+// without a process restart.
+func applyDiscordStatusLoops() {
+	stopDiscordStatusLoop()
+	for _, link := range listStatusServerLinks() {
+		if !link.StatusEnabled || link.StatusChannelID == "" {
+			continue
+		}
+		startServerStatusLoop(link)
+	}
+}
+
+// startServerStatusLoop launches a single server's status loop and records its
+// cancel func keyed by server_id.
+func startServerStatusLoop(link discordServerLink) {
+	row := link                        // capture
+	resetStatusFailState(row.ServerID) // re-arm warnings for this (re)started loop
 	deps := statusLoopDeps{
-		interval: discordStatusInterval(cfg),
+		interval: statusIntervalFromSeconds(row.StatusIntervalSeconds),
 		tick: func(ctx context.Context) {
-			runStatusTick(ctx, channelID)
+			runStatusTickForServer(ctx, row)
 		},
 	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	statusLoopMu.Lock()
-	globalStatusCancel = cancel
-	statusLoopIsRunning = true
+	statusLoopCancels[row.ServerID] = cancel
 	statusLoopMu.Unlock()
-
 	go runStatusLoop(ctx, deps)
-	componentLog("discord").Info().Str("channel_id", channelID).Dur("interval", deps.interval).Msg("status: embed loop started")
+	componentLog("discord").Info().Str("guild_id", row.GuildID).Int("server_id", row.ServerID).
+		Str("channel_id", row.StatusChannelID).Dur("interval", deps.interval).
+		Msg("status: per-server embed loop started")
 }
 
-// runStatusTick collects status data, builds the embed, and posts-or-edits it.
-// Guards: a live bot session, the unified store, and a channel must all be
-// present. Errors are logged, never fatal — the loop keeps ticking.
-func runStatusTick(ctx context.Context, channelID string) {
+// runStatusTickForServer collects status for the server, builds the embed, and
+// posts-or-edits it in the server's status channel. Guards: a live bot session,
+// the unified store, and a resolvable server. Errors are logged, never fatal —
+// the loop keeps ticking.
+func runStatusTickForServer(ctx context.Context, link discordServerLink) {
 	sess, _ := getDiscordState()
 	if sess == nil {
 		return // bot not connected yet; try again next tick
@@ -448,19 +566,13 @@ func runStatusTick(ctx context.Context, channelID string) {
 		componentLog("discord").Info().Msg("status: unified store unavailable — skipping tick")
 		return
 	}
-
-	sc := globalRegistry.Active()
+	sc := globalRegistry.Get(serverScope(link.ServerID))
 	data := collectStatusData(ctx, sc, globalStore)
 	embed := buildStatusEmbed(data, time.Now())
 
-	storeScope := "default"
-	if sc != nil {
-		storeScope = sc.StoreScope
-	}
-	store := newSqliteStatusStore(globalStore, storeScope)
-	if err := postOrEditStatusEmbed(discordSessionAdapter{sess: sess}, store, channelID, embed); err != nil {
-		componentLog("discord").Warn().Str("server_id", storeScope).Err(err).Msg("status: post/edit failed")
-	}
+	store := newSqliteStatusStoreForGuild(globalStore, storeScopeForID(link.ServerID), link.GuildID)
+	err := postOrEditStatusEmbed(discordSessionAdapter{sess: sess}, store, link.StatusChannelID, embed)
+	logStatusPostResult(link, err)
 }
 
 // collectStatusData gathers the live status from the control plane, DB, and the
@@ -470,7 +582,7 @@ func collectStatusData(ctx context.Context, sc *ServerContext, sdb *sql.DB) stat
 	data := statusEmbedData{State: serverStateOffline}
 	applyControlStatus(ctx, sc, &data)
 	applyDBStats(ctx, sc, &data)
-	serverID := "default"
+	serverID := defaultServerID
 	if sc != nil {
 		serverID = sc.StoreScope
 	}
@@ -519,10 +631,10 @@ func applyDBStats(ctx context.Context, sc *ServerContext, data *statusEmbedData)
 }
 
 // applyUnique24h fills UniquePlayers from the session store.
-func applyUnique24h(ctx context.Context, sdb *sql.DB, serverID string, data *statusEmbedData) {
+func applyUnique24h(ctx context.Context, sdb *sql.DB, serverID int, data *statusEmbedData) {
 	uniq, err := countUniquePlayers24h(ctx, sdb, serverID, time.Now())
 	if err != nil {
-		componentLog("discord").Warn().Str("server_id", serverID).Err(err).Msg("status: unique 24h query failed")
+		componentLog("discord").Warn().Int("server_id", serverID).Err(err).Msg("status: unique 24h query failed")
 		return
 	}
 	data.UniquePlayers = uniq

@@ -54,7 +54,7 @@ func TestDbBackupProviderOrErr_CtxControlOverridesGlobal(t *testing.T) {
 	ctrl := &dbProviderControl{}
 	exec := &fnExecutor{fn: func(string) (string, error) { return "", nil }}
 	reg := newServerRegistry(nil)
-	sc := &ServerContext{ID: "s1", StoreScope: "s1", Control: ctrl, Executor: exec}
+	sc := &ServerContext{ID: "s1", StoreScope: defaultServerID, Control: ctrl, Executor: exec}
 	reg.Register(sc)
 
 	var capturedProv dbBackupProvider

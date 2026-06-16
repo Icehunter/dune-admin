@@ -2,16 +2,13 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 )
 
 // servers_columns.go stores each per-server ServerConfig as typed columns on the
-// servers table instead of the legacy config_json blob. The ServerConfig struct
-// and its json/yaml tags are unchanged; only storage moves to columns. The
-// servers.config_json column is kept (written as '{}') but no longer read once
-// migrated (see migrateServersColumns). ID maps to the existing id PK, Name to
-// the existing name column, and LegacyID is import-only (never stored).
+// servers table. The ServerConfig struct and its json/yaml tags are unchanged;
+// only storage is column-based. ID maps to the existing id PK, Name to the
+// existing name column, and LegacyID is import-only (never stored).
 
 // serverColumnAlters adds one column per typed ServerConfig field. SQLite has no
 // IF NOT EXISTS for ALTER TABLE, so each statement is attempted and "duplicate
@@ -144,52 +141,4 @@ func readServerColumns(db dbRowQueryer, id int) (ServerConfig, error) {
 	cfg.AmpUseContainer = nullIntToBoolPtr(ampUseContainer)
 	cfg.MarketBotEnabled = nullIntToBoolPtr(marketBotEnabled)
 	return cfg, nil
-}
-
-type legacyServerBlob struct {
-	id  int
-	cfg ServerConfig
-}
-
-// readLegacyServerBlobs decodes every servers.config_json blob into a typed
-// ServerConfig keyed by row id. Empty blobs decode to a zero-value config.
-func readLegacyServerBlobs(tx *sql.Tx) ([]legacyServerBlob, error) {
-	rows, err := tx.Query(`SELECT id, config_json FROM servers`)
-	if err != nil {
-		return nil, fmt.Errorf("read legacy server blobs: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	var out []legacyServerBlob
-	for rows.Next() {
-		var rec legacyServerBlob
-		var blob string
-		if err := rows.Scan(&rec.id, &blob); err != nil {
-			return nil, fmt.Errorf("scan legacy server: %w", err)
-		}
-		if blob != "" {
-			if err := json.Unmarshal([]byte(blob), &rec.cfg); err != nil {
-				return nil, fmt.Errorf("unmarshal legacy server %d: %w", rec.id, err)
-			}
-		}
-		out = append(out, rec)
-	}
-	return out, rows.Err()
-}
-
-// migrateServersColumns translates each legacy servers.config_json blob into the
-// typed columns, once, guarded by the migrated:servers_columns marker. After
-// this runs the blob column is never read again.
-func migrateServersColumns(db *sql.DB) error {
-	return runColumnMigrationOnce(db, "migrated:servers_columns", func(tx *sql.Tx) error {
-		blobs, err := readLegacyServerBlobs(tx)
-		if err != nil {
-			return err
-		}
-		for _, rec := range blobs {
-			if err := writeServerColumns(tx, rec.id, rec.cfg); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
 }

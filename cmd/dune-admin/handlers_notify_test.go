@@ -33,7 +33,7 @@ func TestHandleNotify_ExecutorFromCtx_Overrides503(t *testing.T) {
 
 	exec := &localExecutor{}
 	reg := newServerRegistry(nil)
-	sc := &ServerContext{ID: "s1", StoreScope: "s1", Executor: exec}
+	sc := &ServerContext{ID: "s1", StoreScope: defaultServerID, Executor: exec}
 	reg.Register(sc)
 
 	inner := http.HandlerFunc(handleNotify)

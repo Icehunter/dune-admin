@@ -1347,7 +1347,8 @@
       "authDiscord": "Вход через Discord (OAuth)",
       "authOwners": "Владельцы",
       "discordStatus": "Встраиваемое сообщение о статусе",
-      "marketBot": "Рыночный бот"
+      "marketBot": "Рыночный бот",
+      "discordGuilds": "Гильдии Discord"
     },
     "ssh": {
       "hostPort": "Хост : порт",
@@ -1362,7 +1363,8 @@
       "connection": "Подключение",
       "control": "Управление",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Гильдии"
     },
     "discord": {
       "hint": "Создайте бота на discord.com/developers/applications, включите его, скопируйте токен и пригласите на сервер с областью applications.commands.",
@@ -1392,7 +1394,8 @@
       "statusChannel": "ID канала статуса",
       "statusChannelHint": "Щёлкните правой кнопкой по каналу → «Копировать ID канала» (требуется режим разработчика).",
       "statusInterval": "Интервал обновления (секунды)",
-      "statusIntervalHint": "Как часто обновляется сообщение. Минимум 30 секунд; по умолчанию 60."
+      "statusIntervalHint": "Как часто обновляется сообщение. Минимум 30 секунд; по умолчанию 60.",
+      "perGuildMoved": "Настройки гильдии — роли возможностей и серверы, отслеживаемые каждой гильдией (с их каналами) — управляются на вкладке «Гильдии»."
     },
     "auth": {
       "hint": "Требовать вход для панели и API. Рекомендуется, если dune-admin доступен извне вашей локальной сети.",
@@ -1665,7 +1668,8 @@
       "config": "Конфигурация",
       "factionScrip": "Скрип фракции",
       "rewards": "Награды",
-      "solari": "Солари"
+      "solari": "Солари",
+      "currencyXp": "Валюта и XP"
     },
     "signals": {
       "level": "Уровень персонажа",
@@ -1997,6 +2001,87 @@
         "title": "Подключить бота Discord",
         "body": "Отправляйте уведомления и сопоставляйте роли с правами. Необязательно.",
         "cta": "Подключить Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Гильдии Discord",
+    "subtitle": "Настройте роли возможностей каждой гильдии Discord. Один токен бота обслуживает все гильдии; серверы привязываются к гильдии на своёй вкладке Discord.",
+    "ariaLabel": "Гильдии Discord",
+    "add": "Добавить гильдию",
+    "addTitle": "Добавить гильдию",
+    "editTitle": "Изменить гильдию",
+    "empty": "Гильдии Discord ещё не настроены.",
+    "on": "Вкл",
+    "off": "Выкл",
+    "loadRoles": "Загрузить роли",
+    "guildId": "ID гильдии",
+    "guildIdHint": "ПКМ по значку сервера → Копировать ID сервера (нужен режим разработчика)",
+    "guildIdRequired": "Требуется ID гильдии",
+    "serverRequired": "Каждый отслеживаемый сервер должен быть выбран",
+    "roleCount": "ролей: {{count}}",
+    "addServer": "Добавить сервер",
+    "server": "Сервер",
+    "serverHint": "Игровой сервер, отслеживаемый этой гильдией",
+    "selectServer": "Выберите сервер…",
+    "noServers": "Эта гильдия пока не отслеживает серверы.",
+    "watchedServersHint": "Каждый отслеживаемый сервер публикует свои встраивания статуса/объявлений в указанные ниже каналы.",
+    "announceChannel": "ID канала объявлений",
+    "announceChannelHint": "Канал для объявлений сервера (перезапуски, события)",
+    "statusEnabled": "Постоянное встраивание статуса",
+    "statusEnabledHint": "Поддерживает актуальное встраивание статуса в канале",
+    "statusChannel": "ID канала статуса",
+    "statusChannelHint": "Канал, в котором публикуется встраивание статуса",
+    "statusInterval": "Интервал статуса (секунды)",
+    "statusIntervalHint": "Как часто обновляется встраивание. Минимум 30 секунд; по умолчанию 60.",
+    "rolesHint": "Роли Discord, дающие каждый уровень возможностей в этой гильдии. Загрузите роли после ввода ID гильдии.",
+    "rolesViewer": "Роли просмотра",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Роли экономики",
+    "rolesEconomyHint": "команды рынка и экономики",
+    "rolesAdmin": "Роли администратора",
+    "rolesAdminHint": "административные команды",
+    "saved": "Гильдия сохранена",
+    "saveFailed": "Не удалось сохранить: {{message}}",
+    "loadFailed": "Не удалось загрузить гильдии: {{message}}",
+    "removed": "Гильдия удалена",
+    "removeFailed": "Не удалось удалить: {{message}}",
+    "removeTitle": "Удалить гильдию",
+    "removeConfirm": "Удалить гильдию {{guild}}? Бот перестанет обслуживать её и её отслеживаемые серверы.",
+    "columns": {
+      "guildId": "ID гильдии",
+      "servers": "Отслеживаемые серверы",
+      "roles": "Роли"
+    },
+    "sections": {
+      "guild": "Гильдия",
+      "roles": "Роли возможностей",
+      "watchedServers": "Отслеживаемые серверы"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Привяжите этот сервер к одной гильдии Discord и задайте его каналы объявлений и статуса. Роли возможностей этой гильдии настраиваются в Настройки → Гильдии.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Отвязать этот сервер от его гильдии Discord? Его каналы будут очищены; гильдия и её роли останутся нетронутыми.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
       }
     }
   }

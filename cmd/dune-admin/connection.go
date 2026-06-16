@@ -148,7 +148,7 @@ func connectAll() error {
 		PodNS:      globalPodNS,
 		Pod:        globalPod,
 		SSH:        globalSSH,
-		StoreScope: "default",
+		StoreScope: defaultServerID,
 	}
 
 	// DB connect is best-effort: on failure keep the executor + control plane
@@ -179,9 +179,8 @@ func ensureDBSchema(pool *pgxpool.Pool) {
 	if err := cmdEnsureGMIdentity(ctx, pool); err != nil {
 		componentLog("connection").Error().Err(err).Msg("ensure GM identity")
 	}
-	if err := cmdEnsureDiscordLinksTable(ctx, pool); err != nil {
-		componentLog("connection").Error().Err(err).Msg("ensure discord_links table")
-	}
+	// Discord character links now live in the unified SQLite store
+	// (discord_user_links), not Postgres — no per-pool table to ensure.
 }
 
 // applyAutoDiscovery runs game-server discovery and gap-fills cfg in place,
@@ -300,6 +299,20 @@ func connectDB(ctx context.Context, user, pass string) (*pgxpool.Pool, error) {
 	dbUser = user
 	dbPass = pass
 	return pool, nil
+}
+
+// activeServerCfg returns the active server's ServerConfig. Per-server
+// connection/provider fields (db_*, broker_*, amp_*, director_url, ini/backup
+// dirs) live on the ServerConfig after the storage remodel — the global
+// loadedConfig flat fields are cleared — so consumers of those fields must
+// resolve through here (or a request's server) rather than reading loadedConfig.
+// Falls back to the flat-config view (flag-globals) when no server is registered
+// yet (pre-setup), matching the legacy behaviour.
+func activeServerCfg() ServerConfig {
+	if a := globalRegistry.Active(); a != nil {
+		return a.Cfg
+	}
+	return legacyServerFromFlat(loadedConfig)
 }
 
 // legacyServerFromFlat synthesises a default ServerConfig from the process-wide
@@ -511,7 +524,7 @@ func connectServer(cfg ServerConfig) (*ServerContext, error) {
 		ID:         scope,
 		Name:       cfg.Name,
 		Cfg:        cfg,
-		StoreScope: scope,
+		StoreScope: storeScopeForID(cfg.ID),
 	}
 
 	ctrl := cfg.Control

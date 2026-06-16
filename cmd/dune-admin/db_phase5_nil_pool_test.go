@@ -39,7 +39,7 @@ func TestProductionBattlepassDeps_NilPool_FetchPlayerTags(t *testing.T) {
 // ── Events engine deps ────────────────────────────────────────────────────────
 
 func TestProductionEventDeps_NilPool_FetchOnlinePlayers(t *testing.T) {
-	deps := productionEventDeps(nil)
+	deps := productionEventDeps(nil, defaultServerID)
 	_, err := deps.fetchOnlinePlayers(context.Background())
 	if err == nil {
 		t.Error("expected error for nil pool")
@@ -47,7 +47,7 @@ func TestProductionEventDeps_NilPool_FetchOnlinePlayers(t *testing.T) {
 }
 
 func TestProductionEventDeps_NilPool_FetchOnlinePositions(t *testing.T) {
-	deps := productionEventDeps(nil)
+	deps := productionEventDeps(nil, defaultServerID)
 	_, err := deps.fetchOnlinePositions(context.Background(), []int64{1})
 	if err == nil {
 		t.Error("expected error for nil pool")
@@ -55,7 +55,7 @@ func TestProductionEventDeps_NilPool_FetchOnlinePositions(t *testing.T) {
 }
 
 func TestProductionEventDeps_NilPool_FetchPlayerLevel(t *testing.T) {
-	deps := productionEventDeps(nil)
+	deps := productionEventDeps(nil, defaultServerID)
 	_, err := deps.fetchPlayerLevel(context.Background(), 1)
 	if err == nil {
 		t.Error("expected error for nil pool")
@@ -63,7 +63,7 @@ func TestProductionEventDeps_NilPool_FetchPlayerLevel(t *testing.T) {
 }
 
 func TestProductionEventDeps_NilPool_FetchPlayerTags(t *testing.T) {
-	deps := productionEventDeps(nil)
+	deps := productionEventDeps(nil, defaultServerID)
 	_, err := deps.fetchPlayerTags(context.Background(), 1)
 	if err == nil {
 		t.Error("expected error for nil pool")
@@ -71,7 +71,7 @@ func TestProductionEventDeps_NilPool_FetchPlayerTags(t *testing.T) {
 }
 
 func TestProductionEventDeps_NilPool_GrantCurrency(t *testing.T) {
-	deps := productionEventDeps(nil)
+	deps := productionEventDeps(nil, defaultServerID)
 	err := deps.grantCurrency(context.Background(), 1, 100)
 	if err == nil {
 		t.Error("expected error for nil pool")
@@ -79,7 +79,7 @@ func TestProductionEventDeps_NilPool_GrantCurrency(t *testing.T) {
 }
 
 func TestProductionEventDeps_NilPool_GrantItem(t *testing.T) {
-	deps := productionEventDeps(nil)
+	deps := productionEventDeps(nil, defaultServerID)
 	err := deps.grantItem(context.Background(), 1, "template", 1, 0)
 	if err == nil {
 		t.Error("expected error for nil pool")
@@ -87,7 +87,7 @@ func TestProductionEventDeps_NilPool_GrantItem(t *testing.T) {
 }
 
 func TestProductionEventDeps_NilPool_GrantXP(t *testing.T) {
-	deps := productionEventDeps(nil)
+	deps := productionEventDeps(nil, defaultServerID)
 	err := deps.grantXP(context.Background(), 1, "track", 100)
 	if err == nil {
 		t.Error("expected error for nil pool")
@@ -95,7 +95,7 @@ func TestProductionEventDeps_NilPool_GrantXP(t *testing.T) {
 }
 
 func TestProductionEventDeps_NilPool_ResolveGrantTargets(t *testing.T) {
-	deps := productionEventDeps(nil)
+	deps := productionEventDeps(nil, defaultServerID)
 	_, _, err := deps.resolveGrantTargets(context.Background(), 1)
 	if err == nil {
 		t.Error("expected error for nil pool")

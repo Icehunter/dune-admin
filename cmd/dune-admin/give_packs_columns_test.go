@@ -29,11 +29,11 @@ func TestGivePacksColumnsRoundTrip(t *testing.T) {
 	db := openSharedScopeDB(t)
 
 	want := samplePacks()
-	if err := saveGivePacksColumns(db, "default", want); err != nil {
+	if err := saveGivePacksColumns(db, scopeA, want); err != nil {
 		t.Fatalf("saveGivePacksColumns: %v", err)
 	}
 
-	got, err := loadGivePacksColumns(db, "default")
+	got, err := loadGivePacksColumns(db, scopeA)
 	if err != nil {
 		t.Fatalf("loadGivePacksColumns: %v", err)
 	}
@@ -65,18 +65,18 @@ func TestGivePacksColumns_ServerScoped(t *testing.T) {
 	packsB := []givePack{{ID: "b-pack", Name: "B", Category: "CatB", Tier: 4,
 		Items: []welcomePackageItem{{Template: "ItemB", Qty: 2, Quality: 1}}}}
 
-	if err := saveGivePacksColumns(db, "srv-a", packsA); err != nil {
+	if err := saveGivePacksColumns(db, scopeA, packsA); err != nil {
 		t.Fatalf("save srv-a: %v", err)
 	}
-	if err := saveGivePacksColumns(db, "srv-b", packsB); err != nil {
+	if err := saveGivePacksColumns(db, scopeB, packsB); err != nil {
 		t.Fatalf("save srv-b: %v", err)
 	}
 
-	gotA, err := loadGivePacksColumns(db, "srv-a")
+	gotA, err := loadGivePacksColumns(db, scopeA)
 	if err != nil {
 		t.Fatalf("load srv-a: %v", err)
 	}
-	gotB, err := loadGivePacksColumns(db, "srv-b")
+	gotB, err := loadGivePacksColumns(db, scopeB)
 	if err != nil {
 		t.Fatalf("load srv-b: %v", err)
 	}
@@ -88,54 +88,10 @@ func TestGivePacksColumns_ServerScoped(t *testing.T) {
 	}
 }
 
-func TestMigrateGivePacksColumns(t *testing.T) {
-	t.Parallel()
-	db := openSharedScopeDB(t)
-
-	packs := []givePack{{ID: "mig-pack", Name: "M", Category: "Mig", Tier: 3,
-		Items: []welcomePackageItem{
-			{Template: "MigItem1", Qty: 10, Quality: 0},
-			{Template: "MigItem2", Qty: 20, Quality: 2},
-		}}}
-	blob, err := json.Marshal(packs)
-	if err != nil {
-		t.Fatalf("marshal packs: %v", err)
-	}
-	if _, err := db.Exec(
-		`INSERT INTO give_packs_config (server_id, base_packs_loaded, packs_json, updated_at)
-		 VALUES (?, ?, ?, ?)`,
-		"default", 1, string(blob), ""); err != nil {
-		t.Fatalf("seed give_packs_config: %v", err)
-	}
-
-	if err := migrateGivePacksColumns(db); err != nil {
-		t.Fatalf("migrateGivePacksColumns: %v", err)
-	}
-
-	got, err := loadGivePacksColumns(db, "default")
-	if err != nil {
-		t.Fatalf("loadGivePacksColumns: %v", err)
-	}
-	if len(got) != 1 || got[0].ID != "mig-pack" || len(got[0].Items) != 2 {
-		t.Fatalf("migrated packs = %+v, want one mig-pack with 2 items", got)
-	}
-	if got[0].Items[1].Qty != 20 || got[0].Items[1].Quality != 2 {
-		t.Fatalf("migrated item[1] = %+v, want qty=20 quality=2", got[0].Items[1])
-	}
-
-	marker, err := metaGet(db, "migrated:give_packs_columns")
-	if err != nil {
-		t.Fatalf("metaGet: %v", err)
-	}
-	if marker == "" {
-		t.Fatalf("expected migration marker to be set")
-	}
-}
-
 func TestGivePacksStore_SaveLoadRoundTrip(t *testing.T) {
 	t.Parallel()
 	db := openSharedScopeDB(t)
-	store := newGivePacksStore(db, "default")
+	store := newGivePacksStore(db, scopeA)
 
 	want := samplePacks()
 	blob, err := json.Marshal(want)

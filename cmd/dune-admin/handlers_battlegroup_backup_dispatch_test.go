@@ -75,12 +75,19 @@ func saveBackupGlobals(t *testing.T) string {
 	t.Helper()
 	prevC, prevE := globalControl, globalExecutor
 	prevCfg := loadedConfig
+	prevReg := globalRegistry
 	dir := t.TempDir()
 	loadedConfig.AmpBackupDir = dir
 	globalExecutor = &fnExecutor{fn: func(string) (string, error) { return "", nil }}
+	// The DB-backup dir/conn resolve from the active server's ServerConfig after
+	// the storage remodel, so register one pointing at the temp dir.
+	globalRegistry = newServerRegistry(nil)
+	globalRegistry.Register(&ServerContext{ID: "1", Name: "T", Cfg: ServerConfig{ID: 1, AmpBackupDir: dir}})
+	_ = globalRegistry.SetActive("1")
 	t.Cleanup(func() {
 		globalControl, globalExecutor = prevC, prevE
 		loadedConfig = prevCfg
+		globalRegistry = prevReg
 	})
 	return dir
 }
@@ -226,7 +233,7 @@ func TestHandleBGStatus_CtxControlOverridesGlobal(t *testing.T) {
 	ctrl := &recordingControl{}
 	exec := &fnExecutor{fn: func(string) (string, error) { return "", nil }}
 	reg := newServerRegistry(nil)
-	sc := &ServerContext{ID: "s1", StoreScope: "s1", Control: ctrl, Executor: exec}
+	sc := &ServerContext{ID: "s1", StoreScope: defaultServerID, Control: ctrl, Executor: exec}
 	reg.Register(sc)
 
 	inner := http.HandlerFunc(handleBGStatus)

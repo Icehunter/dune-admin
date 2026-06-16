@@ -3,7 +3,7 @@ package main
 import "testing"
 
 func TestServersStore_InsertAssignsAutoincrementID(t *testing.T) {
-	db := openSharedScopeDB(t)
+	db := openMemUnifiedStore(t)
 	s := newServersStore(db)
 
 	id1, err := s.insertServer(ServerConfig{Name: "One", Control: "local"}, 0)
@@ -20,7 +20,7 @@ func TestServersStore_InsertAssignsAutoincrementID(t *testing.T) {
 }
 
 func TestServersStore_ListStampsIDAndOrders(t *testing.T) {
-	db := openSharedScopeDB(t)
+	db := openMemUnifiedStore(t)
 	s := newServersStore(db)
 
 	// Insert out of position order; listServers must return them by position.
@@ -47,7 +47,7 @@ func TestServersStore_ListStampsIDAndOrders(t *testing.T) {
 }
 
 func TestServersStore_GetUpdateDelete(t *testing.T) {
-	db := openSharedScopeDB(t)
+	db := openMemUnifiedStore(t)
 	s := newServersStore(db)
 
 	id, _ := s.insertServer(ServerConfig{Name: "One", Control: "local", DBName: "dune"}, 0)
@@ -79,7 +79,7 @@ func TestServersStore_GetUpdateDelete(t *testing.T) {
 }
 
 func TestServersStore_HasAnyAndNextPosition(t *testing.T) {
-	db := openSharedScopeDB(t)
+	db := openMemUnifiedStore(t)
 	s := newServersStore(db)
 
 	if has, _ := s.hasAnyServer(); has {

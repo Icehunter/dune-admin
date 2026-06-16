@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"os"
 	"path/filepath"
-	"sync"
 	"time"
 )
 
@@ -35,11 +32,9 @@ const (
 	backupFireGrace     = 10 * time.Minute // don't fire a backup missed by more than this
 )
 
-var (
-	backupMu      sync.RWMutex
-	backupCfg     scheduledBackupConfig
-	backupCfgPath string // overridable in tests
-)
+// backupCfgPath is the legacy scheduled-backups.json path (overridable in
+// tests). It is now read only by the one-time file→DB migration.
+var backupCfgPath string
 
 func scheduledBackupPath() string {
 	if backupCfgPath != "" {
@@ -48,52 +43,37 @@ func scheduledBackupPath() string {
 	return filepath.Join(configDir(), "scheduled-backups.json")
 }
 
-func loadScheduledBackupConfig() {
-	data, err := os.ReadFile(scheduledBackupPath())
+// getScheduledBackupConfig loads the backup schedule for serverID from the DB.
+// A missing row (or no store) yields the disabled default.
+func getScheduledBackupConfig(serverID int) scheduledBackupConfig {
+	if globalStore == nil {
+		return scheduledBackupConfig{}
+	}
+	cfg, ok, err := loadBackupSchedule(globalStore, serverID)
 	if err != nil {
-		return // no file yet → defaults (disabled)
+		componentLog("scheduled_backup").Error().Err(err).Int("server", serverID).Msg("load schedule failed")
+		return scheduledBackupConfig{}
 	}
-	var c scheduledBackupConfig
-	if err := json.Unmarshal(data, &c); err != nil {
-		componentLog("scheduled_backup").Error().Err(err).Msg("config parse failed")
-		return
+	if !ok {
+		return scheduledBackupConfig{}
 	}
-	backupMu.Lock()
-	backupCfg = c
-	backupMu.Unlock()
+	return cfg
 }
 
-func getScheduledBackupConfig() scheduledBackupConfig {
-	backupMu.RLock()
-	defer backupMu.RUnlock()
-	return backupCfg
-}
-
-// persistBackupConfigLocked writes the in-memory config to disk. Caller holds backupMu.
-func persistBackupConfigLocked() error {
-	data, err := json.MarshalIndent(backupCfg, "", "  ")
-	if err != nil {
-		return err
+func saveScheduledBackupConfig(serverID int, c scheduledBackupConfig) error {
+	if globalStore == nil {
+		return errStoreUnavailable
 	}
-	if err := os.MkdirAll(configDir(), 0o750); err != nil {
-		return err
-	}
-	return os.WriteFile(scheduledBackupPath(), data, 0o600)
+	return saveBackupSchedule(globalStore, serverID, c)
 }
 
-func saveScheduledBackupConfig(c scheduledBackupConfig) error {
-	backupMu.Lock()
-	defer backupMu.Unlock()
-	backupCfg = c
-	return persistBackupConfigLocked()
-}
-
-func setBackupLastFired(ts int64) {
-	backupMu.Lock()
-	defer backupMu.Unlock()
-	backupCfg.LastFired = ts
-	if err := persistBackupConfigLocked(); err != nil {
-		componentLog("scheduled_backup").Error().Err(err).Msg("persist last_fired failed")
+// setBackupLastFired persists the watermark for serverID, preserving the rest
+// of that server's schedule.
+func setBackupLastFired(serverID int, ts int64) {
+	cur := getScheduledBackupConfig(serverID)
+	cur.LastFired = ts
+	if err := saveScheduledBackupConfig(serverID, cur); err != nil {
+		componentLog("scheduled_backup").Error().Err(err).Int("server", serverID).Msg("persist last_fired failed")
 	}
 }
 
@@ -175,54 +155,63 @@ func runBackupScheduler(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			backupSchedulerTickOnce(ctx, time.Now())
+			backupSchedulerTickOnce(now())
 		}
 	}
 }
 
-func backupSchedulerTickOnce(_ context.Context, now time.Time) {
-	cfg := getScheduledBackupConfig()
-	if at, fire := backupShouldFire(now, cfg, restartLocation(cfg.Timezone)); fire {
-		fireScheduledBackup(at)
+// backupSchedulerTickOnce evaluates every registered server's backup schedule
+// and fires the ones that are due, each acting on its own control/executor.
+func backupSchedulerTickOnce(at time.Time) {
+	for _, sc := range globalRegistry.All() {
+		if sc == nil {
+			continue
+		}
+		cfg := getScheduledBackupConfig(sc.StoreScope)
+		if fireAt, fire := backupShouldFire(at, cfg, restartLocation(cfg.Timezone)); fire {
+			fireScheduledBackup(sc, cfg, fireAt)
+		}
 	}
 }
 
-func fireScheduledBackup(at time.Time) {
+// fireScheduledBackup runs a backup for one server using that server's control
+// plane / executor / config, then prunes per that server's keep_n.
+func fireScheduledBackup(sc *ServerContext, cfg scheduledBackupConfig, at time.Time) {
 	// Watermark first so a failing backup can't re-fire the same occurrence every tick.
-	setBackupLastFired(at.Unix())
-	componentLog("scheduled_backup").Info().Str("occurrence", at.Format(time.RFC3339)).Msg("firing backup")
-	if globalControl == nil || globalExecutor == nil {
-		componentLog("scheduled_backup").Warn().Msg("control plane not connected; backup skipped")
+	setBackupLastFired(sc.StoreScope, at.Unix())
+	log := componentLog("scheduled_backup").Info().Str("server", sc.ID).Str("occurrence", at.Format(time.RFC3339))
+	log.Msg("firing backup")
+	if sc.Control == nil || sc.Executor == nil {
+		componentLog("scheduled_backup").Warn().Str("server", sc.ID).Msg("control plane not connected; backup skipped")
 		return
 	}
-	prov, ok := globalControl.(dbBackupProvider)
+	prov, ok := sc.Control.(dbBackupProvider)
 	if !ok {
-		componentLog("scheduled_backup").Warn().Str("control_plane", globalControl.Name()).Msg("control plane has no DB backup support; skipped")
+		componentLog("scheduled_backup").Warn().Str("server", sc.ID).Str("control_plane", sc.Control.Name()).Msg("control plane has no DB backup support; skipped")
 		return
 	}
-	dir, err := dbBackupDir()
+	dir, err := dbBackupDirFor(sc.Cfg)
 	if err != nil {
-		componentLog("scheduled_backup").Error().Err(err).Msg("backup dir unavailable")
+		componentLog("scheduled_backup").Error().Err(err).Str("server", sc.ID).Msg("backup dir unavailable")
 		return
 	}
 	name := dbBackupFilename(time.Now())
 	dest := filepath.Join(dir, name)
-	if out, err := prov.BackupDatabase(globalExecutor, dbBackupConn(), dest); err != nil {
-		componentLog("scheduled_backup").Error().Err(err).Str("output", out).Msg("backup failed")
+	if out, err := prov.BackupDatabase(sc.Executor, dbBackupConnFor(sc.Cfg), dest); err != nil {
+		componentLog("scheduled_backup").Error().Err(err).Str("server", sc.ID).Str("output", out).Msg("backup failed")
 		return
 	}
-	componentLog("scheduled_backup").Info().Str("name", name).Msg("backup written")
-	pruneOldBackups()
+	componentLog("scheduled_backup").Info().Str("server", sc.ID).Str("name", name).Msg("backup written")
+	pruneOldBackups(sc.Cfg, cfg.KeepN)
 }
 
-// pruneOldBackups enforces the keep-N retention policy, deleting the oldest
-// dumps beyond the limit.
-func pruneOldBackups() {
-	cfg := getScheduledBackupConfig()
-	if cfg.KeepN <= 0 {
+// pruneOldBackups enforces the keep-N retention policy for one server's backup
+// dir, deleting the oldest dumps beyond the limit.
+func pruneOldBackups(cfg ServerConfig, keepN int) {
+	if keepN <= 0 {
 		return
 	}
-	files, err := listDBBackups()
+	files, err := listDBBackupsIn(cfg)
 	if err != nil {
 		componentLog("scheduled_backup").Error().Err(err).Msg("prune list failed")
 		return
@@ -231,11 +220,14 @@ func pruneOldBackups() {
 	for i := range files {
 		names[i] = files[i].Name
 	}
-	for _, n := range backupsToPrune(names, cfg.KeepN) {
-		if err := deleteDBBackup(n); err != nil {
+	for _, n := range backupsToPrune(names, keepN) {
+		if err := deleteDBBackupIn(cfg, n); err != nil {
 			componentLog("scheduled_backup").Error().Err(err).Str("name", n).Msg("prune failed")
 		} else {
 			componentLog("scheduled_backup").Info().Str("name", n).Msg("pruned old backup")
 		}
 	}
 }
+
+// now is the clock seam for tests; defaults to time.Now.
+var now = time.Now

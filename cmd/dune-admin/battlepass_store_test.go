@@ -55,6 +55,33 @@ func TestBattlepassStoreSeedIfEmpty(t *testing.T) {
 	}
 }
 
+// TestBattlepassSeedIfEmpty_PreservesEdits guards the boot behavior change:
+// applyBattlepassEngine now seeds-if-empty instead of reseeding, so an operator
+// edit to a tier must survive a subsequent seed (i.e. a restart / config save).
+func TestBattlepassSeedIfEmpty_PreservesEdits(t *testing.T) {
+	s := testBattlepassStore(t)
+	if _, err := s.seedTiersIfEmpty(testTiers()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	// Operator edits a tier's intel reward.
+	if _, err := s.db.Exec(`UPDATE battlepass_tiers SET intel = 999 WHERE tier_key = 'level:5'`); err != nil {
+		t.Fatalf("edit tier: %v", err)
+	}
+	// A later boot/config-save seeds again — must NOT clobber the edit.
+	if n, err := s.seedTiersIfEmpty(testTiers()); err != nil || n != 0 {
+		t.Fatalf("reseed-if-empty: n=%d err=%v (want 0/nil — no clobber)", n, err)
+	}
+	tiers, err := s.listTiers()
+	if err != nil {
+		t.Fatalf("listTiers: %v", err)
+	}
+	for _, tr := range tiers {
+		if tr.TierKey == "level:5" && tr.Intel != 999 {
+			t.Errorf("operator edit lost: level:5 intel = %d, want 999", tr.Intel)
+		}
+	}
+}
+
 func TestBattlepassStoreGetTierNotFound(t *testing.T) {
 	s := testBattlepassStore(t)
 	if _, err := s.getTier(99); err != errNotFound {

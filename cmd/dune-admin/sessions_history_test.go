@@ -11,18 +11,18 @@ func TestGetSessionHistory_ReturnsSortedClosedSessions(t *testing.T) {
 	db := openTestSessionDB(t)
 	ctx := context.Background()
 
-	if _, err := db.ExecContext(ctx, `INSERT INTO play_sessions(account_id,started_at,ended_at,duration_secs) VALUES(42,'2026-01-01T10:00:00Z','2026-01-01T11:00:00Z',3600)`); err != nil {
+	if _, err := db.ExecContext(ctx, `INSERT INTO play_sessions(server_id,account_id,started_at,ended_at,duration_secs) VALUES(1,42,'2026-01-01T10:00:00Z','2026-01-01T11:00:00Z',3600)`); err != nil {
 		t.Fatalf("insert session 1: %v", err)
 	}
-	if _, err := db.ExecContext(ctx, `INSERT INTO play_sessions(account_id,started_at,ended_at,duration_secs) VALUES(42,'2026-01-02T10:00:00Z','2026-01-02T10:30:00Z',1800)`); err != nil {
+	if _, err := db.ExecContext(ctx, `INSERT INTO play_sessions(server_id,account_id,started_at,ended_at,duration_secs) VALUES(1,42,'2026-01-02T10:00:00Z','2026-01-02T10:30:00Z',1800)`); err != nil {
 		t.Fatalf("insert session 2: %v", err)
 	}
 	// open session — must NOT appear
-	if _, err := db.ExecContext(ctx, `INSERT INTO play_sessions(account_id,started_at) VALUES(42,'2026-01-03T10:00:00Z')`); err != nil {
+	if _, err := db.ExecContext(ctx, `INSERT INTO play_sessions(server_id,account_id,started_at) VALUES(1,42,'2026-01-03T10:00:00Z')`); err != nil {
 		t.Fatalf("insert open session: %v", err)
 	}
 
-	recs, err := getSessionHistory(ctx, db, "default", 42, 50)
+	recs, err := getSessionHistory(ctx, db, defaultServerID, 42, 50)
 	if err != nil {
 		t.Fatalf("getSessionHistory: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestGetSessionHistory_ReturnsSortedClosedSessions(t *testing.T) {
 func TestGetSessionHistory_Empty(t *testing.T) {
 	t.Parallel()
 	db := openTestSessionDB(t)
-	recs, err := getSessionHistory(context.Background(), db, "default", 999, 50)
+	recs, err := getSessionHistory(context.Background(), db, defaultServerID, 999, 50)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -58,14 +58,14 @@ func TestGetSessionHistory_RespectsLimit(t *testing.T) {
 		ts := fmt.Sprintf("2026-01-%02dT10:00:00Z", i+1)
 		te := fmt.Sprintf("2026-01-%02dT11:00:00Z", i+1)
 		if _, err := db.ExecContext(ctx,
-			`INSERT INTO play_sessions(account_id,started_at,ended_at,duration_secs) VALUES(77,?,?,3600)`,
+			`INSERT INTO play_sessions(server_id,account_id,started_at,ended_at,duration_secs) VALUES(1,77,?,?,3600)`,
 			ts, te,
 		); err != nil {
 			t.Fatalf("insert: %v", err)
 		}
 	}
 
-	recs, err := getSessionHistory(ctx, db, "default", 77, 3)
+	recs, err := getSessionHistory(ctx, db, defaultServerID, 77, 3)
 	if err != nil {
 		t.Fatalf("getSessionHistory: %v", err)
 	}

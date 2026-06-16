@@ -78,7 +78,7 @@ func TestSetLocalPassword(t *testing.T) {
 // TestSetLocalPassword_UpdatesMigratedStore reproduces the post-migration
 // lockout-recovery bug: once config.yaml has been imported into the DB, the DB
 // is the live source of truth and config.yaml is never re-read, so a password
-// set via --set-password must be written into the app_settings row too.
+// set via --set-password must be written into the typed app_config_auth row too.
 func TestSetLocalPassword_UpdatesMigratedStore(t *testing.T) {
 	dir := t.TempDir()
 	configFile := filepath.Join(dir, "config.yaml")
@@ -123,6 +123,18 @@ func TestSetLocalPassword_UpdatesMigratedStore(t *testing.T) {
 	}
 	if got.ListenAddr != ":9999" {
 		t.Errorf("unrelated setting lost: listen_addr = %q, want :9999", got.ListenAddr)
+	}
+
+	// The credentials must land in the typed app_config_auth table specifically —
+	// not a JSON blob — so they are queryable and the live read path sees them.
+	var colUser, colHash string
+	if err := db2.QueryRow(
+		`SELECT auth_local_username, auth_local_password_hash FROM app_config_auth WHERE id = 1`).
+		Scan(&colUser, &colHash); err != nil {
+		t.Fatalf("read app_config_auth: %v", err)
+	}
+	if colUser != "newadmin" || !checkPassword(colHash, "newpw") {
+		t.Errorf("app_config_auth not updated: user=%q hash-matches=%v", colUser, checkPassword(colHash, "newpw"))
 	}
 
 	// config.yaml is still written as the recovery seed / downgrade path.

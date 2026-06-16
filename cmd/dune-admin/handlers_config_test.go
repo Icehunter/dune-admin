@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -89,9 +88,9 @@ func TestHandleSaveConfig_MultiServerPreservesServersAndConnections(t *testing.T
 	t.Setenv("DUNE_ADMIN_CONFIG_DIR", t.TempDir())
 
 	reg := newServerRegistry(nil)
-	s1 := &ServerContext{ID: "1", Name: "One", StoreScope: "1"}
+	s1 := &ServerContext{ID: "1", Name: "One", StoreScope: 1}
 	reg.Register(s1)
-	reg.Register(&ServerContext{ID: "2", Name: "Two", StoreScope: "2"})
+	reg.Register(&ServerContext{ID: "2", Name: "Two", StoreScope: 2})
 	_ = reg.SetActive("1")
 	origReg := globalRegistry
 	globalRegistry = reg
@@ -177,44 +176,9 @@ func TestApplyConfig_SetsBrokerCredentials(t *testing.T) {
 	}
 }
 
-// PreserveMaskedDBPass exercises the preserveMaskedSecrets function for the
-// DBPass field specifically. Not parallel because subtests mutate loadedConfig.
-func TestPreserveMaskedDBPass(t *testing.T) {
-	t.Run("keeps explicit password", func(t *testing.T) {
-		cfg := appConfig{DBPass: "new-pass"}
-		preserveMaskedSecrets(&cfg, func(string) ([]byte, error) {
-			t.Fatalf("readFile should not be called for explicit password")
-			return nil, nil
-		}, "/tmp/unused")
-		if cfg.DBPass != "new-pass" {
-			t.Fatalf("expected explicit password to stay unchanged, got %q", cfg.DBPass)
-		}
-	})
-
-	t.Run("uses existing config password from file", func(t *testing.T) {
-		cfg := appConfig{DBPass: "••••••••"}
-		preserveMaskedSecrets(&cfg, func(string) ([]byte, error) {
-			return []byte("db_pass: stored-pass\n"), nil
-		}, "/tmp/config.yaml")
-		if cfg.DBPass != "stored-pass" {
-			t.Fatalf("expected stored password from config file, got %q", cfg.DBPass)
-		}
-	})
-
-	t.Run("falls back to loadedConfig when file missing", func(t *testing.T) {
-		orig := loadedConfig
-		loadedConfig = appConfig{DBPass: "in-memory-pass"}
-		t.Cleanup(func() { loadedConfig = orig })
-
-		cfg := appConfig{DBPass: "••••••••"}
-		preserveMaskedSecrets(&cfg, func(string) ([]byte, error) {
-			return nil, errors.New("no file")
-		}, "/tmp/missing.yaml")
-		if cfg.DBPass != "in-memory-pass" {
-			t.Fatalf("expected in-memory fallback password, got %q", cfg.DBPass)
-		}
-	})
-}
+// NOTE: TestPreserveMaskedDBPass was removed — DBPass is a per-server secret now
+// and is no longer handled by preserveMaskedSecrets (it round-trips via the
+// servers store, covered by TestServerColumnsRoundTrip / TestHandleGetConfig_MasksServerSecrets).
 
 // TestHandleDiscover_NilExecutor verifies 503 when no executor is connected.
 func TestHandleDiscover_NilExecutor(t *testing.T) {
@@ -240,7 +204,7 @@ func TestHandleDiscover_CtxExecutorOverridesGlobal(t *testing.T) {
 
 	exec := &fnExecutor{fn: func(string) (string, error) { return "", nil }}
 	reg := newServerRegistry(nil)
-	sc := &ServerContext{ID: "s1", StoreScope: "s1", Executor: exec}
+	sc := &ServerContext{ID: "s1", StoreScope: defaultServerID, Executor: exec}
 	reg.Register(sc)
 
 	inner := http.HandlerFunc(handleDiscover)

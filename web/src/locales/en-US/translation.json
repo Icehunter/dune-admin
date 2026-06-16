@@ -1321,7 +1321,8 @@
       "authDiscord": "Discord login (OAuth)",
       "authOwners": "Owners",
       "discordStatus": "Status Embed",
-      "marketBot": "Market Bot"
+      "marketBot": "Market Bot",
+      "discordGuilds": "Discord Guilds"
     },
     "ssh": {
       "hostPort": "Host : port",
@@ -1338,7 +1339,8 @@
       "discord": "Discord",
       "auth": "Auth",
       "ssh": "SSH",
-      "server": "Server & Broker"
+      "server": "Server & Broker",
+      "guilds": "Guilds"
     },
     "scope": {
       "server": "Server",
@@ -1372,7 +1374,8 @@
       "statusChannel": "Status channel ID",
       "statusChannelHint": "Right-click the channel → Copy Channel ID (requires Developer Mode).",
       "statusInterval": "Update interval (seconds)",
-      "statusIntervalHint": "How often the embed refreshes. Minimum 30 seconds; defaults to 60."
+      "statusIntervalHint": "How often the embed refreshes. Minimum 30 seconds; defaults to 60.",
+      "perGuildMoved": "Per-guild config — capability roles and the servers each guild watches (with their channels) — is managed in the Guilds tab."
     },
     "auth": {
       "hint": "Require login for the dashboard and API. Recommended whenever dune-admin is reachable from outside your LAN.",
@@ -1821,7 +1824,8 @@
       "solari": "Solari",
       "factionScrip": "Faction Scrip",
       "config": "Config",
-      "rewards": "Rewards"
+      "rewards": "Rewards",
+      "currencyXp": "Currency & XP"
     },
     "config": {
       "title": "Engine Settings",
@@ -1980,5 +1984,90 @@
         "cta": "Connect Discord"
       }
     }
+  },
+  "discordGuilds": {
+    "title": "Discord Guilds",
+    "subtitle": "Configure each Discord guild’s capability roles. One bot token serves every guild; servers link to a guild from their own Discord tab.",
+    "ariaLabel": "Discord guilds",
+    "add": "Add guild",
+    "addTitle": "Add guild",
+    "editTitle": "Edit guild",
+    "empty": "No Discord guilds configured yet.",
+    "on": "On",
+    "off": "Off",
+    "loadRoles": "Load roles",
+    "guildId": "Guild ID",
+    "guildIdHint": "Right-click your server icon → Copy Server ID (requires Developer Mode)",
+    "guildIdRequired": "Guild ID is required",
+    "serverRequired": "Each watched server must be selected",
+    "roleCount": "{{count}} roles",
+    "addServer": "Link a game server",
+    "server": "Server",
+    "serverHint": "The game server this guild watches",
+    "selectServer": "Select a server…",
+    "noServers": "This guild watches no servers yet.",
+    "watchedServersHint": "Pick a game server and the Discord channels this guild uses for it (announce + status). One guild can post for several servers.",
+    "announceChannel": "Announce channel ID",
+    "announceChannelHint": "Channel for server announcements (restarts, events)",
+    "statusEnabled": "Persistent status embed",
+    "statusEnabledHint": "Keep a live server-status embed updated in a channel",
+    "statusChannel": "Status channel ID",
+    "statusChannelHint": "Channel the status embed is posted in",
+    "statusInterval": "Status interval (seconds)",
+    "statusIntervalHint": "How often the embed refreshes. Minimum 30 seconds; defaults to 60.",
+    "rolesHint": "Discord roles granted each capability tier in this guild. Load roles after entering a guild ID.",
+    "rolesViewer": "Viewer roles",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Economy roles",
+    "rolesEconomyHint": "market & economy commands",
+    "rolesAdmin": "Admin roles",
+    "rolesAdminHint": "administrative commands",
+    "saved": "Guild saved",
+    "saveFailed": "Save failed: {{message}}",
+    "loadFailed": "Failed to load guilds: {{message}}",
+    "removed": "Guild removed",
+    "removeFailed": "Remove failed: {{message}}",
+    "removeTitle": "Remove guild",
+    "removeConfirm": "Remove guild {{guild}}? The bot will stop serving it and its watched servers.",
+    "columns": {
+      "guildId": "Guild ID",
+      "servers": "Watched servers",
+      "roles": "Roles"
+    },
+    "sections": {
+      "guild": "Guild",
+      "roles": "Capability Roles",
+      "watchedServers": "Linked game servers"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Link this server to one Discord guild and set its announce and status channels. Capability roles for that guild are set in Settings → Guilds.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Unlink this server from its Discord guild? Its channels are cleared; the guild and its roles stay intact.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
+      },
+      "noGuilds": "No guilds added yet — add one in Settings → Guilds, then pick it here."
+    },
+    "selectGuild": "Search guilds…",
+    "selectChannel": "Search channels…",
+    "guildExists": "That guild is already configured."
   }
 }

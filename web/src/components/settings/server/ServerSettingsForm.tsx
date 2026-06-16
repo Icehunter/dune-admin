@@ -14,6 +14,7 @@ import { ControlPanel } from './ControlPanel'
 import { SshPanel } from './SshPanel'
 import { ConnectionPanel } from './ConnectionPanel'
 import { ServerAdvancedPanel } from './ServerAdvancedPanel'
+import { ServerDiscordPanel } from './ServerDiscordPanel'
 import type { ServerAdvancedVariant } from './ServerAdvancedPanel'
 
 export interface ServerSettingsFormProps {
@@ -187,10 +188,15 @@ export const ServerSettingsForm: React.FC<ServerSettingsFormProps> = ({
     )
   }
 
+  // The Discord (guild-link) tab edits cross-server guild data, so it only makes
+  // sense for a persisted server (id > 0) in the Settings/Manage view — never the
+  // add-server wizard or a not-yet-created server.
+  const showDiscord = settingsMode && !addMode && serverID > 0
   const SERVER_TABS = [
     { id: 'control', label: t('settings.tabs.control') },
     { id: 'ssh', label: t('settings.tabs.ssh') },
     { id: 'server', label: t('settings.tabs.server') },
+    ...(showDiscord ? [{ id: 'discord', label: t('settings.tabs.discord') }] : []),
     { id: 'server-advanced', label: t('settings.tabs.advanced') },
   ]
   // Inline rename: shown in the per-server Settings/Manage view (not the wizard).
@@ -249,6 +255,10 @@ export const ServerSettingsForm: React.FC<ServerSettingsFormProps> = ({
       {/* Standalone wizard 'broker' step: broker only. */}
       {tab === 'broker' && (
         <ConnectionPanel cfg={cfg} set={set} setBool={setBool} showDb={false} showBroker />
+      )}
+
+      {tab === 'discord' && showDiscord && (
+        <ServerDiscordPanel serverId={serverID} />
       )}
 
       {(tab === 'advanced' || tab === 'server-advanced') && (

@@ -39,7 +39,13 @@ func cachedPlayers(r *http.Request) ([]playerInfo, error) {
 		if !ok {
 			return nil, fmt.Errorf("internal error")
 		}
-		return msg.rows, msg.err
+		if msg.err != nil {
+			return nil, msg.err
+		}
+		// Enrich Discord identity from SQLite (one global link per user), scoped
+		// to the server whose pool was queried. The query is per-server, so the
+		// store scope of the request's server context selects the right links.
+		return enrichPlayersWithDiscord(msg.rows, storeScopeFromCtx(r)), nil
 	}
 	sc := serverFromCtx(r)
 	if sc == nil || globalPlayersCache == nil {

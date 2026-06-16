@@ -9,8 +9,8 @@ import (
 // unknown id returns nil, empty registry returns nil.
 func TestServerRegistry_Get(t *testing.T) {
 	reg := newServerRegistry(nil)
-	sc1 := &ServerContext{ID: "srv-a", Name: "Server A", StoreScope: "srv-a"}
-	sc2 := &ServerContext{ID: "srv-b", Name: "Server B", StoreScope: "srv-b"}
+	sc1 := &ServerContext{ID: "srv-a", Name: "Server A", StoreScope: 1}
+	sc2 := &ServerContext{ID: "srv-b", Name: "Server B", StoreScope: 2}
 	reg.Register(sc1)
 	reg.Register(sc2)
 
@@ -44,8 +44,8 @@ func TestServerRegistry_Get(t *testing.T) {
 // SetActive switches it correctly.
 func TestServerRegistry_Active(t *testing.T) {
 	reg := newServerRegistry(nil)
-	sc1 := &ServerContext{ID: "alpha", Name: "Alpha", StoreScope: "alpha"}
-	sc2 := &ServerContext{ID: "beta", Name: "Beta", StoreScope: "beta"}
+	sc1 := &ServerContext{ID: "alpha", Name: "Alpha", StoreScope: 1}
+	sc2 := &ServerContext{ID: "beta", Name: "Beta", StoreScope: 2}
 
 	t.Run("empty registry returns nil", func(t *testing.T) {
 		if got := reg.Active(); got != nil {
@@ -111,8 +111,8 @@ func TestServerRegistry_All(t *testing.T) {
 	})
 
 	ids := []string{"one", "two", "three"}
-	for _, id := range ids {
-		reg.Register(&ServerContext{ID: id, StoreScope: id})
+	for i, id := range ids {
+		reg.Register(&ServerContext{ID: id, StoreScope: i + 1})
 	}
 
 	t.Run("returns all in registration order", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestServerRegistry_All(t *testing.T) {
 	})
 
 	t.Run("re-registering same id does not duplicate", func(t *testing.T) {
-		reg.Register(&ServerContext{ID: "one", Name: "One Updated", StoreScope: "one"})
+		reg.Register(&ServerContext{ID: "one", Name: "One Updated", StoreScope: 1})
 		all := reg.All()
 		if len(all) != len(ids) {
 			t.Errorf("All() len = %d after re-register, want %d", len(all), len(ids))
@@ -357,8 +357,8 @@ func TestConnectServer_ControlPlaneSurvivesDBFailure(t *testing.T) {
 	if sc.ID != serverScope(cfg.ID) {
 		t.Errorf("ServerContext.ID = %q, want %q", sc.ID, serverScope(cfg.ID))
 	}
-	if sc.StoreScope != serverScope(cfg.ID) {
-		t.Errorf("StoreScope = %q, want %q", sc.StoreScope, serverScope(cfg.ID))
+	if sc.StoreScope != storeScopeForID(cfg.ID) {
+		t.Errorf("StoreScope = %d, want %d", sc.StoreScope, storeScopeForID(cfg.ID))
 	}
 }
 
@@ -382,8 +382,8 @@ func TestConnectServer_IDAndNamePropagated(t *testing.T) {
 	if sc.Name != "My Server" {
 		t.Errorf("Name = %q, want %q", sc.Name, "My Server")
 	}
-	if sc.StoreScope != "42" {
-		t.Errorf("StoreScope = %q, want %q", sc.StoreScope, "42")
+	if sc.StoreScope != 42 {
+		t.Errorf("StoreScope = %d, want 42", sc.StoreScope)
 	}
 }
 
@@ -391,7 +391,7 @@ func TestConnectServer_IDAndNamePropagated(t *testing.T) {
 // reads and writes to catch races with -race.
 func TestServerRegistry_ConcurrentSafety(t *testing.T) {
 	reg := newServerRegistry(nil)
-	reg.Register(&ServerContext{ID: "init", StoreScope: "init"})
+	reg.Register(&ServerContext{ID: "init", StoreScope: 1})
 
 	var wg sync.WaitGroup
 	for i := range 20 {
@@ -399,7 +399,7 @@ func TestServerRegistry_ConcurrentSafety(t *testing.T) {
 		go func(n int) {
 			defer wg.Done()
 			id := "srv-" + string(rune('a'+n%5))
-			reg.Register(&ServerContext{ID: id, StoreScope: id})
+			reg.Register(&ServerContext{ID: id, StoreScope: n%5 + 1})
 			_ = reg.Get(id)
 			_ = reg.Active()
 			_ = reg.All()

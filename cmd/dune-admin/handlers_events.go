@@ -240,7 +240,7 @@ func handleGrantEventClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deps := productionEventDeps(globalDB)
+	deps := productionEventDeps(globalDB, storeScopeFromCtx(r))
 	deps.resolveGrantTargets = eventGrantTargetResolver
 	claim := eventClaimRecord{EventID: def.ID, Version: def.Version, AccountID: accountID}
 	if err := attemptGrantForClaim(r.Context(), deps, globalEventStore, claim); err != nil {

@@ -64,23 +64,17 @@ func TestPreserveMaskedSecrets(t *testing.T) {
 		return p
 	}
 
-	t.Run("BrokerPass placeholder is preserved from file", func(t *testing.T) {
-		t.Parallel()
-		path := write(t, appConfig{BrokerPass: "real-broker-pass"})
-		cfg := appConfig{BrokerPass: mask}
-		preserveMaskedSecrets(&cfg, os.ReadFile, path)
-		if cfg.BrokerPass != "real-broker-pass" {
-			t.Fatalf("expected real-broker-pass, got %q", cfg.BrokerPass)
-		}
-	})
+	// NOTE: db/broker/amp secrets are per-server now and are NOT handled by
+	// preserveMaskedSecrets (they round-trip via the servers store). This test
+	// only covers the app-level secrets the function still restores.
 
-	t.Run("BrokerJWTSecret placeholder is preserved from file", func(t *testing.T) {
+	t.Run("DiscordBotToken placeholder is preserved from file", func(t *testing.T) {
 		t.Parallel()
-		path := write(t, appConfig{BrokerJWTSecret: "real-jwt-secret"})
-		cfg := appConfig{BrokerJWTSecret: mask}
+		path := write(t, appConfig{DiscordBotToken: "real-discord-token"})
+		cfg := appConfig{DiscordBotToken: mask}
 		preserveMaskedSecrets(&cfg, os.ReadFile, path)
-		if cfg.BrokerJWTSecret != "real-jwt-secret" {
-			t.Fatalf("expected real-jwt-secret, got %q", cfg.BrokerJWTSecret)
+		if cfg.DiscordBotToken != "real-discord-token" {
+			t.Fatalf("expected real-discord-token, got %q", cfg.DiscordBotToken)
 		}
 	})
 
@@ -96,10 +90,10 @@ func TestPreserveMaskedSecrets(t *testing.T) {
 
 	t.Run("non-masked values pass through unchanged", func(t *testing.T) {
 		t.Parallel()
-		path := write(t, appConfig{BrokerPass: "old", BrokerJWTSecret: "old", MarketBotRemoteToken: "old"})
-		cfg := appConfig{BrokerPass: "new", BrokerJWTSecret: "new", MarketBotRemoteToken: "new"}
+		path := write(t, appConfig{DiscordBotToken: "old", MarketBotRemoteToken: "old"})
+		cfg := appConfig{DiscordBotToken: "new", MarketBotRemoteToken: "new"}
 		preserveMaskedSecrets(&cfg, os.ReadFile, path)
-		if cfg.BrokerPass != "new" || cfg.BrokerJWTSecret != "new" || cfg.MarketBotRemoteToken != "new" {
+		if cfg.DiscordBotToken != "new" || cfg.MarketBotRemoteToken != "new" {
 			t.Fatal("non-masked values should not be changed")
 		}
 	})
@@ -107,13 +101,11 @@ func TestPreserveMaskedSecrets(t *testing.T) {
 	t.Run("missing file does not write mask string to config", func(t *testing.T) {
 		t.Parallel()
 		cfg := appConfig{
-			DBPass:               mask,
-			BrokerPass:           mask,
-			BrokerJWTSecret:      mask,
+			DiscordBotToken:      mask,
 			MarketBotRemoteToken: mask,
 		}
 		preserveMaskedSecrets(&cfg, os.ReadFile, "/nonexistent/path/config.yaml")
-		if cfg.DBPass == mask || cfg.BrokerPass == mask || cfg.BrokerJWTSecret == mask || cfg.MarketBotRemoteToken == mask {
+		if cfg.DiscordBotToken == mask || cfg.MarketBotRemoteToken == mask {
 			t.Fatal("mask placeholder must never be written to config file")
 		}
 	})

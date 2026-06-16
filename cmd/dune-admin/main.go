@@ -345,7 +345,7 @@ func marketBotEnabled(cfg appConfig) bool {
 func startWelcomePackageScanner(_ appConfig) context.CancelFunc {
 	var store *welcomeStore
 	if globalStore != nil {
-		store = newWelcomeStore(globalStore, "default")
+		store = newWelcomeStore(globalStore, defaultServerID)
 	} else {
 		var err error
 		store, err = openWelcomeStore(filepath.Join(configDir(), "welcome-package.db"))
@@ -969,6 +969,20 @@ func run(ctx context.Context) error {
 
 	connectAndPrimeTemplates(alreadyConnected)
 
+	// One-time copy of legacy Postgres dune.discord_links registrations into the
+	// SQLite discord_user_links store. Runs here (post-connect) because it needs
+	// the default server's live pool; best-effort + marker-gated, so it retries on
+	// a later boot if Postgres is unreachable now.
+	if id, ok := firstServerID(); ok && globalStore != nil {
+		var read legacyLinkReader
+		if globalDB != nil {
+			read = func(c context.Context) ([]legacyUserLink, error) {
+				return cmdReadLegacyDiscordLinks(c, globalDB)
+			}
+		}
+		migrateLegacyDiscordUserLinks(globalStore, id, read)
+	}
+
 	// Prewarm hot read caches so the first UI paint (dashboard health) is instant
 	// on a hard refresh, then keep them warm in the background (refresh-ahead).
 	warmer := newCacheWarmer(globalRegistry)
@@ -1012,13 +1026,12 @@ func run(ctx context.Context) error {
 // signal), but threading ctx keeps this forward-compatible with graceful
 // shutdown without changing current behaviour.
 func startBackgroundServices(ctx context.Context) {
-	// Scheduled restarts (#145): load persisted config + run the scheduler for
-	// the process lifetime (independent of the welcome scanner's lifecycle).
-	loadScheduledRestartConfig()
+	// Scheduled restarts (#145): per-server schedules live in the DB; the
+	// scheduler iterates the registry each tick. Runs for the process lifetime
+	// (independent of the welcome scanner's lifecycle).
 	go runRestartScheduler(ctx)
 
 	// Scheduled DB backups (#150): same lifecycle as scheduled restarts.
-	loadScheduledBackupConfig()
 	go runBackupScheduler(ctx)
 
 	// Web interfaces (#155): load the operator-configured Server Health links.
@@ -1057,7 +1070,7 @@ func initLocationStore() {
 func initGivePacksStore() {
 	var s *givePacksStore
 	if globalStore != nil {
-		s = newGivePacksStore(globalStore, "default")
+		s = newGivePacksStore(globalStore, defaultServerID)
 	} else {
 		var err error
 		s, err = openGivePacksStore(filepath.Join(configDir(), "give-packs.db"))
@@ -1085,7 +1098,7 @@ func initGivePacksStore() {
 // globalEventStore. A failure is non-fatal — handlers guard for a nil store.
 func initEventStore() {
 	if globalStore != nil {
-		globalEventStore = newEventStore(globalStore, "default")
+		globalEventStore = newEventStore(globalStore, defaultServerID)
 		return
 	}
 	var err error
@@ -1101,7 +1114,7 @@ func initEventStore() {
 // globalBattlepassStore. A failure is non-fatal — handlers guard for nil.
 func initBattlepassStore() {
 	if globalStore != nil {
-		globalBattlepassStore = newBattlepassStore(globalStore, "default")
+		globalBattlepassStore = newBattlepassStore(globalStore, defaultServerID)
 		return
 	}
 	s, err := openBattlepassStore(filepath.Join(configDir(), "battlepass.db"))

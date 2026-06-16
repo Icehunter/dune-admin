@@ -11,16 +11,6 @@ const configImportMarker = "migrated:config_yaml"
 // activeServerMetaKey persists the active server's scope id across restarts.
 const activeServerMetaKey = "active_server"
 
-// scopedServerTables lists every per-feature table whose rows are scoped by
-// server_id. Used to remap legacy string scope ids to the new numeric ids on
-// first-boot import.
-var scopedServerTables = []string{
-	"welcome_grants", "welcome_config", "give_packs_config",
-	"event_definitions", "event_award_claims",
-	"battlepass_tiers", "battlepass_claims", "battlepass_accounts", "battlepass_grant_ledger",
-	"play_sessions", "stat_snapshots",
-}
-
 // flatConfigHasConnection reports whether the flag-globals describe a real
 // legacy single-server connection (vs an empty fresh install).
 func flatConfigHasConnection() bool {
@@ -52,6 +42,13 @@ func hydrateConfigFromStore() {
 			componentLog("config_import").Error().Err(err).Msg("import config.yaml failed")
 			return
 		}
+	}
+
+	// Phase B of the remodel: now that the server row(s) exist with numeric ids,
+	// convert any legacy 0.39.5-shaped scoped tables (TEXT/absent server_id +
+	// JSON blobs) to the int-FK + surrogate-id schema. No-op on a fresh install.
+	if id, ok := firstServerID(); ok {
+		migrateUnifiedRemodel(globalStore, id)
 	}
 
 	if cfg, ok, err := globalSettingsStore.loadSettings(); err != nil {
@@ -125,41 +122,29 @@ func importSeedServers(seed appConfig) (string, error) {
 	return "", nil
 }
 
-// importOneServer inserts sc at position and remaps any per-feature data from
-// its legacy string scope (oldScope) to the new numeric scope. Returns the new
-// scope.
-func importOneServer(sc ServerConfig, oldScope string, position int) (string, error) {
+// importOneServer inserts sc at position and returns the new numeric scope. The
+// 0.39.5 single-server text→int conversion of per-feature data is handled by the
+// migration phase (migrateUnifiedRemodel), not here.
+func importOneServer(sc ServerConfig, _ string, position int) (string, error) {
 	newID, err := globalServersStore.insertServer(sc, position)
 	if err != nil {
 		return "", err
 	}
-	newScope := serverScope(newID)
-	if oldScope != "" && oldScope != newScope {
-		if err := remapServerScope(oldScope, newScope); err != nil {
-			return "", err
-		}
-	}
-	return newScope, nil
+	return serverScope(newID), nil
 }
 
-// remapServerScope rewrites server_id from oldScope to newScope across every
-// per-feature table (and the discord-status meta key), so per-server data
-// survives the legacy-string-id → numeric-id switch.
-func remapServerScope(oldScope, newScope string) error {
-	for _, tbl := range scopedServerTables {
-		// #nosec G202 -- tbl is from the hardcoded scopedServerTables constant
-		if _, err := globalStore.Exec(`UPDATE `+tbl+` SET server_id = ? WHERE server_id = ?`, newScope, oldScope); err != nil {
-			return fmt.Errorf("remap %s %s->%s: %w", tbl, oldScope, newScope, err)
-		}
+// firstServerID returns the lowest server id (the default/first server) and
+// whether any server exists. Used to scope the 0.39.5 single-server data.
+func firstServerID() (int, bool) {
+	if globalStore == nil {
+		return 0, false
 	}
-	oldKey := "discord_status_message:" + oldScope
-	if v, _ := metaGet(globalStore, oldKey); v != "" {
-		if err := metaSet(globalStore, "discord_status_message:"+newScope, v); err != nil {
-			return err
-		}
-		_, _ = globalStore.Exec(`DELETE FROM meta WHERE key = ?`, oldKey)
+	var id int
+	err := globalStore.QueryRow(`SELECT id FROM servers ORDER BY position, id LIMIT 1`).Scan(&id)
+	if err != nil {
+		return 0, false
 	}
-	return nil
+	return id, true
 }
 
 func btoi(b bool) int {

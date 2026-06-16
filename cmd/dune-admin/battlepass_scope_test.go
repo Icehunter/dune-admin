@@ -13,11 +13,11 @@ import (
 // view are invisible to a differently-scoped view over the same DB.
 func TestBattlepassStore_WithScope(t *testing.T) {
 	db := openSharedScopeDB(t)
-	base := newBattlepassStore(db, "default")
+	base := newBattlepassStore(db, scopeA)
 
-	scoped := base.withScope("srv-a")
-	if scoped.serverID != "srv-a" {
-		t.Errorf("withScope serverID = %q, want %q", scoped.serverID, "srv-a")
+	scoped := base.withScope(scopeB)
+	if scoped.serverID != scopeB {
+		t.Errorf("withScope serverID = %d, want %d", scoped.serverID, scopeB)
 	}
 	if scoped.db != base.db {
 		t.Error("withScope must share the underlying *sql.DB handle")
@@ -27,22 +27,22 @@ func TestBattlepassStore_WithScope(t *testing.T) {
 		t.Fatalf("scoped.recordClaim: %v", err)
 	}
 
-	// The "default"-scoped base must not see srv-a's claim.
+	// The scopeA base must not see scopeB's claim.
 	baseKeys, err := base.claimedKeys(42)
 	if err != nil {
 		t.Fatalf("base.claimedKeys: %v", err)
 	}
 	if len(baseKeys) != 0 {
-		t.Errorf("default scope should not see srv-a claims, got %v", baseKeys)
+		t.Errorf("scopeA should not see scopeB claims, got %v", baseKeys)
 	}
 
-	// The srv-a view must see its own claim.
+	// The scopeB view must see its own claim.
 	scopedKeys, err := scoped.claimedKeys(42)
 	if err != nil {
 		t.Fatalf("scoped.claimedKeys: %v", err)
 	}
 	if _, ok := scopedKeys["level:5"]; !ok {
-		t.Errorf("srv-a scope should see its own claim, got %v", scopedKeys)
+		t.Errorf("scopeB scope should see its own claim, got %v", scopedKeys)
 	}
 }
 
@@ -61,16 +61,16 @@ func TestBattlepassStoreForCtx(t *testing.T) {
 		t.Errorf("battlepassStoreForCtx with nil global = %v, want nil", got)
 	}
 
-	globalBattlepassStore = newBattlepassStore(db, "default")
+	globalBattlepassStore = newBattlepassStore(db, defaultServerID)
 	got := battlepassStoreForCtx(r)
-	if got == nil || got.serverID != "default" {
-		t.Errorf("no-context scope = %v, want serverID=default", got)
+	if got == nil || got.serverID != defaultServerID {
+		t.Errorf("no-context scope = %v, want serverID=%d", got, defaultServerID)
 	}
 
-	rc := r.WithContext(context.WithValue(r.Context(), serverContextKey, &ServerContext{StoreScope: "srv-b"}))
+	rc := r.WithContext(context.WithValue(r.Context(), serverContextKey, &ServerContext{StoreScope: scopeB}))
 	got = battlepassStoreForCtx(rc)
-	if got == nil || got.serverID != "srv-b" {
-		t.Errorf("context scope = %v, want serverID=srv-b", got)
+	if got == nil || got.serverID != scopeB {
+		t.Errorf("context scope = %v, want serverID=%d", got, scopeB)
 	}
 }
 
@@ -82,17 +82,17 @@ func TestBattlepassStoreForCtx(t *testing.T) {
 func TestHandleBattlepassProgress_ServerScope(t *testing.T) {
 	db := openSharedScopeDB(t)
 	prev := globalBattlepassStore
-	globalBattlepassStore = newBattlepassStore(db, "default")
+	globalBattlepassStore = newBattlepassStore(db, defaultServerID)
 	t.Cleanup(func() { globalBattlepassStore = prev })
 
-	if err := globalBattlepassStore.withScope("srv-a").recordClaim("level:5", 42, 100, battlepassClaimEarned); err != nil {
-		t.Fatalf("seed srv-a: %v", err)
+	if err := globalBattlepassStore.withScope(scopeA).recordClaim("level:5", 42, 100, battlepassClaimEarned); err != nil {
+		t.Fatalf("seed scopeA: %v", err)
 	}
-	if err := globalBattlepassStore.withScope("srv-b").recordClaim("level:9", 42, 200, battlepassClaimEarned); err != nil {
-		t.Fatalf("seed srv-b: %v", err)
+	if err := globalBattlepassStore.withScope(scopeB).recordClaim("level:9", 42, 200, battlepassClaimEarned); err != nil {
+		t.Fatalf("seed scopeB: %v", err)
 	}
 
-	progress := func(scope string) (claims []battlepassClaim, pending int64) {
+	progress := func(scope int) (claims []battlepassClaim, pending int64) {
 		t.Helper()
 		r := httptest.NewRequest(http.MethodGet, "/api/v1/battlepass/progress/42", nil)
 		r = r.WithContext(context.WithValue(r.Context(), serverContextKey, &ServerContext{StoreScope: scope}))
@@ -100,25 +100,25 @@ func TestHandleBattlepassProgress_ServerScope(t *testing.T) {
 		w := httptest.NewRecorder()
 		handleBattlepassProgress(w, r)
 		if w.Code != http.StatusOK {
-			t.Fatalf("scope %s: status %d body %s", scope, w.Code, w.Body.String())
+			t.Fatalf("scope %d: status %d body %s", scope, w.Code, w.Body.String())
 		}
 		var resp struct {
 			Claims  []battlepassClaim `json:"claims"`
 			Pending int64             `json:"pending_intel"`
 		}
 		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-			t.Fatalf("scope %s: decode: %v", scope, err)
+			t.Fatalf("scope %d: decode: %v", scope, err)
 		}
 		return resp.Claims, resp.Pending
 	}
 
-	claims, pending := progress("srv-a")
+	claims, pending := progress(scopeA)
 	if len(claims) != 1 || claims[0].TierKey != "level:5" || pending != 100 {
-		t.Errorf("srv-a progress = %+v pending=%d, want one level:5 claim pending=100", claims, pending)
+		t.Errorf("scopeA progress = %+v pending=%d, want one level:5 claim pending=100", claims, pending)
 	}
 
-	claims, pending = progress("srv-b")
+	claims, pending = progress(scopeB)
 	if len(claims) != 1 || claims[0].TierKey != "level:9" || pending != 200 {
-		t.Errorf("srv-b progress = %+v pending=%d, want one level:9 claim pending=200", claims, pending)
+		t.Errorf("scopeB progress = %+v pending=%d, want one level:9 claim pending=200", claims, pending)
 	}
 }

@@ -1,19 +1,34 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
 )
 
-// hasColumn reports whether table contains a column named col.
-// Uses SQLite's PRAGMA table_info to inspect the live schema.
-func hasColumn(db *sql.DB, table, col string) (bool, error) {
-	// PRAGMA table_info returns one row per column: (cid, name, type, notnull, dflt_value, pk).
-	rows, err := db.Query(fmt.Sprintf(`PRAGMA table_info(%s)`, table)) // #nosec G201 -- table is an internal literal, never from user input
+// columnType returns the declared type of col in table, or "" if absent.
+func columnType(db *sql.DB, table, col string) (string, error) {
+	rows, err := db.Query(fmt.Sprintf(`PRAGMA table_info(%s)`, table)) // #nosec G201 -- table is an internal literal
 	if err != nil {
-		return false, fmt.Errorf("PRAGMA table_info(%s): %w", table, err)
+		return "", fmt.Errorf("PRAGMA table_info(%s): %w", table, err)
 	}
+	return scanColumnType(rows, col)
+}
+
+// columnTypeTx is columnType against an open transaction so the presence check
+// observes the same connection's pending schema state.
+func columnTypeTx(tx *sql.Tx, table, col string) (string, error) {
+	rows, err := tx.Query(fmt.Sprintf(`PRAGMA table_info(%s)`, table)) // #nosec G201 -- table is an internal literal
+	if err != nil {
+		return "", fmt.Errorf("PRAGMA table_info(%s): %w", table, err)
+	}
+	return scanColumnType(rows, col)
+}
+
+// scanColumnType walks a PRAGMA table_info result set looking for col, returning
+// its declared type or "" if absent. Closes rows.
+func scanColumnType(rows *sql.Rows, col string) (string, error) {
 	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var cid int
@@ -22,71 +37,51 @@ func hasColumn(db *sql.DB, table, col string) (bool, error) {
 		var dfltValue sql.NullString
 		var pk int
 		if err := rows.Scan(&cid, &name, &colType, &notNull, &dfltValue, &pk); err != nil {
-			return false, err
+			return "", err
 		}
 		if name == col {
-			return true, nil
+			return colType, nil
 		}
 	}
-	return false, rows.Err()
+	return "", rows.Err()
 }
 
-// addServerIDColumn adds a TEXT NOT NULL DEFAULT 'default' server_id column to
-// table if it does not already exist. Uses the isDuplicateColumnErr guard as a
-// belt-and-suspenders fallback (hasColumn is the primary guard).
-func addServerIDColumn(db *sql.DB, table string) error {
-	q := fmt.Sprintf(`ALTER TABLE %s ADD COLUMN server_id TEXT NOT NULL DEFAULT 'default'`, table) // #nosec G201 -- table is an internal literal
-	if _, err := db.Exec(q); err != nil && !isDuplicateColumnErr(err) {
-		return fmt.Errorf("add server_id to %s: %w", table, err)
-	}
-	return nil
-}
-
-// rebuildTableWithServerID adds server_id as the leading PK column of table by
-// creating a replacement table (tmpName), copying all existing rows with
-// server_id='default', dropping the original, and renaming. The operation runs
-// inside a single transaction so a mid-migration crash leaves the database
-// either fully old or fully new — never half-migrated.
+// rebuildLegacyServerIDToInt converts a 0.39.5-shaped table whose server_id is
+// TEXT (or absent) to the int-FK schema, stamping defaultID on every existing
+// row. It is used by the one-way 0.39.5 → unified migration; fresh installs
+// never hit it because their tables are created with int server_id already.
 //
-// newDDL must CREATE TABLE tmpName with server_id as the first PK column and
-// the same non-PK data columns as table. cols is the ordered list of those
-// data columns (server_id excluded) used to build the SELECT projection.
-//
-// The function is idempotent: if table already has a server_id column it
-// returns immediately without touching anything.
-func rebuildTableWithServerID(db *sql.DB, table, tmpName, newDDL string, cols []string) error {
-	has, err := hasColumn(db, table, "server_id")
+// newDDL must CREATE tmpName with the final int-FK schema. cols is the ordered
+// list of data columns (server_id excluded) shared between old and new tables.
+// Runs FK-disabled on a single connection so the temporary orphan during the
+// drop/rename never trips foreign-key enforcement.
+func rebuildLegacyServerIDToInt(db *sql.DB, table, tmpName, newDDL string, cols []string, defaultID int) error {
+	typ, err := columnType(db, table, "server_id")
 	if err != nil {
 		return err
 	}
-	if has {
-		return nil // already migrated
+	// Already int (fresh install or prior migration) — nothing to do.
+	if typ == "INTEGER" {
+		return nil
 	}
-
 	colList := strings.Join(cols, ", ")
-	tx, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("rebuild %s: begin: %w", table, err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	if _, err := tx.Exec(newDDL); err != nil {
-		return fmt.Errorf("rebuild %s: create %s: %w", table, tmpName, err)
-	}
-	if _, err := tx.Exec(fmt.Sprintf(
-		`INSERT INTO %s (server_id, %s) SELECT 'default', %s FROM %s`,
-		tmpName, colList, colList, table,
-	)); err != nil {
-		return fmt.Errorf("rebuild %s: copy rows: %w", table, err)
-	}
-	if _, err := tx.Exec(`DROP TABLE ` + table); err != nil { // #nosec G201 -- table is an internal literal
-		return fmt.Errorf("rebuild %s: drop original: %w", table, err)
-	}
-	if _, err := tx.Exec(fmt.Sprintf(`ALTER TABLE %s RENAME TO %s`, tmpName, table)); err != nil {
-		return fmt.Errorf("rebuild %s: rename: %w", table, err)
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("rebuild %s: commit: %w", table, err)
-	}
-	return nil
+	return withForeignKeysDisabled(context.Background(), db, func(conn *sql.Conn) error {
+		ctx := context.Background()
+		if _, err := conn.ExecContext(ctx, newDDL); err != nil {
+			return fmt.Errorf("rebuild %s: create %s: %w", table, tmpName, err)
+		}
+		if _, err := conn.ExecContext(ctx, fmt.Sprintf(
+			`INSERT INTO %s (server_id, %s) SELECT %d, %s FROM %s`,
+			tmpName, colList, defaultID, colList, table,
+		)); err != nil {
+			return fmt.Errorf("rebuild %s: copy rows: %w", table, err)
+		}
+		if _, err := conn.ExecContext(ctx, `DROP TABLE `+table); err != nil { // #nosec G201 -- internal literal
+			return fmt.Errorf("rebuild %s: drop original: %w", table, err)
+		}
+		if _, err := conn.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE %s RENAME TO %s`, tmpName, table)); err != nil {
+			return fmt.Errorf("rebuild %s: rename: %w", table, err)
+		}
+		return nil
+	})
 }

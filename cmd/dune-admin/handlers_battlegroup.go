@@ -156,8 +156,10 @@ func activeBackupDir(ctrl ControlPlane, exec Executor) (string, error) {
 	if backupDir != "" {
 		return backupDir, nil
 	}
-	if loadedConfig.BackupDir != "" {
-		return loadedConfig.BackupDir, nil
+	// backup_dir is per-server (servers table) after the remodel; the global
+	// loadedConfig field is cleared, so resolve from the active server.
+	if d := activeServerCfg().BackupDir; d != "" {
+		return d, nil
 	}
 	ns := firstNonEmpty(controlNS, loadedConfig.ControlNamespace, globalPodNS)
 	bg := strings.TrimPrefix(ns, "funcom-seabass-")

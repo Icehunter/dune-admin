@@ -11,8 +11,8 @@ import (
 // @Produce json
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/scheduled-backups [get]
-func handleGetScheduledBackups(w http.ResponseWriter, _ *http.Request) {
-	cfg := getScheduledBackupConfig()
+func handleGetScheduledBackups(w http.ResponseWriter, r *http.Request) {
+	cfg := getScheduledBackupConfig(storeScopeFromCtx(r))
 	resp := map[string]any{
 		"enabled":    cfg.Enabled,
 		"timezone":   cfg.Timezone,
@@ -73,12 +73,13 @@ func handleUpdateScheduledBackups(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	cur := getScheduledBackupConfig() // preserve last_fired watermark
+	scope := storeScopeFromCtx(r)
+	cur := getScheduledBackupConfig(scope) // preserve last_fired watermark
 	cur.Enabled = body.Enabled
 	cur.Timezone = body.Timezone
 	cur.Rules = body.Rules
 	cur.KeepN = body.KeepN
-	if err := saveScheduledBackupConfig(cur); err != nil {
+	if err := saveScheduledBackupConfig(scope, cur); err != nil {
 		componentLog("scheduled_backup").Error().Err(err).Msg("save schedule failed")
 		jsonErr(w, fmt.Errorf("could not save schedule"), http.StatusInternalServerError)
 		return

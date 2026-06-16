@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS servers (
 	id          INTEGER PRIMARY KEY AUTOINCREMENT,
 	name        TEXT    NOT NULL DEFAULT '',
 	position    INTEGER NOT NULL DEFAULT 0,
-	config_json TEXT    NOT NULL DEFAULT '{}',
 	created_at  TEXT    NOT NULL DEFAULT '',
 	updated_at  TEXT    NOT NULL DEFAULT ''
 );`
@@ -34,12 +33,12 @@ func initServersSchema(db *sql.DB) error {
 func newServersStore(db *sql.DB) *serversStore { return &serversStore{db: db} }
 
 // insertServer inserts cfg as a new server row and returns the DB-assigned id.
-// The row is created first (config_json is written as '{}' — no longer
-// authoritative), then the typed columns are populated via writeServerColumns.
+// The row is created first, then the typed columns are populated via
+// writeServerColumns.
 func (s *serversStore) insertServer(cfg ServerConfig, position int) (int, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := s.db.Exec(
-		`INSERT INTO servers (name, position, config_json, created_at, updated_at) VALUES (?, ?, '{}', ?, ?)`,
+		`INSERT INTO servers (name, position, created_at, updated_at) VALUES (?, ?, ?, ?)`,
 		cfg.Name, position, now, now)
 	if err != nil {
 		return 0, fmt.Errorf("insert server: %w", err)
@@ -56,11 +55,11 @@ func (s *serversStore) insertServer(cfg ServerConfig, position int) (int, error)
 }
 
 // updateServer updates an existing server's name + typed columns (by cfg.ID).
-// Position is left unchanged; config_json is reset to '{}' (no longer read).
+// Position is left unchanged.
 func (s *serversStore) updateServer(cfg ServerConfig) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	if _, err := s.db.Exec(
-		`UPDATE servers SET name = ?, config_json = '{}', updated_at = ? WHERE id = ?`,
+		`UPDATE servers SET name = ?, updated_at = ? WHERE id = ?`,
 		cfg.Name, now, cfg.ID); err != nil {
 		return fmt.Errorf("update server %d: %w", cfg.ID, err)
 	}

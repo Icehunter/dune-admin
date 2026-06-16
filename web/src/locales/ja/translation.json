@@ -1305,7 +1305,8 @@
       "authDiscord": "Discordログイン（OAuth）",
       "authOwners": "オーナー",
       "discordStatus": "ステータス埋め込み",
-      "marketBot": "マーケットボット"
+      "marketBot": "マーケットボット",
+      "discordGuilds": "Discord ギルド"
     },
     "ssh": {
       "hostPort": "ホスト：ポート",
@@ -1320,7 +1321,8 @@
       "connection": "接続",
       "control": "コントロール",
       "discord": "Discord",
-      "auth": "認証"
+      "auth": "認証",
+      "guilds": "ギルド"
     },
     "discord": {
       "hint": "discord.com/developers/applications でボットを作成し、有効化してトークンをコピーし、applications.commands スコープでサーバーに招待してください。",
@@ -1350,7 +1352,8 @@
       "statusChannel": "ステータスチャンネルID",
       "statusChannelHint": "チャンネルを右クリック →「IDをコピー」（開発者モードが必要）。",
       "statusInterval": "更新間隔（秒）",
-      "statusIntervalHint": "埋め込みを更新する頻度。最小30秒、既定値は60です。"
+      "statusIntervalHint": "埋め込みを更新する頻度。最小30秒、既定値は60です。",
+      "perGuildMoved": "ギルドごとの設定（権限ロールと各ギルドが監視するサーバーおよびそのチャンネル）は「ギルド」タブで管理します。"
     },
     "auth": {
       "hint": "ダッシュボードとAPIにログインを必須にします。dune-adminがLAN外からアクセス可能な場合に推奨します。",
@@ -1619,7 +1622,8 @@
       "config": "設定",
       "factionScrip": "ファクションスクリップ",
       "rewards": "報酬",
-      "solari": "ソラリ"
+      "solari": "ソラリ",
+      "currencyXp": "通貨とXP"
     },
     "signals": {
       "level": "キャラクターレベル",
@@ -1951,6 +1955,87 @@
         "title": "Discord ボットを接続",
         "body": "通知を送信し、ロールを権限に対応付けます。任意。",
         "cta": "Discord を接続"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Discord ギルド",
+    "subtitle": "各 Discord ギルドの権限ロールを設定します。1 つのボットトークンですべてのギルドに対応し、サーバーはそれぞれの Discord タブからギルドにリンクします。",
+    "ariaLabel": "Discord ギルド",
+    "add": "ギルドを追加",
+    "addTitle": "ギルドを追加",
+    "editTitle": "ギルドを編集",
+    "empty": "まだ Discord ギルドが設定されていません。",
+    "on": "オン",
+    "off": "オフ",
+    "loadRoles": "ロールを読み込む",
+    "guildId": "ギルド ID",
+    "guildIdHint": "サーバーアイコンを右クリック → サーバー ID をコピー（開発者モードが必要）",
+    "guildIdRequired": "ギルド ID は必須です",
+    "serverRequired": "監視する各サーバーを選択してください",
+    "roleCount": "{{count}} 個のロール",
+    "addServer": "サーバーを追加",
+    "server": "サーバー",
+    "serverHint": "このギルドが監視するゲームサーバー",
+    "selectServer": "サーバーを選択…",
+    "noServers": "このギルドはまだサーバーを監視していません。",
+    "watchedServersHint": "監視中の各サーバーは、ステータス／アナウンスの埋め込みを下記のチャンネルに投稿します。",
+    "announceChannel": "アナウンスチャンネル ID",
+    "announceChannelHint": "サーバーのお知らせ用チャンネル（再起動、イベント）",
+    "statusEnabled": "常設ステータス埋め込み",
+    "statusEnabledHint": "チャンネル内のライブステータス埋め込みを更新し続けます",
+    "statusChannel": "ステータスチャンネル ID",
+    "statusChannelHint": "ステータス埋め込みを投稿するチャンネル",
+    "statusInterval": "ステータス間隔（秒）",
+    "statusIntervalHint": "埋め込みを更新する頻度。最小 30 秒、既定値は 60。",
+    "rolesHint": "このギルドで各権限レベルに付与する Discord ロール。ギルド ID を入力後にロールを読み込んでください。",
+    "rolesViewer": "閲覧者ロール",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "経済ロール",
+    "rolesEconomyHint": "マーケット・経済コマンド",
+    "rolesAdmin": "管理者ロール",
+    "rolesAdminHint": "管理コマンド",
+    "saved": "ギルドを保存しました",
+    "saveFailed": "保存に失敗しました: {{message}}",
+    "loadFailed": "ギルドの読み込みに失敗しました: {{message}}",
+    "removed": "ギルドを削除しました",
+    "removeFailed": "削除に失敗しました: {{message}}",
+    "removeTitle": "ギルドを削除",
+    "removeConfirm": "ギルド {{guild}} を削除しますか？ ボットはこのギルドと監視サーバーへの対応を停止します。",
+    "columns": {
+      "guildId": "ギルド ID",
+      "servers": "監視サーバー",
+      "roles": "ロール"
+    },
+    "sections": {
+      "guild": "ギルド",
+      "roles": "権限ロール",
+      "watchedServers": "監視サーバー"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "このサーバーを 1 つの Discord ギルドにリンクし、アナウンスチャンネルとステータスチャンネルを設定します。そのギルドの権限ロールは設定 → ギルドで設定します。",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "このサーバーと Discord ギルドのリンクを解除しますか？チャンネルはクリアされますが、ギルドとそのロールはそのままです。",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
       }
     }
   }

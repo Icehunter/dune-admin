@@ -1347,7 +1347,8 @@
       "authDiscord": "Logowanie przez Discord (OAuth)",
       "authOwners": "Właściciele",
       "discordStatus": "Osadzenie statusu",
-      "marketBot": "Bot rynkowy"
+      "marketBot": "Bot rynkowy",
+      "discordGuilds": "Gildie Discord"
     },
     "ssh": {
       "hostPort": "Host : port",
@@ -1362,7 +1363,8 @@
       "connection": "Połączenie",
       "control": "Sterowanie",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Gildie"
     },
     "discord": {
       "hint": "Utwórz bota na discord.com/developers/applications, włącz go, skopiuj token i zaproś na swój serwer z zakresem applications.commands.",
@@ -1392,7 +1394,8 @@
       "statusChannel": "ID kanału statusu",
       "statusChannelHint": "Kliknij kanał prawym przyciskiem → Kopiuj ID kanału (wymaga trybu programisty).",
       "statusInterval": "Interwał aktualizacji (sekundy)",
-      "statusIntervalHint": "Jak często osadzenie się odświeża. Minimum 30 sekund; domyślnie 60."
+      "statusIntervalHint": "Jak często osadzenie się odświeża. Minimum 30 sekund; domyślnie 60.",
+      "perGuildMoved": "Konfiguracja dla gildii — role uprawnień i serwery obserwowane przez każdą gildię (wraz z ich kanałami) — jest zarządzana w karcie Gildie."
     },
     "auth": {
       "hint": "Wymagaj logowania do panelu i API. Zalecane, gdy dune-admin jest dostępny spoza Twojej sieci LAN.",
@@ -1665,7 +1668,8 @@
       "config": "Konfiguracja",
       "factionScrip": "Bony frakcji",
       "rewards": "Nagrody",
-      "solari": "Solari"
+      "solari": "Solari",
+      "currencyXp": "Waluta i XP"
     },
     "signals": {
       "level": "Poziom postaci",
@@ -1997,6 +2001,87 @@
         "title": "Połącz bota Discord",
         "body": "Wysyłaj powiadomienia i mapuj role na uprawnienia. Opcjonalne.",
         "cta": "Połącz Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Gildie Discord",
+    "subtitle": "Skonfiguruj role uprawnień każdej gildii Discord. Jeden token bota obsługuje wszystkie gildie; serwery łączą się z gildią z własnej karty Discord.",
+    "ariaLabel": "Gildie Discord",
+    "add": "Dodaj gildię",
+    "addTitle": "Dodaj gildię",
+    "editTitle": "Edytuj gildię",
+    "empty": "Nie skonfigurowano jeszcze żadnych gildii Discord.",
+    "on": "Wł.",
+    "off": "Wył.",
+    "loadRoles": "Wczytaj role",
+    "guildId": "ID gildii",
+    "guildIdHint": "Kliknij prawym ikonę serwera → Kopiuj ID serwera (wymaga trybu dewelopera)",
+    "guildIdRequired": "ID gildii jest wymagane",
+    "serverRequired": "Każdy obserwowany serwer musi być wybrany",
+    "roleCount": "{{count}} ról",
+    "addServer": "Dodaj serwer",
+    "server": "Serwer",
+    "serverHint": "Serwer gry obserwowany przez tę gildię",
+    "selectServer": "Wybierz serwer…",
+    "noServers": "Ta gildia nie obserwuje jeszcze żadnego serwera.",
+    "watchedServersHint": "Każdy obserwowany serwer publikuje swoje osadzenia statusu/ogłoszeń na kanałach poniżej.",
+    "announceChannel": "ID kanału ogłoszeń",
+    "announceChannelHint": "Kanał na ogłoszenia serwera (restarty, wydarzenia)",
+    "statusEnabled": "Trwałe osadzenie statusu",
+    "statusEnabledHint": "Utrzymuje aktualne osadzenie statusu na żywo w kanale",
+    "statusChannel": "ID kanału statusu",
+    "statusChannelHint": "Kanał, na którym publikowane jest osadzenie statusu",
+    "statusInterval": "Interwał statusu (sekundy)",
+    "statusIntervalHint": "Jak często osadzenie się odświeża. Minimum 30 sekund; domyślnie 60.",
+    "rolesHint": "Role Discord przyznające każdy poziom uprawnień w tej gildii. Wczytaj role po wpisaniu ID gildii.",
+    "rolesViewer": "Role podglądu",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Role ekonomii",
+    "rolesEconomyHint": "komendy rynku i ekonomii",
+    "rolesAdmin": "Role administratora",
+    "rolesAdminHint": "komendy administracyjne",
+    "saved": "Zapisano gildię",
+    "saveFailed": "Zapis nie powiódł się: {{message}}",
+    "loadFailed": "Nie udało się wczytać gildii: {{message}}",
+    "removed": "Usunięto gildię",
+    "removeFailed": "Usuwanie nie powiodło się: {{message}}",
+    "removeTitle": "Usuń gildię",
+    "removeConfirm": "Usunąć gildię {{guild}}? Bot przestanie ją obsługiwać wraz z jej obserwowanymi serwerami.",
+    "columns": {
+      "guildId": "ID gildii",
+      "servers": "Obserwowane serwery",
+      "roles": "Role"
+    },
+    "sections": {
+      "guild": "Gildia",
+      "roles": "Role uprawnień",
+      "watchedServers": "Obserwowane serwery"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Połącz ten serwer z jedną gildią Discord i ustaw jego kanały ogłoszeń i statusu. Role uprawnień tej gildii ustawia się w Ustawienia → Gildie.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Odłączyć ten serwer od jego gildii Discord? Jego kanały zostaną wyczyszczone; gildia i jej role pozostaną nienaruszone.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
       }
     }
   }

@@ -569,6 +569,11 @@ func iniDir(ctrl ControlPlane, exec Executor) (string, error) {
 			return dir, nil
 		}
 	}
+	// server_ini_dir is per-server (servers table) after the remodel; prefer the
+	// active server's value over the stale flag-global / cleared loadedConfig.
+	if d := activeServerCfg().ServerIniDir; d != "" {
+		return d, nil
+	}
 	if serverIniDir != "" {
 		return serverIniDir, nil
 	}

@@ -1305,7 +1305,8 @@
       "authDiscord": "Discord-Anmeldung (OAuth)",
       "authOwners": "Besitzer",
       "discordStatus": "Status-Embed",
-      "marketBot": "Markt-Bot"
+      "marketBot": "Markt-Bot",
+      "discordGuilds": "Discord-Gilden"
     },
     "ssh": {
       "hostPort": "Host : Port",
@@ -1320,7 +1321,8 @@
       "connection": "Verbindung",
       "control": "Steuerung",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Gilden"
     },
     "discord": {
       "hint": "Erstelle einen Bot unter discord.com/developers/applications, aktiviere den Bot, kopiere das Token und lade ihn mit dem Scope applications.commands in deinen Server ein.",
@@ -1350,7 +1352,8 @@
       "statusChannel": "Status-Kanal-ID",
       "statusChannelHint": "Rechtsklick auf den Kanal → Kanal-ID kopieren (erfordert Entwicklermodus).",
       "statusInterval": "Aktualisierungsintervall (Sekunden)",
-      "statusIntervalHint": "Wie oft das Embed aktualisiert wird. Minimum 30 Sekunden; Standard 60."
+      "statusIntervalHint": "Wie oft das Embed aktualisiert wird. Minimum 30 Sekunden; Standard 60.",
+      "perGuildMoved": "Die gildenspezifische Konfiguration — Berechtigungsrollen und die von jeder Gilde überwachten Server (samt Kanälen) — wird im Tab „Gilden“ verwaltet."
     },
     "auth": {
       "hint": "Anmeldung für Dashboard und API erzwingen. Empfohlen, wenn dune-admin von außerhalb deines LANs erreichbar ist.",
@@ -1619,7 +1622,8 @@
       "config": "Konfiguration",
       "factionScrip": "Fraktions-Scrip",
       "rewards": "Belohnungen",
-      "solari": "Solari"
+      "solari": "Solari",
+      "currencyXp": "Währung & XP"
     },
     "signals": {
       "level": "Charakterstufe",
@@ -1951,6 +1955,87 @@
         "title": "Discord-Bot verbinden",
         "body": "Benachrichtigungen senden und Rollen auf Berechtigungen abbilden. Optional.",
         "cta": "Discord verbinden"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Discord-Gilden",
+    "subtitle": "Konfiguriere die Berechtigungsrollen jeder Discord-Gilde. Ein Bot-Token bedient alle Gilden; Server verknüpfen sich mit einer Gilde über ihren eigenen Discord-Tab.",
+    "ariaLabel": "Discord-Gilden",
+    "add": "Gilde hinzufügen",
+    "addTitle": "Gilde hinzufügen",
+    "editTitle": "Gilde bearbeiten",
+    "empty": "Noch keine Discord-Gilden konfiguriert.",
+    "on": "An",
+    "off": "Aus",
+    "loadRoles": "Rollen laden",
+    "guildId": "Gilden-ID",
+    "guildIdHint": "Rechtsklick auf das Server-Symbol → Server-ID kopieren (Entwicklermodus erforderlich)",
+    "guildIdRequired": "Gilden-ID ist erforderlich",
+    "serverRequired": "Jeder überwachte Server muss ausgewählt sein",
+    "roleCount": "{{count}} Rollen",
+    "addServer": "Server hinzufügen",
+    "server": "Server",
+    "serverHint": "Der von dieser Gilde überwachte Spielserver",
+    "selectServer": "Server auswählen…",
+    "noServers": "Diese Gilde überwacht noch keine Server.",
+    "watchedServersHint": "Jeder überwachte Server postet seine Status-/Ankündigungs-Embeds in die unten angegebenen Kanäle.",
+    "announceChannel": "Ankündigungskanal-ID",
+    "announceChannelHint": "Kanal für Server-Ankündigungen (Neustarts, Events)",
+    "statusEnabled": "Persistentes Status-Embed",
+    "statusEnabledHint": "Hält ein Live-Status-Embed in einem Kanal aktuell",
+    "statusChannel": "Statuskanal-ID",
+    "statusChannelHint": "Kanal, in dem das Status-Embed gepostet wird",
+    "statusInterval": "Status-Intervall (Sekunden)",
+    "statusIntervalHint": "Wie oft das Embed aktualisiert wird. Mindestens 30 Sekunden; Standard 60.",
+    "rolesHint": "Discord-Rollen, die in dieser Gilde jede Berechtigungsstufe gewähren. Lade die Rollen nach Eingabe einer Gilden-ID.",
+    "rolesViewer": "Betrachter-Rollen",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Wirtschafts-Rollen",
+    "rolesEconomyHint": "Markt- & Wirtschaftsbefehle",
+    "rolesAdmin": "Admin-Rollen",
+    "rolesAdminHint": "Administrative Befehle",
+    "saved": "Gilde gespeichert",
+    "saveFailed": "Speichern fehlgeschlagen: {{message}}",
+    "loadFailed": "Gilden konnten nicht geladen werden: {{message}}",
+    "removed": "Gilde entfernt",
+    "removeFailed": "Entfernen fehlgeschlagen: {{message}}",
+    "removeTitle": "Gilde entfernen",
+    "removeConfirm": "Gilde {{guild}} entfernen? Der Bot bedient sie und ihre überwachten Server nicht mehr.",
+    "columns": {
+      "guildId": "Gilden-ID",
+      "servers": "Überwachte Server",
+      "roles": "Rollen"
+    },
+    "sections": {
+      "guild": "Gilde",
+      "roles": "Berechtigungsrollen",
+      "watchedServers": "Überwachte Server"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Verknüpfe diesen Server mit einer Discord-Gilde und lege seine Ankündigungs- und Status-Kanäle fest. Berechtigungsrollen für diese Gilde werden unter Einstellungen → Gilden festgelegt.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Verknüpfung dieses Servers mit seiner Discord-Gilde aufheben? Seine Kanäle werden gelöscht; die Gilde und ihre Rollen bleiben erhalten.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
       }
     }
   }

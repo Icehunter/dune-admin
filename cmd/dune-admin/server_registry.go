@@ -111,7 +111,7 @@ type ServerContext struct {
 	PodNS      string
 	Pod        string
 	SSH        *ssh.Client
-	StoreScope string // == ID; scopes every SQLite query for this server
+	StoreScope int // == servers.id; scopes every SQLite query for this server
 
 	// Per-server embedded market bot. Bot is nil unless the server's toggle is
 	// on AND it has a live DB. BotConfigured records that the toggle is on even
@@ -137,14 +137,29 @@ type serverRegistry struct {
 // runs (or connectAll updates it lazily).
 var globalRegistry = newServerRegistry(nil)
 
-// serverScope maps a numeric server id to the string key used for the registry,
-// the X-Dune-Server header, and per-feature server_id scoping. id 0 (legacy /
-// pre-import / no-DB fallback) maps to "default" so it matches legacy data.
+// defaultServerID is the integer id of the single server created from a flat
+// (single-server) config.yaml import and the fallback store scope before any
+// server is resolved. servers.id is AUTOINCREMENT starting at 1.
+const defaultServerID = 1
+
+// serverScope maps a numeric server id to the string key used for the registry
+// and the X-Dune-Server header. id 0 (legacy / pre-import / no-DB fallback) maps
+// to the default server id's string form.
 func serverScope(id int) string {
 	if id == 0 {
-		return "default"
+		return strconv.Itoa(defaultServerID)
 	}
 	return strconv.Itoa(id)
+}
+
+// storeScopeForID maps a server's numeric id to its SQLite store scope. A
+// pre-import / no-DB ServerContext (id 0) scopes to the default server id so it
+// matches the single seeded server.
+func storeScopeForID(id int) int {
+	if id == 0 {
+		return defaultServerID
+	}
+	return id
 }
 
 // controlOrDefault returns the control-plane name, treating blank as "local".

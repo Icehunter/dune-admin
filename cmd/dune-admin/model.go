@@ -24,6 +24,30 @@ type playerInfo struct {
 	DiscordAvatar string `json:"discord_avatar"`
 }
 
+// discordGuild holds the per-guild AUTHORIZATION config: the three
+// capability-tier role CSVs. A guild can hold many servers (see
+// discordServerLink), but each server links to exactly one guild. Auth is
+// guild-level; commands route by the channel they're invoked in. The same bot
+// token serves every guild.
+type discordGuild struct {
+	GuildID      string `json:"guild_id"`
+	RolesViewer  string `json:"roles_viewer"`
+	RolesEconomy string `json:"roles_economy"`
+	RolesAdmin   string `json:"roles_admin"`
+}
+
+// discordServerLink binds one game server to exactly one guild (server_id is the
+// primary key) and carries that server's own announce + status channels in that
+// guild. A guild can hold many servers; a server belongs to one guild.
+type discordServerLink struct {
+	ServerID              int    `json:"server_id"`
+	GuildID               string `json:"guild_id"`
+	AnnounceChannelID     string `json:"announce_channel_id"`
+	StatusChannelID       string `json:"status_channel_id"`
+	StatusEnabled         bool   `json:"status_enabled"`
+	StatusIntervalSeconds int    `json:"status_interval_seconds"`
+}
+
 // gmIdentity is the seeded "GM/Server" persona used as the sender for admin chat
 // (whisper, map announcement). HexID is the AMQP user_id (accounts."user") the
 // game resolves the visible sender name from; FuncomID is the chat id shown

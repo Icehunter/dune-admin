@@ -970,6 +970,44 @@ export type DiscordMember = {
   avatar?: string
 }
 
+// DiscordServerLink is one game server's Discord wiring: the single guild it is
+// linked to plus its own announce/status channels and status-embed tuning.
+// Mirrors the Go discordServerLink struct returned by GET /discord/servers.
+export type DiscordServerLink = {
+  server_id: number
+  guild_id: string
+  announce_channel_id: string
+  status_channel_id: string
+  status_enabled: boolean
+  status_interval_seconds: number
+}
+
+// DiscordGuild now carries only guild-level capability roles (three
+// comma-separated CSVs). Servers link to a guild from their own per-server
+// Discord tab; the link is no longer stored on the guild. Mirrors the Go
+// discordGuild struct returned by GET /discord/guilds. Auth is guild-level;
+// the same bot token serves every guild.
+export type DiscordGuild = {
+  guild_id: string
+  roles_viewer: string
+  roles_economy: string
+  roles_admin: string
+}
+
+// A guild the bot belongs to (GET /discord/available-guilds) — used to offer a
+// name-labelled guild dropdown instead of pasting raw snowflake ids.
+export type DiscordGuildOption = {
+  id: string
+  name: string
+}
+
+// A postable text/announcement channel in a guild (GET /discord/channels) — used
+// for the searchable announce/status channel pickers.
+export type DiscordChannelOption = {
+  id: string
+  name: string
+}
+
 export type PermissionsCapability = {
   id: string
   description: string
@@ -1363,9 +1401,40 @@ export const api = {
   },
 
   discord: {
-    roles: () => req<{ id: string, name: string }[]>('GET', '/discord/roles'),
+    // roles is per-guild: pass a guild id to list that guild's roles for its
+    // role pickers. Omitting it falls back to the bot's default guild.
+    roles: (guildId?: string) =>
+      req<{ id: string, name: string }[]>(
+        'GET',
+        guildId ? `/discord/roles?guild=${encodeURIComponent(guildId)}` : '/discord/roles',
+      ),
+    // availableGuilds lists the guilds the bot is a member of (id + name) so the
+    // UI can offer a guild dropdown. Requires a running bot or a configured token.
+    availableGuilds: () => req<DiscordGuildOption[]>('GET', '/discord/available-guilds'),
+    // channels lists a guild's postable channels for the announce/status pickers.
+    channels: (guildId?: string) =>
+      req<DiscordChannelOption[]>(
+        'GET',
+        guildId ? `/discord/channels?guild=${encodeURIComponent(guildId)}` : '/discord/channels',
+      ),
     membersSearch: (q: string) =>
-      req<DiscordMember[]>('GET', `/discord/members/search?q=${encodeURIComponent(q)}`),
+      req<DiscordMember[]>(`GET`, `/discord/members/search?q=${encodeURIComponent(q)}`),
+    // guilds carry capability roles only. Servers link to a guild from their
+    // own per-server Discord tab (discord.servers below).
+    guilds: {
+      list: () => req<DiscordGuild[]>('GET', '/discord/guilds'),
+      upsert: (g: DiscordGuild) => req<DiscordGuild>('POST', '/discord/guilds', g),
+      remove: (guildId: string) =>
+        req<{ deleted: boolean }>('DELETE', `/discord/guilds/${encodeURIComponent(guildId)}`),
+    },
+    // servers: each game server links to exactly one guild + its own channels.
+    servers: {
+      list: () => req<DiscordServerLink[]>('GET', '/discord/servers'),
+      set: (serverId: number, link: Omit<DiscordServerLink, 'server_id'>) =>
+        req<DiscordServerLink>('PUT', `/discord/servers/${serverId}`, link),
+      unlink: (serverId: number) =>
+        req<{ deleted: boolean }>('DELETE', `/discord/servers/${serverId}`),
+    },
   },
 
   update: {

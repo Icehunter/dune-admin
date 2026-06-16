@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"testing"
 )
 
@@ -9,7 +8,7 @@ import (
 // it survives a getServer/listServers round-trip via the typed columns,
 // including the DB-assigned id, *bool tri-state, plain bools, ints and secrets.
 func TestServerColumnsRoundTrip(t *testing.T) {
-	db := openSharedScopeDB(t)
+	db := openMemUnifiedStore(t)
 	s := newServersStore(db)
 
 	cfg := ServerConfig{
@@ -102,7 +101,7 @@ func assertServerEqual(t *testing.T, ctx string, got, want ServerConfig, id int)
 // TestServerColumns_PointerBoolNilStaysNil ensures an unset *bool round-trips as
 // nil (NULL column), distinct from an explicit false.
 func TestServerColumns_PointerBoolNilStaysNil(t *testing.T) {
-	db := openSharedScopeDB(t)
+	db := openMemUnifiedStore(t)
 	s := newServersStore(db)
 
 	id, err := s.insertServer(ServerConfig{Name: "NoBot", MarketBotEnabled: nil}, 0)
@@ -121,38 +120,7 @@ func TestServerColumns_PointerBoolNilStaysNil(t *testing.T) {
 	}
 }
 
-// TestMigrateServersColumns inserts a legacy row populated only via config_json,
-// runs the migration, and asserts the typed columns are backfilled and the
-// run-once marker is set.
-func TestMigrateServersColumns(t *testing.T) {
-	db := openSharedScopeDB(t)
-
-	legacy := ServerConfig{DBHost: "legacy.db", DBPass: "legacy-secret", Name: "S"}
-	blob, err := json.Marshal(legacy)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-	res, err := db.Exec(
-		`INSERT INTO servers (name, position, config_json, created_at, updated_at) VALUES (?,?,?,?,?)`,
-		"S", 0, string(blob), "", "")
-	if err != nil {
-		t.Fatalf("insert legacy row: %v", err)
-	}
-	id64, _ := res.LastInsertId()
-	id := int(id64)
-
-	if err := migrateServersColumns(db); err != nil {
-		t.Fatalf("migrateServersColumns: %v", err)
-	}
-
-	got, err := readServerColumns(db, id)
-	if err != nil {
-		t.Fatalf("readServerColumns: %v", err)
-	}
-	if got.DBHost != "legacy.db" || got.DBPass != "legacy-secret" {
-		t.Errorf("typed columns not backfilled from blob: %+v", got)
-	}
-	if m, _ := metaGet(db, "migrated:servers_columns"); m == "" {
-		t.Error("migrated:servers_columns marker not set")
-	}
-}
+// Note: the legacy servers config_json → typed-column migration
+// (migrateServersColumns / readServerColumns) was removed; servers are now
+// written to typed columns directly via the servers store (covered by
+// TestServerColumnsRoundTrip above).

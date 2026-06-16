@@ -15,11 +15,10 @@ import (
 
 func makeTestDiscordCfg() discordConfig {
 	return discordConfig{
-		GuildID:           "guild123",
-		RolesViewer:       []string{"viewer-role"},
-		RolesEconomy:      []string{"econ-role"},
-		RolesAdmin:        []string{"admin-role"},
-		AnnounceChannelID: "chan456",
+		GuildID:      "guild123",
+		RolesViewer:  []string{"viewer-role"},
+		RolesEconomy: []string{"econ-role"},
+		RolesAdmin:   []string{"admin-role"},
 	}
 }
 
@@ -196,10 +195,10 @@ func TestDispatchDiscordCommand(t *testing.T) {
 	lookupErr := errors.New("lookup failed")
 	giveErr := errors.New("give failed")
 
-	samplePlayers := []playerInfo{
-		{ID: 10, AccountID: 20, Name: "Narisa", OnlineStatus: "Online"},
+	sampleMatches := []playerInfo{
+		{ID: 10, AccountID: 20, ControllerID: 20, Name: "Narisa", OnlineStatus: "Online"},
 	}
-	multiPlayers := []playerInfo{
+	multiMatches := []playerInfo{
 		{ID: 10, AccountID: 20, Name: "Narisa"},
 		{ID: 11, AccountID: 21, Name: "Narisa"},
 	}
@@ -213,7 +212,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 			status: func(_ context.Context) (string, error) {
 				return statusResult, statusErr
 			},
-			lookupPlayer: func(_ context.Context, _ string) ([]playerInfo, error) {
+			lookup: func(_ context.Context, _ string) ([]playerInfo, error) {
 				return lookupResult, lookupErr
 			},
 			giveCurrency: func(_ context.Context, _ int64, _ int64) (int64, error) {
@@ -261,7 +260,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 				Command: "give-currency",
 				Options: map[string]any{"name": "Narisa", "amount": int64(100)},
 			},
-			deps:          makeDeps("", nil, samplePlayers, nil, 500, nil),
+			deps:          makeDeps("", nil, sampleMatches, nil, 500, nil),
 			wantEphemeral: true,
 			wantContains:  "not authorized",
 		},
@@ -307,7 +306,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 				Command: "lookup",
 				Options: map[string]any{"name": "Narisa"},
 			},
-			deps:         makeDeps("", nil, samplePlayers, nil, 0, nil),
+			deps:         makeDeps("", nil, sampleMatches, nil, 0, nil),
 			wantContains: "Narisa",
 		},
 		{
@@ -329,7 +328,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 				Command: "lookup",
 				Options: map[string]any{"name": "Narisa"},
 			},
-			deps:         makeDeps("", nil, multiPlayers, nil, 0, nil),
+			deps:         makeDeps("", nil, multiMatches, nil, 0, nil),
 			wantContains: "2 match",
 		},
 		{
@@ -351,7 +350,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 				Command: "lookup",
 				Options: map[string]any{},
 			},
-			deps:         makeDeps("", nil, samplePlayers, nil, 0, nil),
+			deps:         makeDeps("", nil, sampleMatches, nil, 0, nil),
 			wantContains: "name",
 		},
 		// ── /give-currency ────────────────────────────────────────────────────
@@ -363,7 +362,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 				Command: "give-currency",
 				Options: map[string]any{"name": "Narisa", "amount": int64(250)},
 			},
-			deps:         makeDeps("", nil, samplePlayers, nil, 750, nil),
+			deps:         makeDeps("", nil, sampleMatches, nil, 750, nil),
 			wantContains: "750",
 		},
 		{
@@ -385,7 +384,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 				Command: "give-currency",
 				Options: map[string]any{"name": "Narisa", "amount": int64(100)},
 			},
-			deps:         makeDeps("", nil, multiPlayers, nil, 0, nil),
+			deps:         makeDeps("", nil, multiMatches, nil, 0, nil),
 			wantContains: "ambiguous",
 		},
 		{
@@ -407,7 +406,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 				Command: "give-currency",
 				Options: map[string]any{"name": "Narisa", "amount": int64(100)},
 			},
-			deps:         makeDeps("", nil, samplePlayers, nil, 0, giveErr),
+			deps:         makeDeps("", nil, sampleMatches, nil, 0, giveErr),
 			wantContains: "error",
 		},
 		{
@@ -418,7 +417,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 				Command: "give-currency",
 				Options: map[string]any{"amount": int64(100)},
 			},
-			deps:         makeDeps("", nil, samplePlayers, nil, 0, nil),
+			deps:         makeDeps("", nil, sampleMatches, nil, 0, nil),
 			wantContains: "name",
 		},
 		{
@@ -429,7 +428,7 @@ func TestDispatchDiscordCommand(t *testing.T) {
 				Command: "give-currency",
 				Options: map[string]any{"name": "Narisa"},
 			},
-			deps:         makeDeps("", nil, samplePlayers, nil, 0, nil),
+			deps:         makeDeps("", nil, sampleMatches, nil, 0, nil),
 			wantContains: "amount",
 		},
 	}
@@ -482,7 +481,9 @@ func TestDispatchRegisterUnregister(t *testing.T) {
 			interaction: discordInteraction{GuildID: "guild123", Member: viewer, Command: "register",
 				Options: map[string]any{"name": "Narisa"}},
 			deps: discordDeps{
-				lookupPlayer: func(_ context.Context, _ string) ([]playerInfo, error) { return []playerInfo{player}, nil },
+				lookup: func(_ context.Context, _ string) ([]playerInfo, error) {
+					return []playerInfo{player}, nil
+				},
 				registerLink: func(_ context.Context, _ string, _ int64, _, _ string) error { return nil },
 			},
 			wantEphemeral: true,
@@ -493,7 +494,7 @@ func TestDispatchRegisterUnregister(t *testing.T) {
 			interaction: discordInteraction{GuildID: "guild123", Member: viewer, Command: "register",
 				Options: map[string]any{"name": "Ghost"}},
 			deps: discordDeps{
-				lookupPlayer: func(_ context.Context, _ string) ([]playerInfo, error) { return nil, nil },
+				lookup: func(_ context.Context, _ string) ([]playerInfo, error) { return nil, nil },
 			},
 			wantEphemeral: true,
 			wantContains:  "No character",
@@ -503,7 +504,7 @@ func TestDispatchRegisterUnregister(t *testing.T) {
 			interaction: discordInteraction{GuildID: "guild123", Member: viewer, Command: "register",
 				Options: map[string]any{"name": "Nar"}},
 			deps: discordDeps{
-				lookupPlayer: func(_ context.Context, _ string) ([]playerInfo, error) {
+				lookup: func(_ context.Context, _ string) ([]playerInfo, error) {
 					return []playerInfo{player, {ID: 100, Name: "Narco"}}, nil
 				},
 			},
@@ -523,7 +524,9 @@ func TestDispatchRegisterUnregister(t *testing.T) {
 			interaction: discordInteraction{GuildID: "guild123", Member: viewer, Command: "register",
 				Options: map[string]any{"name": "Narisa"}},
 			deps: discordDeps{
-				lookupPlayer: func(_ context.Context, _ string) ([]playerInfo, error) { return []playerInfo{player}, nil },
+				lookup: func(_ context.Context, _ string) ([]playerInfo, error) {
+					return []playerInfo{player}, nil
+				},
 				registerLink: func(_ context.Context, _ string, _ int64, _, _ string) error { return regErr },
 			},
 			wantEphemeral: true,
@@ -581,13 +584,18 @@ func TestDispatchSelfService(t *testing.T) {
 	inv := []itemInfo{{TemplateID: "SpiceFiber", Name: "Spice Fiber", StackSize: 10}}
 
 	notRegisteredDeps := discordDeps{
-		getLink: func(_ context.Context, _ string) (int64, string, error) { return 0, "", nil },
+		getLink: func(_ context.Context, _ string) (string, bool, error) { return "", false, nil },
 	}
 	registeredDeps := discordDeps{
-		getLink:        func(_ context.Context, _ string) (int64, string, error) { return 200, "Narisa", nil },
-		lookupPlayer:   func(_ context.Context, _ string) ([]playerInfo, error) { return []playerInfo{player}, nil },
+		getLink:        func(_ context.Context, _ string) (string, bool, error) { return "Narisa", true, nil },
+		lookup:         func(_ context.Context, _ string) ([]playerInfo, error) { return []playerInfo{player}, nil },
 		fetchCurrency:  func(_ context.Context, _ int64) ([]currencyRow, error) { return currency, nil },
 		fetchInventory: func(_ context.Context, _ int64) ([]itemInfo, error) { return inv, nil },
+	}
+	// Registered, but the character was deleted/transferred away (lookup empty).
+	deletedCharDeps := discordDeps{
+		getLink: func(_ context.Context, _ string) (string, bool, error) { return "Narisa", true, nil },
+		lookup:  func(_ context.Context, _ string) ([]playerInfo, error) { return nil, nil },
 	}
 
 	tests := []struct {
@@ -598,6 +606,7 @@ func TestDispatchSelfService(t *testing.T) {
 	}{
 		{"mystats: not registered", "mystats", notRegisteredDeps, "register"},
 		{"mystats: happy path", "mystats", registeredDeps, "Narisa"},
+		{"mystats: character deleted", "mystats", deletedCharDeps, "deleted"},
 		{"mybalance: not registered", "mybalance", notRegisteredDeps, "register"},
 		{"mybalance: happy path", "mybalance", registeredDeps, "5000"},
 		{"myinventory: not registered", "myinventory", notRegisteredDeps, "register"},

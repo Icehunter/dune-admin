@@ -313,7 +313,15 @@ func buildMux() *http.ServeMux {
 
 	// ── discord ───────────────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/discord/roles", capConfigRead, handleGetDiscordRoles)
+	handleAPI(mux, "GET /api/v1/discord/available-guilds", capConfigRead, handleGetDiscordAvailableGuilds)
+	handleAPI(mux, "GET /api/v1/discord/channels", capConfigRead, handleGetDiscordChannels)
 	handleAPI(mux, "GET /api/v1/discord/members/search", capConfigRead, handleSearchDiscordMembers)
+	handleAPI(mux, "GET /api/v1/discord/guilds", capConfigRead, handleListDiscordGuilds)
+	handleAPI(mux, "POST /api/v1/discord/guilds", capConfigWrite, handleUpsertDiscordGuild)
+	handleAPI(mux, "DELETE /api/v1/discord/guilds/{guildID}", capConfigWrite, handleDeleteDiscordGuild)
+	handleAPI(mux, "GET /api/v1/discord/servers", capConfigRead, handleListDiscordServers)
+	handleAPI(mux, "PUT /api/v1/discord/servers/{serverID}", capConfigWrite, handleUpsertDiscordServer)
+	handleAPI(mux, "DELETE /api/v1/discord/servers/{serverID}", capConfigWrite, handleDeleteDiscordServer)
 
 	// ── welcome package ───────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/welcome-package/config", capWelcomeRead, handleGetWelcomeConfig)
@@ -359,10 +367,12 @@ func buildMux() *http.ServeMux {
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 
 	// ── director reverse proxy (universal, opt-in) ──────────────────────────
-	if loadedConfig.DirectorURL != "" {
-		if target, err := url.Parse(loadedConfig.DirectorURL); err == nil {
+	// director_url is per-server (servers table) after the remodel; resolve from
+	// the active server, not the cleared global loadedConfig.
+	if directorURL := activeServerCfg().DirectorURL; directorURL != "" {
+		if target, err := url.Parse(directorURL); err == nil {
 			mux.HandleFunc("/director/", newDirectorProxy(target, dialThroughExecutor))
-			componentLog("server").Info().Str("director_url", loadedConfig.DirectorURL).Msg("proxying /director/")
+			componentLog("server").Info().Str("director_url", directorURL).Msg("proxying /director/")
 		}
 	}
 
@@ -533,7 +543,7 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 		"version":          AppVersion,
 		"commit":           GitCommit,
 		"build_time":       BuildTime,
-		"director_url":     loadedConfig.DirectorURL,
+		"director_url":     activeServerCfg().DirectorURL,
 		"listen_addr":      loadedConfig.ListenAddr,
 		"shutdown_pending": shutdownPending,
 		"shutdown_at":      shutdownAt,

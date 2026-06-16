@@ -342,10 +342,11 @@ func applyOneOutcome(ctx context.Context, deps eventDeps, store *eventStore, def
 			return
 		}
 	}
+	// An explicit per-event AnnounceChannelID is an override; otherwise pass an
+	// empty channel so deps.announce fans out to every guild mapped to this
+	// server (multi-guild). The legacy single global channel is now seeded into
+	// the default guild's announce_channel_id, so no fallback is needed here.
 	channelID := def.AnnounceChannelID
-	if channelID == "" {
-		channelID = loadedConfig.DiscordAnnounceChannelID
-	}
 	if announce && o.AnnounceText != "" {
 		if err := deps.announce(channelID, o.AnnounceText); err != nil {
 			componentLog("events").Warn().Int64("account_id", o.AccountID).Err(err).Msg("announce failed")
@@ -638,7 +639,7 @@ func applyEventEngine(cfg appConfig) {
 		if sc.DB == nil {
 			continue
 		}
-		deps := productionEventDeps(sc.DB)
+		deps := productionEventDeps(sc.DB, sc.StoreScope)
 		go reconcileAllEvents(context.Background(), deps, globalEventStore)
 		go runEventEngine(ctx, deps, globalEventStore)
 		go runEventRetryLoop(ctx, deps, globalEventStore)
@@ -673,9 +674,10 @@ func reconcileAllEvents(ctx context.Context, deps eventDeps, store *eventStore) 
 	}
 }
 
-// productionEventDeps builds the event deps from the given pool. Called from
-// applyEventEngine only; tests inject mocks directly.
-func productionEventDeps(pool *pgxpool.Pool) eventDeps {
+// productionEventDeps builds the event deps from the given pool, bound to the
+// owning server id so announces fan out to every guild mapped to that server.
+// Called from applyEventEngine only; tests inject mocks directly.
+func productionEventDeps(pool *pgxpool.Pool, serverID int) eventDeps {
 	return eventDeps{
 		fetchOnlinePlayers: func(ctx context.Context) ([]eventPlayer, error) {
 			if pool == nil {
@@ -720,10 +722,21 @@ func productionEventDeps(pool *pgxpool.Pool) eventDeps {
 			}
 			return cmdAwardXPCtx(ctx, pool, actorID, track, amount)
 		},
-		announce: func(channelID, message string) error {
-			return postDiscordAnnouncement(channelID, message)
-		},
+		announce:            makeEventAnnounceFn(serverID),
 		resolveGrantTargets: makeEventResolveGrantTargetsFn(pool),
+	}
+}
+
+// makeEventAnnounceFn returns the announce dep for a server: an explicit
+// per-event channel override posts directly; an empty channel fans out to every
+// guild mapped to serverID. Extracted to keep productionEventDeps within the
+// cognitive-complexity gate.
+func makeEventAnnounceFn(serverID int) func(channelID, message string) error {
+	return func(channelID, message string) error {
+		if channelID != "" {
+			return postDiscordAnnouncement(channelID, message)
+		}
+		return announceToServer(serverID, message)
 	}
 }
 

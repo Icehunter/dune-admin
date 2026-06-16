@@ -24,13 +24,14 @@ func TestSettingsStore_SaveStripsPerServerFields(t *testing.T) {
 		ListenAddr:      ":9090",
 		DiscordBotToken: "tok",
 		ScripCurrency:   42,
-		// Per-server / flat connection — must be stripped.
-		DBHost:            "10.0.0.1",
-		DBPass:            "secret",
-		Control:           "amp",
-		DefaultServer:     "3",
+		// DefaultServerName is an app-level display field — it must survive.
 		DefaultServerName: "Three",
-		Servers:           []ServerConfig{{ID: 1, Name: "One"}},
+		// Per-server / flat connection — must be stripped.
+		DBHost:        "10.0.0.1",
+		DBPass:        "secret",
+		Control:       "amp",
+		DefaultServer: "3",
+		Servers:       []ServerConfig{{ID: 1, Name: "One"}},
 	}
 	if err := s.saveSettings(cfg); err != nil {
 		t.Fatalf("saveSettings: %v", err)
@@ -40,15 +41,18 @@ func TestSettingsStore_SaveStripsPerServerFields(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("loadSettings: ok=%v err=%v", ok, err)
 	}
-	// Global fields preserved.
+	// Global fields preserved (DefaultServerName is app-level and survives).
 	if got.ListenAddr != ":9090" || got.DiscordBotToken != "tok" || got.ScripCurrency != 42 {
 		t.Errorf("global fields not preserved: %+v", got)
+	}
+	if got.DefaultServerName != "Three" {
+		t.Errorf("DefaultServerName = %q, want Three (app-level field must survive)", got.DefaultServerName)
 	}
 	// Per-server / flat fields stripped.
 	if got.DBHost != "" || got.DBPass != "" || got.Control != "" {
 		t.Errorf("flat connection fields not stripped: DBHost=%q DBPass=%q Control=%q", got.DBHost, got.DBPass, got.Control)
 	}
-	if len(got.Servers) != 0 || got.DefaultServer != "" || got.DefaultServerName != "" {
+	if len(got.Servers) != 0 || got.DefaultServer != "" {
 		t.Errorf("per-server fields not stripped: Servers=%d DefaultServer=%q", len(got.Servers), got.DefaultServer)
 	}
 }
@@ -69,13 +73,13 @@ func TestSettingsStore_SaveIsUpsert(t *testing.T) {
 	}
 
 	// Exactly one row must exist (CHECK id = 1). Settings now live in the typed
-	// settings_* tables; settings_misc is the canonical single row.
+	// app_config_* tables; app_config_misc is the canonical single row.
 	var n int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM settings_misc`).Scan(&n); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM app_config_misc`).Scan(&n); err != nil {
 		t.Fatalf("count: %v", err)
 	}
 	if n != 1 {
-		t.Errorf("settings_misc has %d rows, want 1", n)
+		t.Errorf("app_config_misc has %d rows, want 1", n)
 	}
 }
 

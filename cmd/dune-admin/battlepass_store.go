@@ -64,22 +64,28 @@ type battlepassTierCounts struct {
 	Granted  int `json:"granted"`
 }
 
+// battlepass_tiers is now per-server: each carries an integer server_id FK →
+// servers(id) ON DELETE CASCADE, and tier_key is unique within a server. Claims,
+// accounts, and the grant ledger are likewise server-scoped via the same FK.
 const battlepassStoreSchema = `
 CREATE TABLE IF NOT EXISTS battlepass_tiers (
 	id         INTEGER PRIMARY KEY AUTOINCREMENT,
-	tier_key   TEXT    NOT NULL UNIQUE,
+	server_id  INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+	tier_key   TEXT    NOT NULL,
 	category   TEXT    NOT NULL,
 	label      TEXT    NOT NULL,
 	signal     TEXT    NOT NULL,
 	signal_key TEXT    NOT NULL DEFAULT '',
 	threshold  INTEGER NOT NULL DEFAULT 0,
 	intel      INTEGER NOT NULL DEFAULT 0,
+	reward_items TEXT  NOT NULL DEFAULT '',
 	enabled    INTEGER NOT NULL DEFAULT 1,
 	created_at TEXT    NOT NULL,
-	updated_at TEXT    NOT NULL
+	updated_at TEXT    NOT NULL,
+	UNIQUE (server_id, tier_key)
 );
 CREATE TABLE IF NOT EXISTS battlepass_claims (
-	server_id  TEXT    NOT NULL DEFAULT 'default',
+	server_id  INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
 	tier_key   TEXT    NOT NULL,
 	account_id INTEGER NOT NULL,
 	status     TEXT    NOT NULL,
@@ -92,7 +98,7 @@ CREATE TABLE IF NOT EXISTS battlepass_claims (
 	PRIMARY KEY (server_id, tier_key, account_id)
 );
 CREATE TABLE IF NOT EXISTS battlepass_accounts (
-	server_id    TEXT    NOT NULL DEFAULT 'default',
+	server_id    INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
 	account_id   INTEGER NOT NULL,
 	baselined_at TEXT    NOT NULL,
 	PRIMARY KEY (server_id, account_id)
@@ -100,88 +106,30 @@ CREATE TABLE IF NOT EXISTS battlepass_accounts (
 
 type battlepassStore struct {
 	db       *sql.DB
-	serverID string
+	serverID int
 }
 
 func initBattlepassSchema(db *sql.DB) error {
 	if _, err := db.Exec(battlepassStoreSchema); err != nil {
 		return fmt.Errorf("init battlepass schema: %w", err)
 	}
-	// reward_items was added after first release; ignore the duplicate-column
-	// error so the migration is idempotent across restarts.
-	if _, err := db.Exec(`ALTER TABLE battlepass_tiers ADD COLUMN reward_items TEXT NOT NULL DEFAULT ''`); err != nil &&
-		!strings.Contains(err.Error(), "duplicate column") {
-		return fmt.Errorf("migrate battlepass reward_items: %w", err)
-	}
-	if err := addServerIDColumn(db, "battlepass_tiers"); err != nil {
-		return fmt.Errorf("migrate battlepass_tiers server_id: %w", err)
-	}
-	if err := rebuildTableWithServerID(db, "battlepass_claims", "battlepass_claims_new",
-		`CREATE TABLE battlepass_claims_new (
-			server_id  TEXT    NOT NULL DEFAULT 'default',
-			tier_key   TEXT    NOT NULL,
-			account_id INTEGER NOT NULL,
-			status     TEXT    NOT NULL,
-			intel      INTEGER NOT NULL DEFAULT 0,
-			earned_at  TEXT    NOT NULL DEFAULT '',
-			granted_at TEXT    NOT NULL DEFAULT '',
-			attempts   INTEGER NOT NULL DEFAULT 0,
-			last_error TEXT    NOT NULL DEFAULT '',
-			updated_at TEXT    NOT NULL,
-			PRIMARY KEY (server_id, tier_key, account_id)
-		)`,
-		[]string{"tier_key", "account_id", "status", "intel", "earned_at", "granted_at",
-			"attempts", "last_error", "updated_at"},
-	); err != nil {
-		return fmt.Errorf("migrate battlepass_claims server_id: %w", err)
-	}
-	if err := rebuildTableWithServerID(db, "battlepass_accounts", "battlepass_accounts_new",
-		`CREATE TABLE battlepass_accounts_new (
-			server_id    TEXT    NOT NULL DEFAULT 'default',
-			account_id   INTEGER NOT NULL,
-			baselined_at TEXT    NOT NULL,
-			PRIMARY KEY (server_id, account_id)
-		)`,
-		[]string{"account_id", "baselined_at"},
-	); err != nil {
-		return fmt.Errorf("migrate battlepass_accounts server_id: %w", err)
-	}
 	// Auto-grant deferred ledger (#197). CREATE TABLE IF NOT EXISTS is
 	// idempotent across restarts and shared-store reuse.
 	if _, err := db.Exec(battlepassGrantLedgerSchema); err != nil {
 		return fmt.Errorf("init battlepass grant ledger schema: %w", err)
 	}
-	if err := rebuildTableWithServerID(db, "battlepass_grant_ledger", "battlepass_grant_ledger_new",
-		`CREATE TABLE battlepass_grant_ledger_new (
-			server_id       TEXT    NOT NULL DEFAULT 'default',
-			tier_key        TEXT    NOT NULL,
-			account_id      INTEGER NOT NULL,
-			status          TEXT    NOT NULL DEFAULT 'pending',
-			attempts        INTEGER NOT NULL DEFAULT 0,
-			last_error      TEXT    NOT NULL DEFAULT '',
-			next_attempt_at TEXT    NOT NULL DEFAULT '',
-			updated_at      TEXT    NOT NULL,
-			PRIMARY KEY (server_id, tier_key, account_id)
-		)`,
-		[]string{"tier_key", "account_id", "status", "attempts", "last_error",
-			"next_attempt_at", "updated_at"},
-	); err != nil {
-		return fmt.Errorf("migrate battlepass_grant_ledger server_id: %w", err)
-	}
 	return nil
 }
 
 // newBattlepassStore wraps an existing (already-migrated) shared handle.
-func newBattlepassStore(db *sql.DB, serverID string) *battlepassStore {
+func newBattlepassStore(db *sql.DB, serverID int) *battlepassStore {
 	return &battlepassStore{db: db, serverID: serverID}
 }
 
 // withScope returns a view of the store bound to a different server_id, sharing
-// the same underlying handle. Claim/account/grant-ledger queries filter by
-// serverID, so each server sees only its own per-player rows even though the
-// same numeric account_id may exist on multiple servers. The tier catalog has
-// no server_id and is unaffected.
-func (s *battlepassStore) withScope(serverID string) *battlepassStore {
+// the same underlying handle. Every battlepass table is server-scoped, so each
+// server sees only its own catalog and per-player rows.
+func (s *battlepassStore) withScope(serverID int) *battlepassStore {
 	return &battlepassStore{db: s.db, serverID: serverID}
 }
 
@@ -198,7 +146,7 @@ func openBattlepassStore(path string) (*battlepassStore, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	return &battlepassStore{db: db, serverID: "default"}, nil
+	return &battlepassStore{db: db, serverID: defaultServerID}, nil
 }
 
 var errBattlepassDuplicateTierKey = errors.New("tier_key already exists")
@@ -217,7 +165,7 @@ func scanBattlepassTier(row interface{ Scan(...any) error }) (battlepassTier, er
 }
 
 func (s *battlepassStore) listTiers() ([]battlepassTier, error) {
-	rows, err := s.db.Query(`SELECT ` + battlepassTierColumns + ` FROM battlepass_tiers ORDER BY id`)
+	rows, err := s.db.Query(`SELECT `+battlepassTierColumns+` FROM battlepass_tiers WHERE server_id = ? ORDER BY id`, s.serverID)
 	if err != nil {
 		return nil, fmt.Errorf("list battlepass tiers: %w", err)
 	}
@@ -235,7 +183,7 @@ func (s *battlepassStore) listTiers() ([]battlepassTier, error) {
 }
 
 func (s *battlepassStore) getTier(id int64) (*battlepassTier, error) {
-	row := s.db.QueryRow(`SELECT `+battlepassTierColumns+` FROM battlepass_tiers WHERE id = ?`, id)
+	row := s.db.QueryRow(`SELECT `+battlepassTierColumns+` FROM battlepass_tiers WHERE server_id = ? AND id = ?`, s.serverID, id)
 	t, err := scanBattlepassTier(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errNotFound
@@ -249,7 +197,7 @@ func (s *battlepassStore) getTier(id int64) (*battlepassTier, error) {
 // getTierByKey returns the tier with the given tier_key. Used by the auto-grant
 // engine to resolve a tier's intel + item rewards from its claim.
 func (s *battlepassStore) getTierByKey(tierKey string) (*battlepassTier, error) {
-	row := s.db.QueryRow(`SELECT `+battlepassTierColumns+` FROM battlepass_tiers WHERE tier_key = ?`, tierKey)
+	row := s.db.QueryRow(`SELECT `+battlepassTierColumns+` FROM battlepass_tiers WHERE server_id = ? AND tier_key = ?`, s.serverID, tierKey)
 	t, err := scanBattlepassTier(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errNotFound
@@ -267,8 +215,8 @@ func (s *battlepassStore) updateTier(id int64, label string, intel int64, enable
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := s.db.Exec(
-		`UPDATE battlepass_tiers SET label = ?, intel = ?, enabled = ?, reward_items = ?, category = ?, signal = ?, signal_key = ?, threshold = ?, updated_at = ? WHERE id = ?`,
-		label, intel, enabledInt, rewardItems, category, string(signal), signalKey, threshold, now, id)
+		`UPDATE battlepass_tiers SET label = ?, intel = ?, enabled = ?, reward_items = ?, category = ?, signal = ?, signal_key = ?, threshold = ?, updated_at = ? WHERE server_id = ? AND id = ?`,
+		label, intel, enabledInt, rewardItems, category, string(signal), signalKey, threshold, now, s.serverID, id)
 	if err != nil {
 		return nil, fmt.Errorf("update battlepass tier %d: %w", id, err)
 	}
@@ -288,9 +236,9 @@ func (s *battlepassStore) createTier(t battlepassTier) (*battlepassTier, error) 
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := s.db.Exec(`
 		INSERT INTO battlepass_tiers
-			(tier_key, category, label, signal, signal_key, threshold, intel, reward_items, enabled, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		t.TierKey, t.Category, t.Label, string(t.Signal), t.SignalKey,
+			(server_id, tier_key, category, label, signal, signal_key, threshold, intel, reward_items, enabled, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.serverID, t.TierKey, t.Category, t.Label, string(t.Signal), t.SignalKey,
 		t.Threshold, t.Intel, t.RewardItems, enabledInt, now, now)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -325,9 +273,9 @@ func (s *battlepassStore) setTiersEnabled(ids []int64, enabled bool) error {
 	}
 	marks, args := battlepassIDPlaceholders(ids)
 	now := time.Now().UTC().Format(time.RFC3339)
-	args = append([]any{enabledInt, now}, args...)
+	args = append([]any{enabledInt, now, s.serverID}, args...)
 	if _, err := s.db.Exec(
-		`UPDATE battlepass_tiers SET enabled = ?, updated_at = ? WHERE id IN (`+marks+`)`,
+		`UPDATE battlepass_tiers SET enabled = ?, updated_at = ? WHERE server_id = ? AND id IN (`+marks+`)`,
 		args...); err != nil {
 		return fmt.Errorf("bulk set battlepass tiers enabled: %w", err)
 	}
@@ -341,7 +289,8 @@ func (s *battlepassStore) deleteTiers(ids []int64) error {
 		return nil
 	}
 	marks, args := battlepassIDPlaceholders(ids)
-	if _, err := s.db.Exec(`DELETE FROM battlepass_tiers WHERE id IN (`+marks+`)`, args...); err != nil {
+	args = append([]any{s.serverID}, args...)
+	if _, err := s.db.Exec(`DELETE FROM battlepass_tiers WHERE server_id = ? AND id IN (`+marks+`)`, args...); err != nil {
 		return fmt.Errorf("bulk delete battlepass tiers: %w", err)
 	}
 	return nil
@@ -356,9 +305,9 @@ func (s *battlepassStore) insertTiers(tiers []battlepassTier) error {
 		}
 		if _, err := s.db.Exec(`
 			INSERT INTO battlepass_tiers
-				(tier_key, category, label, signal, signal_key, threshold, intel, reward_items, enabled, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			t.TierKey, t.Category, t.Label, string(t.Signal), t.SignalKey,
+				(server_id, tier_key, category, label, signal, signal_key, threshold, intel, reward_items, enabled, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			s.serverID, t.TierKey, t.Category, t.Label, string(t.Signal), t.SignalKey,
 			t.Threshold, t.Intel, t.RewardItems, enabledInt, now, now); err != nil {
 			return fmt.Errorf("insert battlepass tier %q: %w", t.TierKey, err)
 		}
@@ -370,7 +319,7 @@ func (s *battlepassStore) insertTiers(tiers []battlepassTier) error {
 // Returns the number of tiers inserted (0 when already seeded).
 func (s *battlepassStore) seedTiersIfEmpty(tiers []battlepassTier) (int, error) {
 	var count int
-	if err := s.db.QueryRow(`SELECT COUNT(*) FROM battlepass_tiers`).Scan(&count); err != nil {
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM battlepass_tiers WHERE server_id = ?`, s.serverID).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count battlepass tiers: %w", err)
 	}
 	if count > 0 {
@@ -385,7 +334,7 @@ func (s *battlepassStore) seedTiersIfEmpty(tiers []battlepassTier) (int, error) 
 // reseedTiers replaces the tier catalog. Claims are keyed by tier_key and
 // are intentionally preserved.
 func (s *battlepassStore) reseedTiers(tiers []battlepassTier) error {
-	if _, err := s.db.Exec(`DELETE FROM battlepass_tiers`); err != nil {
+	if _, err := s.db.Exec(`DELETE FROM battlepass_tiers WHERE server_id = ?`, s.serverID); err != nil {
 		return fmt.Errorf("clear battlepass tiers: %w", err)
 	}
 	return s.insertTiers(tiers)

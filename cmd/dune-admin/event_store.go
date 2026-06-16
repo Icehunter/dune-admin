@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -71,13 +70,22 @@ const (
 	eventGrantRetryBackoff = deferredGrantRetryBackoff
 )
 
+// event_definitions and event_award_claims are per-server: each carries an
+// integer server_id FK → servers(id) ON DELETE CASCADE so deleting a server
+// purges its event catalog and claims.
 const eventsStoreSchema = `
 CREATE TABLE IF NOT EXISTS event_definitions (
 	id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+	server_id           INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
 	name                TEXT    NOT NULL,
 	type                TEXT    NOT NULL,
 	enabled             INTEGER NOT NULL DEFAULT 0,
 	version             INTEGER NOT NULL DEFAULT 1,
+	-- config_json / reward_json are intentionally opaque JSON documents: their
+	-- shape is owned by the frontend (e.g. reward.faction_scrip, per-type config
+	-- fields) and is richer than any backend struct, so decomposing them into
+	-- typed columns would silently drop fields. Kept as JSON, like battlepass
+	-- tier reward_items.
 	config_json         TEXT    NOT NULL DEFAULT '{}',
 	reward_json         TEXT    NOT NULL DEFAULT '',
 	announce_channel_id TEXT    NOT NULL DEFAULT '',
@@ -88,7 +96,7 @@ CREATE TABLE IF NOT EXISTS event_definitions (
 	updated_at          TEXT    NOT NULL
 );
 CREATE TABLE IF NOT EXISTS event_award_claims (
-	server_id       TEXT    NOT NULL DEFAULT 'default',
+	server_id       INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
 	event_id        INTEGER NOT NULL,
 	version         INTEGER NOT NULL,
 	account_id      INTEGER NOT NULL,
@@ -107,47 +115,26 @@ func initEventsSchema(db *sql.DB) error {
 	if _, err := db.Exec(eventsStoreSchema); err != nil {
 		return fmt.Errorf("init events schema: %w", err)
 	}
-	// Add schedule columns to existing databases that predate this migration.
-	for _, stmt := range []string{
-		"ALTER TABLE event_definitions ADD COLUMN poll_seconds   INTEGER NOT NULL DEFAULT 7",
-		"ALTER TABLE event_definitions ADD COLUMN jitter_seconds INTEGER NOT NULL DEFAULT 3",
-		"ALTER TABLE event_award_claims ADD COLUMN next_attempt_at TEXT NOT NULL DEFAULT ''",
+	// Self-heal: ensure the opaque payload columns exist even on a DB where an
+	// earlier (now-reverted) decomposition migration dropped them. CREATE TABLE
+	// IF NOT EXISTS above is a no-op on an existing table, so re-add via ALTER.
+	for _, alter := range []string{
+		`ALTER TABLE event_definitions ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}'`,
+		`ALTER TABLE event_definitions ADD COLUMN reward_json TEXT NOT NULL DEFAULT ''`,
 	} {
-		if _, err := db.Exec(stmt); err != nil && !strings.Contains(err.Error(), "duplicate column") {
-			return fmt.Errorf("migrate events tables: %w", err)
+		if _, err := db.Exec(alter); err != nil && !isDuplicateColumnErr(err) {
+			return fmt.Errorf("ensure event payload columns: %w", err)
 		}
-	}
-	if err := addServerIDColumn(db, "event_definitions"); err != nil {
-		return fmt.Errorf("migrate event_definitions server_id: %w", err)
-	}
-	if err := rebuildTableWithServerID(db, "event_award_claims", "event_award_claims_new",
-		`CREATE TABLE event_award_claims_new (
-			server_id       TEXT    NOT NULL DEFAULT 'default',
-			event_id        INTEGER NOT NULL,
-			version         INTEGER NOT NULL,
-			account_id      INTEGER NOT NULL,
-			status          TEXT    NOT NULL,
-			claimed_at      TEXT    NOT NULL DEFAULT '',
-			attempts        INTEGER NOT NULL DEFAULT 1,
-			last_error      TEXT    NOT NULL DEFAULT '',
-			next_attempt_at TEXT    NOT NULL DEFAULT '',
-			updated_at      TEXT    NOT NULL,
-			PRIMARY KEY (server_id, event_id, version, account_id)
-		)`,
-		[]string{"event_id", "version", "account_id", "status", "claimed_at", "attempts",
-			"last_error", "next_attempt_at", "updated_at"},
-	); err != nil {
-		return fmt.Errorf("migrate event_award_claims server_id: %w", err)
 	}
 	return nil
 }
 
 type eventStore struct {
 	db       *sql.DB
-	serverID string
+	serverID int
 }
 
-func newEventStore(db *sql.DB, serverID string) *eventStore {
+func newEventStore(db *sql.DB, serverID int) *eventStore {
 	return &eventStore{db: db, serverID: serverID}
 }
 
@@ -160,7 +147,7 @@ func openEventStore(path string) (*eventStore, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	return &eventStore{db: db, serverID: "default"}, nil
+	return &eventStore{db: db, serverID: defaultServerID}, nil
 }
 
 func (s *eventStore) list() ([]eventDefinition, error) {
@@ -168,7 +155,7 @@ func (s *eventStore) list() ([]eventDefinition, error) {
 		SELECT id, name, type, enabled, version, config_json, reward_json,
 		       announce_channel_id, announce_template, poll_seconds, jitter_seconds,
 		       created_at, updated_at
-		FROM event_definitions ORDER BY id`)
+		FROM event_definitions WHERE server_id = ? ORDER BY id`, s.serverID)
 	if err != nil {
 		return nil, fmt.Errorf("list events: %w", err)
 	}
@@ -196,7 +183,7 @@ func (s *eventStore) get(id int64) (*eventDefinition, error) {
 		SELECT id, name, type, enabled, version, config_json, reward_json,
 		       announce_channel_id, announce_template, poll_seconds, jitter_seconds,
 		       created_at, updated_at
-		FROM event_definitions WHERE id = ?`, id).
+		FROM event_definitions WHERE server_id = ? AND id = ?`, s.serverID, id).
 		Scan(&d.ID, &d.Name, &d.Type, &enabledInt, &d.Version,
 			&d.Config, &d.Reward, &d.AnnounceChannelID, &d.AnnounceTemplate,
 			&d.PollSeconds, &d.JitterSeconds, &d.CreatedAt, &d.UpdatedAt)
@@ -223,11 +210,11 @@ func (s *eventStore) create(d eventDefinition) (*eventDefinition, error) {
 	}
 	res, err := s.db.Exec(`
 		INSERT INTO event_definitions
-			(name, type, enabled, version, config_json, reward_json,
+			(server_id, name, type, enabled, version, config_json, reward_json,
 			 announce_channel_id, announce_template, poll_seconds, jitter_seconds,
 			 created_at, updated_at)
-		VALUES (?, ?, 0, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		d.Name, string(d.Type), d.Config, d.Reward,
+		VALUES (?, ?, ?, 0, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.serverID, d.Name, string(d.Type), d.Config, d.Reward,
 		d.AnnounceChannelID, d.AnnounceTemplate, d.PollSeconds, d.JitterSeconds, now, now)
 	if err != nil {
 		return nil, fmt.Errorf("create event: %w", err)
@@ -244,14 +231,18 @@ func (s *eventStore) update(d eventDefinition) (*eventDefinition, error) {
 	if d.JitterSeconds <= 0 {
 		d.JitterSeconds = 3
 	}
+	config := d.Config
+	if config == "" {
+		config = "{}"
+	}
 	res, err := s.db.Exec(`
 		UPDATE event_definitions
 		SET name = ?, type = ?, config_json = ?, reward_json = ?,
 		    announce_channel_id = ?, announce_template = ?,
 		    poll_seconds = ?, jitter_seconds = ?, updated_at = ?
-		WHERE id = ?`,
-		d.Name, string(d.Type), d.Config, d.Reward,
-		d.AnnounceChannelID, d.AnnounceTemplate, d.PollSeconds, d.JitterSeconds, now, d.ID)
+		WHERE server_id = ? AND id = ?`,
+		d.Name, string(d.Type), config, d.Reward,
+		d.AnnounceChannelID, d.AnnounceTemplate, d.PollSeconds, d.JitterSeconds, now, s.serverID, d.ID)
 	if err != nil {
 		return nil, fmt.Errorf("update event %d: %w", d.ID, err)
 	}
@@ -268,8 +259,8 @@ func (s *eventStore) setEnabled(id int64, enabled bool) error {
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := s.db.Exec(
-		`UPDATE event_definitions SET enabled = ?, updated_at = ? WHERE id = ?`,
-		enabledInt, now, id)
+		`UPDATE event_definitions SET enabled = ?, updated_at = ? WHERE server_id = ? AND id = ?`,
+		enabledInt, now, s.serverID, id)
 	if err != nil {
 		return fmt.Errorf("set event enabled %d: %w", id, err)
 	}
@@ -280,7 +271,7 @@ func (s *eventStore) setEnabled(id int64, enabled bool) error {
 }
 
 func (s *eventStore) delete(id int64) error {
-	res, err := s.db.Exec(`DELETE FROM event_definitions WHERE id = ?`, id)
+	res, err := s.db.Exec(`DELETE FROM event_definitions WHERE server_id = ? AND id = ?`, s.serverID, id)
 	if err != nil {
 		return fmt.Errorf("delete event %d: %w", id, err)
 	}

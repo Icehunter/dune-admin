@@ -26,7 +26,7 @@ func (p *probeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func TestServerSelectorMiddleware_KnownHeader(t *testing.T) {
 	t.Parallel()
 	reg := newServerRegistry(nil)
-	sc := &ServerContext{ID: "srv-a", Name: "A", StoreScope: "srv-a"}
+	sc := &ServerContext{ID: "srv-a", Name: "A", StoreScope: 1}
 	reg.Register(sc)
 
 	probe := &probeHandler{}
@@ -51,7 +51,7 @@ func TestServerSelectorMiddleware_KnownHeader(t *testing.T) {
 func TestServerSelectorMiddleware_UnknownHeader_Returns404(t *testing.T) {
 	t.Parallel()
 	reg := newServerRegistry(nil)
-	reg.Register(&ServerContext{ID: "srv-a", StoreScope: "srv-a"})
+	reg.Register(&ServerContext{ID: "srv-a", StoreScope: 1})
 
 	probe := &probeHandler{}
 	h := serverSelectorMiddleware(reg, probe)
@@ -72,8 +72,8 @@ func TestServerSelectorMiddleware_UnknownHeader_Returns404(t *testing.T) {
 func TestServerSelectorMiddleware_NoHeader_FallsBackToActive(t *testing.T) {
 	t.Parallel()
 	reg := newServerRegistry(nil)
-	scA := &ServerContext{ID: "srv-a", StoreScope: "srv-a"}
-	scB := &ServerContext{ID: "srv-b", StoreScope: "srv-b"}
+	scA := &ServerContext{ID: "srv-a", StoreScope: 1}
+	scB := &ServerContext{ID: "srv-b", StoreScope: 1}
 	reg.Register(scA) // first registered → active
 	reg.Register(scB)
 
@@ -124,7 +124,7 @@ func TestControlFromCtx_ReturnsControlFromStashedContext(t *testing.T) {
 	t.Parallel()
 	ctrl := &statusFakeControl{}
 	reg := newServerRegistry(nil)
-	sc := &ServerContext{ID: "srv-c", StoreScope: "srv-c", Control: ctrl}
+	sc := &ServerContext{ID: "srv-c", StoreScope: 1, Control: ctrl}
 	reg.Register(sc)
 
 	var gotCtrl ControlPlane
@@ -158,7 +158,7 @@ func TestExecutorFromCtx_ReturnsExecutorFromStashedContext(t *testing.T) {
 	t.Parallel()
 	exec := &localExecutor{}
 	reg := newServerRegistry(nil)
-	sc := &ServerContext{ID: "srv-e", StoreScope: "srv-e", Executor: exec}
+	sc := &ServerContext{ID: "srv-e", StoreScope: 1, Executor: exec}
 	reg.Register(sc)
 
 	var gotExec Executor
@@ -191,7 +191,7 @@ func TestExecutorFromCtx_NoCtx_FallsBackToGlobal(t *testing.T) {
 func TestDBFromCtx_ReturnsPoolFromStashedContext(t *testing.T) {
 	t.Parallel()
 	reg := newServerRegistry(nil)
-	sc := &ServerContext{ID: "srv-a", StoreScope: "srv-a", DB: nil} // nil pool is valid
+	sc := &ServerContext{ID: "srv-a", StoreScope: 1, DB: nil} // nil pool is valid
 	reg.Register(sc)
 
 	var gotPool *pgxpool.Pool
@@ -214,10 +214,10 @@ func TestDBFromCtx_ReturnsPoolFromStashedContext(t *testing.T) {
 func TestStoreScopeFromCtx_ReturnsServerStoreScope(t *testing.T) {
 	t.Parallel()
 	reg := newServerRegistry(nil)
-	sc := &ServerContext{ID: "srv-x", StoreScope: "srv-x"}
+	sc := &ServerContext{ID: "srv-x", StoreScope: 7}
 	reg.Register(sc)
 
-	var gotScope string
+	var gotScope int
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotScope = storeScopeFromCtx(r)
 		w.WriteHeader(http.StatusOK)
@@ -228,18 +228,19 @@ func TestStoreScopeFromCtx_ReturnsServerStoreScope(t *testing.T) {
 	req.Header.Set("X-Dune-Server", "srv-x")
 	h.ServeHTTP(httptest.NewRecorder(), req)
 
-	if gotScope != "srv-x" {
-		t.Errorf("storeScopeFromCtx = %q, want %q", gotScope, "srv-x")
+	if gotScope != 7 {
+		t.Errorf("storeScopeFromCtx = %d, want 7", gotScope)
 	}
 }
 
 func TestStoreScopeFromCtx_NoCtx_ReturnsDefault(t *testing.T) {
 	t.Parallel()
-	// Call accessor on a bare request (no middleware stash) — must return "default"
-	// so legacy handlers that call storeScopeFromCtx without the middleware are safe.
+	// Call accessor on a bare request (no middleware stash) — must return the
+	// default server id so legacy handlers that call storeScopeFromCtx without the
+	// middleware are safe.
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	if got := storeScopeFromCtx(req); got != "default" {
-		t.Errorf("storeScopeFromCtx with no stash = %q, want %q", got, "default")
+	if got := storeScopeFromCtx(req); got != defaultServerID {
+		t.Errorf("storeScopeFromCtx with no stash = %d, want %d", got, defaultServerID)
 	}
 }
 
@@ -250,7 +251,7 @@ func TestHandleListServers_SingleServer(t *testing.T) {
 	t.Cleanup(func() { globalRegistry = origReg })
 
 	globalRegistry = newServerRegistry(nil)
-	globalRegistry.Register(&ServerContext{ID: "default", Name: "Default", StoreScope: "default"})
+	globalRegistry.Register(&ServerContext{ID: "default", Name: "Default", StoreScope: 1})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/servers", nil)
 	rr := httptest.NewRecorder()
@@ -270,8 +271,8 @@ func TestHandleListServers_MultipleServers(t *testing.T) {
 	t.Cleanup(func() { globalRegistry = origReg })
 
 	globalRegistry = newServerRegistry(nil)
-	globalRegistry.Register(&ServerContext{ID: "alpha", Name: "Alpha", StoreScope: "alpha"})
-	globalRegistry.Register(&ServerContext{ID: "beta", Name: "Beta", StoreScope: "beta"})
+	globalRegistry.Register(&ServerContext{ID: "alpha", Name: "Alpha", StoreScope: 1})
+	globalRegistry.Register(&ServerContext{ID: "beta", Name: "Beta", StoreScope: 1})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/servers", nil)
 	rr := httptest.NewRecorder()
@@ -289,8 +290,8 @@ func TestHandleSetActiveServer_Valid(t *testing.T) {
 	t.Cleanup(func() { globalRegistry = origReg })
 
 	globalRegistry = newServerRegistry(nil)
-	globalRegistry.Register(&ServerContext{ID: "1", Name: "Alpha", StoreScope: "1"})
-	globalRegistry.Register(&ServerContext{ID: "2", Name: "Beta", StoreScope: "2"})
+	globalRegistry.Register(&ServerContext{ID: "1", Name: "Alpha", StoreScope: 1})
+	globalRegistry.Register(&ServerContext{ID: "2", Name: "Beta", StoreScope: 1})
 
 	body := `{"id":2}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/servers/active",
@@ -312,7 +313,7 @@ func TestHandleSetActiveServer_UnknownID_Returns404(t *testing.T) {
 	t.Cleanup(func() { globalRegistry = origReg })
 
 	globalRegistry = newServerRegistry(nil)
-	globalRegistry.Register(&ServerContext{ID: "1", Name: "Alpha", StoreScope: "1"})
+	globalRegistry.Register(&ServerContext{ID: "1", Name: "Alpha", StoreScope: 1})
 
 	body := `{"id":999}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/servers/active",

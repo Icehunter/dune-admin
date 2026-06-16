@@ -1326,7 +1326,8 @@
       "authDiscord": "Connexion Discord (OAuth)",
       "authOwners": "Propriétaires",
       "discordStatus": "Embed de statut",
-      "marketBot": "Bot de marché"
+      "marketBot": "Bot de marché",
+      "discordGuilds": "Guildes Discord"
     },
     "ssh": {
       "hostPort": "Hôte : port",
@@ -1341,7 +1342,8 @@
       "connection": "Connexion",
       "control": "Contrôle",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Guildes"
     },
     "discord": {
       "hint": "Créez un bot sur discord.com/developers/applications, activez-le, copiez le token et invitez-le sur votre serveur avec le scope applications.commands.",
@@ -1371,7 +1373,8 @@
       "statusChannel": "ID du salon de statut",
       "statusChannelHint": "Clic droit sur le salon → Copier l’identifiant du salon (nécessite le Mode développeur).",
       "statusInterval": "Intervalle de mise à jour (secondes)",
-      "statusIntervalHint": "Fréquence de rafraîchissement de l'embed. Minimum 30 secondes ; 60 par défaut."
+      "statusIntervalHint": "Fréquence de rafraîchissement de l'embed. Minimum 30 secondes ; 60 par défaut.",
+      "perGuildMoved": "La configuration par guilde — rôles de capacité et serveurs surveillés par chaque guilde (avec leurs salons) — se gère dans l’onglet Guildes."
     },
     "auth": {
       "hint": "Exiger une connexion pour le tableau de bord et l'API. Recommandé dès que dune-admin est accessible hors de votre LAN.",
@@ -1642,7 +1645,8 @@
       "config": "Configuration",
       "factionScrip": "Bons de faction",
       "rewards": "Récompenses",
-      "solari": "Solari"
+      "solari": "Solari",
+      "currencyXp": "Monnaie et XP"
     },
     "signals": {
       "level": "Niveau du personnage",
@@ -1974,6 +1978,87 @@
         "title": "Connecter un bot Discord",
         "body": "Envoyez des notifications et mappez les rôles aux permissions. Optionnel.",
         "cta": "Connecter Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Guildes Discord",
+    "subtitle": "Configurez les rôles de capacité de chaque guilde Discord. Un seul jeton de bot sert toutes les guildes ; les serveurs se lient à une guilde depuis leur propre onglet Discord.",
+    "ariaLabel": "Guildes Discord",
+    "add": "Ajouter une guilde",
+    "addTitle": "Ajouter une guilde",
+    "editTitle": "Modifier la guilde",
+    "empty": "Aucune guilde Discord configurée pour l’instant.",
+    "on": "Activé",
+    "off": "Désactivé",
+    "loadRoles": "Charger les rôles",
+    "guildId": "ID de guilde",
+    "guildIdHint": "Clic droit sur l’icône du serveur → Copier l’ID du serveur (Mode développeur requis)",
+    "guildIdRequired": "L’ID de guilde est requis",
+    "serverRequired": "Chaque serveur surveillé doit être sélectionné",
+    "roleCount": "{{count}} rôles",
+    "addServer": "Ajouter un serveur",
+    "server": "Serveur",
+    "serverHint": "Le serveur de jeu surveillé par cette guilde",
+    "selectServer": "Sélectionnez un serveur…",
+    "noServers": "Cette guilde ne surveille encore aucun serveur.",
+    "watchedServersHint": "Chaque serveur surveillé publie ses embeds de statut/annonce dans les salons ci-dessous.",
+    "announceChannel": "ID du salon d’annonces",
+    "announceChannelHint": "Salon pour les annonces du serveur (redémarrages, événements)",
+    "statusEnabled": "Embed de statut persistant",
+    "statusEnabledHint": "Maintient à jour un embed de statut en direct dans un salon",
+    "statusChannel": "ID du salon de statut",
+    "statusChannelHint": "Salon où l’embed de statut est publié",
+    "statusInterval": "Intervalle de statut (secondes)",
+    "statusIntervalHint": "Fréquence d’actualisation de l’embed. Minimum 30 secondes ; 60 par défaut.",
+    "rolesHint": "Rôles Discord accordant chaque niveau de capacité dans cette guilde. Chargez les rôles après avoir saisi un ID de guilde.",
+    "rolesViewer": "Rôles observateur",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Rôles économie",
+    "rolesEconomyHint": "commandes de marché et d’économie",
+    "rolesAdmin": "Rôles admin",
+    "rolesAdminHint": "commandes administratives",
+    "saved": "Guilde enregistrée",
+    "saveFailed": "Échec de l’enregistrement : {{message}}",
+    "loadFailed": "Échec du chargement des guildes : {{message}}",
+    "removed": "Guilde supprimée",
+    "removeFailed": "Échec de la suppression : {{message}}",
+    "removeTitle": "Supprimer la guilde",
+    "removeConfirm": "Supprimer la guilde {{guild}} ? Le bot cessera de la servir, elle et ses serveurs surveillés.",
+    "columns": {
+      "guildId": "ID de guilde",
+      "servers": "Serveurs surveillés",
+      "roles": "Rôles"
+    },
+    "sections": {
+      "guild": "Guilde",
+      "roles": "Rôles de capacité",
+      "watchedServers": "Serveurs surveillés"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Liez ce serveur à une guilde Discord et définissez ses canaux d’annonce et de statut. Les rôles de capacité de cette guilde se configurent dans Paramètres → Guildes.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Dissocier ce serveur de sa guilde Discord ? Ses canaux sont effacés ; la guilde et ses rôles restent intacts.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
       }
     }
   }

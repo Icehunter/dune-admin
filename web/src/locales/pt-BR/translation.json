@@ -1326,7 +1326,8 @@
       "authDiscord": "Login com Discord (OAuth)",
       "authOwners": "Proprietários",
       "discordStatus": "Embed de status",
-      "marketBot": "Bot de mercado"
+      "marketBot": "Bot de mercado",
+      "discordGuilds": "Guildas do Discord"
     },
     "ssh": {
       "hostPort": "Host : porta",
@@ -1341,7 +1342,8 @@
       "connection": "Conexão",
       "control": "Controle",
       "discord": "Discord",
-      "auth": "Auth"
+      "auth": "Auth",
+      "guilds": "Guildas"
     },
     "discord": {
       "hint": "Crie um bot em discord.com/developers/applications, ative-o, copie o token e convide-o para seu servidor com o escopo applications.commands.",
@@ -1371,7 +1373,8 @@
       "statusChannel": "ID do canal de status",
       "statusChannelHint": "Clique com o botão direito no canal → Copiar ID do canal (requer o Modo desenvolvedor).",
       "statusInterval": "Intervalo de atualização (segundos)",
-      "statusIntervalHint": "Com que frequência o embed é atualizado. Mínimo de 30 segundos; padrão de 60."
+      "statusIntervalHint": "Com que frequência o embed é atualizado. Mínimo de 30 segundos; padrão de 60.",
+      "perGuildMoved": "A configuração por guilda — funções de permissão e os servidores que cada guilda monitora (com seus canais) — é gerenciada na aba Guildas."
     },
     "auth": {
       "hint": "Exigir login para o painel e a API. Recomendado sempre que o dune-admin estiver acessível fora da sua LAN.",
@@ -1642,7 +1645,8 @@
       "config": "Configuração",
       "factionScrip": "Cédula de facção",
       "rewards": "Recompensas",
-      "solari": "Solari"
+      "solari": "Solari",
+      "currencyXp": "Moeda e XP"
     },
     "signals": {
       "level": "Nível do personagem",
@@ -1974,6 +1978,87 @@
         "title": "Conectar um bot do Discord",
         "body": "Envie notificações e mapeie cargos para permissões. Opcional.",
         "cta": "Conectar Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Guildas do Discord",
+    "subtitle": "Configure as funções de permissão de cada guilda do Discord. Um único token de bot atende todas as guildas; os servidores se vinculam a uma guilda pela sua própria aba do Discord.",
+    "ariaLabel": "Guildas do Discord",
+    "add": "Adicionar guilda",
+    "addTitle": "Adicionar guilda",
+    "editTitle": "Editar guilda",
+    "empty": "Nenhuma guilda do Discord configurada ainda.",
+    "on": "Ligado",
+    "off": "Desligado",
+    "loadRoles": "Carregar funções",
+    "guildId": "ID da guilda",
+    "guildIdHint": "Clique com o botão direito no ícone do servidor → Copiar ID do servidor (requer Modo desenvolvedor)",
+    "guildIdRequired": "O ID da guilda é obrigatório",
+    "serverRequired": "Cada servidor monitorado deve ser selecionado",
+    "roleCount": "{{count}} funções",
+    "addServer": "Adicionar servidor",
+    "server": "Servidor",
+    "serverHint": "O servidor de jogo monitorado por esta guilda",
+    "selectServer": "Selecione um servidor…",
+    "noServers": "Esta guilda ainda não monitora nenhum servidor.",
+    "watchedServersHint": "Cada servidor monitorado publica seus embeds de status/anúncio nos canais abaixo.",
+    "announceChannel": "ID do canal de anúncios",
+    "announceChannelHint": "Canal para anúncios do servidor (reinícios, eventos)",
+    "statusEnabled": "Embed de status persistente",
+    "statusEnabledHint": "Mantém um embed de status ao vivo atualizado em um canal",
+    "statusChannel": "ID do canal de status",
+    "statusChannelHint": "Canal onde o embed de status é publicado",
+    "statusInterval": "Intervalo de status (segundos)",
+    "statusIntervalHint": "Com que frequência o embed é atualizado. Mínimo de 30 segundos; padrão 60.",
+    "rolesHint": "Funções do Discord que concedem cada nível de permissão nesta guilda. Carregue as funções após inserir um ID de guilda.",
+    "rolesViewer": "Funções de visualizador",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "Funções de economia",
+    "rolesEconomyHint": "comandos de mercado e economia",
+    "rolesAdmin": "Funções de administrador",
+    "rolesAdminHint": "comandos administrativos",
+    "saved": "Guilda salva",
+    "saveFailed": "Falha ao salvar: {{message}}",
+    "loadFailed": "Falha ao carregar guildas: {{message}}",
+    "removed": "Guilda removida",
+    "removeFailed": "Falha ao remover: {{message}}",
+    "removeTitle": "Remover guilda",
+    "removeConfirm": "Remover a guilda {{guild}}? O bot deixará de atendê-la e a seus servidores monitorados.",
+    "columns": {
+      "guildId": "ID da guilda",
+      "servers": "Servidores monitorados",
+      "roles": "Funções"
+    },
+    "sections": {
+      "guild": "Guilda",
+      "roles": "Funções de permissão",
+      "watchedServers": "Servidores monitorados"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "Vincule este servidor a uma guilda do Discord e defina seus canais de anúncio e status. As funções de permissão dessa guilda são definidas em Configurações → Guildas.",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "Desvincular este servidor da sua guilda do Discord? Seus canais são limpos; a guilda e suas funções permanecem intactas.",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
       }
     }
   }

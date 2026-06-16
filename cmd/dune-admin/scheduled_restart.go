@@ -2,12 +2,9 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -37,11 +34,9 @@ const (
 	defaultWarnMinutes   = 10
 )
 
-var (
-	restartMu      sync.RWMutex
-	restartCfg     = scheduledRestartConfig{WarnMinutes: defaultWarnMinutes}
-	restartCfgPath string // overridable in tests
-)
+// restartCfgPath is the legacy scheduled-restarts.json path (overridable in
+// tests). It is now read only by the one-time file→DB migration.
+var restartCfgPath string
 
 func scheduledRestartPath() string {
 	if restartCfgPath != "" {
@@ -50,58 +45,45 @@ func scheduledRestartPath() string {
 	return filepath.Join(configDir(), "scheduled-restarts.json")
 }
 
-func loadScheduledRestartConfig() {
-	data, err := os.ReadFile(scheduledRestartPath())
+// getScheduledRestartConfig loads the restart schedule for serverID from the DB.
+// A missing row (or no store) yields the disabled default with the default warn
+// lead so the UI / scheduler see a sensible value.
+func getScheduledRestartConfig(serverID int) scheduledRestartConfig {
+	def := scheduledRestartConfig{WarnMinutes: defaultWarnMinutes}
+	if globalStore == nil {
+		return def
+	}
+	cfg, ok, err := loadRestartSchedule(globalStore, serverID)
 	if err != nil {
-		return // no file yet → defaults (disabled)
+		componentLog("scheduled_restart").Error().Err(err).Int("server", serverID).Msg("load schedule failed")
+		return def
 	}
-	var c scheduledRestartConfig
-	if err := json.Unmarshal(data, &c); err != nil {
-		componentLog("scheduled_restart").Error().Err(err).Msg("config parse failed")
-		return
+	if !ok {
+		return def
 	}
+	if cfg.WarnMinutes <= 0 {
+		cfg.WarnMinutes = defaultWarnMinutes
+	}
+	return cfg
+}
+
+func saveScheduledRestartConfig(serverID int, c scheduledRestartConfig) error {
 	if c.WarnMinutes <= 0 {
 		c.WarnMinutes = defaultWarnMinutes
 	}
-	restartMu.Lock()
-	restartCfg = c
-	restartMu.Unlock()
-}
-
-func getScheduledRestartConfig() scheduledRestartConfig {
-	restartMu.RLock()
-	defer restartMu.RUnlock()
-	return restartCfg
-}
-
-// persistRestartConfigLocked writes the in-memory config to disk. Caller holds restartMu.
-func persistRestartConfigLocked() error {
-	data, err := json.MarshalIndent(restartCfg, "", "  ")
-	if err != nil {
-		return err
+	if globalStore == nil {
+		return errStoreUnavailable
 	}
-	if err := os.MkdirAll(configDir(), 0700); err != nil {
-		return err
-	}
-	return os.WriteFile(scheduledRestartPath(), data, 0600)
+	return saveRestartSchedule(globalStore, serverID, c)
 }
 
-func saveScheduledRestartConfig(c scheduledRestartConfig) error {
-	if c.WarnMinutes <= 0 {
-		c.WarnMinutes = defaultWarnMinutes
-	}
-	restartMu.Lock()
-	defer restartMu.Unlock()
-	restartCfg = c
-	return persistRestartConfigLocked()
-}
-
-func setRestartLastFired(ts int64) {
-	restartMu.Lock()
-	defer restartMu.Unlock()
-	restartCfg.LastFired = ts
-	if err := persistRestartConfigLocked(); err != nil {
-		componentLog("scheduled_restart").Error().Err(err).Msg("persist last_fired failed")
+// setRestartLastFired persists the watermark for serverID, preserving the rest
+// of that server's schedule.
+func setRestartLastFired(serverID int, ts int64) {
+	cur := getScheduledRestartConfig(serverID)
+	cur.LastFired = ts
+	if err := saveScheduledRestartConfig(serverID, cur); err != nil {
+		componentLog("scheduled_restart").Error().Err(err).Int("server", serverID).Msg("persist last_fired failed")
 	}
 }
 
@@ -236,40 +218,48 @@ func restartDecision(now time.Time, cfg scheduledRestartConfig, loc *time.Locati
 func runRestartScheduler(ctx context.Context) {
 	t := time.NewTicker(restartSchedulerTick)
 	defer t.Stop()
-	var warnedFor time.Time
+	// warnedFor tracks the last-warned target per server (keyed by StoreScope) so
+	// we don't re-broadcast the same upcoming restart every tick.
+	warnedFor := map[int]time.Time{}
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			warnedFor = restartSchedulerTickOnce(ctx, time.Now(), warnedFor)
+			restartSchedulerTickOnce(ctx, now(), warnedFor)
 		}
 	}
 }
 
-func restartSchedulerTickOnce(ctx context.Context, now, warnedFor time.Time) time.Time {
-	cfg := getScheduledRestartConfig()
-	act, target := restartDecision(now, cfg, restartLocation(cfg.Timezone), warnedFor)
-	switch act {
-	case restartFire:
-		fireScheduledRestart(ctx, target)
-	case restartWarn:
-		broadcastRestartWarning(cfg, target, now)
-		return target
+// restartSchedulerTickOnce evaluates every registered server's restart schedule,
+// firing or warning per server. warnedFor is updated in place.
+func restartSchedulerTickOnce(ctx context.Context, at time.Time, warnedFor map[int]time.Time) {
+	for _, sc := range globalRegistry.All() {
+		if sc == nil {
+			continue
+		}
+		cfg := getScheduledRestartConfig(sc.StoreScope)
+		act, target := restartDecision(at, cfg, restartLocation(cfg.Timezone), warnedFor[sc.StoreScope])
+		switch act {
+		case restartFire:
+			fireScheduledRestart(ctx, sc, target)
+		case restartWarn:
+			broadcastRestartWarning(cfg, target, at)
+			warnedFor[sc.StoreScope] = target
+		}
 	}
-	return warnedFor
 }
 
-func fireScheduledRestart(ctx context.Context, at time.Time) {
+func fireScheduledRestart(ctx context.Context, sc *ServerContext, at time.Time) {
 	// Watermark first so a failed/looping restart can't re-fire the same occurrence.
-	setRestartLastFired(at.Unix())
-	componentLog("scheduled_restart").Info().Str("scheduled_for", at.Format(time.RFC3339)).Msg("firing restart")
-	if globalControl == nil || globalExecutor == nil {
-		componentLog("scheduled_restart").Warn().Msg("control plane not connected; restart skipped")
+	setRestartLastFired(sc.StoreScope, at.Unix())
+	componentLog("scheduled_restart").Info().Str("server", sc.ID).Str("scheduled_for", at.Format(time.RFC3339)).Msg("firing restart")
+	if sc.Control == nil || sc.Executor == nil {
+		componentLog("scheduled_restart").Warn().Str("server", sc.ID).Msg("control plane not connected; restart skipped")
 		return
 	}
-	if _, err := globalControl.ExecCommand(ctx, globalExecutor, "restart"); err != nil {
-		componentLog("scheduled_restart").Error().Err(err).Msg("restart failed")
+	if _, err := sc.Control.ExecCommand(ctx, sc.Executor, "restart"); err != nil {
+		componentLog("scheduled_restart").Error().Err(err).Str("server", sc.ID).Msg("restart failed")
 	}
 }
 

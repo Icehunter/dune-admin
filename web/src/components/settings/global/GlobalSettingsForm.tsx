@@ -8,6 +8,7 @@ import { AuthContext } from '../../../auth/context'
 import { EMPTY, mergeConfig, pickGlobal } from '../config'
 import { AuthPanel } from './AuthPanel'
 import { DiscordPanel } from './DiscordPanel'
+import { GuildsPanel } from './GuildsPanel'
 import { AdminAdvancedPanel } from './AdminAdvancedPanel'
 import type { DiscordRole } from '../../types'
 
@@ -62,7 +63,7 @@ export const GlobalSettingsForm: React.FC<GlobalSettingsFormProps> = ({ saveRef,
   }, [loadDiscordRoles])
 
   React.useEffect(() => {
-    if (tab === 'discord' || tab === 'auth') Promise.resolve().then(loadDiscordRoles)
+    if (tab === 'auth') Promise.resolve().then(loadDiscordRoles)
   }, [tab, loadDiscordRoles])
 
   const set = (key: keyof AppConfig) => (v: string) =>
@@ -123,6 +124,7 @@ export const GlobalSettingsForm: React.FC<GlobalSettingsFormProps> = ({ saveRef,
   const ADMIN_TABS = [
     { id: 'auth', label: t('settings.tabs.auth') },
     { id: 'discord', label: t('settings.tabs.discord') },
+    { id: 'guilds', label: t('settings.tabs.guilds') },
     { id: 'admin-advanced', label: t('settings.tabs.advanced') },
   ]
 
@@ -161,10 +163,10 @@ export const GlobalSettingsForm: React.FC<GlobalSettingsFormProps> = ({ saveRef,
           cfg={cfg}
           set={set}
           setBool={setBool}
-          discordRoles={discordRoles}
-          rolesLoading={rolesLoading}
-          loadDiscordRoles={loadDiscordRoles}
         />
+      )}
+      {tab === 'guilds' && (
+        <GuildsPanel />
       )}
       {tab === 'admin-advanced' && (
         <AdminAdvancedPanel

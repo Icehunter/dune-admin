@@ -1305,7 +1305,8 @@
       "authDiscord": "Discord 登录（OAuth）",
       "authOwners": "所有者",
       "discordStatus": "状态嵌入",
-      "marketBot": "市场机器人"
+      "marketBot": "市场机器人",
+      "discordGuilds": "Discord 公会"
     },
     "ssh": {
       "hostPort": "主机：端口",
@@ -1320,7 +1321,8 @@
       "connection": "连接",
       "control": "控制",
       "discord": "Discord",
-      "auth": "认证"
+      "auth": "认证",
+      "guilds": "公会"
     },
     "discord": {
       "hint": "在 discord.com/developers/applications 创建机器人，启用后复制令牌，并以 applications.commands 权限范围将其邀请至服务器。",
@@ -1350,7 +1352,8 @@
       "statusChannel": "状态频道 ID",
       "statusChannelHint": "右键点击频道 →“复制频道 ID”（需要开发者模式）。",
       "statusInterval": "更新间隔（秒）",
-      "statusIntervalHint": "嵌入消息的刷新频率。最少 30 秒；默认 60。"
+      "statusIntervalHint": "嵌入消息的刷新频率。最少 30 秒；默认 60。",
+      "perGuildMoved": "每个公会的配置——权限角色以及每个公会监视的服务器（及其频道）——在\"公会\"标签页中管理。"
     },
     "auth": {
       "hint": "要求登录面板和 API。当 dune-admin 可从局域网外访问时建议启用。",
@@ -1619,7 +1622,8 @@
       "config": "配置",
       "factionScrip": "派系凭证",
       "rewards": "奖励",
-      "solari": "索拉里"
+      "solari": "索拉里",
+      "currencyXp": "货币与经验"
     },
     "signals": {
       "level": "角色等级",
@@ -1951,6 +1955,87 @@
         "title": "连接 Discord 机器人",
         "body": "发送通知并将身份组映射到权限。可选。",
         "cta": "连接 Discord"
+      }
+    }
+  },
+  "discordGuilds": {
+    "title": "Discord 公会",
+    "subtitle": "配置每个 Discord 公会的权限角色。一个机器人令牌即可服务所有公会；服务器在各自的 Discord 选项卡中链接到公会。",
+    "ariaLabel": "Discord 公会",
+    "add": "添加公会",
+    "addTitle": "添加公会",
+    "editTitle": "编辑公会",
+    "empty": "尚未配置任何 Discord 公会。",
+    "on": "开",
+    "off": "关",
+    "loadRoles": "加载角色",
+    "guildId": "公会 ID",
+    "guildIdHint": "右键点击服务器图标 → 复制服务器 ID（需要开发者模式）",
+    "guildIdRequired": "公会 ID 为必填项",
+    "serverRequired": "每个监视的服务器都必须选择",
+    "roleCount": "{{count}} 个角色",
+    "addServer": "添加服务器",
+    "server": "服务器",
+    "serverHint": "该公会监视的游戏服务器",
+    "selectServer": "选择一个服务器…",
+    "noServers": "该公会尚未监视任何服务器。",
+    "watchedServersHint": "每个被监视的服务器会将其状态/公告嵌入发布到下方的频道。",
+    "announceChannel": "公告频道 ID",
+    "announceChannelHint": "用于服务器公告的频道（重启、活动）",
+    "statusEnabled": "常驻状态嵌入",
+    "statusEnabledHint": "在频道中保持实时状态嵌入更新",
+    "statusChannel": "状态频道 ID",
+    "statusChannelHint": "状态嵌入发布所在的频道",
+    "statusInterval": "状态刷新间隔（秒）",
+    "statusIntervalHint": "嵌入的刷新频率。最少 30 秒；默认 60。",
+    "rolesHint": "在该公会中授予各权限层级的 Discord 角色。输入公会 ID 后加载角色。",
+    "rolesViewer": "查看者角色",
+    "rolesViewerHint": "/status, /lookup",
+    "rolesEconomy": "经济角色",
+    "rolesEconomyHint": "市场与经济命令",
+    "rolesAdmin": "管理员角色",
+    "rolesAdminHint": "管理命令",
+    "saved": "公会已保存",
+    "saveFailed": "保存失败：{{message}}",
+    "loadFailed": "加载公会失败：{{message}}",
+    "removed": "公会已移除",
+    "removeFailed": "移除失败：{{message}}",
+    "removeTitle": "移除公会",
+    "removeConfirm": "移除公会 {{guild}}？机器人将停止为其及其监视的服务器提供服务。",
+    "columns": {
+      "guildId": "公会 ID",
+      "servers": "监视的服务器",
+      "roles": "角色"
+    },
+    "sections": {
+      "guild": "公会",
+      "roles": "权限角色",
+      "watchedServers": "监视的服务器"
+    },
+    "serverDiscord": {
+      "title": "Discord",
+      "subtitle": "将此服务器链接到一个 Discord 公会，并设置其公告和状态频道。该公会的权限角色在设置 → 公会中设置。",
+      "rolesHint": "Capability roles are guild-level — edit them in Settings → Guilds.",
+      "linkGuild": "Link a guild",
+      "linkTitle": "Link a guild",
+      "editTitle": "Edit Discord link",
+      "empty": "No guilds are linked to this server yet.",
+      "guildPick": "Guild",
+      "guildPickHint": "Choose an existing guild or enter a new guild ID",
+      "newGuild": "New guild ID…",
+      "existingGuild": "Existing guild",
+      "channels": "Channels",
+      "unlinkTitle": "Unlink guild",
+      "unlinkConfirm": "取消此服务器与其 Discord 公会的链接？其频道将被清除；公会及其角色保持不变。",
+      "unlink": "Unlink",
+      "linked": "Guild linked",
+      "unlinked": "Guild unlinked",
+      "columns": {
+        "guildId": "Guild ID",
+        "announce": "Announce channel",
+        "status": "Status channel",
+        "statusOn": "Status",
+        "actions": ""
       }
     }
   }

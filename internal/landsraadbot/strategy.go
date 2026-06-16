@@ -200,26 +200,32 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 	}
 
 	// 3. Defensive Blocking Threat (Evaluate all paths)
-	if strategy != "focus_aggressive" {
-		for _, path := range winPaths {
-			oppCount := 0
-			uncompletedCount := 0
-			var uncompletedIDs []int
+	// focus_aggressive only reacts to critical 4/5 threats to prevent total loss.
+	for _, path := range winPaths {
+		oppCount := 0
+		uncompletedCount := 0
+		var uncompletedIDs []int
 
-			for _, idx := range path {
-				t := tasks[idx]
-				if t.Completed {
-					if t.WinningFactionID != nil && *t.WinningFactionID != myFactionID {
-						oppCount++
-					}
-				} else {
-					uncompletedCount++
-					uncompletedIDs = append(uncompletedIDs, t.ID)
+		for _, idx := range path {
+			t := tasks[idx]
+			if t.Completed {
+				if t.WinningFactionID != nil && *t.WinningFactionID != myFactionID {
+					oppCount++
 				}
+			} else {
+				uncompletedCount++
+				uncompletedIDs = append(uncompletedIDs, t.ID)
 			}
+		}
 
-			if uncompletedCount > 0 {
-				blockScore := 0.0
+		if uncompletedCount > 0 {
+			blockScore := 0.0
+			if strategy == "focus_aggressive" {
+				// Only block at 4/5 — ignore everything else
+				if oppCount == 4 {
+					blockScore = 100000.0
+				}
+			} else {
 				if oppCount == 2 {
 					blockScore = 200.0
 				} else if oppCount == 3 {
@@ -229,35 +235,35 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 					// 4/5: Drop everything and block with all might
 					blockScore = 100000.0 // Critical block
 				}
+			}
 
-				if strategy == "focus_blocking" {
-					blockScore *= 10.0 // Massive multiplier to prioritize any threat immediately
+			if strategy == "focus_blocking" {
+				blockScore *= 10.0 // Massive multiplier to prioritize any threat immediately
+			}
+
+			// Fix #3: When the enemy has a serious threat (≥3), concentrate
+			// ALL block effort on the single cheapest task to complete. The
+			// bot only needs to finish ONE task to break their line — spending
+			// any XP on the others is wasteful.
+			if oppCount >= 3 && len(uncompletedIDs) > 1 && blockScore > 0 {
+				cheapestID := uncompletedIDs[0]
+				cheapestReq := tasks[taskIDToIdx[cheapestID]].GoalAmount - tasks[taskIDToIdx[cheapestID]].CurrentProgress
+
+				for _, id := range uncompletedIDs[1:] {
+					idx := taskIDToIdx[id]
+					req := tasks[idx].GoalAmount - tasks[idx].CurrentProgress
+					if req < cheapestReq {
+						cheapestReq = req
+						cheapestID = id
+					}
 				}
 
-				// Fix #3: When the enemy has a serious threat (≥3), concentrate
-				// ALL block effort on the single cheapest task to complete. The
-				// bot only needs to finish ONE task to break their line — spending
-				// any XP on the others is wasteful.
-				if oppCount >= 3 && len(uncompletedIDs) > 1 && blockScore > 0 {
-					cheapestID := uncompletedIDs[0]
-					cheapestReq := tasks[taskIDToIdx[cheapestID]].GoalAmount - tasks[taskIDToIdx[cheapestID]].CurrentProgress
-
-					for _, id := range uncompletedIDs[1:] {
-						idx := taskIDToIdx[id]
-						req := tasks[idx].GoalAmount - tasks[idx].CurrentProgress
-						if req < cheapestReq {
-							cheapestReq = req
-							cheapestID = id
-						}
-					}
-
-					// Only the cheapest task gets block score — zero for the rest
-					scores[cheapestID] += blockScore * 2.0
-				} else {
-					// Standard: apply block score evenly to all uncompleted tasks in that path
-					for _, id := range uncompletedIDs {
-						scores[id] += blockScore
-					}
+				// Only the cheapest task gets block score — zero for the rest
+				scores[cheapestID] += blockScore * 2.0
+			} else {
+				// Standard: apply block score evenly to all uncompleted tasks in that path
+				for _, id := range uncompletedIDs {
+					scores[id] += blockScore
 				}
 			}
 		}

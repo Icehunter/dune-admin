@@ -343,9 +343,8 @@ func applyOneOutcome(ctx context.Context, deps eventDeps, store *eventStore, def
 		}
 	}
 	// An explicit per-event AnnounceChannelID is an override; otherwise pass an
-	// empty channel so deps.announce fans out to every guild mapped to this
-	// server (multi-guild). The legacy single global channel is now seeded into
-	// the default guild's announce_channel_id, so no fallback is needed here.
+	// empty channel so deps.announce resolves the server's linked announce channel
+	// (falling back to the legacy global announce channel when there's no link).
 	channelID := def.AnnounceChannelID
 	if announce && o.AnnounceText != "" {
 		if err := deps.announce(channelID, o.AnnounceText); err != nil {
@@ -675,7 +674,7 @@ func reconcileAllEvents(ctx context.Context, deps eventDeps, store *eventStore) 
 }
 
 // productionEventDeps builds the event deps from the given pool, bound to the
-// owning server id so announces fan out to every guild mapped to that server.
+// owning server id so announces post to that server's linked announce channel.
 // Called from applyEventEngine only; tests inject mocks directly.
 func productionEventDeps(pool *pgxpool.Pool, serverID int) eventDeps {
 	return eventDeps{

@@ -470,8 +470,14 @@ func TestAnnounceToServer_PostsToServerChannel(t *testing.T) {
 
 	prevStore := globalDiscordGuildsStore
 	prevPost := announceSend
-	t.Cleanup(func() { globalDiscordGuildsStore = prevStore; announceSend = prevPost })
+	prevAnnounce := loadedConfig.DiscordAnnounceChannelID
+	t.Cleanup(func() {
+		globalDiscordGuildsStore = prevStore
+		announceSend = prevPost
+		loadedConfig.DiscordAnnounceChannelID = prevAnnounce
+	})
 	globalDiscordGuildsStore = store
+	loadedConfig.DiscordAnnounceChannelID = "" // no legacy fallback for the base cases
 
 	var got []string
 	announceSend = func(channelID, _ string) error {
@@ -498,5 +504,28 @@ func TestAnnounceToServer_PostsToServerChannel(t *testing.T) {
 	// Server with no link → no post, no error.
 	if err := announceToServer(c, "hi"); err != nil {
 		t.Fatalf("announceToServer c: %v", err)
+	}
+
+	// With a legacy global announce channel configured, servers without their own
+	// channel (b: empty, c: no link) fall back to it instead of dropping the post.
+	loadedConfig.DiscordAnnounceChannelID = "global-chan"
+	got = nil
+	if err := announceToServer(b, "hi"); err != nil {
+		t.Fatalf("announceToServer b (fallback): %v", err)
+	}
+	if err := announceToServer(c, "hi"); err != nil {
+		t.Fatalf("announceToServer c (fallback): %v", err)
+	}
+	if len(got) != 2 || got[0] != "global-chan" || got[1] != "global-chan" {
+		t.Errorf("fallback announce = %v, want [global-chan global-chan]", got)
+	}
+
+	// A server WITH its own channel still prefers it over the global fallback.
+	got = nil
+	if err := announceToServer(a, "hi"); err != nil {
+		t.Fatalf("announceToServer a (fallback set): %v", err)
+	}
+	if len(got) != 1 || got[0] != "chan-a" {
+		t.Errorf("server a should prefer its own channel, got %v", got)
 	}
 }

@@ -522,18 +522,24 @@ var announceSend = postDiscordAnnouncement
 // links to exactly one guild and has one announce channel). A server with no
 // link or no announce channel is a no-op.
 func announceToServer(serverID int, message string) error {
-	if globalDiscordGuildsStore == nil {
+	// Prefer the server's own announce channel; fall back to the legacy global
+	// announce channel so a deployment that set an announce channel without a
+	// per-server guild link keeps announcing (instead of silently dropping it).
+	channelID := loadedConfig.DiscordAnnounceChannelID
+	if globalDiscordGuildsStore != nil {
+		link, ok, err := globalDiscordGuildsStore.getServerLink(serverID)
+		if err != nil {
+			return fmt.Errorf("announce: get server link %d: %w", serverID, err)
+		}
+		if ok && link.AnnounceChannelID != "" {
+			channelID = link.AnnounceChannelID
+		}
+	}
+	if channelID == "" {
 		return nil
 	}
-	link, ok, err := globalDiscordGuildsStore.getServerLink(serverID)
-	if err != nil {
-		return fmt.Errorf("announce: get server link %d: %w", serverID, err)
-	}
-	if !ok || link.AnnounceChannelID == "" {
-		return nil
-	}
-	if perr := announceSend(link.AnnounceChannelID, message); perr != nil {
-		componentLog("discord").Warn().Str("guild_id", link.GuildID).Int("server_id", serverID).Err(perr).Msg("announce to server failed")
+	if perr := announceSend(channelID, message); perr != nil {
+		componentLog("discord").Warn().Int("server_id", serverID).Err(perr).Msg("announce to server failed")
 	}
 	return nil
 }

@@ -56,3 +56,45 @@ func TestRedactLineIPv6(t *testing.T) {
 		}
 	}
 }
+
+func TestRedactLineJSONFields(t *testing.T) {
+	cases := []struct{ in, gone string }{
+		{`{"level":"info","password":"hunter2"}`, "hunter2"},
+		{`"token":"abc.def"`, "abc.def"},
+		{`"secret":"shh"`, "shh"},
+		{`"account_id":1099511628800`, "1099511628800"},
+	}
+	for _, c := range cases {
+		if got := redactLine(c.in); contains(got, c.gone) {
+			t.Errorf("redactLine(%q) = %q leaked %q", c.in, got, c.gone)
+		}
+	}
+}
+
+func TestRedactLineConnectionStringCreds(t *testing.T) {
+	cases := []struct{ in, gone string }{
+		{"postgres://duneuser:s3cr3tpass@127.0.0.1:15432/dune", "s3cr3tpass"},
+		{"mongodb://admin:pw123@10.0.0.1:27017", "pw123"},
+		{"https://user:passw0rd@example.com/path", "passw0rd"},
+	}
+	for _, c := range cases {
+		if got := redactLine(c.in); contains(got, c.gone) {
+			t.Errorf("redactLine(%q) = %q leaked %q", c.in, got, c.gone)
+		}
+	}
+}
+
+func TestRedactLineServiceAuthTokenSpaced(t *testing.T) {
+	in := "captured ServiceAuthToken eyJhbGciOiJIUzI1Nixxxx.payloadpart.signaturepart trailing"
+	if got := redactLine(in); contains(got, "eyJhbGciOiJIUzI1Nixxxx.payloadpart.signaturepart") {
+		t.Errorf("spaced ServiceAuthToken leaked: %q", got)
+	}
+}
+
+func TestRedactLineDoesNotMangleBenignKeyWords(t *testing.T) {
+	for _, in := range []string{"monkey business", "the donkey ran", "loaded 5 items"} {
+		if got := redactLine(in); got != in {
+			t.Errorf("over-redacted benign text: %q -> %q", in, got)
+		}
+	}
+}

@@ -428,6 +428,12 @@ var (
 	statusLoopCancels = map[int]context.CancelFunc{}
 )
 
+// statusApplyMu serializes a full applyDiscordStatusLoops reconfigure. It's
+// invoked from several concurrent request paths (config save, guild/server CRUD,
+// server delete) plus startup; without this the stop-then-start sequence can
+// interleave and orphan a status-loop goroutine.
+var statusApplyMu sync.Mutex
+
 // runStatusLoop ticks at deps.interval and invokes deps.tick until ctx is done.
 // It fires once immediately so the embed appears without waiting a full interval.
 func runStatusLoop(ctx context.Context, deps statusLoopDeps) {
@@ -523,6 +529,8 @@ func listStatusServerLinks() []discordServerLink {
 // its own embed to its status channel in its guild. Toggling/CRUD takes effect
 // without a process restart.
 func applyDiscordStatusLoops() {
+	statusApplyMu.Lock()
+	defer statusApplyMu.Unlock()
 	stopDiscordStatusLoop()
 	for _, link := range listStatusServerLinks() {
 		if !link.StatusEnabled || link.StatusChannelID == "" {
@@ -545,6 +553,9 @@ func startServerStatusLoop(link discordServerLink) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	statusLoopMu.Lock()
+	if old, ok := statusLoopCancels[row.ServerID]; ok {
+		old() // never leak a prior loop for this server
+	}
 	statusLoopCancels[row.ServerID] = cancel
 	statusLoopMu.Unlock()
 	go runStatusLoop(ctx, deps)

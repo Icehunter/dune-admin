@@ -2036,7 +2036,11 @@
         "status": "Status channel",
         "statusOn": "Status",
         "actions": ""
-      }
-    }
+      },
+      "noGuilds": "ギルドがまだ追加されていません — 設定 → ギルド で追加してからここで選択してください。"
+    },
+    "selectGuild": "ギルドを検索…",
+    "selectChannel": "チャンネルを検索…",
+    "guildExists": "そのギルドは既に設定されています。"
   }
 }

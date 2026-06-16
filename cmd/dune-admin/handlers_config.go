@@ -58,6 +58,22 @@ func maskSecrets(cfg *appConfig) {
 	if cfg.AuthLocalPasswordHash != "" {
 		cfg.AuthLocalPasswordHash = masked
 	}
+	// On the DB path these flat connection secrets are empty (they moved to the
+	// per-server columns). But the legacy fallback (store unavailable) unmarshals
+	// an old flat config.yaml straight into appConfig, so mask them here too so a
+	// pre-remodel config never returns plaintext db/broker/amp passwords.
+	if cfg.DBPass != "" {
+		cfg.DBPass = masked
+	}
+	if cfg.BrokerPass != "" {
+		cfg.BrokerPass = masked
+	}
+	if cfg.BrokerJWTSecret != "" {
+		cfg.BrokerJWTSecret = masked
+	}
+	if cfg.AmpAPIPass != "" {
+		cfg.AmpAPIPass = masked
+	}
 	// Per-server entries carry their own secrets — mask them too so plaintext
 	// passwords never reach the client.
 	for i := range cfg.Servers {

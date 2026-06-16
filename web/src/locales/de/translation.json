@@ -2036,7 +2036,11 @@
         "status": "Status channel",
         "statusOn": "Status",
         "actions": ""
-      }
-    }
+      },
+      "noGuilds": "Noch keine Gilden hinzugefügt — füge unter Einstellungen → Gilden eine hinzu und wähle sie dann hier."
+    },
+    "selectGuild": "Gilden suchen…",
+    "selectChannel": "Kanäle suchen…",
+    "guildExists": "Diese Gilde ist bereits konfiguriert."
   }
 }

@@ -2036,7 +2036,11 @@
         "status": "Status channel",
         "statusOn": "Status",
         "actions": ""
-      }
-    }
+      },
+      "noGuilds": "尚未添加公会 — 请在 设置 → 公会 中添加，然后在此处选择。"
+    },
+    "selectGuild": "搜索公会…",
+    "selectChannel": "搜索频道…",
+    "guildExists": "该公会已配置。"
   }
 }

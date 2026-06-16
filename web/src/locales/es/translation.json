@@ -2059,7 +2059,11 @@
         "status": "Status channel",
         "statusOn": "Status",
         "actions": ""
-      }
-    }
+      },
+      "noGuilds": "Aún no hay gremios añadidos: añade uno en Configuración → Gremios y luego selecciónalo aquí."
+    },
+    "selectGuild": "Buscar gremios…",
+    "selectChannel": "Buscar canales…",
+    "guildExists": "Ese gremio ya está configurado."
   }
 }

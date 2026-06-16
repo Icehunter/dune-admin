@@ -65,14 +65,25 @@ func rebuildLegacyServerIDToInt(db *sql.DB, table, tmpName, newDDL string, cols 
 		return nil
 	}
 	colList := strings.Join(cols, ", ")
+	// Source expression for the new integer server_id:
+	//   - legacy table has NO server_id (0.39.5 pre-scoping, typ == ""): stamp the
+	//     default id — the column doesn't exist to read.
+	//   - legacy table has a TEXT server_id (0.40.0 multi-server): preserve a
+	//     numeric scope ("1","2",…) and map a non-numeric/'default' scope to the
+	//     default id. Without this, multi-server data collapses onto one server and
+	//     composite-PK tables abort on the resulting duplicate key.
+	scopeExpr := fmt.Sprintf("%d", defaultID)
+	if typ != "" {
+		scopeExpr = fmt.Sprintf("CASE WHEN server_id GLOB '[0-9]*' THEN CAST(server_id AS INTEGER) ELSE %d END", defaultID)
+	}
 	return withForeignKeysDisabled(context.Background(), db, func(conn *sql.Conn) error {
 		ctx := context.Background()
 		if _, err := conn.ExecContext(ctx, newDDL); err != nil {
 			return fmt.Errorf("rebuild %s: create %s: %w", table, tmpName, err)
 		}
 		if _, err := conn.ExecContext(ctx, fmt.Sprintf(
-			`INSERT INTO %s (server_id, %s) SELECT %d, %s FROM %s`,
-			tmpName, colList, defaultID, colList, table,
+			`INSERT INTO %s (server_id, %s) SELECT %s, %s FROM %s`,
+			tmpName, colList, scopeExpr, colList, table,
 		)); err != nil {
 			return fmt.Errorf("rebuild %s: copy rows: %w", table, err)
 		}

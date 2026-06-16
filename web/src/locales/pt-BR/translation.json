@@ -2059,7 +2059,11 @@
         "status": "Status channel",
         "statusOn": "Status",
         "actions": ""
-      }
-    }
+      },
+      "noGuilds": "Nenhuma guilda adicionada ainda — adicione uma em Configurações → Guildas e selecione-a aqui."
+    },
+    "selectGuild": "Buscar guildas…",
+    "selectChannel": "Buscar canais…",
+    "guildExists": "Essa guilda já está configurada."
   }
 }

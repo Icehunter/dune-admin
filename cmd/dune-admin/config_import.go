@@ -79,6 +79,15 @@ func importConfigYAMLIntoStore(seed appConfig) error {
 	if _, err := globalStore.Exec(`DELETE FROM servers`); err != nil {
 		return fmt.Errorf("clear servers: %w", err)
 	}
+	// servers.id is AUTOINCREMENT, so DELETE alone leaves sqlite_sequence intact:
+	// a retry (after a partial failure before the marker was written) would re-seed
+	// the default server at id 2 while the runtime reads id 1 (defaultServerID),
+	// making all per-server data look empty. Reset the sequence so re-import is
+	// deterministic. sqlite_sequence exists because the AUTOINCREMENT servers table
+	// was already created during schema init.
+	if _, err := globalStore.Exec(`DELETE FROM sqlite_sequence WHERE name = 'servers'`); err != nil {
+		return fmt.Errorf("reset servers sequence: %w", err)
+	}
 	if err := globalSettingsStore.saveSettings(seed); err != nil {
 		return err
 	}

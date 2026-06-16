@@ -2082,7 +2082,11 @@
         "status": "Status channel",
         "statusOn": "Status",
         "actions": ""
-      }
-    }
+      },
+      "noGuilds": "Nie dodano jeszcze żadnej gildii — dodaj ją w Ustawienia → Gildie, a następnie wybierz tutaj."
+    },
+    "selectGuild": "Szukaj gildii…",
+    "selectChannel": "Szukaj kanałów…",
+    "guildExists": "Ta gildia jest już skonfigurowana."
   }
 }

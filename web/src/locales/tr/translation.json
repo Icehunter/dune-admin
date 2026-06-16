@@ -2036,7 +2036,11 @@
         "status": "Status channel",
         "statusOn": "Status",
         "actions": ""
-      }
-    }
+      },
+      "noGuilds": "Henüz lonca eklenmedi — Ayarlar → Loncalar bölümünden bir tane ekleyin, sonra burada seçin."
+    },
+    "selectGuild": "Loncaları ara…",
+    "selectChannel": "Kanalları ara…",
+    "guildExists": "Bu lonca zaten yapılandırılmış."
   }
 }

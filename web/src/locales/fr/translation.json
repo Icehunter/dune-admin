@@ -2059,7 +2059,11 @@
         "status": "Status channel",
         "statusOn": "Status",
         "actions": ""
-      }
-    }
+      },
+      "noGuilds": "Aucune guilde ajoutée — ajoutez-en une dans Paramètres → Guildes, puis sélectionnez-la ici."
+    },
+    "selectGuild": "Rechercher des guildes…",
+    "selectChannel": "Rechercher des salons…",
+    "guildExists": "Cette guilde est déjà configurée."
   }
 }

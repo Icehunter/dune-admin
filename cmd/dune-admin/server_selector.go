@@ -380,6 +380,18 @@ func preserveServerMaskedSecrets(next *ServerConfig, old ServerConfig) {
 	}
 }
 
+// preserveServerConnectionFields keeps connection fields the client left blank on
+// an update from wiping the persisted value. Currently the only such field is
+// ssh_mode: a client that omits it (e.g. a UI build without the ssh_mode field)
+// must not silently reset a "command" server back to the library default. An
+// explicit value always wins, so a deliberate change to "library"/"command" is
+// honored. New blank-preserving connection fields go here (hence the plural name).
+func preserveServerConnectionFields(next *ServerConfig, old ServerConfig) {
+	if next.SSHMode == "" {
+		next.SSHMode = old.SSHMode
+	}
+}
+
 // handleGetServerConfig returns one server's ServerConfig with secrets masked.
 func handleGetServerConfig(w http.ResponseWriter, r *http.Request) {
 	id, scope, err := parseServerID(r)
@@ -421,6 +433,7 @@ func handleUpdateServerConfig(w http.ResponseWriter, r *http.Request) {
 		next.Name = sc.Name
 	}
 	preserveServerMaskedSecrets(&next, sc.Cfg)
+	preserveServerConnectionFields(&next, sc.Cfg)
 	applyServerConfigDefaults(&next)
 
 	if err := persistServerConfig(id, next); err != nil {

@@ -1351,7 +1351,9 @@
       "hostPortHint": "active le tunnel SSH pour toutes les BD + exec",
       "privateKey": "Chemin de la clé privée",
       "privateKeyHint": "chemin absolu, vide = détection automatique",
-      "user": "Utilisateur"
+      "user": "Utilisateur",
+      "mode": "Transport SSH",
+      "modeHint": "library = client embarqué ; command = wrapper ssh de l'OS (utilise ~/.ssh/config, agent, ProxyJump)"
     },
     "tabs": {
       "advanced": "Avancé",

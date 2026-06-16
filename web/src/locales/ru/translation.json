@@ -1372,7 +1372,9 @@
       "hostPortHint": "включает SSH-туннель для всего БД + exec",
       "privateKey": "Путь к приватному ключу",
       "privateKeyHint": "абсолютный путь, пусто = автоопределение",
-      "user": "Пользователь"
+      "user": "Пользователь",
+      "mode": "SSH-транспорт",
+      "modeHint": "library = встроенный клиент; command = обёртка системного ssh (использует ~/.ssh/config, agent, ProxyJump)"
     },
     "tabs": {
       "advanced": "Расширенные",

@@ -1330,7 +1330,9 @@
       "hostPortHint": "为所有数据库和执行启用 SSH 隧道",
       "privateKey": "私钥路径",
       "privateKeyHint": "绝对路径，留空 = 自动检测",
-      "user": "用户"
+      "user": "用户",
+      "mode": "SSH 传输",
+      "modeHint": "library = 进程内客户端；command = 操作系统 ssh 包装器（使用 ~/.ssh/config、agent、ProxyJump）"
     },
     "tabs": {
       "advanced": "高级",

@@ -165,6 +165,7 @@ export type AppConfig = {
   ssh_host: string
   ssh_user: string
   ssh_key: string
+  ssh_mode: string // '' | 'library' (in-process) | 'command' (OS ssh wrapper)
   // Database
   db_host: string
   db_port: number

@@ -1330,7 +1330,9 @@
       "hostPortHint": "enables SSH tunnel for all DB + exec",
       "privateKey": "Private key path",
       "privateKeyHint": "absolute path, blank = auto-detect",
-      "user": "User"
+      "user": "User",
+      "mode": "SSH transport",
+      "modeHint": "library = in-process client; command = OS ssh wrapper (uses ~/.ssh/config, agent, ProxyJump)"
     },
     "tabs": {
       "advanced": "Advanced",

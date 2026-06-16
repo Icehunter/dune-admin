@@ -1330,7 +1330,9 @@
       "hostPortHint": "tüm DB + exec için SSH tünelini etkinleştirir",
       "privateKey": "Özel anahtar yolu",
       "privateKeyHint": "mutlak yol, boş = otomatik algıla",
-      "user": "Kullanıcı"
+      "user": "Kullanıcı",
+      "mode": "SSH aktarımı",
+      "modeHint": "library = süreç içi istemci; command = OS ssh sarmalayıcısı (~/.ssh/config, agent, ProxyJump kullanır)"
     },
     "tabs": {
       "advanced": "Gelişmiş",

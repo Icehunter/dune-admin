@@ -164,3 +164,46 @@ func TestHandleUpdateServerConfig_PreservesMaskedSecretAndPersists(t *testing.T)
 		t.Errorf("mirror entry = %+v, want DBPass=oldsecret DBName=newdb", *entry)
 	}
 }
+
+// A client that omits ssh_mode on update (e.g. an older UI without the field)
+// must not silently reset a "command" server to the library default. End-to-end
+// guard over preserveServerConnectionFields wired into the handler, so a future
+// applyServerConfigDefaults/persist change that drops ssh_mode is caught here.
+func TestHandleUpdateServerConfig_PreservesBlankSSHMode(t *testing.T) {
+	db := openSharedScopeDB(t)
+	useTestServerStores(t, db)
+	// Control "local" (no ssh_host) so connectServer doesn't shell out to ssh;
+	// the persisted ssh_mode is what this test asserts, not the transport.
+	base := ServerConfig{Name: "One", Control: "local", SSHMode: "command", DBName: "dune"}
+	id1, _ := globalServersStore.insertServer(base, 0)
+	s1 := serverScope(id1)
+	base.ID = id1
+
+	reg := newServerRegistry(nil)
+	reg.Register(&ServerContext{ID: s1, Name: "One", Cfg: base})
+	orig := globalRegistry
+	globalRegistry = reg
+	defer func() { globalRegistry = orig }()
+
+	origCfg := loadedConfig
+	loadedConfig = appConfig{Servers: []ServerConfig{base}}
+	defer func() { loadedConfig = origCfg }()
+
+	// Body omits ssh_mode entirely.
+	body, _ := json.Marshal(ServerConfig{Name: "One", Control: "local", DBName: "dune"})
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/servers/"+s1+"/config", bytes.NewReader(body))
+	req.SetPathValue("id", s1)
+	rr := httptest.NewRecorder()
+	handleUpdateServerConfig(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body = %s", rr.Code, rr.Body.String())
+	}
+	stored, ok, err := globalServersStore.getServer(id1)
+	if err != nil || !ok {
+		t.Fatalf("getServer: ok=%v err=%v", ok, err)
+	}
+	if stored.SSHMode != "command" {
+		t.Errorf("SSHMode = %q, want command (blank in body must not wipe it)", stored.SSHMode)
+	}
+}

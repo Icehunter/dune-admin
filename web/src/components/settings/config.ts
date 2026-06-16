@@ -4,7 +4,7 @@ import type { AppConfig } from '../../api/client'
 
 export const EMPTY: AppConfig = {
   control: '',
-  ssh_host: '', ssh_user: '', ssh_key: '',
+  ssh_host: '', ssh_user: '', ssh_key: '', ssh_mode: '',
   db_host: '', db_port: 0, db_user: '',
   db_pass: '', db_name: '', db_schema: '',
   control_namespace: '',
@@ -78,7 +78,7 @@ export const mergeConfig = (fetched: Record<string, unknown>): AppConfig => {
 // api.servers.saveConfig (per-server).
 export const PER_SERVER_KEYS: (keyof AppConfig)[] = [
   'control', 'control_namespace',
-  'ssh_host', 'ssh_user', 'ssh_key',
+  'ssh_host', 'ssh_user', 'ssh_key', 'ssh_mode',
   'db_host', 'db_port', 'db_user', 'db_pass', 'db_name', 'db_schema',
   'docker_gameserver', 'docker_broker_game', 'docker_broker_admin', 'docker_db',
   'cmd_start', 'cmd_stop', 'cmd_restart', 'cmd_status',

@@ -1330,7 +1330,9 @@
       "hostPortHint": "aktiviert SSH-Tunnel für alle DB + exec",
       "privateKey": "Privater Schlüsselpfad",
       "privateKeyHint": "absoluter Pfad, leer = automatisch erkennen",
-      "user": "Benutzer"
+      "user": "Benutzer",
+      "mode": "SSH-Transport",
+      "modeHint": "library = In-Process-Client; command = OS-ssh-Wrapper (nutzt ~/.ssh/config, Agent, ProxyJump)"
     },
     "tabs": {
       "advanced": "Erweitert",

@@ -122,6 +122,31 @@ func (i *Instance) calculateTaskDesirability(ctx context.Context, myFactionID in
 			// Fix #2: Penalize paths with unrevealed tasks — the bot can't
 			// actually contribute to hidden squares yet, so prefer actionable paths.
 			pathScore := friendlyCount*100 + revealedCount*10 - hiddenCount*20
+
+			// Sunk-cost protection: add a bonus for in-progress XP already
+			// invested in tasks on this path. Uses an integer-scaled score so
+			// it's comparable to the friendlyCount/revealedCount terms above.
+			// A task at 60% completion contributes ~24 pts; one at 100%
+			// (but not yet completed) contributes up to 40 pts.
+			// This prevents the bot from abandoning a half-done task just
+			// because a new row with more revealed squares was unlocked.
+			progressBonus := 0
+			for _, idx := range path {
+				t := tasks[idx]
+				if !t.Completed && t.Revealed && t.GoalAmount > 0 {
+					pct := t.CurrentProgress / t.GoalAmount
+					if pct > 1.0 {
+						pct = 1.0
+					}
+					// Linear bonus up to 40 pts per task (max = all tasks
+					// 100% done but not yet completed). A 60% task gives
+					// 24 pts — enough to prefer this path over a cold new
+					// path with 2 extra revealed squares (20 pts each).
+					progressBonus += int(pct * 40)
+				}
+			}
+			pathScore += progressBonus
+
 			if pathScore > bestPathScore {
 				bestPathScore = pathScore
 				bestFriendlyCount = friendlyCount

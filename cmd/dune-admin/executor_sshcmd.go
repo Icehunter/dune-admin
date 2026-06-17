@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -25,7 +24,7 @@ func controlOpts(goos string) []string {
 	if goos == "windows" {
 		return nil
 	}
-	path := filepath.Join(os.TempDir(), "dune-admin-cm-%C")
+	path := "/tmp/dune-admin-cm-%C"
 	return []string{
 		"-o", "ControlMaster=auto",
 		"-o", "ControlPath=" + path,

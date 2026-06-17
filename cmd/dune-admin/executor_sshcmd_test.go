@@ -31,11 +31,29 @@ func TestControlOpts(t *testing.T) {
 	if got := controlOpts("windows"); got != nil {
 		t.Errorf("windows controlOpts = %v, want nil", got)
 	}
-	got := controlOpts("linux")
-	joined := strings.Join(got, " ")
-	for _, want := range []string{"ControlMaster=auto", "ControlPersist=60s", "ControlPath="} {
-		if !strings.Contains(joined, want) {
-			t.Errorf("linux controlOpts %q missing %q", joined, want)
+	for _, goos := range []string{"linux", "darwin"} {
+		got := controlOpts(goos)
+		joined := strings.Join(got, " ")
+		for _, want := range []string{"ControlMaster=auto", "ControlPersist=60s", "ControlPath="} {
+			if !strings.Contains(joined, want) {
+				t.Errorf("%s controlOpts %q missing %q", goos, joined, want)
+			}
+		}
+		// ControlPath must be short enough that after %C expands to a 40-char
+		// SHA1 and OpenSSH appends a ~17-char temp suffix during socket setup,
+		// the total stays under the 104-char Unix domain socket path limit.
+		// Max safe template length: 104 - 40 - 17 = 47 chars.
+		found := false
+		for _, part := range got {
+			if after, ok := strings.CutPrefix(part, "ControlPath="); ok {
+				found = true
+				if len(after) > 47 {
+					t.Errorf("%s ControlPath template %q is %d chars (max 47); will exceed Unix socket limit after %%C expansion + temp suffix", goos, after, len(after))
+				}
+			}
+		}
+		if !found {
+			t.Errorf("%s controlOpts missing ControlPath= value", goos)
 		}
 	}
 }

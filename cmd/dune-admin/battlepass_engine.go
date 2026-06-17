@@ -338,11 +338,15 @@ func applyBattlepassEngine(cfg appConfig) {
 	// the source of truth: operator edits (via the import/reset API) must survive
 	// restarts and config saves, so we must NOT clobber existing tiers here. An
 	// explicit "reset to defaults" / import still uses reseedTiers.
-	catalog := defaultBattlepassCatalog()
-	if n, err := globalBattlepassStore.seedTiersIfEmpty(catalog); err != nil {
-		componentLog("battlepass").Error().Err(err).Msg("seed catalog failed")
-	} else if n > 0 {
-		componentLog("battlepass").Info().Int("tier_count", n).Msg("catalog seeded")
+	// Skip on a fresh install (no server row) — the FK constraint would reject
+	// the INSERT; seeding runs on the next call once a server has been added.
+	if !noServerConfigured() {
+		catalog := defaultBattlepassCatalog()
+		if n, err := globalBattlepassStore.seedTiersIfEmpty(catalog); err != nil {
+			componentLog("battlepass").Error().Err(err).Msg("seed catalog failed")
+		} else if n > 0 {
+			componentLog("battlepass").Info().Int("tier_count", n).Msg("catalog seeded")
+		}
 	}
 
 	globalBattlepassMu.Lock()

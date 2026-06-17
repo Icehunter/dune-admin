@@ -366,8 +366,12 @@ func startWelcomePackageScanner(_ appConfig) context.CancelFunc {
 	welcomeStoreDB = store
 
 	// Load runtime from the DB store; seeds from YAML on first boot (migration).
-	if err := applyWelcomeConfigFromStore(); err != nil {
-		fmt.Fprintf(os.Stderr, "welcome-package: config load failed: %v\n", err)
+	// Skip on a fresh install (no server row) — the FK constraint would reject
+	// the INSERT; seeding runs on the next call once a server has been added.
+	if !noServerConfigured() {
+		if err := applyWelcomeConfigFromStore(); err != nil {
+			fmt.Fprintf(os.Stderr, "welcome-package: config load failed: %v\n", err)
+		}
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1119,6 +1123,11 @@ func initGivePacksStore() {
 		}
 	}
 	givePacksStoreDB = s
+	// Skip on a fresh install (no server row) — the FK constraint would reject
+	// the INSERT; seeding runs on the next startup once a server has been added.
+	if noServerConfigured() {
+		return
+	}
 	loaded, _, ok, err := s.loadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "give-packs store load: %v\n", err)

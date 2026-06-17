@@ -306,7 +306,8 @@ func (s *battlepassStore) insertTiers(tiers []battlepassTier) error {
 		if _, err := s.db.Exec(`
 			INSERT INTO battlepass_tiers
 				(server_id, tier_key, category, label, signal, signal_key, threshold, intel, reward_items, enabled, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(server_id, tier_key) DO NOTHING`,
 			s.serverID, t.TierKey, t.Category, t.Label, string(t.Signal), t.SignalKey,
 			t.Threshold, t.Intel, t.RewardItems, enabledInt, now, now); err != nil {
 			return fmt.Errorf("insert battlepass tier %q: %w", t.TierKey, err)

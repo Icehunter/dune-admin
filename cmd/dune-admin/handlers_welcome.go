@@ -93,7 +93,11 @@ func applyWelcomeConfigFromStore() error {
 		return fmt.Errorf("load welcome config: %w", err)
 	}
 	if !ok {
-		// First boot: seed from YAML fields.
+		// First boot: seed from YAML fields — but skip on a fresh install
+		// (no server row) to avoid a FK constraint error.
+		if noServerConfigured() {
+			return nil
+		}
 		return seedWelcomeConfigFromYAML()
 	}
 	var pkgs []welcomePackage

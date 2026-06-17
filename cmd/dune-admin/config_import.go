@@ -156,6 +156,19 @@ func firstServerID() (int, bool) {
 	return id, true
 }
 
+// noServerConfigured reports whether the unified store is open but has no
+// server rows yet — the fresh-install state where FK-constrained seeding
+// (battlepass tiers, welcome config, give-packs) would hit constraint errors.
+// Returns false for the standalone-DB path (globalStore == nil) because those
+// stores have no servers FK.
+func noServerConfigured() bool {
+	if globalStore == nil {
+		return false
+	}
+	_, ok := firstServerID()
+	return !ok
+}
+
 func btoi(b bool) int {
 	if b {
 		return 1

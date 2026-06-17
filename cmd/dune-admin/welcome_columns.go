@@ -44,6 +44,26 @@ func initWelcomeColumnsSchema(db *sql.DB) error {
 	return nil
 }
 
+// initWelcomeConfigMissingColumns adds columns to welcome_config that were
+// introduced after some installs were created — necessary before
+// repairWelcomeConfigIntegerColumns references them. Each ALTER TABLE is
+// tolerant of "duplicate column name" so the function is idempotent.
+func initWelcomeConfigMissingColumns(db *sql.DB) error {
+	cols := []string{
+		`ALTER TABLE welcome_config ADD COLUMN region_join_enabled  INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE welcome_config ADD COLUMN region_leave_enabled INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE welcome_config ADD COLUMN region_join_template  TEXT    NOT NULL DEFAULT ''`,
+		`ALTER TABLE welcome_config ADD COLUMN region_leave_template TEXT    NOT NULL DEFAULT ''`,
+		`ALTER TABLE welcome_config ADD COLUMN region_chat_channel   TEXT    NOT NULL DEFAULT 'whisper'`,
+	}
+	for _, ddl := range cols {
+		if _, err := db.Exec(ddl); err != nil && !isDuplicateColumnErr(err) {
+			return fmt.Errorf("welcome_config add column: %w", err)
+		}
+	}
+	return nil
+}
+
 // saveWelcomePackagesColumns replaces all welcome rows for serverID with the
 // given packages and active versions, preserving slice order via position.
 // Existing rows for serverID are deleted first (item cascade fires) so the write

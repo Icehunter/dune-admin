@@ -226,24 +226,6 @@ func convertScopedTablesToIntRest(db *sql.DB, defaultID int) error {
 	return convertConfigBlobTablesToInt(db, defaultID)
 }
 
-// filterExistingCols returns only those column names in cols that actually exist
-// in table. Used when the copy-column list for a table rebuild may include blob
-// columns that a partial prior migration (e.g. the reverted 0.40.0) has already
-// dropped — filtering avoids "no such column" errors during the SELECT (issue #233-B).
-func filterExistingCols(db *sql.DB, table string, cols []string) ([]string, error) {
-	kept := cols[:0:0] // new slice, no shared backing array
-	for _, col := range cols {
-		typ, err := columnType(db, table, col)
-		if err != nil {
-			return nil, err
-		}
-		if typ != "" {
-			kept = append(kept, col)
-		}
-	}
-	return kept, nil
-}
-
 // convertConfigBlobTablesToInt rebuilds welcome_config / give_packs_config /
 // event_definitions / battlepass_tiers to int server_id, preserving any legacy
 // blob columns that are still present so migrateLegacy*Blobs can still read
@@ -255,16 +237,14 @@ func convertConfigBlobTablesToInt(db *sql.DB, defaultID int) error {
 		return err
 	}
 	if wcType != "INTEGER" {
-		// Filter to only columns that still exist; blob cols may already be gone.
+		// Pass all candidate columns — rebuildLegacyServerIDToInt filters to those
+		// that actually exist on the same pinned connection, so missing blob columns
+		// (already dropped by a prior partial run) are silently skipped.
 		allWCCols := []string{"enabled", "scan_secs", "active_version", "active_versions_json",
 			"packages_json", "welcome_message_enabled", "welcome_message",
 			"welcome_whisper_source_player", "motd_enabled", "motd_message", "motd_source_player",
 			"region_join_enabled", "region_leave_enabled", "region_join_template",
 			"region_leave_template", "region_chat_channel", "updated_at"}
-		wcCols, err := filterExistingCols(db, "welcome_config", allWCCols)
-		if err != nil {
-			return err
-		}
 		if err := rebuildLegacyServerIDToInt(db, "welcome_config", "welcome_config_int",
 			`CREATE TABLE welcome_config_int (
 				server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
@@ -280,7 +260,7 @@ func convertConfigBlobTablesToInt(db *sql.DB, defaultID int) error {
 				region_chat_channel TEXT NOT NULL DEFAULT 'whisper', updated_at TEXT NOT NULL DEFAULT '',
 				PRIMARY KEY (server_id)
 			)`,
-			wcCols, defaultID); err != nil {
+			allWCCols, defaultID); err != nil {
 			return err
 		}
 	}
@@ -293,12 +273,9 @@ func convertGiveAndCatalogBlobTablesToInt(db *sql.DB, defaultID int) error {
 		return err
 	}
 	if gpType != "INTEGER" {
-		// packs_json may already be dropped by a partial prior migration.
-		gpCols, err := filterExistingCols(db, "give_packs_config",
-			[]string{"base_packs_loaded", "packs_json", "updated_at"})
-		if err != nil {
-			return err
-		}
+		// Pass all candidate columns — rebuildLegacyServerIDToInt filters on the
+		// same pinned connection, so packs_json (already dropped by a prior partial
+		// run) is silently skipped and filled in from the DDL default.
 		if err := rebuildLegacyServerIDToInt(db, "give_packs_config", "give_packs_config_int",
 			`CREATE TABLE give_packs_config_int (
 				server_id INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
@@ -306,7 +283,7 @@ func convertGiveAndCatalogBlobTablesToInt(db *sql.DB, defaultID int) error {
 				packs_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT NOT NULL DEFAULT '',
 				PRIMARY KEY (server_id)
 			)`,
-			gpCols, defaultID); err != nil {
+			[]string{"base_packs_loaded", "packs_json", "updated_at"}, defaultID); err != nil {
 			return err
 		}
 	}

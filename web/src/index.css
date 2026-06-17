@@ -516,10 +516,10 @@ body,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .alert-dialog__backdrop::after,
-  .modal__backdrop::after,
-  .modal__container [role="dialog"]::after,
-  .alert-dialog__dialog::after {
+  [data-animations="on"] .alert-dialog__backdrop::after,
+  [data-animations="on"] .modal__backdrop::after,
+  [data-animations="on"] .modal__container [role="dialog"]::after,
+  [data-animations="on"] .alert-dialog__dialog::after {
     animation: none;
   }
 }

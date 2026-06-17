@@ -47,8 +47,9 @@ type Instance struct {
 	pool     *pgxpool.Pool
 	mu       sync.Mutex
 	cfg      BotConfig
-	cancel   context.CancelFunc
-	reloadCh chan struct{}
+	cancel       context.CancelFunc
+	reloadCh     chan struct{}
+	nextTickTime time.Time
 }
 
 func Run(ctx context.Context, pool *pgxpool.Pool, cfg BotConfig) (*Instance, error) {
@@ -83,6 +84,12 @@ func (i *Instance) Stop() {
 	if i.cancel != nil {
 		i.cancel()
 	}
+}
+
+func (i *Instance) NextTickTime() time.Time {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	return i.nextTickTime
 }
 
 func (i *Instance) runLoop(ctx context.Context) {
@@ -132,6 +139,11 @@ func (i *Instance) runLoop(ctx context.Context) {
 				}
 			}
 		}
+
+		nextTick := time.Now().Add(time.Duration(delaySec) * time.Second)
+		i.mu.Lock()
+		i.nextTickTime = nextTick
+		i.mu.Unlock()
 
 		timer := time.NewTimer(time.Duration(delaySec) * time.Second)
 		

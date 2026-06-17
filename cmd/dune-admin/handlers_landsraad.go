@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // @Summary Landsraad overview — latest term, decree catalogue, and task board
@@ -45,6 +46,15 @@ func handleGetLandsraadBotConfig(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
+	if sc.LandsraadBot != nil && cfg.Enabled {
+		t := sc.LandsraadBot.NextTickTime()
+		if !t.IsZero() {
+			timeStr := t.Format(time.RFC3339)
+			cfg.AtreidesNextTickTime = timeStr
+			cfg.HarkonnenNextTickTime = timeStr
+		}
+	}
+
 	jsonOK(w, cfg)
 }
 
@@ -73,10 +83,10 @@ func handleUpdateLandsraadBotConfig(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Restart the bot to apply config
 	restartServerLandsraadBot(sc)
-	
+
 	jsonOK(w, req)
 }
 
@@ -91,7 +101,7 @@ func handleResetLandsraadTerm(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
 		return
 	}
-	
+
 	term, err := fetchLandsraadTerm(ctx, sc.DB)
 	if err != nil {
 		jsonErr(w, fmt.Errorf("fetch term: %w", err), http.StatusInternalServerError)
@@ -104,14 +114,14 @@ func handleResetLandsraadTerm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Forcefully resolve the winner and election phase immediately so the game server 
+	// Forcefully resolve the winner and election phase immediately so the game server
 	// spawns a brand new term on its next tick, instead of getting stuck in the voting phase
 	_, err = sc.DB.Exec(ctx, "SELECT dune.landsraad_determine_winner($1)", term.TermID)
 	if err != nil {
 		jsonErr(w, fmt.Errorf("determine winner: %w", err), http.StatusInternalServerError)
 		return
 	}
-	
+
 	_, err = sc.DB.Exec(ctx, "SELECT dune.landsraad_collect_votes($1)", term.TermID)
 	if err != nil {
 		jsonErr(w, fmt.Errorf("collect votes: %w", err), http.StatusInternalServerError)

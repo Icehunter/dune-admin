@@ -22,6 +22,8 @@ type landsraadBotConfig struct {
 	TickJitterSeconds     int     `json:"tick_jitter_seconds"`
 	AtreidesTargets       []int   `json:"atreides_targets"`
 	HarkonnenTargets      []int   `json:"harkonnen_targets"`
+	AtreidesNextTickTime  string  `json:"atreides_next_tick_time,omitempty"`
+	HarkonnenNextTickTime string  `json:"harkonnen_next_tick_time,omitempty"`
 }
 
 func defaultLandsraadBotConfig() landsraadBotConfig {

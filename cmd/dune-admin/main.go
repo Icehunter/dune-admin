@@ -17,10 +17,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	_ "time/tzdata" // embed the IANA tz database so time.LoadLocation works on
 	// minimal containers without the OS tzdata package (#204: scheduled restart
 	// rejected valid zones like "Europe/London").
@@ -989,6 +991,14 @@ func run(ctx context.Context) error {
 		return nil
 	}
 
+	// Cancel ctx on SIGINT/SIGTERM. In run() (not main()) so the deferred stop()
+	// unwinds alongside the cleanup defers below — an os.Exit in main() would skip
+	// a defer left there. This makes Stufe A's defer-safe cleanup fire on the
+	// normal (signal) shutdown path, not only on a server error. Placed after the
+	// immediate-mode block so render-k8s and friends never touch signal state.
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	if err := loadRuntimeData(); err != nil {
 		return err
 	}
@@ -1061,14 +1071,13 @@ func run(ctx context.Context) error {
 	applyBattlepassEngine(loadedConfig)
 	defer stopBattlepassEngine()
 
-	return startServer(resolveListenAddr())
+	return startServer(ctx, resolveListenAddr())
 }
 
 // startBackgroundServices launches the process-lifetime schedulers and loads the
 // operator-configured runtime data that has no teardown. The schedulers honour
-// ctx.Done(); today ctx is context.Background() (the process is hard-stopped on
-// signal), but threading ctx keeps this forward-compatible with graceful
-// shutdown without changing current behaviour.
+// ctx.Done(): ctx is cancelled by run()'s signal.NotifyContext on SIGINT/SIGTERM,
+// so these goroutines stop as part of graceful shutdown.
 func startBackgroundServices(ctx context.Context) {
 	// Scheduled restarts (#145): per-server schedules live in the DB; the
 	// scheduler iterates the registry each tick. Runs for the process lifetime

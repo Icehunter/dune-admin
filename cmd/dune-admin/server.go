@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -403,7 +405,82 @@ func buildMux() *http.ServeMux {
 	return mux
 }
 
-func startServer(addr string) error {
+// shutdownGrace bounds how long Shutdown waits for in-flight HTTP requests to
+// drain on SIGINT/SIGTERM. It is deliberately far below the server's 10-minute
+// WriteTimeout (long backups/downloads): a signal means "go down soon", so the
+// drain is bounded and any still-running request is force-closed afterwards.
+const shutdownGrace = 30 * time.Second
+
+// serveWithGracefulShutdown runs srv until ctx is cancelled or it fails. On ctx
+// cancellation it drains in-flight requests within grace, then force-closes any
+// that remain. Background work is cancelled separately via the same ctx.
+func serveWithGracefulShutdown(ctx context.Context, srv *http.Server, grace time.Duration) error {
+	// Buffered (cap 1): on the ctx.Done path ListenAndServe still returns once
+	// Shutdown/Close completes, and this send must not block, so the goroutine
+	// always exits — no leak.
+	errc := make(chan error, 1)
+	go func() { errc <- srv.ListenAndServe() }()
+	select {
+	case err := <-errc:
+		return ignoreServerClosed(err)
+	case <-ctx.Done():
+		// A fresh Background-derived timeout, NOT ctx: ctx is already cancelled
+		// here, so passing it (or a child of it) to Shutdown would expire the
+		// deadline immediately and skip the grace window entirely.
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), grace)
+		defer cancel()
+		shutErr := srv.Shutdown(shutdownCtx)
+		if errors.Is(shutErr, context.DeadlineExceeded) {
+			// Shutdown does NOT close still-active connections when the deadline
+			// expires — it only stops waiting. Close aborts them so they cannot
+			// keep using resources (e.g. the DB pool) while run()'s defers tear
+			// them down.
+			componentLog("server").Warn().Dur("grace", grace).
+				Msg("shutdown grace exceeded; force-closing remaining connections")
+			// Best-effort: Shutdown already closed the listeners, so Close's
+			// return is the expected "already closed" and not actionable — and
+			// surfacing it would turn every bounded shutdown into a non-zero exit.
+			_ = srv.Close()
+		}
+		// <-errc joins the ListenAndServe goroutine (it has returned now that the
+		// server is shut down/closed) and recovers a real listen failure if one
+		// occurred before shutdown took effect, instead of returning false-clean.
+		return preferServeErr(<-errc, shutErr)
+	}
+}
+
+// ignoreServerClosed treats http.ErrServerClosed (the value ListenAndServe
+// returns after Shutdown/Close) as a clean stop, surfacing any other error.
+func ignoreServerClosed(err error) error {
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
+}
+
+// preferServeErr decides what the signal-shutdown path returns: a genuine
+// ListenAndServe failure (serveErr) wins over the shutdown outcome, so a bind
+// error that raced with ctx cancellation is never swallowed; otherwise the
+// Shutdown result is mapped via drainResult.
+func preferServeErr(serveErr, shutErr error) error {
+	if e := ignoreServerClosed(serveErr); e != nil {
+		return e
+	}
+	return drainResult(shutErr)
+}
+
+// drainResult maps Shutdown's result for the signal path. A grace-deadline
+// timeout is the intended bounded shutdown (connections force-closed in
+// serveWithGracefulShutdown), not a failure, so it returns nil. Any other error
+// propagates.
+func drainResult(err error) error {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return nil
+	}
+	return err
+}
+
+func startServer(ctx context.Context, addr string) error {
 	mux := buildMux()
 	initAuthRuntime(loadedConfig)
 
@@ -416,9 +493,10 @@ func startServer(addr string) error {
 		IdleTimeout:       60 * time.Second,
 	}
 	componentLog("server").Info().Str("addr", addr).Msg("dune-admin listening")
-	// Return the error instead of log.Fatal so the deferred cleanup registered
-	// in run() unwinds on shutdown; log.Fatal calls os.Exit, which skips defers.
-	return srv.ListenAndServe()
+	// serveWithGracefulShutdown returns the listen error (or nil on a clean
+	// signal-driven shutdown) instead of log.Fatal, so the deferred cleanup
+	// registered in run() unwinds; log.Fatal calls os.Exit, which skips defers.
+	return serveWithGracefulShutdown(ctx, srv, shutdownGrace)
 }
 
 // spaHandler serves static files from distDir, falling back to index.html

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +28,30 @@ func TestRun_ImmediateModeHandledReturnsNil(t *testing.T) {
 	}
 	if _, err := os.Stat(renderK8SOut); err != nil {
 		t.Fatalf("expected manifest written at %s: %v", renderK8SOut, err)
+	}
+}
+
+// TestRun_VersionModeHandled locks in that -version is an immediate mode: it
+// prints the version to stdout and returns (handled, nil) so run() exits without
+// starting the server / touching the DB.
+func TestRun_VersionModeHandled(t *testing.T) {
+	prev := versionMode
+	t.Cleanup(func() { versionMode = prev })
+	versionMode = true
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	handled, err := runImmediateModes()
+	_ = w.Close()
+	os.Stdout = old
+	out, _ := io.ReadAll(r)
+
+	if !handled || err != nil {
+		t.Fatalf("version mode: handled=%v err=%v, want true, nil", handled, err)
+	}
+	if !strings.Contains(string(out), AppVersion) {
+		t.Fatalf("version output %q does not contain AppVersion %q", out, AppVersion)
 	}
 }
 

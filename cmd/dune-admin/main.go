@@ -69,6 +69,7 @@ func resolveAppVersion(ldflagsVersion, workDir string) string {
 // ── config ────────────────────────────────────────────────────────────────────
 
 var (
+	versionMode     bool
 	setupMode       bool
 	setPasswordMode bool
 	cleanMarketMode bool
@@ -544,6 +545,7 @@ func init() {
 	flag.StringVar(&brokerPass, "broker-pass", envOr("BROKER_PASS", ""), "AMQP broker password (required for broker features)")
 	flag.StringVar(&backupDir, "backup-dir", envOr("BACKUP_DIR", ""), "Backup directory path")
 	flag.StringVar(&serverIniDir, "ini-dir", envOr("SERVER_INI_DIR", ""), "Directory containing UserGame.ini / UserOverrides.ini")
+	flag.BoolVar(&versionMode, "version", false, "Print version and exit")
 	flag.BoolVar(&setupMode, "setup", false, "Interactive setup wizard — writes ~/.dune-admin/config.yaml")
 	flag.BoolVar(&setPasswordMode, "set-password", false, "Set the local dashboard login username/password, then exit (auth lockout recovery)")
 	flag.BoolVar(&cleanMarketMode, "clean-market", false, "Delete all bot listings (Revy), then exit")
@@ -795,6 +797,10 @@ func runCleanMarketMode() error {
 }
 
 func runImmediateModes() (handled bool, err error) {
+	if versionMode {
+		fmt.Printf("dune-admin %s (commit %s, built %s)\n", AppVersion, GitCommit, BuildTime)
+		return true, nil
+	}
 	// Explicit -setup flag: reconfigure and exit (don't start server).
 	if setupMode {
 		runSetup()

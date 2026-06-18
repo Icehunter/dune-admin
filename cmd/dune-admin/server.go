@@ -437,10 +437,14 @@ func serveWithGracefulShutdown(ctx context.Context, srv *http.Server, grace time
 			// them down.
 			componentLog("server").Warn().Dur("grace", grace).
 				Msg("shutdown grace exceeded; force-closing remaining connections")
-			// Best-effort: Shutdown already closed the listeners, so Close's
-			// return is the expected "already closed" and not actionable — and
-			// surfacing it would turn every bounded shutdown into a non-zero exit.
-			_ = srv.Close()
+			// Close after a clean Shutdown normally returns nil (the listeners are
+			// already untracked), so a non-nil result is a genuine, rare problem
+			// worth surfacing for diagnosis — but only logged, never returned, so a
+			// bounded shutdown still exits 0.
+			if cErr := srv.Close(); cErr != nil {
+				componentLog("server").Warn().Err(cErr).
+					Msg("force-close after grace timeout returned an error")
+			}
 		}
 		// <-errc joins the ListenAndServe goroutine (it has returned now that the
 		// server is shut down/closed) and recovers a real listen failure if one

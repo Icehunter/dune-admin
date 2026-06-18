@@ -40,12 +40,16 @@ func TestRun_VersionModeHandled(t *testing.T) {
 	versionMode = true
 
 	old := os.Stdout
-	r, w, _ := os.Pipe()
+	r, w, pipeErr := os.Pipe()
+	if pipeErr != nil {
+		t.Fatalf("os.Pipe: %v", pipeErr)
+	}
 	os.Stdout = w
 	handled, err := runImmediateModes()
 	_ = w.Close()
-	os.Stdout = old
+	os.Stdout = old // restore before reading, so later stdout writes are unaffected
 	out, _ := io.ReadAll(r)
+	_ = r.Close()
 
 	if !handled || err != nil {
 		t.Fatalf("version mode: handled=%v err=%v, want true, nil", handled, err)

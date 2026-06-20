@@ -35,6 +35,10 @@ export interface ManagePacksModalProps {
 
 export type PackDiff = { added: number, updated: number, removed: number, isDirty: boolean }
 
+export interface DiffStatusProps {
+  diff: PackDiff
+}
+
 export type KeyedItem = GivePackItem & { _key: string }
 export type KeyedPack = Omit<GivePack, 'items'> & { items: KeyedItem[] }
 

@@ -1,11 +1,7 @@
 import * as React from 'react'
-import type { PackDiff } from './types'
+import type { DiffStatusProps } from './types'
 
-interface Props {
-  diff: PackDiff
-}
-
-export const DiffStatus: React.FC<Props> = ({ diff }) => {
+export const DiffStatus: React.FC<DiffStatusProps> = ({ diff }) => {
   const parts: { key: string, text: string, cls: string }[] = []
   if (diff.added > 0) parts.push({ key: 'added', text: `${diff.added} added`, cls: 'text-success' })
   if (diff.updated > 0) parts.push({ key: 'updated', text: `${diff.updated} updated`, cls: 'text-warning' })

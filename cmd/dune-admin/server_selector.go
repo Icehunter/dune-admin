@@ -18,7 +18,9 @@ const serverContextKey contextKey = 1
 // serverSelectorMiddleware reads the optional X-Dune-Server request header and
 // stashes the matching ServerContext in the request context. When the header is
 // absent the active server from reg is used. When the header names an unknown
-// server the request is rejected with 404.
+// server the request is rejected with 404 — except for the server-list endpoint
+// (GET /api/v1/servers, see isServerListRequest), the discovery/recovery path,
+// where an unknown header is treated as no selection and falls back to active.
 func serverSelectorMiddleware(reg *serverRegistry, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get("X-Dune-Server")

@@ -5,6 +5,7 @@ import { EmptyState } from '@heroui-pro/react'
 import { api } from '../api/client'
 import type { LandsraadOverview, LandsraadTask } from '../api/client'
 import { DataTable, Icon, PageHeader, Panel, SectionLabel, type Column } from '../dune-ui'
+import { LandsraadBotPanel } from './LandsraadBotPanel'
 import type { TaskKey, FieldProps } from './types'
 
 const Field: React.FC<FieldProps> = ({ label, value }) => (
@@ -66,6 +67,8 @@ export const LandsraadTab: React.FC = () => {
               )}
         </Button>
       </PageHeader>
+
+      <LandsraadBotPanel decrees={decrees} tasks={tasks} />
 
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 pb-6 pr-1">
         <Panel>

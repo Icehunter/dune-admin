@@ -26,7 +26,7 @@ const (
 // Unknown commands default to tierAdmin as a safe fallback.
 func commandTier(cmd string) discordTier {
 	switch cmd {
-	case "status", "lookup", "register", "unregister", "mystats", "mybalance", "myinventory":
+	case "status", "lookup", "register", "unregister", "mystats", "mybalance", "myinventory", "market":
 		return tierViewer
 	case "give-currency":
 		return tierEconomy
@@ -144,6 +144,7 @@ type discordDeps struct {
 	getLink        func(ctx context.Context, discordUserID string) (charName string, ok bool, err error)
 	fetchCurrency  func(ctx context.Context, controllerID int64) ([]currencyRow, error)
 	fetchInventory func(ctx context.Context, actorID int64) ([]itemInfo, error)
+	marketStats    func(ctx context.Context, templateID string) (int64, int64, error)
 }
 
 // ── Authorization ─────────────────────────────────────────────────────────────
@@ -220,6 +221,8 @@ func dispatchDiscordCommand(ctx context.Context, i discordInteraction, cfg disco
 		return handleDiscordMyBalance(ctx, i.Member.UserID, deps)
 	case "myinventory":
 		return handleDiscordMyInventory(ctx, i.Member.UserID, deps)
+	case "market":
+		return handleDiscordMarket(ctx, i.Options, deps)
 	default:
 		return discordReply{
 			Content:   fmt.Sprintf("Unknown command: %q", i.Command),
@@ -229,6 +232,37 @@ func dispatchDiscordCommand(ctx context.Context, i discordInteraction, cfg disco
 }
 
 // ── Command handlers ──────────────────────────────────────────────────────────
+
+func handleDiscordMarket(ctx context.Context, opts map[string]any, deps discordDeps) discordReply {
+	itemOpt, ok := optString(opts, "item")
+	if !ok || itemOpt == "" {
+		return discordReply{Content: "Missing item option.", Ephemeral: true}
+	}
+
+	// If itemData exists, use OriginalNames to get the true casing for the DB query.
+	exactName := itemOpt
+	displayName := exactName
+	if orig, exists := itemData.OriginalNames[strings.ToLower(itemOpt)]; exists {
+		exactName = orig
+	}
+	if name, exists := itemData.Names[strings.ToLower(itemOpt)]; exists {
+		displayName = name
+	}
+
+	minPrice, avgPrice, err := deps.marketStats(ctx, exactName)
+	if err != nil {
+		componentLog("discord").Warn().Str("item", exactName).Err(err).Msg("/market failed")
+		return discordReply{Content: fmt.Sprintf("Error fetching market stats for %q.", displayName), Ephemeral: true}
+	}
+
+	if minPrice == 0 && avgPrice == 0 {
+		return discordReply{Content: fmt.Sprintf("📈 **%s** — no active listings.", displayName)}
+	}
+
+	return discordReply{
+		Content: fmt.Sprintf("📈 **%s**\n• Minimum Price: **%d** Solaris\n• Average Price: **%d** Solaris", displayName, minPrice, avgPrice),
+	}
+}
 
 // handleDiscordStatus returns the current server population summary.
 func handleDiscordStatus(ctx context.Context, deps discordDeps) discordReply {

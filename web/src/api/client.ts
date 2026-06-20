@@ -532,6 +532,20 @@ export type LandsraadOverview = {
   decrees: LandsraadDecree[]
   tasks: LandsraadTask[]
 }
+export type LandsraadBotConfig = {
+  enabled: boolean
+  progress_rate: number
+  simultaneous_targets: number
+  target_completion_days: number
+  atreides_guild_id: number
+  harkonnen_guild_id: number
+  atreides_strategy: string
+  harkonnen_strategy: string
+  atreides_target_task: number
+  harkonnen_target_task: number
+  atreides_target_decree: number
+  harkonnen_target_decree: number
+}
 export type LogPod = {
   namespace: string
   name: string
@@ -1403,6 +1417,8 @@ export const api = {
   },
   guilds: {
     list: () => req<GuildSummary[]>('GET', '/guilds'),
+    create: (body: { name: string, description: string, faction_id: number }) => 
+      req<{ guild_id: number }>('POST', '/guilds', body),
     get: (id: number) => req<GuildDetail>('GET', `/guilds/${id}`),
     update: (id: number, body: { name?: string, description?: string }) =>
       req<GuildDetail>('PATCH', `/guilds/${id}`, body),
@@ -1412,6 +1428,10 @@ export const api = {
 
   landsraad: {
     get: () => req<LandsraadOverview>('GET', '/landsraad'),
+    bot: {
+      getConfig: () => req<LandsraadBotConfig>('GET', '/landsraad/bot/config'),
+      saveConfig: (cfg: LandsraadBotConfig) => req<LandsraadBotConfig>('PUT', '/landsraad/bot/config', cfg),
+    },
   },
 
   market: {

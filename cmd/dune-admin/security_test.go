@@ -70,7 +70,7 @@ func TestIsValidK8sName(t *testing.T) {
 
 func TestOriginAllowed(t *testing.T) {
 	orig := allowedOrigins
-	allowedOrigins = []string{"https://dune-admin.layout.tools", "http://localhost:5173"}
+	allowedOrigins = []string{"https://dune-admin.layout.tools", "http://localhost:5173", "http://localhost:8081"}
 	t.Cleanup(func() { allowedOrigins = orig })
 
 	tests := []struct {
@@ -97,7 +97,7 @@ func TestOriginAllowed(t *testing.T) {
 
 func TestOriginAllowedForRequest(t *testing.T) {
 	orig := allowedOrigins
-	allowedOrigins = []string{"https://dune-admin.layout.tools", "http://localhost:5173"}
+	allowedOrigins = []string{"https://dune-admin.layout.tools", "http://localhost:5173", "http://localhost:8081"}
 	t.Cleanup(func() { allowedOrigins = orig })
 
 	tests := []struct {

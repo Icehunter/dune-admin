@@ -298,6 +298,9 @@ func applyUnifiedSchema(db *sql.DB) error {
 			return fmt.Errorf("unified store: %s schema: %w", s.name, err)
 		}
 	}
+	if err := initLandsraadBotSchema(db); err != nil {
+		return fmt.Errorf("unified store: landsraad bot schema: %w", err)
+	}
 	if _, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS meta (
 			key   TEXT PRIMARY KEY,

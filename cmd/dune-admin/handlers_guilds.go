@@ -12,6 +12,44 @@ import (
 
 var errEmptyGuildName = errors.New("guild name must not be empty")
 
+// @Summary Create a new NPC guild
+// @Tags guilds
+// @Accept json
+// @Produce json
+// @Param body body map[string]interface{} true "Guild definition"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Failure 503 {object} map[string]string
+// @Router /api/v1/guilds [post]
+func handleCreateGuild(w http.ResponseWriter, r *http.Request) {
+	if globalDB == nil {
+		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
+		return
+	}
+	var req struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		FactionID   int    `json:"faction_id"`
+	}
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, fmt.Errorf("invalid json"), http.StatusBadRequest)
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		jsonErr(w, errEmptyGuildName, http.StatusBadRequest)
+		return
+	}
+	id, err := cmdCreateGuild(r.Context(), globalDB, req.Name, req.Description, req.FactionID)
+	if err != nil {
+		componentLog("handlers").Error().Err(err).Msg("handleCreateGuild failed")
+		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, map[string]interface{}{"guild_id": id})
+}
+
 // @Summary List all guilds with member count + faction name
 // @Tags guilds
 // @Produce json

@@ -97,15 +97,17 @@ type specTrack struct {
 }
 
 type itemRule struct {
-	Name          string   `json:"name"`
-	StackMax      int64    `json:"stack_max"`
-	Volume        float64  `json:"volume"`
-	Tier          int      `json:"tier"`
-	Rarity        string   `json:"rarity"`
-	Category      string   `json:"category"`
-	IsSchematic   bool     `json:"is_schematic"`
-	MaxDurability *float64 `json:"max_durability,omitempty"`
-	Icon          *string  `json:"icon"`
+	Name            string   `json:"name"`
+	StackMax        int64    `json:"stack_max"`
+	Volume          float64  `json:"volume"`
+	Tier            int      `json:"tier"`
+	Rarity          string   `json:"rarity"`
+	Category        string   `json:"category"`
+	IsSchematic     bool     `json:"is_schematic"`
+	IsGradeable     bool     `json:"is_gradeable"`
+	MinQualityLevel *int64   `json:"min_quality_level,omitempty"`
+	MaxDurability   *float64 `json:"max_durability,omitempty"`
+	Icon            *string  `json:"icon"`
 }
 
 type itemDataFile struct {

@@ -380,17 +380,23 @@ func handleGiveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	quality, err := normalizeGrantQuality(req.Template, req.Quality)
+	if err != nil {
+		jsonErr(w, err, 400)
+		return
+	}
+
 	// RMQ path: online player, quality=0, and item grade doesn't matter.
 	// Schematics and augment items are excluded — their quality_level must be
 	// stored explicitly in the DB; the RMQ command has no grade field.
-	if req.Quality == 0 && !itemNeedsDBPath(req.Template) {
+	if quality == 0 && !itemNeedsDBPath(req.Template) {
 		if tryGiveItemViaRMQ(w, dbFromCtx(r), req.PlayerID, req.Template, req.Qty) {
 			return
 		}
 	}
 
 	// DB path: offline player, quality > 0, or grade-sensitive item.
-	msg, ok := cmdGiveItem(dbFromCtx(r), req.PlayerID, req.Template, req.Qty, req.Quality)().(msgMutate)
+	msg, ok := cmdGiveItem(dbFromCtx(r), req.PlayerID, req.Template, req.Qty, quality)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -419,10 +425,11 @@ type skippedItem struct {
 }
 
 type giveItemsDeps struct {
-	checkCapacity func(context.Context, int64, string, int64) error
-	rmqAdd        func(string, string, int, float64) error
-	dbGive        func(int64, string, int64, int64) (msgMutate, bool)
-	needsDBPath   func(string) bool
+	checkCapacity    func(context.Context, int64, string, int64) error
+	rmqAdd           func(string, string, int, float64) error
+	dbGive           func(int64, string, int64, int64) (msgMutate, bool)
+	needsDBPath      func(string) bool
+	normalizeQuality func(string, int64) (int64, error)
 }
 
 func resolveGiveItemsOnlinePath(
@@ -454,9 +461,44 @@ func itemNeedsDBPath(template string) bool {
 	return rule.IsSchematic || strings.Contains(strings.ToLower(rule.Category), "augment")
 }
 
+// normalizeGrantQuality validates and adjusts the requested quality for a grant:
+//   - Schematics are blocked entirely: the game does not reconstruct research-cost
+//     data from quality_level alone, so a granted schematic always ends up broken
+//     regardless of grade. Admins should grant the finished augment instead.
+//   - Gradeable items require quality ≥ min_quality_level (or ≥ 1 if unset). A
+//     quality of 0 would produce an item with 0% stats; clamp up to the minimum.
+//   - All other items pass through unchanged.
+func normalizeGrantQuality(template string, quality int64) (int64, error) {
+	rule, ok := itemRuleLookup(template)
+	if !ok {
+		return quality, nil
+	}
+	if rule.IsSchematic {
+		return 0, fmt.Errorf("schematics cannot be granted directly — they do not carry valid research data when inserted via the DB path; grant the finished augment/item instead")
+	}
+	if rule.IsGradeable {
+		minQ := int64(1)
+		if rule.MinQualityLevel != nil {
+			minQ = *rule.MinQualityLevel
+		}
+		if quality < minQ {
+			return minQ, nil
+		}
+	}
+	return quality, nil
+}
+
 func processOneGiveItem(ctx context.Context, playerID int64, item giveItemInput, online bool, flsID string, deps giveItemsDeps) (string, *skippedItem) {
+	quality := item.Quality
+	if deps.normalizeQuality != nil {
+		var err error
+		quality, err = deps.normalizeQuality(item.Template, quality)
+		if err != nil {
+			return "", &skippedItem{Template: item.Template, Reason: err.Error()}
+		}
+	}
 	needsDB := deps.needsDBPath != nil && deps.needsDBPath(item.Template)
-	if online && item.Quality == 0 && !needsDB {
+	if online && quality == 0 && !needsDB {
 		if err := deps.checkCapacity(ctx, playerID, item.Template, item.Qty); err != nil {
 			return "", &skippedItem{Template: item.Template, Reason: err.Error()}
 		}
@@ -465,7 +507,7 @@ func processOneGiveItem(ctx context.Context, playerID int64, item giveItemInput,
 		}
 		return item.Template, nil
 	}
-	msg, ok := deps.dbGive(playerID, item.Template, item.Qty, item.Quality)
+	msg, ok := deps.dbGive(playerID, item.Template, item.Qty, quality)
 	if !ok || msg.err != nil {
 		reason := "internal error"
 		if ok && msg.err != nil {
@@ -520,7 +562,8 @@ func handleGiveItems(w http.ResponseWriter, r *http.Request) {
 			msg, ok := cmdGiveItem(dbFromCtx(r), playerID, template, qty, quality)().(msgMutate)
 			return msg, ok
 		},
-		needsDBPath: itemNeedsDBPath,
+		needsDBPath:      itemNeedsDBPath,
+		normalizeQuality: normalizeGrantQuality,
 	})
 
 	jsonOK(w, map[string]any{"given": given, "skipped": skipped})

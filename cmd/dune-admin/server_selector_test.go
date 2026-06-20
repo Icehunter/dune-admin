@@ -69,6 +69,60 @@ func TestServerSelectorMiddleware_UnknownHeader_Returns404(t *testing.T) {
 	}
 }
 
+// GET /api/v1/servers is the discovery/recovery endpoint. A stale X-Dune-Server
+// header (e.g. after deleting the currently-selected server) must NOT 404 it, or
+// the client can never re-list servers to recover. The header is ignored there
+// and the request falls through to the active server, exactly like no header.
+func TestServerSelectorMiddleware_UnknownHeader_ServerListExempt(t *testing.T) {
+	t.Parallel()
+	reg := newServerRegistry(nil)
+	reg.Register(&ServerContext{ID: "srv-a", StoreScope: 1}) // first → active
+
+	probe := &probeHandler{}
+	h := serverSelectorMiddleware(reg, probe)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/servers", nil)
+	req.Header.Set("X-Dune-Server", "does-not-exist")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200 (list must stay reachable with a stale header)", rr.Code)
+	}
+	if !probe.called {
+		t.Fatal("inner handler not called — list endpoint must pass through")
+	}
+	if probe.gotCtx == nil || probe.gotCtx.ID != "srv-a" {
+		t.Errorf("serverFromCtx = %v, want active srv-a (stale header treated as no selection)", probe.gotCtx)
+	}
+}
+
+// The exemption is scoped to the list endpoint only: a stale header on any other
+// route must still 404 so a scoped data request never silently serves the wrong
+// server's data. (A non-list path with the same stale header stays strict.)
+func TestServerSelectorMiddleware_UnknownHeader_NonListStillStrict(t *testing.T) {
+	t.Parallel()
+	reg := newServerRegistry(nil)
+	reg.Register(&ServerContext{ID: "srv-a", StoreScope: 1})
+
+	probe := &probeHandler{}
+	h := serverSelectorMiddleware(reg, probe)
+
+	// POST /api/v1/servers (add) and GET /api/v1/servers/health are NOT the list
+	// endpoint, so a stale header must still be rejected.
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/servers/health", nil)
+	req.Header.Set("X-Dune-Server", "does-not-exist")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404 (only the list endpoint is exempt)", rr.Code)
+	}
+	if probe.called {
+		t.Error("inner handler must not be called for a stale header on a scoped route")
+	}
+}
+
 func TestServerSelectorMiddleware_NoHeader_FallsBackToActive(t *testing.T) {
 	t.Parallel()
 	reg := newServerRegistry(nil)

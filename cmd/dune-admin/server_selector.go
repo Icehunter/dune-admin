@@ -26,8 +26,15 @@ func serverSelectorMiddleware(reg *serverRegistry, next http.Handler) http.Handl
 		if id != "" {
 			sc = reg.Get(id)
 			if sc == nil {
-				jsonErr(w, fmt.Errorf("server %q not found", id), http.StatusNotFound)
-				return
+				// The server list is the discovery/recovery endpoint: never gate it
+				// on a (possibly stale) selection, or deleting the currently-selected
+				// server leaves the client unable to re-list and recover. Treat the
+				// stale header as no selection and fall through to the active server.
+				if !isServerListRequest(r) {
+					jsonErr(w, fmt.Errorf("server %q not found", id), http.StatusNotFound)
+					return
+				}
+				sc = reg.Active() // may be nil for empty registry
 			}
 		} else {
 			sc = reg.Active() // may be nil for empty registry
@@ -37,6 +44,13 @@ func serverSelectorMiddleware(reg *serverRegistry, next http.Handler) http.Handl
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// isServerListRequest reports whether r targets the server-list endpoint
+// (GET /api/v1/servers), the discovery/recovery path that must stay reachable
+// even when the X-Dune-Server header names a server that no longer exists.
+func isServerListRequest(r *http.Request) bool {
+	return r.Method == http.MethodGet && r.URL.Path == "/api/v1/servers"
 }
 
 // serverFromCtx retrieves the ServerContext stashed by serverSelectorMiddleware.

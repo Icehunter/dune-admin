@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { MitigationBarProps } from './types'
+import type { MitigationBarProps } from './interfaces'
 
 export const MitigationBar: React.FC<MitigationBarProps> = ({ label, value }) => {
   const pct = Math.round(value * 100)

@@ -1,5 +1,17 @@
 import type { AppConfig, Player, ServerConfig } from '../api/client'
 
+export interface ItemDetailCardRowProps {
+  label: string
+  value: string
+  accent?: boolean
+  wrap?: boolean
+}
+
+export interface MitigationBarProps {
+  label: string
+  value: number
+}
+
 export interface PlayerSearchFieldProps {
   /** Called with the full player row — consumers pick the ID they need
    *  (account_id, fls_id, or actor id). */

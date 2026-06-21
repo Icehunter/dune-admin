@@ -7,6 +7,8 @@ import { iconUrl, categoryColor, qualityLabel } from '../utils/icons'
 import { qualityDataAtom } from '../data/store'
 import type { ItemEntry } from '../data/store'
 import type { MarketListing } from '../api/client'
+import { Row } from './ItemDetailCard.Row'
+import { MitigationBar } from './ItemDetailCard.MitigationBar'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -286,33 +288,6 @@ export const ItemDetailCard: React.FC<ItemDetailCardProps> = ({ templateId, name
 
       {/* Active Listings (market only) */}
       {renderMarketPanel()}
-    </div>
-  )
-}
-
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
-const Row: React.FC<{ label: string, value: string, accent?: boolean, wrap?: boolean }> = ({
-  label, value, accent, wrap,
-}) => (
-  <div className={`flex text-xs py-0.5 ${wrap ? 'flex-col gap-0.5' : 'items-center justify-between'}`}>
-    <span className="text-muted shrink-0">{label}</span>
-    <span className={accent ? 'font-mono text-accent font-semibold' : 'text-foreground'}>{value}</span>
-  </div>
-)
-
-const MitigationBar: React.FC<{ label: string, value: number }> = ({ label, value }) => {
-  const pct = Math.round(value * 100)
-  return (
-    <div className="flex items-center gap-2 text-xs py-0.5">
-      <span className="text-muted shrink-0 w-20">{label}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-surface-secondary overflow-hidden">
-        <div className="h-full bg-accent rounded-full" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-muted tabular-nums w-8 text-right">
-        {pct}
-        %
-      </span>
     </div>
   )
 }

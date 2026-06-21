@@ -47,18 +47,6 @@ export interface RolePickerProps {
   hint?: string | undefined
 }
 
-export interface ItemDetailCardRowProps {
-  label: string
-  value: string
-  accent?: boolean
-  wrap?: boolean
-}
-
-export interface MitigationBarProps {
-  label: string
-  value: number
-}
-
 export type MarketDetail = {
   lowestPrice: number
   totalStock: number

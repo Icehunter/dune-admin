@@ -5,7 +5,8 @@ import { api, MASKED } from '../../../api/client'
 import type { AppConfig } from '../../../api/client'
 import { Panel, SectionLabel } from '../../../dune-ui'
 import { useActiveServer } from '../../../context/useActiveServer'
-import type { BotServerConfigHandle, StringAppConfigKey } from './types'
+import type { StringAppConfigKey } from './types'
+import type { BotServerConfigHandle } from './interfaces'
 
 export const BotServerConfig = React.forwardRef<BotServerConfigHandle>((_, ref) => {
   const { t } = useTranslation()

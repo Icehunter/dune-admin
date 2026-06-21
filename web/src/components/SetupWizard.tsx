@@ -7,6 +7,7 @@ import { ServerSettingsForm } from './settings/server/ServerSettingsForm'
 import { DiscoveryModal } from './DiscoveryModal'
 import { api } from '../api/client'
 import type { AppConfig } from '../api/client'
+import type { SetupWizardProps } from './interfaces'
 
 // First-run setup configures the whole install (global + the default server).
 const FULL_STEPS = [
@@ -28,11 +29,6 @@ const ADD_STEPS = [
   { id: 'broker', title: 'Broker', description: 'RabbitMQ connection (optional)' },
   { id: 'advanced', title: 'Advanced', description: 'Market bot' },
 ]
-
-interface SetupWizardProps {
-  /** Called after a successful "add server" — return to the main app. */
-  onDone?: () => void
-}
 
 export const SetupWizard: React.FC<SetupWizardProps> = ({ onDone }) => {
   const { t } = useTranslation()

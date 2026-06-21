@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { Button, SearchField, Spinner, toast } from '@heroui/react'
 import { EmptyState } from '@heroui-pro/react'
@@ -17,6 +18,7 @@ import {
   groupByCategory, matchesSetting, matchesRawSection,
 } from './utils'
 import { buildGameIni } from './gameIni'
+import { showAllAtom, expandedCategoryAtom } from './store'
 import { useDebounce } from '../../hooks/useDebounce'
 
 export const ServerSettingsTab: React.FC = () => {
@@ -29,12 +31,8 @@ export const ServerSettingsTab: React.FC = () => {
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [search, setSearch] = React.useState('')
-  const [showAll, setShowAll] = React.useState(() =>
-    localStorage.getItem('serverSettings.showAll') === 'true',
-  )
-  const [expandedCategory, setExpandedCategory] = React.useState<string | null>(() =>
-    localStorage.getItem('serverSettings.expandedCategory') || null,
-  )
+  const [showAll, setShowAll] = useAtom(showAllAtom)
+  const [expandedCategory, setExpandedCategory] = useAtom(expandedCategoryAtom)
 
   const load = (): void => {
     Promise.resolve()
@@ -182,20 +180,12 @@ export const ServerSettingsTab: React.FC = () => {
     )
   }
 
-  const toggleShowAll = () => setShowAll((v) => {
-    localStorage.setItem('serverSettings.showAll', String(!v))
-    return !v
-  })
+  const toggleShowAll = () => setShowAll((v) => !v)
 
   const ampManaged = (item: ServerSetting) => control === 'amp' && !!item.field_name
 
   const toggleCategory = (cat: string) => {
-    setExpandedCategory((prev) => {
-      const next = prev === cat ? null : cat
-      if (next === null) localStorage.removeItem('serverSettings.expandedCategory')
-      else localStorage.setItem('serverSettings.expandedCategory', next)
-      return next
-    })
+    setExpandedCategory((prev) => (prev === cat ? null : cat))
   }
 
   return (

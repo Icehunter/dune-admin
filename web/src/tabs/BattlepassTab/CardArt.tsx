@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { CardArtProps } from './types'
+import type { CardArtProps } from './interfaces'
 
 /** Pre-normalized theme card art (1500×2500, edge-to-edge). */
 export const CardArt: React.FC<CardArtProps> = ({ folder, file }) => (

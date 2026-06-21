@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { FieldProps } from '../types'
+import type { FieldProps } from '../interfaces'
 
 export const Field: React.FC<FieldProps> = ({ label, value }) => (
   <div>

@@ -5,28 +5,7 @@ import { SearchField, toast } from '@heroui/react'
 import { api } from '../api/client'
 import type { Player } from '../api/client'
 import { useDebounce } from '../hooks/useDebounce'
-
-export interface PlayerSearchFieldProps {
-  /** Called with the full player row — consumers pick the ID they need
-   *  (account_id, fls_id, or actor id). */
-  onSelect: (player: Player) => void
-  ariaLabel: string
-  placeholder?: string
-  className?: string
-  /** Pre-loaded player list. When omitted the field lazily loads
-   *  api.players.list() on first focus. */
-  players?: Player[]
-  /** Max suggestions rendered (default 10) — keeps the dropdown cheap even
-   *  with thousands of players. */
-  resultLimit?: number
-  /** Exclude players from suggestions (e.g. the current player). */
-  filter?: (player: Player) => boolean
-  /** Clear the input after picking (default: show the picked name). */
-  clearOnSelect?: boolean
-  /** Called when the user empties the input (clear button or deleting the
-   *  text) — lets consumers drop their current selection. */
-  onClear?: () => void
-}
+import type { PlayerSearchFieldProps } from './interfaces'
 
 /**
  * Debounced player search with a capped suggestion dropdown. The canonical

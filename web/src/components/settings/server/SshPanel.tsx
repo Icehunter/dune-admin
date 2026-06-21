@@ -1,16 +1,11 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AppConfig } from '../../../api/client'
 import { Panel, SectionLabel, FieldSelect } from '../../../dune-ui'
 import { TimezoneSelect } from '../../TimezoneSelect'
 import { FieldRow } from '../fields/FieldRow'
 import { TextInput } from '../fields/TextInput'
 import { TwoColumnGrid } from '../fields/TwoColumnGrid'
-
-export interface SshPanelProps {
-  cfg: AppConfig
-  set: (key: keyof AppConfig) => (v: string) => void
-}
+import type { SshPanelProps } from './interfaces'
 
 export const SshPanel: React.FC<SshPanelProps> = ({ cfg, set }) => {
   const { t } = useTranslation()

@@ -12,13 +12,7 @@ import {
   updateInfoAtom,
 } from '../../atoms/app'
 import { useAppUpdate } from './useAppUpdate'
-import type { Status } from '../../api/client'
-
-interface SettingsModalProps {
-  status: Status | null
-  can: (cap: string) => boolean
-  onClose: () => void
-}
+import type { SettingsModalProps } from './interfaces'
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ status, can, onClose }) => {
   const { t } = useTranslation()

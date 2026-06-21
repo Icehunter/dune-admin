@@ -5,16 +5,7 @@ import { Icon } from '../dune-ui'
 import { ServerSettingsForm } from './settings/server/ServerSettingsForm'
 import { DeleteServerModal } from './DeleteServerModal'
 import { useActiveServer } from '../context/useActiveServer'
-
-export interface ManageServerModalProps {
-  open: boolean
-  serverId: number
-  /** Whether the session may delete/control servers. */
-  canControl: boolean
-  onClose: () => void
-  /** Called after the server is deleted (so the app can refresh status). */
-  onDeleted?: () => void
-}
+import type { ManageServerModalProps } from './interfaces'
 
 // Per-server settings as a modal overlay (rename + control/SSH/DB/broker/advanced
 // + delete). Keyed by serverId in state — not a route — so the URL never carries

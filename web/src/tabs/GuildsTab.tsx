@@ -7,7 +7,8 @@ import { api } from '../api/client'
 import type { GuildSummary, GuildDetail } from '../api/client'
 import { DataTable, Icon, PageHeader, SectionLabel, type Column } from '../dune-ui'
 import { usePermissions } from '../hooks/usePermissions'
-import type { GuildsTabKey, GuildsTabProps } from './types'
+import type { GuildsTabKey } from './types'
+import type { GuildsTabProps } from './interfaces'
 
 // Faction names are the stable dune.factions enum (Atreides/Harkonnen/None/
 // Smuggler), so colour-coding by name is safe. Unknown/None → default.

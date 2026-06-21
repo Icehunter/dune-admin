@@ -2,19 +2,12 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Select, ListBox } from '@heroui/react'
 import { MASKED } from '../../../api/client'
-import type { AppConfig } from '../../../api/client'
 import { Panel, SectionLabel } from '../../../dune-ui'
 import { FieldRow } from '../fields/FieldRow'
 import { TextInput } from '../fields/TextInput'
 import { CheckboxField } from '../fields/CheckboxField'
 import { TwoColumnGrid } from '../fields/TwoColumnGrid'
-
-export interface ControlPanelProps {
-  cfg: AppConfig
-  set: (key: keyof AppConfig) => (v: string) => void
-  setBool: (key: keyof AppConfig) => (v: boolean) => void
-  setControl: (v: string) => void
-}
+import type { ControlPanelProps } from './interfaces'
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({ cfg, set, setBool, setControl }) => {
   const { t } = useTranslation()

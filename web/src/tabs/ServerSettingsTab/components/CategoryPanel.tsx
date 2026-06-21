@@ -5,7 +5,7 @@ import type { ServerSetting } from '../../../api/client'
 import { Panel, SectionLabel, Icon } from '../../../dune-ui'
 import { SettingRow } from './SettingRow'
 import { CATEGORY_LABELS } from '../constants'
-import type { CategoryPanelProps } from './types'
+import type { CategoryPanelProps } from './interfaces'
 
 export const CategoryPanel: React.FC<CategoryPanelProps> = ({
   cat, catItems, searching, pending, onChange, onDelete, onToggle, isAmpManaged,

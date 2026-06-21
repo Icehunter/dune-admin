@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { SectionLabel } from '../../../dune-ui'
-import type { CategorySectionProps } from './types'
+import type { CategorySectionProps } from './interfaces'
 import { CategoryButton } from './CategoryButton'
 import { CategoryPanel } from './CategoryPanel'
 

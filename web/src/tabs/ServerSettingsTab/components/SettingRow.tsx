@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { FieldInput, NumberInput, Icon } from '../../../dune-ui'
 import { SOURCE_FILE, LAYER_STYLE, USER_SOURCES } from '../constants'
 import { sourceLabel, trimFloat } from '../utils'
-import type { SettingRowProps } from './types'
+import type { SettingRowProps } from './interfaces'
 import type { ServerSetting } from '../../../api/client'
 
 export const SettingRow: React.FC<SettingRowProps> = ({

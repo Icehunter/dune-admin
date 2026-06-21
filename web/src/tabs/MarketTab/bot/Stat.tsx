@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { StatProps } from './types'
+import type { StatProps } from './interfaces'
 
 export const Stat: React.FC<StatProps> = ({ label, danger, children }) => {
   return (

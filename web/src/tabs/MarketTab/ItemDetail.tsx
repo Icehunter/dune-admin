@@ -4,7 +4,7 @@ import { api } from '../../api/client'
 import type { MarketListing } from '../../api/client'
 import { getItemEntry } from '../../data/itemData'
 import { ItemDetailCard } from '../../components/ItemDetailCard'
-import type { ItemDetailProps } from './types'
+import type { ItemDetailProps } from './interfaces'
 
 export const ItemDetail: React.FC<ItemDetailProps> = ({ item, onClose }) => {
   const [listings, setListings] = React.useState<MarketListing[]>([])

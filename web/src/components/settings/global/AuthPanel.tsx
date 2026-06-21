@@ -2,7 +2,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Select, ListBox, Spinner } from '@heroui/react'
 import { MASKED } from '../../../api/client'
-import type { AppConfig } from '../../../api/client'
 import { Icon, Panel, SectionLabel } from '../../../dune-ui'
 import { DiscordMemberPicker } from '../../DiscordMemberPicker'
 import { FieldRow } from '../fields/FieldRow'
@@ -10,16 +9,7 @@ import { TextInput } from '../fields/TextInput'
 import { CheckboxField } from '../fields/CheckboxField'
 import { TwoColumnGrid } from '../fields/TwoColumnGrid'
 import { RolePicker } from '../fields/RolePicker'
-import type { DiscordRole } from '../../types'
-
-export interface AuthPanelProps {
-  cfg: AppConfig
-  set: (key: keyof AppConfig) => (v: string) => void
-  setBool: (key: keyof AppConfig) => (v: boolean) => void
-  discordRoles: DiscordRole[]
-  rolesLoading: boolean
-  loadDiscordRoles: () => void
-}
+import type { AuthPanelProps } from './interfaces'
 
 export const AuthPanel: React.FC<AuthPanelProps> = ({
   cfg, set, setBool, discordRoles, rolesLoading, loadDiscordRoles,

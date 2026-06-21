@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Spinner } from '@heroui/react'
 import { useAtomValue, useSetAtom } from 'jotai'
 import type { TabId } from '../../types'
-import type { Status } from '../../api/client'
+import type { AppRoutesProps } from './interfaces'
 import {
   addServerOpenAtom,
   dashboardRefreshAtom,
@@ -28,14 +28,6 @@ const EventsTab = React.lazy(() => import('../../tabs/EventsTab').then((m) => ({
 const BattlepassTab = React.lazy(() => import('../../tabs/BattlepassTab').then((m) => ({ default: m.BattlepassTab })))
 const PermissionsTab = React.lazy(() => import('../../tabs/PermissionsTab').then((m) => ({ default: m.PermissionsTab })))
 const DiagnosticsTab = React.lazy(() => import('../../tabs/DiagnosticsTab').then((m) => ({ default: m.DiagnosticsTab })))
-
-interface AppRoutesProps {
-  currentTab: TabId
-  status: Status | null
-  isSignedIn: boolean
-  canSeeTab: (key: TabId) => boolean
-  onOpenSettings: (tab?: string) => void
-}
 
 export const AppRoutes: React.FC<AppRoutesProps> = ({ currentTab, status, isSignedIn, canSeeTab, onOpenSettings }) => {
   const dashboardRefreshKey = useAtomValue(dashboardRefreshAtom)

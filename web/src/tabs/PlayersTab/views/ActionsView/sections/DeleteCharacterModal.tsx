@@ -1,15 +1,7 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertDialog, Button, Input, TextArea } from '@heroui/react'
-
-export interface DeleteCharacterModalProps {
-  open: boolean
-  playerName: string
-  online: boolean
-  busy: boolean
-  onCancel: () => void
-  onConfirm: (reason: string) => void
-}
+import type { DeleteCharacterModalProps } from './interfaces'
 
 const COUNTDOWN_SECONDS = 10
 

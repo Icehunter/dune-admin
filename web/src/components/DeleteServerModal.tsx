@@ -1,14 +1,7 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertDialog, Button, Input } from '@heroui/react'
-
-export interface DeleteServerModalProps {
-  open: boolean
-  serverName: string
-  busy: boolean
-  onCancel: () => void
-  onConfirm: () => void
-}
+import type { DeleteServerModalProps } from './interfaces'
 
 const COUNTDOWN_SECONDS = 10
 

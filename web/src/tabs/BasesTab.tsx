@@ -6,7 +6,8 @@ import { api, ApiError } from '../api/client'
 import type { BaseRow } from '../api/client'
 import { DataTable, Icon, PageHeader, type Column } from '../dune-ui'
 import { usePermissions } from '../hooks/usePermissions'
-import type { BasesTabKey, BasesTabProps } from './types'
+import type { BasesTabKey } from './types'
+import type { BasesTabProps } from './interfaces'
 
 export const BasesTab: React.FC<BasesTabProps> = ({ isSignedIn = true }) => {
   const { t } = useTranslation()

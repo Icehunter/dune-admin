@@ -10,7 +10,7 @@ import { usePermissions } from '../../hooks/usePermissions'
 import { formatUptime } from '../BattlegroupTab/uptime'
 import { phaseChipColor } from '../BattlegroupTab/helpers'
 import { OnboardingCards } from './OnboardingCards'
-import type { DashboardTabProps } from './types'
+import type { DashboardTabProps } from './interfaces'
 
 export const DashboardTab: React.FC<DashboardTabProps> = ({
   onAddServer, onOpenSettings, onManageServer, refreshKey,

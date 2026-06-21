@@ -3,17 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Modal, Spinner } from '@heroui/react'
 import { Icon } from '../dune-ui'
 import { api } from '../api/client'
-import type { AppConfig, ServerConfig } from '../api/client'
-
-export interface DiscoveryModalProps {
-  open: boolean
-  /** Connection settings to probe (control plane + SSH). */
-  config: ServerConfig
-  /** Called with the discovered values once all steps complete. */
-  onDone: (discovered: Partial<AppConfig>) => void
-  /** Called if the user dismisses before completion. */
-  onSkip: () => void
-}
+import type { DiscoveryModalProps } from './interfaces'
 
 // Per-control-plane step labels. The backend does the work in one call; these
 // steps are revealed sequentially with a short delay so the process reads as

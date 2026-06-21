@@ -5,13 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Icon } from '../../dune-ui'
 import type { TabId } from '../../types'
 import { BETA_TABS, DEFAULT_TAB, TAB_ICONS } from './nav'
-import type { NavGroup } from './nav'
-
-interface AppSidebarProps {
-  visibleNavGroups: NavGroup[]
-  pathname: string
-  navigate: (path: string) => void
-}
+import type { AppSidebarProps } from './interfaces'
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({ visibleNavGroups, pathname, navigate }) => {
   const { t } = useTranslation()

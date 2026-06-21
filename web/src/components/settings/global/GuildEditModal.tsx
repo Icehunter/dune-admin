@@ -9,18 +9,7 @@ import { FieldRow } from '../fields/FieldRow'
 import { TextInput } from '../fields/TextInput'
 import { SearchableSelect } from '../fields/SearchableSelect'
 import { RolePicker } from '../fields/RolePicker'
-
-export interface GuildEditModalProps {
-  open: boolean
-  /** When editing, the existing guild; null when adding a new one. */
-  existing: DiscordGuild | null
-  /** Guild ids already configured — hidden from the add dropdown and rejected on
-   *  save so the same guild can't be configured twice. */
-  takenGuildIds?: string[]
-  onClose: () => void
-  /** Called after a successful upsert so the parent can reload its list. */
-  onSaved: () => void
-}
+import type { GuildEditModalProps } from './interfaces'
 
 const emptyGuild = (): DiscordGuild => ({
   guild_id: '',

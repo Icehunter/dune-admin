@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { ThemeIconProps } from './types'
+import type { ThemeIconProps } from './interfaces'
 
 const THEME_ICON_PREFIX: Record<string, string> = {
   spice: 'spice',

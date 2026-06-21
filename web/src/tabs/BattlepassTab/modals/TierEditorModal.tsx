@@ -5,23 +5,16 @@ import type { Selection } from '@heroui/react'
 import type { DataGridColumn } from '@heroui-pro/react'
 import { DataGrid } from '@heroui-pro/react'
 import { api } from '../../../api/client'
-import type { BattlepassSignal, BattlepassTier, GivePack } from '../../../api/client'
+import type { BattlepassSignal, GivePack } from '../../../api/client'
 import { ActionBar, FieldInput, FieldSelect, Icon, NumberInput, SectionLabel } from '../../../dune-ui'
 import { ManagePacksModal } from '../../PlayersTab/modals/ManagePacksModal'
 import { CategorizedPackPicker } from '../../../components/CategorizedPackPicker'
 import type { KeyedRewardItem } from '../../EventsTab/types'
 import { FormSection } from './FormSection'
+import type { TierEditorModalProps } from './interfaces'
 
 const SIGNAL_OPTIONS: BattlepassSignal[] = ['level', 'journey_node', 'player_tag']
 const CATEGORY_OPTIONS = ['level', 'story', 'side_quest', 'faction', 'exploration', 'achievement']
-
-export interface TierEditorModalProps {
-  isOpen: boolean
-  onClose: () => void
-  /** Existing tier to edit, or null to open in create mode. */
-  tier: BattlepassTier | null
-  onSaved: () => void
-}
 
 /** Edit or create a battlepass tier. In edit mode tier_key is read-only (claims
  *  are keyed by it — editing would orphan them). In create mode all fields are

@@ -4,10 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAtom } from 'jotai'
 import { SetupWizard } from '../SetupWizard'
 import { addServerOpenAtom } from '../../atoms/app'
-
-interface AddServerModalProps {
-  onDone: () => void
-}
+import type { AddServerModalProps } from './interfaces'
 
 export const AddServerModal: React.FC<AddServerModalProps> = ({ onDone }) => {
   const { t } = useTranslation()

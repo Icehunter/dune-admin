@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../../../dune-ui'
 import { CATEGORY_ICONS, CATEGORY_LABELS, USER_SOURCES } from '../constants'
-import type { CategoryButtonProps } from './types'
+import type { CategoryButtonProps } from './interfaces'
 
 export const CategoryButton: React.FC<CategoryButtonProps> = ({
   cat, catItems, isOpen, onToggle,

@@ -1,22 +1,12 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { MASKED } from '../../../api/client'
-import type { AppConfig } from '../../../api/client'
 import { Panel, SectionLabel } from '../../../dune-ui'
 import { FieldRow } from '../fields/FieldRow'
 import { TextInput } from '../fields/TextInput'
 import { CheckboxField } from '../fields/CheckboxField'
 import { TwoColumnGrid } from '../fields/TwoColumnGrid'
-
-export interface ConnectionPanelProps {
-  cfg: AppConfig
-  set: (key: keyof AppConfig) => (v: string) => void
-  setBool: (key: keyof AppConfig) => (v: boolean) => void
-  /** Show the Database panel. */
-  showDb: boolean
-  /** Show the RabbitMQ broker panel. */
-  showBroker: boolean
-}
+import type { ConnectionPanelProps } from './interfaces'
 
 // ConnectionPanel renders the per-server Database and RabbitMQ broker settings.
 // The combined 'server' tab shows both; the standalone wizard 'db' / 'broker'

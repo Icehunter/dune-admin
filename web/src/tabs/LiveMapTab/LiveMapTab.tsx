@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { Button, Select, ListBox, Spinner, toast } from '@heroui/react'
 import { MapContainer, ImageOverlay, CircleMarker, Marker, Tooltip } from 'react-leaflet'
@@ -23,7 +24,7 @@ import {
   MAPS, CAT_COLOR, IMAGE_BOUNDS, POLL_MS, IMG_H, IMG_W, CALIB_MIN_WORLD_DIST,
 } from './constants'
 import {
-  worldToLatLng, latLngToWorld, solveBounds, loadFilter, saveFilter, mapUrl,
+  worldToLatLng, latLngToWorld, solveBounds, liveFilterAtom, mapUrl,
 } from './utils'
 import type { SpawnEntry, SpawnFile, CalibPoint, MapCfg, Bounds } from './types'
 
@@ -48,7 +49,7 @@ export const LiveMapTab: React.FC = () => {
   const loadedSpawnKey = React.useRef<string>('')
   const isDragging = React.useRef(false)
 
-  const [filter, setFilter] = React.useState<Record<string, boolean>>(loadFilter)
+  const [filter, setFilter] = useAtom(liveFilterAtom)
   const [selectedFlsId, setSelectedFlsId] = React.useState<string>('')
   const [dragConfirm, setDragConfirm] = React.useState<{
     flsId: string
@@ -301,9 +302,7 @@ export const LiveMapTab: React.FC = () => {
 
   const toggleFilter = (key: string, currentVisual: boolean): void => {
     setFilter((f) => {
-      const next = { ...f, [key]: !currentVisual }
-      saveFilter(next)
-      return next
+      return { ...f, [key]: !currentVisual }
     })
   }
 
@@ -314,7 +313,6 @@ export const LiveMapTab: React.FC = () => {
         next[k] = false
       })
       Object.assign(next, { players: true, vehicles: true, bases: true })
-      saveFilter(next)
       return next
     })
   }

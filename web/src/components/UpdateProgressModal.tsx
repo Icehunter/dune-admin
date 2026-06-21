@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Button, Modal, Spinner } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../dune-ui'
+import type { UpdateProgressModalProps } from './app/interfaces'
 
 export type UpdatePhase
   = 'downloading'
@@ -12,13 +13,6 @@ export type UpdatePhase
     | 'waitingLong'
     | 'ready'
     | 'error'
-
-interface Props {
-  isOpen: boolean
-  phase: UpdatePhase
-  errorMessage?: string | undefined
-  onDismiss?: () => void
-}
 
 const PHASE_ORDER: UpdatePhase[] = [
   'downloading',
@@ -35,7 +29,7 @@ const phaseIndex = (phase: UpdatePhase): number => {
   return PHASE_ORDER.indexOf(phase)
 }
 
-export const UpdateProgressModal: React.FC<Props> = ({ isOpen, phase, errorMessage, onDismiss }) => {
+export const UpdateProgressModal: React.FC<UpdateProgressModalProps> = ({ isOpen, phase, errorMessage, onDismiss }) => {
   const { t } = useTranslation()
   const isError = phase === 'error'
   const currentIndex = phaseIndex(phase)

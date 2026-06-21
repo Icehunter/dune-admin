@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Button, Spinner, Switch } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../../../dune-ui'
-import type { ConfigFooterProps } from './types'
+import type { ConfigFooterProps } from './interfaces'
 
 export const ConfigFooter: React.FC<ConfigFooterProps> = ({
   editorRef, initialEnabled, onReload,

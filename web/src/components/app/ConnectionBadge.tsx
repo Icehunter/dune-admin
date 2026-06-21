@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { ConnectionBadgeProps } from '../../types'
+import type { ConnectionBadgeProps } from '../../interfaces'
 
 export const ConnectionBadge: React.FC<ConnectionBadgeProps> = ({ label, connected }) => {
   return (

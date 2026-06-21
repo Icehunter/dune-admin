@@ -11,7 +11,8 @@ import { api } from '../../api/client'
 import type { BlueprintRow } from '../../api/client'
 import { DataTable, Icon, PageHeader, type Column } from '../../dune-ui'
 import { usePermissions } from '../../hooks/usePermissions'
-import type { BlueprintsTabKey, BlueprintsTabProps } from '../types'
+import type { BlueprintsTabKey } from '../types'
+import type { BlueprintsTabProps } from '../interfaces'
 import { ImportModal } from './ImportModal'
 
 export const BlueprintsTab: React.FC<BlueprintsTabProps> = ({ isSignedIn = true }) => {

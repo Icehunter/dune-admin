@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Chip } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
-import type { BotStatusCardProps } from './types'
+import type { BotStatusCardProps } from './interfaces'
 import { Sep } from './Sep'
 import { Stat } from './Stat'
 

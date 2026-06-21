@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { groupPacksByCategory } from './CategorizedPackPicker'
-import type { PackOption } from './CategorizedPackPicker'
+import type { PackOption } from './interfaces'
 
 const mk = (id: string, category: string, tier: number, name = id): PackOption => ({
   id, name, category, tier,

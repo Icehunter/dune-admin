@@ -1,18 +1,12 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { MASKED } from '../../../api/client'
-import type { AppConfig } from '../../../api/client'
 import { Icon, Panel, SectionLabel } from '../../../dune-ui'
 import { FieldRow } from '../fields/FieldRow'
 import { TextInput } from '../fields/TextInput'
 import { CheckboxField } from '../fields/CheckboxField'
 import { TwoColumnGrid } from '../fields/TwoColumnGrid'
-
-export interface DiscordPanelProps {
-  cfg: AppConfig
-  set: (key: keyof AppConfig) => (v: string) => void
-  setBool: (key: keyof AppConfig) => (v: boolean) => void
-}
+import type { DiscordPanelProps } from './interfaces'
 
 // DiscordPanel (global) now only edits the bot-wide credentials: enable + token.
 // The per-guild config (roles + the servers each guild watches and their

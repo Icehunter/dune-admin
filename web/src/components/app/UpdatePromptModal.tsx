@@ -9,10 +9,7 @@ import {
   updatePromptOpenAtom,
 } from '../../atoms/app'
 import { useAppUpdate } from './useAppUpdate'
-
-interface UpdatePromptModalProps {
-  can: (cap: string) => boolean
-}
+import type { UpdatePromptModalProps } from './interfaces'
 
 export const UpdatePromptModal: React.FC<UpdatePromptModalProps> = ({ can }) => {
   const { t } = useTranslation()

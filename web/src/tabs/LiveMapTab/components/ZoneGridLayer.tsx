@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useMap } from 'react-leaflet'
 import { DD_COLS, DD_ROWS } from '../constants'
 import { worldToLatLng } from '../utils'
-import type { ZoneGridLayerProps } from '../types'
+import type { ZoneGridLayerProps } from '../interfaces'
 
 export const ZoneGridLayer: React.FC<ZoneGridLayerProps> = ({ effCfg }) => {
   const map = useMap()

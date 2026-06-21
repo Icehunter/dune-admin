@@ -5,7 +5,7 @@ import { Icon, Panel, SectionLabel } from '../../../dune-ui'
 import { LIVE_TYPES, CATEGORY_GROUPS, CAT_COLOR, HEATMAP_BOUNDS, HEATMAP_TYPES, HEATMAP_COLORS, TYPE_LABELS } from '../constants'
 import { filterKey, heatmapFilterKey } from '../utils'
 import { CategorySection } from './CategorySection'
-import type { FilterPanelProps } from '../types'
+import type { FilterPanelProps } from '../interfaces'
 
 export const FilterPanel: React.FC<FilterPanelProps> = ({
   filter, onToggle, onClear, spawns, mapKey, heatmapMode, onHeatmapToggle,

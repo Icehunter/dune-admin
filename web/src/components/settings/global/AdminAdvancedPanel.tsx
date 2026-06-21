@@ -1,18 +1,11 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@heroui/react'
-import type { AppConfig } from '../../../api/client'
 import { Panel, SectionLabel } from '../../../dune-ui'
 import { FieldRow } from '../fields/FieldRow'
 import { TextInput } from '../fields/TextInput'
 import { TwoColumnGrid } from '../fields/TwoColumnGrid'
-
-export interface AdminAdvancedPanelProps {
-  cfg: AppConfig
-  set: (key: keyof AppConfig) => (v: string) => void
-  backendUrl: string
-  setBackendUrl: (v: string) => void
-}
+import type { AdminAdvancedPanelProps } from './interfaces'
 
 export const AdminAdvancedPanel: React.FC<AdminAdvancedPanelProps> = ({ cfg, set, backendUrl, setBackendUrl }) => {
   const { t } = useTranslation()

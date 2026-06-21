@@ -18,17 +18,9 @@ import {
   updatePromptOpenAtom,
 } from '../../atoms/app'
 import { ConnectionBadge } from './ConnectionBadge'
-import type { Status } from '../../api/client'
+import type { AppNavbarProps } from './interfaces'
 
 const hasClerk = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-
-interface AppNavbarProps {
-  status: Status | null
-  reconnecting: boolean
-  onReconnect: () => void
-  can: (cap: string) => boolean
-  onOpenSettings: (tab?: string) => void
-}
 
 export const AppNavbar: React.FC<AppNavbarProps> = ({ status, reconnecting, onReconnect, can, onOpenSettings }) => {
   const { t } = useTranslation()

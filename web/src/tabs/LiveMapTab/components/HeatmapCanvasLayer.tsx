@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useMap } from 'react-leaflet'
 import { HEATMAP_BOUNDS, HEATMAP_PREFIX, HEATMAP_TYPES } from '../constants'
 import { worldToLatLng, heatmapFilterKey, mapUrl } from '../utils'
-import type { HeatmapCanvasLayerProps } from '../types'
+import type { HeatmapCanvasLayerProps } from '../interfaces'
 
 export const HeatmapCanvasLayer: React.FC<HeatmapCanvasLayerProps> = ({
   mapKey, effCfg, filter,

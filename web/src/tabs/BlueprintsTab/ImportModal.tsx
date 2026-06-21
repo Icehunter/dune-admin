@@ -12,7 +12,7 @@ import { api } from '../../api/client'
 import type { Player } from '../../api/client'
 import { Dropzone, Icon } from '../../dune-ui'
 import { PlayerSearchField } from '../../components/PlayerSearchField'
-import type { ImportModalProps } from '../types'
+import type { ImportModalProps } from '../interfaces'
 
 export const ImportModal: React.FC<ImportModalProps> = ({ open, onClose, onSuccess }) => {
   const { t } = useTranslation()

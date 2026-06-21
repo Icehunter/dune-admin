@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@heroui/react'
 import { Icon } from '../../dune-ui'
-import type { HelpCardProps } from './types'
+import type { HelpCardProps } from './interfaces'
 
 export const HelpCard: React.FC<HelpCardProps> = ({ icon, title, body, cta, onAction, onDismiss }) => {
   const { t } = useTranslation()

@@ -1,16 +1,7 @@
 import * as React from 'react'
 import { Header, ListBox, Select, Separator } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
-
-/** Minimal shape needed to render a pack in the categorized picker. The full
- *  GivePack (with items) and the PacksData entry are both structurally
- *  assignable to this. */
-export interface PackOption {
-  id: string
-  name: string
-  category: string
-  tier: number
-}
+import type { PackOption, CategorizedPackPickerProps } from './interfaces'
 
 /** Group packs by category, sort each group by tier, and return category
  *  entries sorted by localeCompare. Pure helper — mirrors the original
@@ -29,13 +20,6 @@ export function groupPacksByCategory(
     groups[cat].sort((a, b) => a.tier - b.tier)
   }
   return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
-}
-
-export interface CategorizedPackPickerProps {
-  packs: PackOption[]
-  /** Called with the selected pack id. */
-  onSelectPack: (id: string) => void
-  className?: string
 }
 
 /** Pack picker rendered as a categorized Select → Popover → ListBox, with one

@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useMap } from 'react-leaflet'
 import { ICON_POS, CAT_COLOR, SPRITE_CELL, SPRITE_URL } from '../constants'
 import { worldToLatLng, filterKey } from '../utils'
-import type { SpawnCanvasLayerProps } from '../types'
+import type { SpawnCanvasLayerProps } from '../interfaces'
 
 export const SpawnCanvasLayer: React.FC<SpawnCanvasLayerProps> = ({
   spawns, effCfg, filter, heatmapMode,

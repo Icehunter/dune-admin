@@ -11,11 +11,7 @@ import { TextInput } from '../fields/TextInput'
 import { SearchableSelect } from '../fields/SearchableSelect'
 import { CheckboxField } from '../fields/CheckboxField'
 import { TwoColumnGrid } from '../fields/TwoColumnGrid'
-
-export interface ServerDiscordPanelProps {
-  /** The persisted server (id > 0) whose single Discord link is edited here. */
-  serverId: number
-}
+import type { ServerDiscordPanelProps } from './interfaces'
 
 const emptyLink = (serverId: number): DiscordServerLink => ({
   server_id: serverId,

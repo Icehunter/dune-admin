@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@heroui/react'
 import { Icon, Panel } from '../../dune-ui'
 import { HelpCard } from './HelpCard'
-import type { OnboardingCardsProps, OnboardingCard } from './types'
+import type { OnboardingCardsProps, OnboardingCard } from './interfaces'
 
 const DISMISS_PREFIX = 'dune_dashboard_dismiss_'
 

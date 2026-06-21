@@ -13,7 +13,8 @@ import { DisabledItemsManager } from './DisabledItemsManager'
 import { BotServerConfig } from './BotServerConfig'
 import { ConfigFooter } from './ConfigFooter'
 import { ServerConfigFooter } from './ServerConfigFooter'
-import type { BotControlPanelProps, ConfigEditorHandle, BotServerConfigHandle } from './types'
+import type { BotControlPanelProps } from './types'
+import type { ConfigEditorHandle, BotServerConfigHandle } from './interfaces'
 
 export const BotControlPanel: React.FC<BotControlPanelProps> = ({ open, onClose }: BotControlPanelProps) => {
   const { t } = useTranslation()

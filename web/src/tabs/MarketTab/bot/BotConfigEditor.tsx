@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { BotConfig } from '../../../api/client'
 import { FieldInput, NumberInput, Panel, SectionLabel } from '../../../dune-ui'
-import type { BotConfigEditorProps, ConfigEditorHandle } from './types'
+import type { BotConfigEditorProps } from './types'
+import type { ConfigEditorHandle } from './interfaces'
 import { Field } from './Field'
 
 const thresholdToPercent = (t: number): number => {

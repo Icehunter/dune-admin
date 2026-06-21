@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { TILE_CDN } from '../constants'
-import type { MapTileLayerProps } from '../types'
+import type { MapTileLayerProps } from '../interfaces'
 
 export const MapTileLayer: React.FC<MapTileLayerProps> = ({ tileId }) => {
   const map = useMap()

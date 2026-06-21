@@ -1,3 +1,4 @@
+import { atomWithStorage } from 'jotai/utils'
 import type { Bounds, CalibPoint } from './types'
 import { TYPE_MERGE_KEY, IMG_W, IMG_H, HEATMAP_TO_FILTER } from './constants'
 
@@ -80,19 +81,7 @@ const LIVE_FILTER_DEFAULTS: Record<string, boolean> = {
 }
 const FILTER_LS_KEY = 'dune_admin_livemap_filter'
 
-export const loadFilter = (): Record<string, boolean> => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(FILTER_LS_KEY) ?? '{}') as Record<string, boolean>
-    return { ...LIVE_FILTER_DEFAULTS, ...saved }
-  }
-  catch {
-    return LIVE_FILTER_DEFAULTS
-  }
-}
-
-export const saveFilter = (f: Record<string, boolean>): void => {
-  try {
-    localStorage.setItem(FILTER_LS_KEY, JSON.stringify(f))
-  }
-  catch { /* quota */ }
-}
+export const liveFilterAtom = atomWithStorage<Record<string, boolean>>(
+  FILTER_LS_KEY,
+  LIVE_FILTER_DEFAULTS,
+)

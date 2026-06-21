@@ -11,13 +11,7 @@ import { DiscordPanel } from './DiscordPanel'
 import { GuildsPanel } from './GuildsPanel'
 import { AdminAdvancedPanel } from './AdminAdvancedPanel'
 import type { DiscordRole } from '../../types'
-
-export interface GlobalSettingsFormProps {
-  saveRef?: React.MutableRefObject<(() => Promise<void>) | null>
-  onSavingChange?: (saving: boolean) => void
-  /** Initial tab to open on (e.g. deep-link to 'discord'); still switchable. */
-  initialTab?: string | undefined
-}
+import type { GlobalSettingsFormProps } from './interfaces'
 
 // GlobalSettingsForm edits the dune-admin (global) configuration: auth, the
 // Discord bot, and admin-level advanced settings. Loads via api.config.get();

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { FieldInput, FieldSelect } from '../../dune-ui'
-import type { DirectorEditorProps } from './types'
+import type { DirectorEditorProps } from './interfaces'
 
 export const DirectorEditor: React.FC<DirectorEditorProps> = ({ kind, value, ariaLabel, onChange }) => {
   if (kind.kind === 'bool') {

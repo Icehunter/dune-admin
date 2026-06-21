@@ -6,7 +6,8 @@ import { Icon as IconifyIcon } from '@iconify/react'
 import { api, getWsBase } from '../api/client'
 import type { LogPod, CheatEntry } from '../api/client'
 import { DataTable, Icon, LoadingState, SideNav, type Column } from '../dune-ui'
-import type { ActiveView, NavKey, CheatKey, LogsTabProps } from './types'
+import type { ActiveView, NavKey, CheatKey } from './types'
+import type { LogsTabProps } from './interfaces'
 
 export const LogsTab: React.FC<LogsTabProps> = ({ control }) => {
   const { t } = useTranslation()

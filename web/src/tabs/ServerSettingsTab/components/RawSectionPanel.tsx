@@ -5,7 +5,7 @@ import { api } from '../../../api/client'
 import { Panel, SectionLabel, Icon } from '../../../dune-ui'
 import { SOURCE_FILE, LAYER_STYLE, SOURCE_PRIORITY } from '../constants'
 import { linesToText, groupLinesByKey, shortSection } from '../utils'
-import type { RawSectionPanelProps } from './types'
+import type { RawSectionPanelProps } from './interfaces'
 
 export const RawSectionPanel: React.FC<RawSectionPanelProps> = ({ sections, onSaved }) => {
   const { t } = useTranslation()

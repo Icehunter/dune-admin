@@ -5,6 +5,7 @@ import type { BattlepassTier, BattlepassTierCounts } from '../../api/client'
 import { Icon } from '../../dune-ui'
 import { CardArt } from './CardArt'
 import { ThemeIcon } from './ThemeIcon'
+import type { TrackViewProps } from './interfaces'
 
 const CATEGORY_ORDER = ['level', 'story', 'side_quest', 'faction', 'exploration', 'achievement']
 
@@ -67,13 +68,6 @@ const useThemeFolder = (): string => {
     return () => obs.disconnect()
   }, [])
   return folder
-}
-
-export interface TrackViewProps {
-  tiers: BattlepassTier[]
-  counts: Record<string, BattlepassTierCounts>
-  playerCount: number
-  categoryLabel: (cat: string) => string
 }
 
 const tierAchieved = (counts: Record<string, BattlepassTierCounts>, tier: BattlepassTier): number => {

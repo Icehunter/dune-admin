@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Button, Spinner } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
-import type { ServerConfigFooterProps } from './types'
+import type { ServerConfigFooterProps } from './interfaces'
 
 export const ServerConfigFooter: React.FC<ServerConfigFooterProps> = ({ configRef }: ServerConfigFooterProps) => {
   const { t } = useTranslation()

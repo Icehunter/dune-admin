@@ -1,20 +1,7 @@
 import * as React from 'react'
 import { SearchField } from '@heroui/react'
 import { FieldLabelContext } from './FieldRow'
-
-export interface SearchableSelectOption {
-  id: string
-  label: string
-}
-
-export interface SearchableSelectProps {
-  value: string
-  onChange: (id: string) => void
-  options: SearchableSelectOption[]
-  placeholder?: string
-  isDisabled?: boolean
-  ariaLabel?: string
-}
+import type { SearchableSelectProps } from './interfaces'
 
 const MAX_VISIBLE = 60
 

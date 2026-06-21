@@ -10,7 +10,8 @@ import { ManageServerModal } from '../ManageServerModal'
 import { useActiveServer } from '../../context/useActiveServer'
 import { usePermissions } from '../../hooks/usePermissions'
 import { api } from '../../api/client'
-import type { TabId, AppCoreProps } from '../../types'
+import type { TabId } from '../../types'
+import type { AppCoreProps } from '../../interfaces'
 import {
   addServerOpenAtom,
   dashboardRefreshAtom,

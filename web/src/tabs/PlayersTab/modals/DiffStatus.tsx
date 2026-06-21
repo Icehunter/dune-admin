@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { DiffStatusProps } from './types'
+import type { DiffStatusProps } from './interfaces'
 
 export const DiffStatus: React.FC<DiffStatusProps> = ({ diff }) => {
   const parts: { key: string, text: string, cls: string }[] = []

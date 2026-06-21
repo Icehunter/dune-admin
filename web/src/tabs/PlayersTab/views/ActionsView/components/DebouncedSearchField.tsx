@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { SearchField } from '@heroui/react'
 import { useDebounce } from '../hooks/useDebounce'
-import type { DebouncedSearchFieldProps } from './types'
+import type { DebouncedSearchFieldProps } from './interfaces'
 
 export const DebouncedSearchField: React.FC<DebouncedSearchFieldProps> = ({
   onSearch,

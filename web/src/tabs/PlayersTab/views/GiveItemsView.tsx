@@ -16,7 +16,8 @@ import { itemDataSyncAtom } from '../../../data/store'
 import { retainSkippedStaged } from './giveItemsHelpers'
 import { ManagePacksModal } from '../modals/ManagePacksModal'
 import { StagedItemCell } from './StagedItemCell'
-import type { GiveItemsViewProps, GiveResult, StagedItem } from './types'
+import type { GiveItemsViewProps } from './interfaces'
+import type { GiveResult, StagedItem } from './types'
 
 export const GiveItemsView: React.FC<GiveItemsViewProps> = ({ player }) => {
   const { t } = useTranslation()

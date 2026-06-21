@@ -5,7 +5,8 @@ import { EmptyState } from '@heroui-pro/react'
 import { DataTable, SectionLabel, type Column } from '../../../dune-ui'
 import { api } from '../../../api/client'
 import type { TeleportLocation } from '../../../api/client'
-import type { ManageLocationsModalProps, LocationKey } from './types'
+import type { ManageLocationsModalProps } from './interfaces'
+import type { LocationKey } from './types'
 
 const COLUMNS: Column<LocationKey>[] = [
   { key: 'name', label: 'Name', isRowHeader: true, minWidth: 160 },

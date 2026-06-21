@@ -20,7 +20,7 @@ import { AdminSection } from './sections/AdminSection'
 import { TagsSection } from './sections/TagsSection'
 import { HistorySection } from './sections/HistorySection'
 import { ExperimentalSection } from './sections/ExperimentalSection'
-import type { ActionsViewProps } from './types'
+import type { ActionsViewProps } from './interfaces'
 
 export const ActionsView: React.FC<ActionsViewProps> = ({ player }) => {
   const { t } = useTranslation()

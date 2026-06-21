@@ -10,7 +10,7 @@ import { AddTagsPanel } from '../components/AddTagsPanel'
 import { api } from '../../../../../api/client'
 import { busyAtom } from '../store'
 import { useRun } from '../hooks/useActions'
-import type { TagsSectionProps } from './types'
+import type { TagsSectionProps } from './interfaces'
 
 export const TagsSection: React.FC<TagsSectionProps> = ({ player }) => {
   const { t } = useTranslation()

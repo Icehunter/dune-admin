@@ -4,7 +4,7 @@ import { Button, Modal, Spinner } from '@heroui/react'
 import { MapContainer, ImageOverlay } from 'react-leaflet'
 import { CRS } from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { MapCoordPickerModalProps } from './types'
+import type { MapCoordPickerModalProps } from './interfaces'
 import { IMAGE_BOUNDS } from '../../LiveMapTab/constants'
 import { ClickCapturer } from './ClickCapturer'
 

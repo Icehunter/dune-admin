@@ -1,6 +1,6 @@
 import * as React from 'react'
 import type { AppConfig, DiscordGuild } from '../../../api/client'
-import type { DiscordRole } from '../../types'
+import type { DiscordRole } from '../../interfaces'
 
 export interface GlobalSettingsFormProps {
   saveRef?: React.MutableRefObject<(() => Promise<void>) | null>

@@ -7,7 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { Icon, NumberInput, ActionBar } from '../../../dune-ui'
 import { api } from '../../../api/client'
 import type { GivePack, GivePackItem } from '../../../api/client'
-import type { ManagePacksModalProps, PackDiff, KeyedItem, KeyedPack } from './types'
+import type { ManagePacksModalProps } from './interfaces'
+import type { PackDiff, KeyedItem, KeyedPack } from './types'
 import { DiffStatus } from './DiffStatus'
 
 const stripKey = ({ template, qty, quality }: KeyedItem): GivePackItem => {

@@ -7,7 +7,7 @@ import { TextInput } from '../fields/TextInput'
 import { TwoColumnGrid } from '../fields/TwoColumnGrid'
 import { MarketBotPanel } from './MarketBotPanel'
 import { PathsPanel } from './PathsPanel'
-import type { ServerAdvancedPanelProps } from './types'
+import type { ServerAdvancedPanelProps } from './interfaces'
 
 // Three rendering variants for the per-server "advanced" surface:
 //  - 'add'        add-server wizard step: market bot only (per-server only)

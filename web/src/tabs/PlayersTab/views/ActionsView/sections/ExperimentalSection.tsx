@@ -7,7 +7,7 @@ import { api } from '../../../../../api/client'
 import { busyAtom } from '../store'
 import { cheatScriptsSyncAtom } from '../../../../../data/store'
 import { useRun, useGate } from '../hooks/useActions'
-import type { ExperimentalSectionProps } from './types'
+import type { ExperimentalSectionProps } from './interfaces'
 
 export const ExperimentalSection: React.FC<ExperimentalSectionProps> = ({ player }) => {
   const { t } = useTranslation()

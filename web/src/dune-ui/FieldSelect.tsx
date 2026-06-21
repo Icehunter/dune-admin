@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Select, ListBox } from '@heroui/react'
-import type { FieldSelectProps } from './types'
+import type { FieldSelectProps } from './interfaces'
 
 // FieldSelect wraps HeroUI Select + ListBox for small, fixed option sets.
 // For large lists (e.g. 400 IANA timezones), keep native <select> for type-to-search.

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { StatusDotProps } from './types'
+import type { StatusDotProps } from './interfaces'
 
 export const StatusDot: React.FC<StatusDotProps> = ({ status }) => {
   const cls

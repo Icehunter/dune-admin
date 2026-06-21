@@ -4,7 +4,7 @@ import { SearchField } from '@heroui/react'
 import { useAtom } from 'jotai'
 import { gameplayTagsSyncAtom } from '../../../../../data/store'
 import { useDebounce } from '../hooks/useDebounce'
-import type { AddTagsPanelProps } from './types'
+import type { AddTagsPanelProps } from './interfaces'
 
 export const AddTagsPanel: React.FC<AddTagsPanelProps> = React.memo(({ tags, pendingTags, onAdd }) => {
   const { t } = useTranslation()

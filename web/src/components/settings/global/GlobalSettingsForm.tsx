@@ -10,7 +10,7 @@ import { AuthPanel } from './AuthPanel'
 import { DiscordPanel } from './DiscordPanel'
 import { GuildsPanel } from './GuildsPanel'
 import { AdminAdvancedPanel } from './AdminAdvancedPanel'
-import type { DiscordRole } from '../../types'
+import type { DiscordRole } from '../../interfaces'
 import type { GlobalSettingsFormProps } from './interfaces'
 
 // GlobalSettingsForm edits the dune-admin (global) configuration: auth, the

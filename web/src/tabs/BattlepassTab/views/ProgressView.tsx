@@ -4,7 +4,7 @@ import { EmptyState } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { BattlepassClaim, BattlepassTier, Player } from '../../../api/client'
-import type { RewardItem } from '../../EventsTab/types'
+import type { RewardItem } from '../../EventsTab/interfaces'
 import { DataTable, Icon, SideNav, type Column } from '../../../dune-ui'
 
 type ClaimKey = 'tier_key' | 'status' | 'intel' | 'earned_at' | 'granted_at' | 'last_error'

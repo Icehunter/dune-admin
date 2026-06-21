@@ -13,7 +13,8 @@ import { ActionBar, Icon, LoadingState, NumberInput } from '../../../dune-ui'
 import { CategorizedPackPicker } from '../../../components/CategorizedPackPicker'
 import { ItemOptionRow } from '../../../components/ItemOptionRow'
 import { packsSyncAtom, itemDataSyncAtom } from '../../../data/store'
-import type { GiveItemsModalProps, GiveResult, StagedItem } from './types'
+import type { GiveItemsModalProps } from './interfaces'
+import type { GiveResult, StagedItem } from './types'
 import { ModalStagedItemCell } from './ModalStagedItemCell'
 
 export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, onClose }) => {

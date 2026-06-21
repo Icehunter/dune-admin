@@ -9,7 +9,7 @@ import type { BattlepassSignal, GivePack } from '../../../api/client'
 import { ActionBar, FieldInput, FieldSelect, Icon, NumberInput, SectionLabel } from '../../../dune-ui'
 import { ManagePacksModal } from '../../PlayersTab/modals/ManagePacksModal'
 import { CategorizedPackPicker } from '../../../components/CategorizedPackPicker'
-import type { KeyedRewardItem } from '../../EventsTab/types'
+import type { KeyedRewardItem } from '../../EventsTab/interfaces'
 import { FormSection } from './FormSection'
 import type { TierEditorModalProps } from './interfaces'
 

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Input } from '@heroui/react'
-import type { FieldInputProps } from './types'
+import type { FieldInputProps } from './interfaces'
 
 export const FieldInput: React.FC<FieldInputProps> = ({
   value,

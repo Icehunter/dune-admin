@@ -11,7 +11,8 @@ import { api } from '../../../../../api/client'
 import type { JourneyNode } from '../../../../../api/client'
 import { busyAtom, nodesAtom, nodesLoadedAtom } from '../store'
 import { useRun, useGate } from '../hooks/useActions'
-import type { FilterTab, JourneySectionProps } from './types'
+import type { JourneySectionProps } from './interfaces'
+import type { FilterTab } from './types'
 
 export const JourneySection: React.FC<JourneySectionProps> = ({ player }) => {
   const { t } = useTranslation()

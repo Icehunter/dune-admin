@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { StatRowProps } from './types'
+import type { StatRowProps } from './interfaces'
 
 export const StatRow: React.FC<StatRowProps> = ({ label, value }) => {
   return (

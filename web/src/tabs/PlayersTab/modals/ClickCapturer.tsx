@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useMapEvents } from 'react-leaflet'
-import type { ClickCapturerProps } from './types'
+import type { ClickCapturerProps } from './interfaces'
 import { MAPS } from '../../LiveMapTab/constants'
 import { latLngToWorld } from '../../LiveMapTab/utils'
 

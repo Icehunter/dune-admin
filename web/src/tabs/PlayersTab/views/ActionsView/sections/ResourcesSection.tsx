@@ -8,7 +8,7 @@ import { api } from '../../../../../api/client'
 import { FACTIONS } from '../../../types'
 import { busyAtom, charXPCurrentAtom } from '../store'
 import { useRun } from '../hooks/useActions'
-import type { ResourcesSectionProps } from './types'
+import type { ResourcesSectionProps } from './interfaces'
 
 export const ResourcesSection: React.FC<ResourcesSectionProps> = ({ player }) => {
   const { t } = useTranslation()

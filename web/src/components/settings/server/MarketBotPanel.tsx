@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Panel, SectionLabel } from '../../../dune-ui'
 import { CheckboxField } from '../fields/CheckboxField'
-import type { MarketBotPanelProps } from './types'
+import type { MarketBotPanelProps } from './interfaces'
 
 export const MarketBotPanel: React.FC<MarketBotPanelProps> = ({ cfg, setBool }) => {
   const { t } = useTranslation()

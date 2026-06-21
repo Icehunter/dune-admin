@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { InventoryItem, VehicleRow } from '../../../api/client'
 import { DataTable, Icon, LoadingState, Panel, SectionLabel, type Column } from '../../../dune-ui'
-import type { ItemKey, VehicleKey, InventoryModalProps } from './types'
+import type { InventoryModalProps } from './interfaces'
+import type { ItemKey, VehicleKey } from './types'
 
 export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, onClose }) => {
   const { t } = useTranslation()

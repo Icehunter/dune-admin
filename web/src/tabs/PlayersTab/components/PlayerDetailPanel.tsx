@@ -8,7 +8,7 @@ import { DiscordBadge } from './DiscordBadge'
 import { SolarisChart } from './SolarisChart'
 import { SessionChart } from './SessionChart'
 import { XPChart } from './XPChart'
-import type { PlayerDetailPanelProps } from './types'
+import type { PlayerDetailPanelProps } from './interfaces'
 import { StatRow } from './StatRow'
 
 const fmtSolaris = (n: number): string => {

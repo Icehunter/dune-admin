@@ -5,7 +5,8 @@ import {
 } from '@heroui/react'
 import { api } from '../../../api/client'
 import { Icon, LoadingState, NumberInput } from '../../../dune-ui'
-import type { AddItemsModalProps, AddResult } from './types'
+import type { AddItemsModalProps } from './interfaces'
+import type { AddResult } from './types'
 
 export const AddItemsModal: React.FC<AddItemsModalProps> = ({
   container, open, onClose, onSuccess, onRefresh,

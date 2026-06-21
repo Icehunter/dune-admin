@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { SearchField } from '@heroui/react'
-import type { TableSearchInputProps } from './types'
+import type { TableSearchInputProps } from './interfaces'
 
 export const TableSearchInput: React.FC<TableSearchInputProps> = (
   { value, onChange, onRun, tableNames, ariaLabel, placeholder },

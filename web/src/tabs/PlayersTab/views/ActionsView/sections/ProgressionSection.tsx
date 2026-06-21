@@ -9,7 +9,8 @@ import {
   busyAtom, contractCatalogAtom, contractCatalogLoadedAtom, contractCatalogErrorAtom, nodesLoadedAtom,
 } from '../store'
 import { useRun, useGate } from '../hooks/useActions'
-import type { ProgressionSectionProps, TrainerKey } from './types'
+import type { ProgressionSectionProps } from './interfaces'
+import type { TrainerKey } from './types'
 import { TRAINERS } from './types'
 
 const MAIN_QUESTS = [

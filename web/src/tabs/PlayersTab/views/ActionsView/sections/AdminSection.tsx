@@ -10,7 +10,7 @@ import { useRun, useGate } from '../hooks/useActions'
 import { usePermissions } from '../../../../../hooks/usePermissions'
 import { PlayerSearchField } from '../../../../../components/PlayerSearchField'
 import { DeleteCharacterModal } from './DeleteCharacterModal'
-import type { AdminSectionProps } from './types'
+import type { AdminSectionProps } from './interfaces'
 
 export const AdminSection: React.FC<AdminSectionProps> = ({
   player, onManageLocations, onTeleportPicker, onSpawnPicker,

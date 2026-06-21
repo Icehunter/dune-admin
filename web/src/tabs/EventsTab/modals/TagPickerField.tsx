@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { SearchField } from '@heroui/react'
-import type { TagPickerFieldProps } from './types'
+import type { TagPickerFieldProps } from './interfaces'
 
 export const TagPickerField: React.FC<TagPickerFieldProps> = ({ value, onSelect, options, ariaLabel }) => {
   const [query, setQuery] = React.useState('')

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { SearchField } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
-import type { TimezoneSelectProps } from './types'
+import type { TimezoneSelectProps } from './interfaces'
 
 // IANA timezone names from the browser when available (Chrome 99+/modern), with
 // a small fallback for older runtimes. Computed once at module load.

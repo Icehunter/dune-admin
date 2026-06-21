@@ -1,4 +1,5 @@
-import type { WelcomeSharedProps, WelcomePackageItem } from '../types'
+import type { WelcomeSharedProps } from '../interfaces'
+import type { WelcomePackageItem } from '../types'
 
 export type GrantKey = 'character' | 'fls' | 'version' | 'status' | 'attempts' | 'updated' | 'error' | 'actions'
 

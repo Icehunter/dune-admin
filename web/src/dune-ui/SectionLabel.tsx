@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import type { SectionLabelProps } from './types'
+import type { SectionLabelProps } from './interfaces'
 
 /**
  * Small uppercase amber label — sub-section heading inside a Panel.

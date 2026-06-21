@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Button, Disclosure } from '@heroui/react'
-import type { KeystonesToggleProps } from './types'
+import type { KeystonesToggleProps } from './interfaces'
 
 export const KeystonesToggle: React.FC<KeystonesToggleProps> = ({ keystones }) => {
   const [open, setOpen] = React.useState(false)

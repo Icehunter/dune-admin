@@ -1,7 +1,8 @@
 import * as React from 'react'
 import { ApiError, api } from '../api/client'
 import type { Status } from '../api/client'
-import type { ConnState, StatusResult } from './types'
+import type { StatusResult } from './interfaces'
+import type { ConnState } from './types'
 
 export type { ConnState, StatusResult }
 

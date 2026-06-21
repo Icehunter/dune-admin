@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@heroui/react'
 import { Icon, Panel, FieldInput } from '../dune-ui'
 import { currentBackendBase } from '../api/client'
-import type { BackendUnreachableProps } from './types'
+import type { BackendUnreachableProps } from './interfaces'
 
 // BackendUnreachable is shown when the SPA loaded but could never reach the
 // dune-admin backend (#165). Includes an inline URL override so users can fix

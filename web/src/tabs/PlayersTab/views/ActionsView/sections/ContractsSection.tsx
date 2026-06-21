@@ -8,7 +8,7 @@ import { SectionLabel } from '../../../../../dune-ui'
 import { api } from '../../../../../api/client'
 import { busyAtom, contractCatalogAtom, contractCatalogLoadedAtom, contractCatalogErrorAtom, nodesLoadedAtom } from '../store'
 import { useRun } from '../hooks/useActions'
-import type { ContractsSectionProps } from './types'
+import type { ContractsSectionProps } from './interfaces'
 
 export const ContractsSection: React.FC<ContractsSectionProps> = ({ player }) => {
   const { t } = useTranslation()

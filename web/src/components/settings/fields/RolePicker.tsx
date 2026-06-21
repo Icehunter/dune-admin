@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { CloseButton, Select, ListBox } from '@heroui/react'
 import { FieldRow } from './FieldRow'
-import type { RolePickerProps } from '../../types'
+import type { RolePickerProps } from '../../interfaces'
 
 export const RolePicker: React.FC<RolePickerProps> = ({ value, onChange, roles, label, hint }) => {
   const { t } = useTranslation()

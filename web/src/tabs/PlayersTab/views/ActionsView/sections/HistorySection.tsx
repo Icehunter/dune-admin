@@ -6,7 +6,8 @@ import { Icon as IconifyIcon } from '@iconify/react'
 import { DataTable, LoadingState, Panel, SectionLabel } from '../../../../../dune-ui'
 import { api } from '../../../../../api/client'
 import type { GameEvent, DungeonRecord } from '../../../../../api/client'
-import type { HistorySectionProps, ChipColor } from './types'
+import type { HistorySectionProps } from './interfaces'
+import type { ChipColor } from './types'
 
 const eventColor = (t: number): ChipColor => {
   if (t === 1) return 'success'

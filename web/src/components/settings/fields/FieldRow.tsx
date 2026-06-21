@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { FieldProps } from '../../types'
+import type { FieldProps } from '../../interfaces'
 
 // FieldLabelContext exposes the current field's label to nested inputs (TextInput
 // reads it to derive an aria-label).

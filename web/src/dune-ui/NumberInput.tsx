@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Label, NumberField } from '@heroui/react'
-import type { NumberInputProps } from './types'
+import type { NumberInputProps } from './interfaces'
 
 export const NumberInput: React.FC<NumberInputProps> = ({
   value,

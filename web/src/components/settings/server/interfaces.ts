@@ -1,5 +1,6 @@
 import * as React from 'react'
 import type { AppConfig } from '../../../api/client'
+import type { ServerAdvancedVariant } from './types'
 
 export interface SshPanelProps {
   cfg: AppConfig
@@ -61,4 +62,25 @@ export interface ControlPanelProps {
   set: (key: keyof AppConfig) => (v: string) => void
   setBool: (key: keyof AppConfig) => (v: boolean) => void
   setControl: (v: string) => void
+}
+
+export interface ServerAdvancedPanelProps {
+  variant: ServerAdvancedVariant
+  cfg: AppConfig
+  set: (key: keyof AppConfig) => (v: string) => void
+  setBool: (key: keyof AppConfig) => (v: boolean) => void
+  backendUrl: string
+  setBackendUrl: (v: string) => void
+  activeName: string
+  onRequestDeleteServer?: (() => void) | undefined
+}
+
+export interface MarketBotPanelProps {
+  cfg: AppConfig
+  setBool: (key: keyof AppConfig) => (v: boolean) => void
+}
+
+export interface PathsPanelProps {
+  cfg: AppConfig
+  set: (key: keyof AppConfig) => (v: string) => void
 }

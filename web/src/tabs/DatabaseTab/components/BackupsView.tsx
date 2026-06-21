@@ -8,7 +8,7 @@ import type { DBBackupFile } from '../../../api/client'
 import { Panel, SectionLabel, PageHeader, Icon, ConfirmDialog } from '../../../dune-ui'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { ScheduleCard } from './ScheduleCard'
-import type { BackupsViewProps } from './types'
+import type { BackupsViewProps } from './interfaces'
 
 const fmtSize = (b: number): string => {
   if (b < 1024) return `${b} B`

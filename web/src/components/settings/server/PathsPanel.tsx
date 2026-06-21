@@ -4,7 +4,7 @@ import { Panel, SectionLabel } from '../../../dune-ui'
 import { FieldRow } from '../fields/FieldRow'
 import { TextInput } from '../fields/TextInput'
 import { TwoColumnGrid } from '../fields/TwoColumnGrid'
-import type { PathsPanelProps } from './types'
+import type { PathsPanelProps } from './interfaces'
 
 export const PathsPanel: React.FC<PathsPanelProps> = ({ cfg, set }) => {
   const { t } = useTranslation()

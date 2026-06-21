@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Chip } from '@heroui/react'
 import { iconUrl, categoryColor } from '../../../utils/icons'
-import type { ModalStagedItemCellProps } from './types'
+import type { ModalStagedItemCellProps } from './interfaces'
 
 // Sub-component exported for react-refresh. Display-only thumbnail + name cell for staged items.
 export const ModalStagedItemCell: React.FC<ModalStagedItemCellProps> = ({ templateId, name, itemData }) => {

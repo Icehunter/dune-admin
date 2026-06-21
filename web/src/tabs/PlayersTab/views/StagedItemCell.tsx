@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Chip } from '@heroui/react'
 import { iconUrl, categoryColor } from '../../../utils/icons'
-import type { StagedItemCellProps } from './types'
+import type { StagedItemCellProps } from './interfaces'
 
 // Sub-component exported so react-refresh treats it as a stable top-level component.
 // Display-only (no picker semantics) — used in DataGrid template column.

@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { BarChart } from '@heroui-pro/react'
 import type { SessionRecord } from '../../../api/client'
 import { SectionLabel } from '../../../dune-ui'
-import type { SessionChartProps, DayBucket } from './types'
+import type { SessionChartProps } from './interfaces'
+import type { DayBucket } from './types'
 
 const WINDOW_DAYS = 14
 

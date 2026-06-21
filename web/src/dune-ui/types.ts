@@ -67,15 +67,6 @@ export type DataTableProps<T, K extends string> = {
   'pageSize'?: number
 }
 
-export interface FieldSelectProps {
-  value: string
-  onChange: (v: string) => void
-  options: string[]
-  className?: string
-  ariaLabel?: string
-  isDisabled?: boolean
-}
-
 export type ConfirmDialogProps = {
   open: boolean
   title: string
@@ -117,35 +108,10 @@ export type DropzoneProps = {
   className?: string
 }
 
-export interface FieldInputProps {
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-  type?: 'text' | 'number' | 'password' | 'email' | 'url'
-  className?: string
-  ariaLabel?: string
-  isDisabled?: boolean
-}
-
 export type SectionDividerProps = {
   title: React.ReactNode
   /** Optional action buttons rendered on the right side of the divider. */
   children?: React.ReactNode
-}
-
-export interface NumberInputProps {
-  value: number
-  onChange: (value: number) => void
-  min?: number
-  max?: number
-  step?: number
-  label?: string
-  prefix?: string
-  ariaLabel?: string
-  isDisabled?: boolean
-  className?: string
-  showButtons?: boolean
-  formatOptions?: Intl.NumberFormatOptions | undefined
 }
 
 export type LoadingStateProps = {
@@ -154,10 +120,6 @@ export type LoadingStateProps = {
   /** Fill available height with flex-1 (use inside a flex column). */
   fill?: boolean
   className?: string
-}
-
-export interface SectionLabelProps {
-  children: React.ReactNode
 }
 
 export type PageHeaderProps = {

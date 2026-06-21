@@ -13,7 +13,8 @@ import { duneTheme, type Section } from './constants'
 import { ResultTable } from './components/ResultTable'
 import { TableSearchInput } from './components/TableSearchInput'
 import { BackupsView } from './components/BackupsView'
-import type { DatabaseTabProps, TableData } from './types'
+import type { DatabaseTabProps } from './interfaces'
+import type { TableData } from './types'
 
 export const DatabaseTab: React.FC<DatabaseTabProps> = ({
   section: initialSection = 'backups',

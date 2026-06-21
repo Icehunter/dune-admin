@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import type { DiscordBadgeProps } from './types'
+import type { DiscordBadgeProps } from './interfaces'
 
 // Simplified Discord mark. Scaled to a 24×24 viewBox.
 const DISCORD_PATH

@@ -2,7 +2,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AreaChart } from '@heroui-pro/react'
 import { SectionLabel } from '../../../dune-ui'
-import type { XPChartProps } from './types'
+import type { XPChartProps } from './interfaces'
 
 const fmtXP = (n: number): string => {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`

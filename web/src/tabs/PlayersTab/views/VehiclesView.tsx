@@ -7,7 +7,8 @@ import { api } from '../../../api/client'
 import type { VehicleRow } from '../../../api/client'
 import { DataTable, LoadingState, SectionLabel, type Column } from '../../../dune-ui'
 import { usePermissions } from '../../../hooks/usePermissions'
-import type { VehicleKey, VehiclesViewProps } from './types'
+import type { VehiclesViewProps } from './interfaces'
+import type { VehicleKey } from './types'
 
 export const VehiclesView: React.FC<VehiclesViewProps> = ({ player }) => {
   const { t } = useTranslation()

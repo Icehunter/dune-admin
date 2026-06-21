@@ -8,7 +8,8 @@ import { api } from '../../../api/client'
 import type { InventoryItem } from '../../../api/client'
 import { ActionBar, DataTable, Icon, LoadingState, SectionLabel, type Column } from '../../../dune-ui'
 import { usePermissions } from '../../../hooks/usePermissions'
-import type { InventoryViewProps, ItemKey } from './types'
+import type { InventoryViewProps } from './interfaces'
+import type { ItemKey } from './types'
 
 export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
   const { t } = useTranslation()

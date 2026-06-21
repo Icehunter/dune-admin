@@ -10,7 +10,7 @@ import { api } from '../../../../../api/client'
 import type { SpecTrack, KeystoneRow } from '../../../../../api/client'
 import { busyAtom } from '../store'
 import { useRun, useGate } from '../hooks/useActions'
-import type { SpecsSectionProps } from './types'
+import type { SpecsSectionProps } from './interfaces'
 
 export const SpecsSection: React.FC<SpecsSectionProps> = ({ player }) => {
   const { t } = useTranslation()

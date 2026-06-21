@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { StatusDot } from './StatusDot'
-import type { PlayerCardProps } from './types'
+import type { PlayerCardProps } from './interfaces'
 
 export const PlayerCard: React.FC<PlayerCardProps> = ({ player, selected, onSelect }) => {
   return (

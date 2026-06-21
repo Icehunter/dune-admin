@@ -1,13 +1,12 @@
 import * as React from 'react'
-import type { ReactNode } from 'react'
 import { Icon, SectionLabel } from '../../../dune-ui'
 
 export const HealthCard: React.FC<{
   title: string
   icon?: string
-  accessory?: ReactNode
+  accessory?: React.ReactNode
   className?: string
-  children: ReactNode
+  children: React.ReactNode
 }> = ({ title, icon, accessory, className = '', children }) => (
   <div className={`rounded-[var(--radius)] p-8 flex flex-col gap-3 bg-surface-secondary border border-border dune-lift ${className}`}>
     <div className="flex items-center justify-between gap-2">

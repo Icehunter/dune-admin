@@ -104,7 +104,7 @@ func TestContractBatchSummary(t *testing.T) {
 func TestRemoveContractTags_NoTagsIsNoop(t *testing.T) {
 	t.Parallel()
 
-	if err := removeContractTags(context.Background(), nil, 123, nil); err != nil {
+	if err := removeContractTags(context.Background(), nil, playerRef{accountID: 123}, nil); err != nil {
 		t.Fatalf("expected no-op nil tags, got %v", err)
 	}
 }

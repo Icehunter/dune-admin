@@ -1902,8 +1902,14 @@ func cmdGetPlayerTags(pool *pgxpool.Pool, accountID int64) Cmd {
 		if pool == nil {
 			return msgTags{err: fmt.Errorf("not connected")}
 		}
-		rows, err := pool.Query(context.Background(),
-			`SELECT tag FROM dune.player_tags WHERE account_id=$1 ORDER BY tag`, accountID)
+		ctx := context.Background()
+		keyCol, keyVal, err := playerKeyFor(ctx, pool, "player_tags", accountID)
+		if err != nil {
+			return msgTags{err: err}
+		}
+		// #nosec G201 -- keyCol is a fixed internal allowlist (character_id|account_id)
+		rows, err := pool.Query(ctx,
+			fmt.Sprintf(`SELECT tag FROM dune.player_tags WHERE %s = $1 ORDER BY tag`, keyCol), keyVal)
 		if err != nil {
 			return msgTags{err: err}
 		}
@@ -1928,20 +1934,12 @@ func cmdUpdatePlayerTags(pool *pgxpool.Pool, accountID int64, add []string, remo
 		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
-		var addArg, removeArg interface{}
-		if len(add) > 0 {
-			addArg = add
-		} else {
-			addArg = []string{}
-		}
-		if len(remove) > 0 {
-			removeArg = remove
-		} else {
-			removeArg = []string{}
-		}
-		_, err := pool.Exec(context.Background(),
-			`SELECT dune.update_player_tags($1, $2::text[], $3::text[])`, accountID, addArg, removeArg)
+		ctx := context.Background()
+		keyCol, keyVal, err := playerKeyFor(ctx, pool, "player_tags", accountID)
 		if err != nil {
+			return msgMutate{err: err}
+		}
+		if err := upsertPlayerTags(ctx, pool, keyCol, keyVal, add, remove); err != nil {
 			return msgMutate{err: fmt.Errorf("update player tags: %w", err)}
 		}
 		return msgMutate{ok: "Tags updated"}
@@ -2823,6 +2821,168 @@ func cmdSearchColumns(pool *pgxpool.Pool, term string) Cmd {
 	}
 }
 
+// ── per-character table key (issue #267) ─────────────────────────────────────
+//
+// Current Dune servers migrated several per-player tables (journey_story_node,
+// player_tags) from an account_id key to a character_id key, where character_id
+// is dune.encrypted_player_state.id — a per-character surrogate reached from the
+// account id (1:1 for real players; journey_story_node.character_id is a foreign
+// key to it). dune-admin still addresses these tables by account, so we resolve
+// the character id at runtime and fall back to account_id on un-migrated servers.
+
+const (
+	playerKeyCharacterID = "character_id" // current schema
+	playerKeyAccountID   = "account_id"   // legacy schema
+)
+
+// pgExecutor is the subset of pgxpool.Pool / pgx.Tx used by the schema-aware
+// player-table writers, so they work inside a transaction or directly.
+type pgExecutor interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+var (
+	playerKeyColMu    sync.RWMutex
+	playerKeyColCache = map[string]string{} // dune table name -> key column
+)
+
+// playerKeyColumnFromProbe maps "does this table have a character_id column?"
+// to the key column to use. Pure, for testability.
+func playerKeyColumnFromProbe(hasCharacterID bool) string {
+	if hasCharacterID {
+		return playerKeyCharacterID
+	}
+	return playerKeyAccountID
+}
+
+// selectPlayerKey picks the (column, value) addressing a per-character table,
+// given the live key column and the resolved character/account ids. Pure, so
+// the account_id -> character_id branching is unit-testable without a database.
+func selectPlayerKey(liveColumn string, characterID, accountID int64) (string, int64) {
+	if liveColumn == playerKeyCharacterID {
+		return playerKeyCharacterID, characterID
+	}
+	return playerKeyAccountID, accountID
+}
+
+// playerKeyColumn reports which key column dune.<table> uses on the connected
+// server: "character_id" on current servers, "account_id" on legacy ones.
+// Probed once per table via information_schema and cached. On probe error it
+// assumes the current schema and does not cache, so a later call can re-probe.
+func playerKeyColumn(ctx context.Context, pool *pgxpool.Pool, table string) string {
+	playerKeyColMu.RLock()
+	col, ok := playerKeyColCache[table]
+	playerKeyColMu.RUnlock()
+	if ok {
+		return col
+	}
+
+	// Resolve the table through to_regclass so the probe honours the
+	// connection's search_path (set from the active server's schema) instead of
+	// the package-level dbSchema, which is empty until a config save. This
+	// matches how the data queries resolve dune.<table>.
+	var hasCharacterID bool
+	if err := pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM pg_attribute
+			WHERE attrelid = to_regclass($1::text)
+			  AND attname  = 'character_id'
+			  AND NOT attisdropped
+		)`, table).Scan(&hasCharacterID); err != nil {
+		// Probe failed — assume the current schema rather than silently
+		// reintroducing the account_id bug; don't cache the guess.
+		return playerKeyCharacterID
+	}
+
+	col = playerKeyColumnFromProbe(hasCharacterID)
+	playerKeyColMu.Lock()
+	playerKeyColCache[table] = col
+	playerKeyColMu.Unlock()
+	return col
+}
+
+// resolvePlayerCharacterID maps an account id to its character id
+// (dune.encrypted_player_state.id) — the key the migrated per-character tables
+// use. journey_story_node.character_id is a foreign key to this column.
+func resolvePlayerCharacterID(ctx context.Context, pool *pgxpool.Pool, accountID int64) (int64, error) {
+	var characterID int64
+	err := pool.QueryRow(ctx,
+		`SELECT id FROM dune.encrypted_player_state WHERE account_id = $1 ORDER BY id LIMIT 1`,
+		accountID).Scan(&characterID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, fmt.Errorf("no character found for account %d", accountID)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("resolve character for account %d: %w", accountID, err)
+	}
+	return characterID, nil
+}
+
+// playerKeyFor returns the key column and bound value to address dune.<table>
+// for an account on the live schema. The character id is resolved only when the
+// server uses the migrated character_id key. Use for single-table operations.
+func playerKeyFor(ctx context.Context, pool *pgxpool.Pool, table string, accountID int64) (string, int64, error) {
+	if playerKeyColumn(ctx, pool, table) != playerKeyCharacterID {
+		return playerKeyAccountID, accountID, nil
+	}
+	characterID, err := resolvePlayerCharacterID(ctx, pool, accountID)
+	if err != nil {
+		return "", 0, err
+	}
+	return playerKeyCharacterID, characterID, nil
+}
+
+// playerRef caches the resolved character id for operations that touch several
+// per-character tables (and account-keyed tables like player_state) for the
+// same account, so the character id is resolved once. Build via newPlayerRef.
+type playerRef struct {
+	accountID   int64
+	characterID int64 // dune.encrypted_player_state.id; 0 on legacy servers
+	migrated    bool
+}
+
+func newPlayerRef(ctx context.Context, pool *pgxpool.Pool, accountID int64) (playerRef, error) {
+	ref := playerRef{accountID: accountID}
+	if playerKeyColumn(ctx, pool, "journey_story_node") == playerKeyCharacterID {
+		characterID, err := resolvePlayerCharacterID(ctx, pool, accountID)
+		if err != nil {
+			return playerRef{}, err
+		}
+		ref.characterID = characterID
+		ref.migrated = true
+	}
+	return ref, nil
+}
+
+// keyFor returns the (column, value) addressing dune.<table> for this character
+// on the live schema, without re-resolving the character id.
+func (p playerRef) keyFor(ctx context.Context, pool *pgxpool.Pool, table string) (string, int64) {
+	return selectPlayerKey(playerKeyColumn(ctx, pool, table), p.characterID, p.accountID)
+}
+
+// upsertPlayerTags adds and/or removes player_tags for a character, replacing
+// the legacy dune.update_player_tags proc — which is account_id-keyed and so is
+// absent/renamed on migrated servers (issue #267). The caller passes the
+// resolved key from playerKeyFor / playerRef.keyFor.
+func upsertPlayerTags(ctx context.Context, db pgExecutor, keyCol string, keyVal int64, add, remove []string) error {
+	if len(add) > 0 {
+		// #nosec G201 -- keyCol is a fixed internal allowlist (character_id|account_id), never user input
+		q := fmt.Sprintf(`INSERT INTO dune.player_tags (%s, tag)
+			SELECT $1, unnest($2::text[]) ON CONFLICT DO NOTHING`, keyCol)
+		if _, err := db.Exec(ctx, q, keyVal, add); err != nil {
+			return fmt.Errorf("add tags: %w", err)
+		}
+	}
+	if len(remove) > 0 {
+		// #nosec G201 -- keyCol is a fixed internal allowlist (character_id|account_id), never user input
+		q := fmt.Sprintf(`DELETE FROM dune.player_tags WHERE %s = $1 AND tag = ANY($2::text[])`, keyCol)
+		if _, err := db.Exec(ctx, q, keyVal, remove); err != nil {
+			return fmt.Errorf("remove tags: %w", err)
+		}
+	}
+	return nil
+}
+
 // ── journey / progression commands ───────────────────────────────────────────
 
 func cmdFetchJourneyNodes(pool *pgxpool.Pool, scope string, accountID int64) Cmd {
@@ -2840,14 +3000,20 @@ func cmdFetchJourneyNodes(pool *pgxpool.Pool, scope string, accountID int64) Cmd
 			return msgJourney{rows: entry.nodes}
 		}
 
-		rows, err := pool.Query(context.Background(), `
+		ctx := context.Background()
+		keyCol, keyVal, err := playerKeyFor(ctx, pool, "journey_story_node", accountID)
+		if err != nil {
+			return msgJourney{err: err}
+		}
+		// #nosec G201 -- keyCol is a fixed internal allowlist (character_id|account_id)
+		rows, err := pool.Query(ctx, fmt.Sprintf(`
 			SELECT story_node_id,
 			       (complete_condition_state = 'true'::jsonb) AS is_complete,
 			       (reveal_condition_state   = 'true'::jsonb) AS is_revealed,
 			       has_pending_reward
 			FROM dune.journey_story_node
-			WHERE account_id = $1
-			ORDER BY story_node_id`, accountID)
+			WHERE %s = $1
+			ORDER BY story_node_id`, keyCol), keyVal)
 		if err != nil {
 			return msgJourney{err: err}
 		}
@@ -2960,31 +3126,38 @@ func cmdCompleteJourneyNode(pool *pgxpool.Pool, accountID int64, nodeID string) 
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
+		ref, err := newPlayerRef(ctx, pool, accountID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+		keyCol, keyVal := ref.keyFor(ctx, pool, "journey_story_node")
 		// Complete the node itself plus all child nodes (nodeID + ".anything").
 		// The game checks sub-nodes to determine quest completion state.
-		res, err := pool.Exec(ctx, `
+		// #nosec G201 -- keyCol is a fixed internal allowlist (character_id|account_id)
+		res, err := pool.Exec(ctx, fmt.Sprintf(`
 			UPDATE dune.journey_story_node
 			SET complete_condition_state = 'true'::jsonb,
 			    reveal_condition_state   = 'true'::jsonb
-			WHERE account_id = $1
-			  AND (story_node_id = $2 OR story_node_id LIKE $2 || '.%')`,
-			accountID, nodeID)
+			WHERE %s = $1
+			  AND (story_node_id = $2 OR story_node_id LIKE $2 || '.%%')`, keyCol),
+			keyVal, nodeID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("complete node: %w", err)}
 		}
 		updated := res.RowsAffected()
 		if updated == 0 {
 			// Node doesn't exist yet — insert it.
-			_, err = pool.Exec(ctx, `
+			// #nosec G201 -- keyCol is a fixed internal allowlist (character_id|account_id)
+			_, err = pool.Exec(ctx, fmt.Sprintf(`
 				INSERT INTO dune.journey_story_node
-					(account_id, story_node_id, has_pending_reward,
+					(%s, story_node_id, has_pending_reward,
 					 complete_condition_state, reveal_condition_state,
 					 fail_condition_state, metadata_state, reset_group)
 				VALUES ($1, $2, false,
 					'true'::jsonb, 'true'::jsonb,
 					'{}'::jsonb, '{}'::jsonb,
-					'Default'::dune.JourneyStoryResetGroup)`,
-				accountID, nodeID)
+					'Default'::dune.JourneyStoryResetGroup)`, keyCol),
+				keyVal, nodeID)
 			if err != nil {
 				return msgMutate{err: fmt.Errorf("insert node: %w", err)}
 			}
@@ -2997,12 +3170,12 @@ func cmdCompleteJourneyNode(pool *pgxpool.Pool, accountID int64, nodeID string) 
 		// written — which is why journey-only completion historically did not
 		// "stick" without login/logout cycles.
 		appliedTags := tagsForJourneyNodeSubtree(nodeID)
-		extra, err := applyTagsWithTierBump(ctx, pool, accountID, appliedTags)
+		extra, err := applyTagsWithTierBump(ctx, pool, ref, appliedTags)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 
-		svExtra, svErr := maybeGrantSpiceVision(ctx, pool, accountID, nodeID)
+		svExtra, svErr := maybeGrantSpiceVision(ctx, pool, ref.accountID, nodeID)
 		if svErr != nil {
 			return msgMutate{err: svErr}
 		}
@@ -3012,19 +3185,18 @@ func cmdCompleteJourneyNode(pool *pgxpool.Pool, accountID int64, nodeID string) 
 	}
 }
 
-// applyTagsWithTierBump writes `tags` via dune.update_player_tags and, for any
+// applyTagsWithTierBump writes `tags` into dune.player_tags and, for any
 // Faction.<X>.Tier<N> (N ∈ 0–5) it sees, also raises that faction's rep + the
 // FactionPlayerComponent ReputationAmount on the controller actor so the
 // in-game rank UI reflects the promotion. Never lowers existing rep.
 // Returns a short " , +K tag(s), bumped rep for N faction(s)" fragment for
 // inclusion in the caller's success message (empty when no tags applied).
-func applyTagsWithTierBump(ctx context.Context, pool *pgxpool.Pool, accountID int64, tags []string) (string, error) {
+func applyTagsWithTierBump(ctx context.Context, pool *pgxpool.Pool, ref playerRef, tags []string) (string, error) {
 	if len(tags) == 0 {
 		return "", nil
 	}
-	if _, err := pool.Exec(ctx,
-		`SELECT dune.update_player_tags($1, $2::text[], '{}'::text[])`,
-		accountID, tags); err != nil {
+	keyCol, keyVal := ref.keyFor(ctx, pool, "player_tags")
+	if err := upsertPlayerTags(ctx, pool, keyCol, keyVal, tags, nil); err != nil {
 		return "", fmt.Errorf("apply tags: %w", err)
 	}
 
@@ -3038,7 +3210,7 @@ func applyTagsWithTierBump(ctx context.Context, pool *pgxpool.Pool, accountID in
 	var controllerID int64
 	_ = pool.QueryRow(ctx, `
 		SELECT player_controller_id FROM dune.player_state
-		WHERE account_id = $1 LIMIT 1`, accountID).Scan(&controllerID)
+		WHERE account_id = $1 LIMIT 1`, ref.accountID).Scan(&controllerID)
 	if controllerID == 0 {
 		// Fresh character without a player_state row — can't bump rep yet.
 		// Tags landed, the rep side effect will have to wait until the
@@ -3119,12 +3291,18 @@ func cmdCompleteContracts(pool *pgxpool.Pool, accountID int64, contractIDs []str
 		}
 
 		ctx := context.Background()
-		extra, err := applyTagsWithTierBump(ctx, pool, accountID, set.removeTags)
+		ref, err := newPlayerRef(ctx, pool, accountID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+		extra, err := applyTagsWithTierBump(ctx, pool, ref, set.removeTags)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 
-		grantedExtra, err := applyContractSkillGrants(ctx, pool, accountID, set.removeSkills)
+		// Skill grants and contract-item dismissal target account-level tables,
+		// which were not part of the account_id -> character_id migration.
+		grantedExtra, err := applyContractSkillGrants(ctx, pool, ref.accountID, set.removeSkills)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -3135,7 +3313,7 @@ func cmdCompleteContracts(pool *pgxpool.Pool, accountID int64, contractIDs []str
 		// force-completed. ContractName.Name uses the short alias form
 		// (no DA_CT_ prefix).
 		shortNames := contractShortNames(set.resolvedNames)
-		dismissedExtra, err := dismissActiveContracts(ctx, pool, accountID, shortNames)
+		dismissedExtra, err := dismissActiveContracts(ctx, pool, ref.accountID, shortNames)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -3211,13 +3389,12 @@ func contractShortNames(resolvedNames []string) []string {
 	return shortNames
 }
 
-func removeContractTags(ctx context.Context, pool *pgxpool.Pool, accountID int64, removeTags []string) error {
+func removeContractTags(ctx context.Context, pool *pgxpool.Pool, ref playerRef, removeTags []string) error {
 	if len(removeTags) == 0 {
 		return nil
 	}
-	if _, err := pool.Exec(ctx,
-		`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
-		accountID, removeTags); err != nil {
+	keyCol, keyVal := ref.keyFor(ctx, pool, "player_tags")
+	if err := upsertPlayerTags(ctx, pool, keyCol, keyVal, nil, removeTags); err != nil {
 		return fmt.Errorf("remove tags: %w", err)
 	}
 	return nil
@@ -3292,11 +3469,15 @@ func cmdReverseContracts(pool *pgxpool.Pool, accountID int64, contractIDs []stri
 		}
 
 		ctx := context.Background()
-		if err := removeContractTags(ctx, pool, accountID, set.removeTags); err != nil {
+		ref, err := newPlayerRef(ctx, pool, accountID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+		if err := removeContractTags(ctx, pool, ref, set.removeTags); err != nil {
 			return msgMutate{err: err}
 		}
 
-		pawnID := loadContractPawnID(ctx, pool, accountID)
+		pawnID := loadContractPawnID(ctx, pool, ref.accountID)
 		stripped, err := stripContractSkillBlocks(ctx, pool, pawnID, set.removeSkills)
 		if err != nil {
 			return msgMutate{err: err}
@@ -3729,25 +3910,30 @@ func cmdResetJourneyNode(pool *pgxpool.Pool, accountID int64, nodeID string) Cmd
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
-		_, err := pool.Exec(ctx, `
+		ref, err := newPlayerRef(ctx, pool, accountID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+		jCol, jVal := ref.keyFor(ctx, pool, "journey_story_node")
+		// #nosec G201 -- jCol is a fixed internal allowlist (character_id|account_id)
+		_, err = pool.Exec(ctx, fmt.Sprintf(`
 			UPDATE dune.journey_story_node
 			SET complete_condition_state = 'false'::jsonb,
 			    has_pending_reward       = false
-			WHERE account_id = $1
-			  AND (story_node_id = $2 OR story_node_id LIKE $2 || '.%')`,
-			accountID, nodeID)
+			WHERE %s = $1
+			  AND (story_node_id = $2 OR story_node_id LIKE $2 || '.%%')`, jCol),
+			jVal, nodeID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("reset node: %w", err)}
 		}
 
 		// Also strip any tags this node + its descendants would have emitted
-		// on completion. The proc accepts (add, remove) text[] pairs.
+		// on completion.
 		removeTags := tagsForJourneyNodeSubtree(nodeID)
 		extra := ""
 		if len(removeTags) > 0 {
-			if _, err = pool.Exec(ctx,
-				`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
-				accountID, removeTags); err != nil {
+			tCol, tVal := ref.keyFor(ctx, pool, "player_tags")
+			if err = upsertPlayerTags(ctx, pool, tCol, tVal, nil, removeTags); err != nil {
 				return msgMutate{err: fmt.Errorf("remove node tags: %w", err)}
 			}
 			extra = fmt.Sprintf(", removed %d tag(s)", len(removeTags))
@@ -3762,9 +3948,16 @@ func cmdWipeJourneyNodes(pool *pgxpool.Pool, accountID int64) Cmd {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
-		_, err := pool.Exec(ctx,
-			`SELECT dune.delete_all_journey_story_nodes($1)`, accountID)
+		ref, err := newPlayerRef(ctx, pool, accountID)
 		if err != nil {
+			return msgMutate{err: err}
+		}
+		jCol, jVal := ref.keyFor(ctx, pool, "journey_story_node")
+		// Replaces the legacy dune.delete_all_journey_story_nodes proc, which is
+		// account_id-keyed and absent/renamed on migrated servers (issue #267).
+		// #nosec G201 -- jCol is a fixed internal allowlist (character_id|account_id)
+		if _, err = pool.Exec(ctx,
+			fmt.Sprintf(`DELETE FROM dune.journey_story_node WHERE %s = $1`, jCol), jVal); err != nil {
 			return msgMutate{err: fmt.Errorf("wipe journey: %w", err)}
 		}
 
@@ -3773,14 +3966,13 @@ func cmdWipeJourneyNodes(pool *pgxpool.Pool, accountID int64) Cmd {
 		removeTags := allJourneyTags()
 		extra := ""
 		if len(removeTags) > 0 {
-			if _, err = pool.Exec(ctx,
-				`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
-				accountID, removeTags); err != nil {
+			tCol, tVal := ref.keyFor(ctx, pool, "player_tags")
+			if err = upsertPlayerTags(ctx, pool, tCol, tVal, nil, removeTags); err != nil {
 				return msgMutate{err: fmt.Errorf("remove journey tags: %w", err)}
 			}
 			extra = fmt.Sprintf(", removed %d journey tag(s)", len(removeTags))
 		}
-		return msgMutate{ok: fmt.Sprintf("Wiped all journey nodes for account %d%s", accountID, extra)}
+		return msgMutate{ok: fmt.Sprintf("Wiped all journey nodes for account %d%s", ref.accountID, extra)}
 	}
 }
 
@@ -4037,7 +4229,8 @@ func resolveProgressionUnlockPlayer(ctx context.Context, pool *pgxpool.Pool, act
 func applyProgressionUnlock(
 	ctx context.Context,
 	pool *pgxpool.Pool,
-	accountID, controllerID int64,
+	ref playerRef,
+	controllerID int64,
 	flsID string,
 	factionID int16,
 	targetTier int,
@@ -4049,6 +4242,11 @@ func applyProgressionUnlock(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// NOTE(issue #267): this still routes through the game's own
+	// complete_journey_story_nodes_for_player proc (keyed by FLS/Funcom id).
+	// If a migrated server's copy of that proc fails, this needs an inline
+	// character_id-keyed upsert like the other journey writes — tracked as a
+	// follow-up; the operator journey/tag paths are the reported regressions.
 	if _, err = tx.Exec(ctx,
 		`SELECT dune.complete_journey_story_nodes_for_player($1, $2::text[])`,
 		flsID, journeyNodes); err != nil {
@@ -4065,8 +4263,8 @@ func applyProgressionUnlock(
 		return fmt.Errorf("change_player_faction: %w", err)
 	}
 
-	if _, err = tx.Exec(ctx,
-		`SELECT dune.update_player_tags($1, $2::text[], '{}'::text[])`, accountID, allTags); err != nil {
+	tCol, tVal := ref.keyFor(ctx, pool, "player_tags")
+	if err = upsertPlayerTags(ctx, tx, tCol, tVal, allTags, nil); err != nil {
 		return fmt.Errorf("update player tags: %w", err)
 	}
 
@@ -4128,26 +4326,27 @@ func progressionReverseTags(baseTags, nodes []string) []string {
 	return allTags
 }
 
-func applyProgressionReverse(ctx context.Context, pool *pgxpool.Pool, accountID int64, allTags, nodes []string) (int64, error) {
+func applyProgressionReverse(ctx context.Context, pool *pgxpool.Pool, ref playerRef, allTags, nodes []string) (int64, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if _, err = tx.Exec(ctx,
-		`SELECT dune.update_player_tags($1, '{}'::text[], $2::text[])`,
-		accountID, allTags); err != nil {
+	tCol, tVal := ref.keyFor(ctx, pool, "player_tags")
+	if err = upsertPlayerTags(ctx, tx, tCol, tVal, nil, allTags); err != nil {
 		return 0, fmt.Errorf("remove tags: %w", err)
 	}
 
-	result, err := tx.Exec(ctx, `
+	jCol, jVal := ref.keyFor(ctx, pool, "journey_story_node")
+	// #nosec G201 -- jCol is a fixed internal allowlist (character_id|account_id)
+	result, err := tx.Exec(ctx, fmt.Sprintf(`
 		UPDATE dune.journey_story_node
 		SET complete_condition_state = 'false'::jsonb,
 		    has_pending_reward       = false
-		WHERE account_id = $1
-		  AND story_node_id = ANY($2::text[])`,
-		accountID, nodes)
+		WHERE %s = $1
+		  AND story_node_id = ANY($2::text[])`, jCol),
+		jVal, nodes)
 	if err != nil {
 		return 0, fmt.Errorf("reset journey nodes: %w", err)
 	}
@@ -4194,11 +4393,15 @@ func cmdProgressionUnlock(pool *pgxpool.Pool, actorID int64, faction, preset str
 		if err != nil {
 			return msgMutate{err: err}
 		}
+		ref, err := newPlayerRef(ctx, pool, accountID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
 
 		if err := applyProgressionUnlock(
 			ctx,
 			pool,
-			accountID,
+			ref,
 			controllerID,
 			flsID,
 			cfg.factionID,
@@ -4244,12 +4447,16 @@ func cmdReverseProgressionUnlock(pool *pgxpool.Pool, actorID int64, faction, pre
 		if err != nil {
 			return msgMutate{err: err}
 		}
+		ref, err := newPlayerRef(ctx, pool, accountID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
 
 		nodes := nodesForPreset(faction, preset)
 		baseTags := progressionUnlockTags(cfg, targetTier)
 		allTags := progressionReverseTags(baseTags, nodes)
 
-		resetNodes, err := applyProgressionReverse(ctx, pool, accountID, allTags, nodes)
+		resetNodes, err := applyProgressionReverse(ctx, pool, ref, allTags, nodes)
 		if err != nil {
 			return msgMutate{err: err}
 		}
@@ -5050,7 +5257,14 @@ func cmdGetPlayerVehicles(pool *pgxpool.Pool, controllerID int64) Cmd {
 			return msgVehicles{err: fmt.Errorf("look up account: %w", err)}
 		}
 
-		rows, err := pool.Query(context.Background(), `
+		// recovered_vehicles / backup_vehicles migrated account_id -> character_id
+		// (issue #267); resolve the key (both tables migrated together).
+		keyCol, keyVal, err := playerKeyFor(context.Background(), pool, "recovered_vehicles", accountID)
+		if err != nil {
+			return msgVehicles{err: err}
+		}
+		// #nosec G201 -- keyCol is a fixed internal allowlist (character_id|account_id)
+		rows, err := pool.Query(context.Background(), fmt.Sprintf(`
 			SELECT pa.actor_id, a.class, COALESCE(a.map, ''),
 			       COALESCE(rv.chassis_durability::float8, 1.0),
 			       COALESCE(pa.actor_name, rv.vehicle_name, ''),
@@ -5059,7 +5273,7 @@ func cmdGetPlayerVehicles(pool *pgxpool.Pool, controllerID int64) Cmd {
 			FROM dune.permission_actor pa
 			JOIN dune.permission_actor_rank par ON par.permission_actor_id = pa.actor_id
 			JOIN dune.actors a ON a.id = pa.actor_id
-			LEFT JOIN dune.recovered_vehicles rv ON rv.vehicle_id = pa.actor_id AND rv.account_id = $2
+			LEFT JOIN dune.recovered_vehicles rv ON rv.vehicle_id = pa.actor_id AND rv.%[1]s = $2
 			WHERE par.player_id = $1 AND pa.actor_type = 2
 
 			UNION ALL
@@ -5071,9 +5285,9 @@ func cmdGetPlayerVehicles(pool *pgxpool.Pool, controllerID int64) Cmd {
 			       true AS is_backup
 			FROM dune.backup_vehicles bv
 			JOIN dune.actors a ON a.id = bv.vehicle_id
-			WHERE bv.account_id = $2
+			WHERE bv.%[1]s = $2
 
-			ORDER BY class`, controllerID, accountID)
+			ORDER BY class`, keyCol), controllerID, keyVal)
 		if err != nil {
 			return msgVehicles{err: err}
 		}
@@ -6058,18 +6272,24 @@ func cmdFetchPlayerPgStats(ctx context.Context, pool *pgxpool.Pool, accountID in
 	}
 
 	// Tag-derived stats: POIs discovered, story milestones, max faction tier.
-	row = pool.QueryRow(ctx, `
+	// player_tags migrated account_id -> character_id (issue #267); resolve the key.
+	tagKeyCol, tagKeyVal, err := playerKeyFor(ctx, pool, "player_tags", accountID)
+	if err != nil {
+		return stats, fmt.Errorf("resolve tag-stats key for account %d: %w", accountID, err)
+	}
+	// #nosec G201 -- tagKeyCol is a fixed internal allowlist (character_id|account_id)
+	row = pool.QueryRow(ctx, fmt.Sprintf(`
 		SELECT
-			COUNT(*) FILTER (WHERE tag LIKE 'Exploration.POI.%'),
-			COUNT(*) FILTER (WHERE tag LIKE 'BigMoments.%.Complete'),
+			COUNT(*) FILTER (WHERE tag LIKE 'Exploration.POI.%%'),
+			COUNT(*) FILTER (WHERE tag LIKE 'BigMoments.%%.Complete'),
 			COALESCE(MAX(
 				CASE WHEN tag ~ '^Faction\.[^.]+\.Tier[0-9]+$'
 				     THEN CAST(SUBSTRING(tag FROM '[0-9]+$') AS INTEGER)
 				     ELSE NULL END
 			), 0)
 		FROM dune.player_tags
-		WHERE account_id = $1
-	`, accountID)
+		WHERE %s = $1
+	`, tagKeyCol), tagKeyVal)
 	if err := row.Scan(&stats.POIsDiscovered, &stats.StoryMilestones, &stats.MaxFactionTier); err != nil {
 		return stats, fmt.Errorf("fetch tag stats for account %d: %w", accountID, err)
 	}
@@ -6563,10 +6783,16 @@ func cmdFetchCharacterLevel(ctx context.Context, pool *pgxpool.Pool, accountID i
 }
 
 // cmdFetchPlayerTagsForAccount is the injectable (ctx+pool) form of
-// cmdGetPlayerTags, used by the events engine dependency injection.
+// cmdGetPlayerTags, used by the events engine dependency injection. Keyed via
+// playerKeyFor so it follows the account_id -> character_id migration (#267).
 func cmdFetchPlayerTagsForAccount(ctx context.Context, pool *pgxpool.Pool, accountID int64) ([]string, error) {
+	keyCol, keyVal, err := playerKeyFor(ctx, pool, "player_tags", accountID)
+	if err != nil {
+		return nil, err
+	}
+	// #nosec G201 -- keyCol is a fixed internal allowlist (character_id|account_id)
 	rows, err := pool.Query(ctx,
-		`SELECT tag FROM dune.player_tags WHERE account_id = $1 ORDER BY tag`, accountID)
+		fmt.Sprintf(`SELECT tag FROM dune.player_tags WHERE %s = $1 ORDER BY tag`, keyCol), keyVal)
 	if err != nil {
 		return nil, fmt.Errorf("fetch player tags for account %d: %w", accountID, err)
 	}
@@ -6619,11 +6845,17 @@ func cmdFetchBattlepassPlayers(ctx context.Context, pool *pgxpool.Pool) ([]battl
 
 // cmdFetchCompletedJourneyNodeIDs returns the IDs of every completed journey
 // story node for the account. Used by the battlepass engine, which polls
-// slower than the journey cache TTL and reads completion state only.
+// slower than the journey cache TTL and reads completion state only. Keyed via
+// playerKeyFor so it follows the account_id -> character_id migration (#267).
 func cmdFetchCompletedJourneyNodeIDs(ctx context.Context, pool *pgxpool.Pool, accountID int64) ([]string, error) {
-	rows, err := pool.Query(ctx, `
+	keyCol, keyVal, err := playerKeyFor(ctx, pool, "journey_story_node", accountID)
+	if err != nil {
+		return nil, err
+	}
+	// #nosec G201 -- keyCol is a fixed internal allowlist (character_id|account_id)
+	rows, err := pool.Query(ctx, fmt.Sprintf(`
 		SELECT story_node_id FROM dune.journey_story_node
-		WHERE account_id = $1 AND complete_condition_state = 'true'::jsonb`, accountID)
+		WHERE %s = $1 AND complete_condition_state = 'true'::jsonb`, keyCol), keyVal)
 	if err != nil {
 		return nil, fmt.Errorf("fetch completed journey nodes for account %d: %w", accountID, err)
 	}

@@ -35,14 +35,14 @@ export const TagsSection: React.FC<TagsSectionProps> = ({ player }) => {
     if (tagsLoaded) return
     Promise.resolve()
       .then(() => setTagsLoading(true))
-      .then(() => api.players.tags(player.account_id))
+      .then(() => api.players.tags(player.id))
       .then((t) => {
         setTags(t)
         setTagsLoaded(true)
       })
       .catch(() => {})
       .finally(() => setTagsLoading(false))
-  }, [tagsLoaded, player.account_id])
+  }, [tagsLoaded, player.id])
 
   const filteredActiveTags = filterQuery
     ? tags.filter((t) => t.toLowerCase().includes(filterQuery.toLowerCase()))
@@ -51,7 +51,7 @@ export const TagsSection: React.FC<TagsSectionProps> = ({ player }) => {
   const handleAddTags = () => {
     const toAdd = pendingTags
     run(
-      () => api.players.updateTags(player.account_id, toAdd, []),
+      () => api.players.updateTags(player.id, toAdd, []),
       `Added ${toAdd.length} tag${toAdd.length > 1 ? 's' : ''}`,
     ).then(() => {
       setTags((prev) => [...new Set([...prev, ...toAdd])].sort())
@@ -62,7 +62,7 @@ export const TagsSection: React.FC<TagsSectionProps> = ({ player }) => {
   const handleRemoveTag = (tag: string) => {
     setTags((prev) => prev.filter((s) => s !== tag))
     run(
-      () => api.players.updateTags(player.account_id, [], [tag]),
+      () => api.players.updateTags(player.id, [], [tag]),
       t('players.actions.tags.removedTag'),
     )
   }

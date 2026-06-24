@@ -37,7 +37,7 @@ export const ContractsSection: React.FC<ContractsSectionProps> = ({ player }) =>
   }, [contractCatalogLoaded, setContractCatalog, setContractCatalogLoaded, setContractCatalogError])
 
   const handleCompleteContracts = () => {
-    run(() => api.players.completeContracts(player.account_id, selectedContracts),
+    run(() => api.players.completeContracts(player.id, selectedContracts),
       `Completed ${selectedContracts.length} contract(s) for ${player.name}`)
       .then(() => {
         setSelectedContracts([])
@@ -46,7 +46,7 @@ export const ContractsSection: React.FC<ContractsSectionProps> = ({ player }) =>
   }
 
   const handleReverseContracts = () => {
-    run(() => api.players.reverseContracts(player.account_id, selectedContracts),
+    run(() => api.players.reverseContracts(player.id, selectedContracts),
       `Reversed ${selectedContracts.length} contract(s) for ${player.name}`)
       .then(() => {
         setSelectedContracts([])

@@ -1097,8 +1097,8 @@ export const api = {
   reconnect: () => req<Status>('POST', '/reconnect'),
   progression: {
     presets: () => req<ProgressionPreset[]>('GET', '/progression/presets'),
-    applyPreset: (account_id: number, preset_id: string) =>
-      req<MutateResult>('POST', '/players/progression/apply-preset', { account_id, preset_id }),
+    applyPreset: (player_id: number, preset_id: string) =>
+      req<MutateResult>('POST', '/players/progression/apply-preset', { player_id, preset_id }),
   },
   config: {
     get: () => req<AppConfig>('GET', '/config'),
@@ -1158,7 +1158,7 @@ export const api = {
     specs: () => req<SpecTrack[]>('GET', '/players/specs'),
     templates: () => req<{ id: string, name: string }[]>('GET', '/players/templates'),
     inventory: (id: number) => req<InventoryItem[]>('GET', `/players/${id}/inventory`),
-    journey: (accountId: number) => req<JourneyNode[]>('GET', `/players/${accountId}/journey`),
+    journey: (playerId: number) => req<JourneyNode[]>('GET', `/players/${playerId}/journey`),
     giveItem: (player_id: number, template: string, qty: number, quality: number) =>
       req<MutateResult>('POST', '/players/give-item', { player_id, template, qty, quality }),
     giveItems: (player_id: number, items: { template: string, qty: number, quality: number }[]) =>
@@ -1180,8 +1180,8 @@ export const api = {
     rename: (account_id: number, name: string) => req<MutateResult>('POST', '/players/rename', { account_id, name }),
     deleteCharacter: (account_id: number, reason: string) =>
       req<MutateResult>('POST', '/players/delete', { account_id, reason }),
-    tags: (account_id: number) => req<string[]>('GET', `/players/${account_id}/tags`),
-    updateTags: (account_id: number, add: string[], remove: string[]) => req<MutateResult>('POST', '/players/update-tags', { account_id, add, remove }),
+    tags: (player_id: number) => req<string[]>('GET', `/players/${player_id}/tags`),
+    updateTags: (player_id: number, add: string[], remove: string[]) => req<MutateResult>('POST', '/players/update-tags', { player_id, add, remove }),
     returningPlayerAward: (account_id: number) => req<MutateResult>('POST', '/players/returning-player-award', { account_id }),
     dismissReturningPlayerAward: (account_id: number) => req<MutateResult>('POST', '/players/dismiss-returning-player-award', { account_id }),
     exportUrl: (account_id: number) => `${apiBase}/players/${account_id}/export`,
@@ -1212,16 +1212,16 @@ export const api = {
       req<MutateResult>('POST', '/players/set-faction-tier', { actor_id, faction_id, tier }),
     progressionUnlock: (player_id: number, faction: string, preset: string) =>
       req<MutateResult>('POST', '/players/progression-unlock', { player_id, faction, preset }),
-    journeyComplete: (account_id: number, node_id: string) =>
-      req<MutateResult>('POST', '/players/journey/complete', { account_id, node_id }),
-    journeyReset: (account_id: number, node_id: string) =>
-      req<MutateResult>('POST', '/players/journey/reset', { account_id, node_id }),
-    journeyWipe: (account_id: number) =>
-      req<MutateResult>('POST', '/players/journey/wipe', { account_id }),
-    completeContract: (account_id: number, contract_id: string) =>
-      req<MutateResult>('POST', '/players/contract/complete', { account_id, contract_id }),
-    completeContracts: (account_id: number, contract_ids: string[]) =>
-      req<MutateResult>('POST', '/players/contracts/complete', { account_id, contract_ids }),
+    journeyComplete: (player_id: number, node_id: string) =>
+      req<MutateResult>('POST', '/players/journey/complete', { player_id, node_id }),
+    journeyReset: (player_id: number, node_id: string) =>
+      req<MutateResult>('POST', '/players/journey/reset', { player_id, node_id }),
+    journeyWipe: (player_id: number) =>
+      req<MutateResult>('POST', '/players/journey/wipe', { player_id }),
+    completeContract: (player_id: number, contract_id: string) =>
+      req<MutateResult>('POST', '/players/contract/complete', { player_id, contract_id }),
+    completeContracts: (player_id: number, contract_ids: string[]) =>
+      req<MutateResult>('POST', '/players/contracts/complete', { player_id, contract_ids }),
     grantJobSkills: (account_id: number, job: string) =>
       req<MutateResult>('POST', '/players/grant-job-skills', { account_id, job }),
     resetJobSkills: (account_id: number, job: string) =>
@@ -1241,8 +1241,8 @@ export const api = {
       req<MutateResult>('POST', '/players/grant-all-keystones', { player_id }),
     resetAllKeystones: (player_id: number) =>
       req<MutateResult>('POST', '/players/reset-all-keystones', { player_id }),
-    reverseContracts: (account_id: number, contract_ids: string[]) =>
-      req<MutateResult>('POST', '/players/contracts/reverse', { account_id, contract_ids }),
+    reverseContracts: (player_id: number, contract_ids: string[]) =>
+      req<MutateResult>('POST', '/players/contracts/reverse', { player_id, contract_ids }),
     progressionReverse: (player_id: number, faction: string, preset: string) =>
       req<MutateResult>('POST', '/players/progression-reverse', { player_id, faction, preset }),
     vehicles: (controller_id: number) => req<VehicleRow[]>('GET', `/players/${controller_id}/vehicles`),

@@ -70,7 +70,7 @@ export const ProgressionSection: React.FC<ProgressionSectionProps> = ({ player }
   const selectedMQDef = MAIN_QUESTS.find((m) => m.id === selectedMQ)
 
   const handleApplyPreset = (p: ProgressionPreset) => {
-    run(() => api.progression.applyPreset(player.account_id, p.id),
+    run(() => api.progression.applyPreset(player.id, p.id),
       `Applied preset '${p.name}' to ${player.name}`)
       .then(() => setNodesLoaded(false))
   }
@@ -95,7 +95,7 @@ export const ProgressionSection: React.FC<ProgressionSectionProps> = ({ player }
 
   const handleUnlockTrainer = () => {
     run(async () => {
-      const r = await api.players.completeContracts(player.account_id, trainerMatches)
+      const r = await api.players.completeContracts(player.id, trainerMatches)
       await api.players.grantJobSkills(player.account_id, selectedTrainer)
       return r
     }, `Unlocked ${selectedTrainer} (${trainerMatches.length} contracts + skill tree) for ${player.name}`)
@@ -114,7 +114,7 @@ export const ProgressionSection: React.FC<ProgressionSectionProps> = ({ player }
   }
 
   const handleUnlockMainQuest = () => {
-    run(() => api.players.journeyComplete(player.account_id, selectedMQ),
+    run(() => api.players.journeyComplete(player.id, selectedMQ),
       `Unlocked ${selectedMQDef?.label ?? selectedMQ} for ${player.name}`)
       .then(() => setNodesLoaded(false))
   }

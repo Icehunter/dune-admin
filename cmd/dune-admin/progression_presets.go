@@ -109,15 +109,15 @@ func completionError(presetID, nodeID string, msg msgMutate, ok bool) error {
 }
 
 func applyProgressionPresetNodes(
-	accountID int64,
+	actorID int64,
 	presetID string,
 	nodeIDs []string,
-	complete func(accountID int64, nodeID string) (msgMutate, bool),
+	complete func(actorID int64, nodeID string) (msgMutate, bool),
 ) (int, int, error) {
 	totalNodes := 0
 	totalTags := 0
 	for _, nodeID := range nodeIDs {
-		msg, ok := complete(accountID, nodeID)
+		msg, ok := complete(actorID, nodeID)
 		if err := completionError(presetID, nodeID, msg, ok); err != nil {
 			return totalNodes, totalTags, err
 		}
@@ -128,7 +128,7 @@ func applyProgressionPresetNodes(
 	return totalNodes, totalTags, nil
 }
 
-func cmdApplyProgressionPreset(accountID int64, presetID string) Cmd {
+func cmdApplyProgressionPreset(actorID int64, presetID string) Cmd {
 	return func() Msg {
 		if globalDB == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
@@ -138,7 +138,7 @@ func cmdApplyProgressionPreset(accountID int64, presetID string) Cmd {
 			return msgMutate{err: fmt.Errorf("unknown preset: %s", presetID)}
 		}
 
-		totalNodes, totalTags, err := applyProgressionPresetNodes(accountID, presetID, preset.Nodes, func(id int64, nodeID string) (msgMutate, bool) {
+		totalNodes, totalTags, err := applyProgressionPresetNodes(actorID, presetID, preset.Nodes, func(id int64, nodeID string) (msgMutate, bool) {
 			msg, ok := cmdCompleteJourneyNode(globalDB, id, nodeID)().(msgMutate)
 			return msg, ok
 		})
@@ -189,18 +189,18 @@ func handleListProgressionPresets(w http.ResponseWriter, _ *http.Request) {
 
 func handleApplyProgressionPreset(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		AccountID int64  `json:"account_id"`
-		PresetID  string `json:"preset_id"`
+		PlayerID int64  `json:"player_id"`
+		PresetID string `json:"preset_id"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
 	}
-	if req.AccountID == 0 || req.PresetID == "" {
-		jsonErr(w, fmt.Errorf("account_id and preset_id required"), 400)
+	if req.PlayerID == 0 || req.PresetID == "" {
+		jsonErr(w, fmt.Errorf("player_id and preset_id required"), 400)
 		return
 	}
-	msg, ok := cmdApplyProgressionPreset(req.AccountID, req.PresetID)().(msgMutate)
+	msg, ok := cmdApplyProgressionPreset(req.PlayerID, req.PresetID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return

@@ -285,22 +285,22 @@ func handleGetInventory(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, rows)
 }
 
-// @Summary Get journey node state for an account
+// @Summary Get journey node state for a character
 // @Tags players
 // @Produce json
-// @Param id path int true "Account ID"
+// @Param id path int true "Player (character/actor) ID"
 // @Success 200 {array} object
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/{id}/journey [get]
 func handleGetJourney(w http.ResponseWriter, r *http.Request) {
-	accountIDStr := r.PathValue("id")
-	accountID, err := strconv.ParseInt(accountIDStr, 10, 64)
+	playerIDStr := r.PathValue("id")
+	playerID, err := strconv.ParseInt(playerIDStr, 10, 64)
 	if err != nil {
-		jsonErr(w, fmt.Errorf("invalid accountId"), 400)
+		jsonErr(w, fmt.Errorf("invalid id"), 400)
 		return
 	}
-	msg, ok := cmdFetchJourneyNodes(dbFromCtx(r), scopeFromReq(r), accountID)().(msgJourney)
+	msg, ok := cmdFetchJourneyNodes(dbFromCtx(r), scopeFromReq(r), playerID)().(msgJourney)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -882,10 +882,10 @@ func handleDeleteCharacter(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"ok": msg.ok})
 }
 
-// @Summary Get tags assigned to a player account
+// @Summary Get tags assigned to a character
 // @Tags players
 // @Produce json
-// @Param id path int true "Account ID"
+// @Param id path int true "Player (character/actor) ID"
 // @Success 200 {array} string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -913,26 +913,26 @@ func handleGetPlayerTags(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, tags)
 }
 
-// @Summary Add or remove tags on a player account
+// @Summary Add or remove tags on a character
 // @Tags players
 // @Accept json
 // @Produce json
-// @Param body body object true "account_id, add ([]string), remove ([]string)"
+// @Param body body object true "player_id, add ([]string), remove ([]string)"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/update-tags [post]
 func handleUpdatePlayerTags(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		AccountID int64    `json:"account_id"`
-		Add       []string `json:"add"`
-		Remove    []string `json:"remove"`
+		PlayerID int64    `json:"player_id"`
+		Add      []string `json:"add"`
+		Remove   []string `json:"remove"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdUpdatePlayerTags(dbFromCtx(r), req.AccountID, req.Add, req.Remove)().(msgMutate)
+	msg, ok := cmdUpdatePlayerTags(dbFromCtx(r), req.PlayerID, req.Add, req.Remove)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1218,25 +1218,25 @@ func handleProgressionReverse(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"ok": msg.ok})
 }
 
-// @Summary Mark a journey node as complete for an account
+// @Summary Mark a journey node as complete for a character
 // @Tags players
 // @Accept json
 // @Produce json
-// @Param body body object true "account_id, node_id"
+// @Param body body object true "player_id, node_id"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/journey/complete [post]
 func handleJourneyComplete(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		AccountID int64  `json:"account_id"`
-		NodeID    string `json:"node_id"`
+		PlayerID int64  `json:"player_id"`
+		NodeID   string `json:"node_id"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdCompleteJourneyNode(dbFromCtx(r), req.AccountID, req.NodeID)().(msgMutate)
+	msg, ok := cmdCompleteJourneyNode(dbFromCtx(r), req.PlayerID, req.NodeID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1249,25 +1249,25 @@ func handleJourneyComplete(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"ok": msg.ok})
 }
 
-// @Summary Complete a single contract for an account
+// @Summary Complete a single contract for a character
 // @Tags contracts
 // @Accept json
 // @Produce json
-// @Param body body object true "account_id, contract_id"
+// @Param body body object true "player_id, contract_id"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/contract/complete [post]
 func handleCompleteContract(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		AccountID  int64  `json:"account_id"`
+		PlayerID   int64  `json:"player_id"`
 		ContractID string `json:"contract_id"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdCompleteContract(dbFromCtx(r), req.AccountID, req.ContractID)().(msgMutate)
+	msg, ok := cmdCompleteContract(dbFromCtx(r), req.PlayerID, req.ContractID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1370,25 +1370,25 @@ func handleGrantJobSkills(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"ok": msg.ok})
 }
 
-// @Summary Complete multiple contracts for an account
+// @Summary Complete multiple contracts for a character
 // @Tags contracts
 // @Accept json
 // @Produce json
-// @Param body body object true "account_id, contract_ids ([]string)"
+// @Param body body object true "player_id, contract_ids ([]string)"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/contracts/complete [post]
 func handleCompleteContracts(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		AccountID   int64    `json:"account_id"`
+		PlayerID    int64    `json:"player_id"`
 		ContractIDs []string `json:"contract_ids"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdCompleteContracts(dbFromCtx(r), req.AccountID, req.ContractIDs)().(msgMutate)
+	msg, ok := cmdCompleteContracts(dbFromCtx(r), req.PlayerID, req.ContractIDs)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1401,25 +1401,25 @@ func handleCompleteContracts(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"ok": msg.ok})
 }
 
-// @Summary Reverse (undo) multiple completed contracts for an account
+// @Summary Reverse (undo) multiple completed contracts for a character
 // @Tags contracts
 // @Accept json
 // @Produce json
-// @Param body body object true "account_id, contract_ids ([]string)"
+// @Param body body object true "player_id, contract_ids ([]string)"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/contracts/reverse [post]
 func handleReverseContracts(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		AccountID   int64    `json:"account_id"`
+		PlayerID    int64    `json:"player_id"`
 		ContractIDs []string `json:"contract_ids"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdReverseContracts(dbFromCtx(r), req.AccountID, req.ContractIDs)().(msgMutate)
+	msg, ok := cmdReverseContracts(dbFromCtx(r), req.PlayerID, req.ContractIDs)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1458,25 +1458,25 @@ func handleListContracts(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, out)
 }
 
-// @Summary Reset (incomplete) a journey node for an account
+// @Summary Reset (incomplete) a journey node for a character
 // @Tags players
 // @Accept json
 // @Produce json
-// @Param body body object true "account_id, node_id"
+// @Param body body object true "player_id, node_id"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/journey/reset [post]
 func handleJourneyReset(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		AccountID int64  `json:"account_id"`
-		NodeID    string `json:"node_id"`
+		PlayerID int64  `json:"player_id"`
+		NodeID   string `json:"node_id"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdResetJourneyNode(dbFromCtx(r), req.AccountID, req.NodeID)().(msgMutate)
+	msg, ok := cmdResetJourneyNode(dbFromCtx(r), req.PlayerID, req.NodeID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1489,24 +1489,24 @@ func handleJourneyReset(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"ok": msg.ok})
 }
 
-// @Summary Wipe all journey nodes for an account
+// @Summary Wipe all journey nodes for a character
 // @Tags players
 // @Accept json
 // @Produce json
-// @Param body body object true "account_id"
+// @Param body body object true "player_id"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/v1/players/journey/wipe [post]
 func handleJourneyWipe(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		AccountID int64 `json:"account_id"`
+		PlayerID int64 `json:"player_id"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
 	}
-	msg, ok := cmdWipeJourneyNodes(dbFromCtx(r), req.AccountID)().(msgMutate)
+	msg, ok := cmdWipeJourneyNodes(dbFromCtx(r), req.PlayerID)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return

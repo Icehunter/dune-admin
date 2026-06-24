@@ -31,14 +31,14 @@ export const JourneySection: React.FC<JourneySectionProps> = ({ player }) => {
     if (nodesLoaded) return
     Promise.resolve()
       .then(() => setNodesLoading(true))
-      .then(() => api.players.journey(player.account_id))
+      .then(() => api.players.journey(player.id))
       .then((n) => {
         setNodes(n)
         setNodesLoaded(true)
       })
       .catch(() => {})
       .finally(() => setNodesLoading(false))
-  }, [nodesLoaded, player.account_id, setNodes, setNodesLoaded])
+  }, [nodesLoaded, player.id, setNodes, setNodesLoaded])
 
   React.useEffect(() => {
     Promise.resolve().then(() => setSelectedKeys(new Set()))
@@ -70,7 +70,7 @@ export const JourneySection: React.FC<JourneySectionProps> = ({ player }) => {
       t('players.actions.journey.wipeAllDesc', { player: player.name }),
       t('players.actions.journey.wipeAll'),
       () => run(
-        () => api.players.journeyWipe(player.account_id),
+        () => api.players.journeyWipe(player.id),
         `Wiped all journey nodes for ${player.name}`,
       ).then(() => setNodes([])),
     )
@@ -78,7 +78,7 @@ export const JourneySection: React.FC<JourneySectionProps> = ({ player }) => {
 
   const handleCompleteNode = (n: JourneyNode) => {
     run(
-      () => api.players.journeyComplete(player.account_id, n.node_id),
+      () => api.players.journeyComplete(player.id, n.node_id),
       `Completed ${n.node_id}`,
     ).then(() =>
       setNodes((prev) =>
@@ -93,7 +93,7 @@ export const JourneySection: React.FC<JourneySectionProps> = ({ player }) => {
 
   const handleResetNode = (n: JourneyNode) => {
     run(
-      () => api.players.journeyReset(player.account_id, n.node_id),
+      () => api.players.journeyReset(player.id, n.node_id),
       `Reset ${n.node_id}`,
     ).then(() =>
       setNodes((prev) =>

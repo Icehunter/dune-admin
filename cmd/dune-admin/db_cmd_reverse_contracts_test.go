@@ -16,7 +16,7 @@ func TestValidateContractMutationInput(t *testing.T) {
 		wantError string
 	}{
 		{name: "valid", accountID: 10, contracts: []string{"DA_CT_A"}},
-		{name: "missing-account", accountID: 0, contracts: []string{"DA_CT_A"}, wantError: "account ID required"},
+		{name: "missing-player", accountID: 0, contracts: []string{"DA_CT_A"}, wantError: "player ID required"},
 		{name: "missing-contracts", accountID: 10, contracts: nil, wantError: "at least one contract required"},
 	}
 
@@ -104,7 +104,7 @@ func TestContractBatchSummary(t *testing.T) {
 func TestRemoveContractTags_NoTagsIsNoop(t *testing.T) {
 	t.Parallel()
 
-	if err := removeContractTags(context.Background(), nil, 123, nil); err != nil {
+	if err := removeContractTags(context.Background(), nil, playerRef{actorID: 123, accountID: 123}, nil); err != nil {
 		t.Fatalf("expected no-op nil tags, got %v", err)
 	}
 }

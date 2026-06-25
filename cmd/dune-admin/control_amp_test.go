@@ -323,6 +323,136 @@ func TestAmpRuntimeCLI_DefaultsToPodman(t *testing.T) {
 	}
 }
 
+// TestDirectorConfigPath_LandsInStateDir is the core regression for #171: the
+// director_config.ini lives in the instance $STATE dir (alongside
+// UserOverrides.ini), regardless of whether the resolved INI dir is the base
+// state dir (server_ini_dir documented form) or its ue5-saved/UserSettings
+// subdirectory. The old derivation did Dir(Dir(iniDir)), which overshot by two
+// levels when iniDir was already $STATE, yielding …/duneawakening/director_config.ini
+// (a path that does not exist) and the opaque "could not read director config".
+func TestDirectorConfigPath_LandsInStateDir(t *testing.T) {
+	t.Parallel()
+	const stateDir = "/home/amp/.ampdata/instances/Dune01/duneawakening/server/state"
+	want := stateDir + "/director_config.ini"
+
+	tests := []struct {
+		name   string
+		iniDir string
+		ue5Has bool // does <base>/ue5-saved/UserSettings/UserGame.ini exist?
+	}{
+		{"base state dir, no ue5 subdir", stateDir, false},
+		{"base state dir, ue5 subdir present", stateDir, true},
+		{"configured as ue5 subdir", stateDir + "/ue5-saved/UserSettings", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			exec := &fnExecutor{fn: func(cmd string) (string, error) {
+				if strings.Contains(cmd, "UserGame.ini") {
+					if tt.ue5Has {
+						return "yes\n", nil
+					}
+					return "no\n", nil
+				}
+				return "no\n", nil
+			}}
+			ctrl := &ampControl{iniDir: tt.iniDir, ampUser: "amp", instance: "Dune01"}
+			got, err := ctrl.directorConfigPath(exec)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != want {
+				t.Errorf("directorConfigPath = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+// TestReadDirectorConfig_FallsBackToPlainCat is the regression for #171: the
+// Director config tab showed "could not read director config / exit status 1"
+// because the read only ever tried `sudo -i -u amp cat`, which the narrow AMP
+// sudoers (ampinstmgr/podman/tee only) refuses. When dune-admin runs AS the amp
+// user it owns the 0700 host file, so a plain `cat` succeeds and no sudo is
+// needed — the read must try that.
+func TestReadDirectorConfig_FallsBackToPlainCat(t *testing.T) {
+	t.Parallel()
+	var sawPlainCat bool
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		trimmed := strings.TrimSpace(cmd)
+		switch {
+		case strings.Contains(cmd, "ue5-saved/UserSettings"):
+			return "no\n", nil // DiscoverIniDir probe → use configured iniDir
+		case strings.HasPrefix(trimmed, "sudo "):
+			return "", errors.New("exit status 1") // sudoers won't grant cat
+		case strings.HasPrefix(trimmed, "cat "):
+			sawPlainCat = true
+			return "[Director]\nfoo=bar\n", nil
+		}
+		return "", nil
+	}}
+	ctrl := &ampControl{iniDir: "/custom/state", ampUser: "amp"}
+
+	_, content, err := ctrl.readDirectorConfig(exec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !sawPlainCat {
+		t.Fatalf("expected a plain `cat` read to be attempted")
+	}
+	if !strings.Contains(content, "foo=bar") {
+		t.Errorf("expected director content, got %q", content)
+	}
+}
+
+// TestReadDirectorConfig_FallsBackToSudoCat covers the split-user deployment:
+// the service user does not own the file (plain cat fails), but the admin has
+// granted /usr/bin/cat so `sudo -i -u amp cat` succeeds.
+func TestReadDirectorConfig_FallsBackToSudoCat(t *testing.T) {
+	t.Parallel()
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		trimmed := strings.TrimSpace(cmd)
+		switch {
+		case strings.Contains(cmd, "ue5-saved/UserSettings"):
+			return "no\n", nil
+		case strings.HasPrefix(trimmed, "sudo "):
+			return "[Director]\nfoo=bar\n", nil
+		case strings.HasPrefix(trimmed, "cat "):
+			return "", errors.New("exit status 1") // not the owner
+		}
+		return "", nil
+	}}
+	ctrl := &ampControl{iniDir: "/custom/state", ampUser: "amp"}
+
+	_, content, err := ctrl.readDirectorConfig(exec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(content, "foo=bar") {
+		t.Errorf("expected director content, got %q", content)
+	}
+}
+
+// TestReadDirectorConfig_AllReadsFailIsActionable verifies that when neither a
+// plain nor a sudo cat can read the file (split-user deployment without a cat
+// grant), the wrapped error names the remedy so it shows up in director.log.
+func TestReadDirectorConfig_AllReadsFailIsActionable(t *testing.T) {
+	t.Parallel()
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		if strings.Contains(cmd, "ue5-saved/UserSettings") {
+			return "no\n", nil
+		}
+		return "", errors.New("exit status 1")
+	}}
+	ctrl := &ampControl{iniDir: "/custom/state", ampUser: "amp"}
+
+	_, _, err := ctrl.readDirectorConfig(exec)
+	if err == nil {
+		t.Fatalf("expected an error when every read strategy fails")
+	}
+	if !strings.Contains(err.Error(), "cat") {
+		t.Errorf("error should point the admin at the cat grant / amp user, got %q", err)
+	}
+}
+
 // TestAmpWrapInContainer_RuntimeSelection verifies wrapInContainer emits the
 // configured container runtime as `<rt> exec` in container mode, defaulting to
 // podman when unset.

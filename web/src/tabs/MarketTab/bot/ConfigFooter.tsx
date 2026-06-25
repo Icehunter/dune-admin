@@ -23,8 +23,10 @@ export const ConfigFooter: React.FC<ConfigFooterProps> = ({
         size="sm"
         className="mr-auto"
       >
-        <Switch.Control><Switch.Thumb /></Switch.Control>
-        <Switch.Content>{t('market.bot.tickingEnabled')}</Switch.Content>
+        <Switch.Content>
+          <Switch.Control><Switch.Thumb /></Switch.Control>
+          {t('market.bot.tickingEnabled')}
+        </Switch.Content>
       </Switch>
       <Button size="sm" variant="ghost" onPress={() => editorRef.current?.reset()}>
         {t('market.bot.reset')}

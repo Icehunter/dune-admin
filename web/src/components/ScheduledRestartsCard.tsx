@@ -82,8 +82,10 @@ export const ScheduledRestartsCard: React.FC = () => {
         <SectionLabel>{t('restarts.title')}</SectionLabel>
         {can('restarts:manage') && (
           <Switch isSelected={enabled} onChange={setEnabled} size="sm" className="text-xs text-muted">
-            <Switch.Control><Switch.Thumb /></Switch.Control>
-            <Switch.Content>{t('restarts.enable')}</Switch.Content>
+            <Switch.Content>
+              <Switch.Control><Switch.Thumb /></Switch.Control>
+              {t('restarts.enable')}
+            </Switch.Content>
           </Switch>
         )}
       </div>

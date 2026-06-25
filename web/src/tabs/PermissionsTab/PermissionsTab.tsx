@@ -283,8 +283,10 @@ export const PermissionsTab: React.FC = () => {
                   isSelected={user.enabled}
                   onChange={(on: boolean) => void saveUser(user, { enabled: on })}
                 >
-                  <Switch.Control><Switch.Thumb /></Switch.Control>
-                  <Switch.Content className="text-xs">{t('permissions.userEnabled')}</Switch.Content>
+                  <Switch.Content className="text-xs">
+                    <Switch.Control><Switch.Thumb /></Switch.Control>
+                    {t('permissions.userEnabled')}
+                  </Switch.Content>
                 </Switch>
                 <span className="flex-1" />
                 <FieldInput

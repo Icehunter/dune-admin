@@ -110,8 +110,10 @@ export const DiagnosticsTab: React.FC = () => {
         </Chip>
         <div className="flex-1" />
         <Switch isSelected={autoScroll} onChange={setAutoScroll} size="sm">
-          <Switch.Control><Switch.Thumb /></Switch.Control>
-          <Switch.Content>{t('logs.autoScroll', 'Auto-scroll')}</Switch.Content>
+          <Switch.Content>
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            {t('logs.autoScroll', 'Auto-scroll')}
+          </Switch.Content>
         </Switch>
         <Button size="sm" variant="ghost" onPress={() => setLines([])}>
           <Icon name="trash-2" />

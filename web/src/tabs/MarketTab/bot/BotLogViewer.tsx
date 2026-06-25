@@ -144,8 +144,10 @@ export const BotLogViewer: React.FC<BotLogViewerProps> = ({ active = false }) =>
         <span className={`text-xs font-mono ${stateColor}`}>{stateLabel}</span>
         <div className="flex-1" />
         <Switch isSelected={autoScroll} onChange={setAutoScroll} size="sm">
-          <Switch.Control><Switch.Thumb /></Switch.Control>
-          <Switch.Content>{t('market.bot.log.autoScroll')}</Switch.Content>
+          <Switch.Content>
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            {t('market.bot.log.autoScroll')}
+          </Switch.Content>
         </Switch>
         {connState !== 'connected'
           ? (

@@ -70,8 +70,10 @@ export const ScheduleCard: React.FC = () => {
         <SectionLabel>{t('backups.schedule.title')}</SectionLabel>
         {can('backups:manage') && (
           <Switch isSelected={enabled} onChange={setEnabled} size="sm" className="text-xs text-muted">
-            <Switch.Control><Switch.Thumb /></Switch.Control>
-            <Switch.Content>{t('backups.schedule.enable')}</Switch.Content>
+            <Switch.Content>
+              <Switch.Control><Switch.Thumb /></Switch.Control>
+              {t('backups.schedule.enable')}
+            </Switch.Content>
           </Switch>
         )}
       </div>

@@ -271,8 +271,10 @@ export const LogsTab: React.FC<LogsTabProps> = ({ control }) => {
                   </Chip>
                   <div className="flex-1" />
                   <Switch isSelected={autoScroll} onChange={setAutoScroll} size="sm">
-                    <Switch.Control><Switch.Thumb /></Switch.Control>
-                    <Switch.Content>{t('logs.autoScroll')}</Switch.Content>
+                    <Switch.Content>
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                      {t('logs.autoScroll')}
+                    </Switch.Content>
                   </Switch>
                   {selectedPod && connected && (
                     <Button size="sm" variant="danger-soft" onPress={disconnect}>

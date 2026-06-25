@@ -680,17 +680,35 @@ func TestAggregateMapCounts(t *testing.T) {
 		})
 	})
 
-	t.Run("director labels present, used verbatim", func(t *testing.T) {
+	t.Run("region name preferred over director label", func(t *testing.T) {
 		t.Parallel()
 		servers := []ServerRow{
-			{Map: "Survival_1", Sietch: "Survival_1", Partition: 1, Players: 12},
-			{Map: "Survival_2", Sietch: "Survival_2", Partition: 2, Players: 8},
-			{Map: "DeepDesert", Players: 3},
+			// The director codename ("Abbir") is ignored in favour of the region.
+			{Map: "Survival_1", Sietch: "Abbir", Partition: 1, Players: 12},
+			{Map: "DeepDesert", Sietch: "Deep Desert", Partition: 2, Players: 3},
+			// Unknown map → fall back to the director Sietch label.
+			{Map: "", Sietch: "Custom Arena", Partition: 5, Players: 2},
 		}
 		check(t, aggregateMapCounts(servers), map[string]int{
-			"Survival_1":  12,
-			"Survival_2":  8,
-			"Deep Desert": 3,
+			"Hagga Basin":  12,
+			"Deep Desert":  3,
+			"Custom Arena": 2,
+		})
+	})
+
+	t.Run("survival home instance uses server display name", func(t *testing.T) {
+		t.Parallel()
+		// DisplayName is server-wide; only the Survival/Hagga Basin home instance
+		// uses it. Other maps keep their region names.
+		servers := []ServerRow{
+			{Map: "Survival_1", Sietch: "Abbir", DisplayName: "Sietch Umbu", Partition: 1, Players: 2},
+			{Map: "Overmap", Sietch: "Overland", DisplayName: "Sietch Umbu", Partition: 2, Players: 1},
+			{Map: "DeepDesert_1", DisplayName: "Sietch Umbu", Partition: 8, Players: 0},
+		}
+		check(t, aggregateMapCounts(servers), map[string]int{
+			"Sietch Umbu": 2,
+			"Overland":    1,
+			"Deep Desert": 0,
 		})
 	})
 

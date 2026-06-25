@@ -60,8 +60,13 @@ type BattlegroupStatus struct {
 }
 
 type ServerRow struct {
-	Map           string `json:"map"`
-	Sietch        string `json:"sietch"`
+	Map    string `json:"map"`
+	Sietch string `json:"sietch"`
+	// DisplayName is the operator-configured server name from the director
+	// (lastServerState.displayName, e.g. "Sietch Umbu"). It is the same across
+	// every partition of a server, so it's used as a label only for the home
+	// (Survival / Hagga Basin) instance.
+	DisplayName   string `json:"displayName,omitempty"`
 	Dimension     int    `json:"dimension"`
 	Partition     int    `json:"partition"`
 	Phase         string `json:"phase"`

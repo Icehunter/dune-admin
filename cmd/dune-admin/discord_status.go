@@ -154,17 +154,35 @@ func deriveServerState(status *BattlegroupStatus, err error) serverState {
 	return serverStateBooting
 }
 
-// partitionLabel returns the display label for a single ServerRow. The
-// director-supplied Sietch name is preferred; falls back to the pretty map
-// name; falls back to "Unknown".
+// partitionLabel returns the display label for a single ServerRow.
+//
+// The Survival / Hagga Basin map is the operator's home instance, so it is
+// labeled with the configured server name from the director (DisplayName, e.g.
+// "Sietch Umbu"). Every other map uses its pretty region name (Overland, Deep
+// Desert, …): the director's per-partition label is an internal codename for
+// some maps (e.g. "Abbir") and inconsistent across maps, so it is used only as
+// a fallback for unrecognised maps. Falls back to "Unknown".
 func partitionLabel(s ServerRow) string {
-	if s.Sietch != "" {
-		return s.Sietch
+	if s.DisplayName != "" && isSurvivalMap(s.Map) {
+		return s.DisplayName
 	}
 	if label := prettyRegionName(s.Map); label != "" {
 		return label
 	}
+	if s.Sietch != "" {
+		return s.Sietch
+	}
 	return "Unknown"
+}
+
+// isSurvivalMap reports whether a director map name is the Survival / Hagga
+// Basin map (e.g. "Survival_1") — the operator's home instance.
+func isSurvivalMap(mapName string) bool {
+	m := strings.TrimSpace(mapName)
+	m = strings.TrimPrefix(m, "Map_")
+	m = strings.TrimPrefix(m, "SH_")
+	m = stripTrailingNumericSuffix(m)
+	return strings.EqualFold(m, "Survival")
 }
 
 type partitionRow struct {
@@ -192,12 +210,12 @@ func groupByLabel(rows []partitionRow) ([]string, map[string][]partitionRow) {
 	return order, groups
 }
 
-// aggregateMapCounts returns one entry per partition, labeled by the
-// director-supplied Sietch name when available, otherwise by the pretty map
-// name. When multiple partitions share the same base label (e.g. several
-// "Hagga Basin" shards with no director label), a " #N" suffix is appended
-// using 1-based position ordered by Partition index. Single-partition groups
-// keep the bare label. Output is sorted players-desc, label-asc.
+// aggregateMapCounts returns one entry per partition, labeled by partitionLabel
+// (server name for the Survival home instance, pretty region name otherwise). When
+// multiple partitions share the same base label (e.g. several "Hagga Basin"
+// shards), a " #N" suffix is appended using 1-based position ordered by
+// Partition index. Single-partition groups keep the bare label. Output is
+// sorted players-desc, label-asc.
 func aggregateMapCounts(servers []ServerRow) []mapPlayerCount {
 	rows := make([]partitionRow, 0, len(servers))
 	for _, s := range servers {

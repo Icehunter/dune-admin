@@ -116,6 +116,7 @@ func (c *ampControl) GetStatus(ctx context.Context, exec Executor) (*Battlegroup
 			row.Players = meta.players
 			row.PlayerHardCap = meta.playerHardCap
 			row.Queue = meta.queue
+			row.DisplayName = meta.displayName
 			if meta.label != "" {
 				row.Sietch = meta.label
 			}
@@ -139,6 +140,7 @@ func (c *ampControl) GetStatus(ctx context.Context, exec Executor) (*Battlegroup
 type partitionMeta struct {
 	dimension     int
 	label         string
+	displayName   string
 	players       int
 	playerHardCap int
 	queue         int
@@ -192,6 +194,7 @@ func collectPartitions(v any, out map[int]partitionMeta) {
 				out[id] = partitionMeta{
 					dimension:     jsonInt(p["dimensionIndex"]),
 					label:         jsonString(p["label"]),
+					displayName:   directorDisplayName(t),
 					players:       directorPlayerCount(t),
 					playerHardCap: effectivePlayerHardCap(t),
 					queue:         jsonInt(t["numPlayersInQueue"]),
@@ -244,6 +247,16 @@ func directorPlayerCount(node map[string]any) int {
 		}
 	}
 	return jsonInt(node["numPlayersInGame"])
+}
+
+// directorDisplayName returns the operator-configured server name from a
+// partition's lastServerState.displayName (e.g. "Sietch Umbu"), or "" when
+// absent.
+func directorDisplayName(node map[string]any) string {
+	if state, ok := node["lastServerState"].(map[string]any); ok {
+		return jsonString(state["displayName"])
+	}
+	return ""
 }
 
 // effectivePlayerHardCap resolves a server node's player cap: the per-server

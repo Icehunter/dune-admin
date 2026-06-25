@@ -572,3 +572,37 @@ func TestCollectPartitions_WalksNestedAndIgnoresNull(t *testing.T) {
 		t.Errorf("collected %d partitions, want 4: %+v", len(out), out)
 	}
 }
+
+// TestDirectorPlayerCount covers reading the live roster instead of the stale
+// numPlayersInGame counter (which Dune servers leave at 0).
+func TestDirectorPlayerCount(t *testing.T) {
+	t.Parallel()
+
+	// Live roster wins over a stale-zero counter.
+	roster := map[string]any{
+		"numPlayersInGame": float64(0),
+		"lastServerState": map[string]any{
+			"players": []any{
+				map[string]any{"playerId": "1480"},
+				map[string]any{"playerId": "247"},
+			},
+		},
+	}
+	if got := directorPlayerCount(roster); got != 2 {
+		t.Errorf("roster of 2 with counter 0: got %d, want 2", got)
+	}
+
+	// Empty roster is authoritative — 0 even if the counter is non-zero.
+	empty := map[string]any{
+		"numPlayersInGame": float64(9),
+		"lastServerState":  map[string]any{"players": []any{}},
+	}
+	if got := directorPlayerCount(empty); got != 0 {
+		t.Errorf("empty roster: got %d, want 0", got)
+	}
+
+	// No lastServerState — fall back to numPlayersInGame.
+	if got := directorPlayerCount(map[string]any{"numPlayersInGame": float64(5)}); got != 5 {
+		t.Errorf("fallback to counter: got %d, want 5", got)
+	}
+}

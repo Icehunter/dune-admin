@@ -192,7 +192,7 @@ func collectPartitions(v any, out map[int]partitionMeta) {
 				out[id] = partitionMeta{
 					dimension:     jsonInt(p["dimensionIndex"]),
 					label:         jsonString(p["label"]),
-					players:       jsonInt(t["numPlayersInGame"]),
+					players:       directorPlayerCount(t),
 					playerHardCap: effectivePlayerHardCap(t),
 					queue:         jsonInt(t["numPlayersInQueue"]),
 				}
@@ -229,6 +229,21 @@ func jsonInt(v any) int {
 func jsonString(v any) string {
 	s, _ := v.(string)
 	return s
+}
+
+// directorPlayerCount returns the live player count for a partition's server
+// node. The director's numPlayersInGame counter is not maintained for these
+// Dune servers (shouldUpdatePlayerCountOnFls=false), so it reads back 0 even
+// when players are connected; the authoritative live roster is
+// lastServerState.players. Falls back to numPlayersInGame when that roster is
+// absent (e.g. a director build that does maintain the counter).
+func directorPlayerCount(node map[string]any) int {
+	if state, ok := node["lastServerState"].(map[string]any); ok {
+		if players, ok := state["players"].([]any); ok {
+			return len(players)
+		}
+	}
+	return jsonInt(node["numPlayersInGame"])
 }
 
 // effectivePlayerHardCap resolves a server node's player cap: the per-server

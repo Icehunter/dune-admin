@@ -82,11 +82,12 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 key={id}
                 isSelected={filter[id] ?? false}
                 onChange={() => onToggle(id, filter[id] ?? false)}
-                className="flex items-center gap-2 py-1.5 px-1 hover:bg-surface-secondary rounded-[var(--radius)] w-full max-w-none"
               >
-                <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
-                <span style={{ color: CAT_COLOR[id] }} className="text-xs shrink-0">●</span>
-                <span className="flex-1 text-xs text-foreground">{LIVE_LABELS[id]}</span>
+                <Checkbox.Content className="w-full max-w-none gap-2 py-1.5 px-1 hover:bg-surface-secondary rounded-[var(--radius)] cursor-pointer">
+                  <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+                  <span style={{ color: CAT_COLOR[id] }} className="text-xs shrink-0">●</span>
+                  <span className="flex-1 text-xs text-foreground">{LIVE_LABELS[id]}</span>
+                </Checkbox.Content>
               </Checkbox>
             ))}
           </Panel>
@@ -98,11 +99,12 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             <Checkbox
               isSelected={heatmapMode}
               onChange={onHeatmapToggle}
-              className="flex items-center gap-2 py-1.5 px-1 hover:bg-surface-secondary rounded-[var(--radius)] w-full max-w-none"
             >
-              <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
-              <Icon name="layers" className="text-accent shrink-0" />
-              <span className="flex-1 text-xs text-foreground">{t('liveMap.densityOverlay')}</span>
+              <Checkbox.Content className="w-full max-w-none gap-2 py-1.5 px-1 hover:bg-surface-secondary rounded-[var(--radius)] cursor-pointer">
+                <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+                <Icon name="layers" className="text-accent shrink-0" />
+                <span className="flex-1 text-xs text-foreground">{t('liveMap.densityOverlay')}</span>
+              </Checkbox.Content>
             </Checkbox>
             {renderHeatmapLegend()}
           </Panel>

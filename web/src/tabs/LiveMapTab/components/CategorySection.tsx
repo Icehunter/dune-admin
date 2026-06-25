@@ -33,8 +33,11 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
           isSelected={allOn}
           isIndeterminate={!allOn && anyOn}
           onChange={(v) => { [...items.keys()].forEach((k) => onToggle(k, !v)) }}
+          aria-label={t(group.labelKey as never)}
         >
-          <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+          <Checkbox.Content>
+            <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+          </Checkbox.Content>
         </Checkbox>
         <button
           type="button"

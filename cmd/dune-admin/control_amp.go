@@ -715,9 +715,30 @@ func (c *ampControl) gameOverridePath(dir string) string {
 // page (#173). Symmetric with how AMP writes them and reads director_config.ini.
 // Implements iniFileReader.
 func (c *ampControl) readINIFile(exec Executor, path string) (string, error) {
-	out, err := exec.Exec(fmt.Sprintf("sudo -i -u %s cat %s 2>/dev/null", shellQuote(c.ampUser), shellQuote(path)))
+	out, err := c.readHostFileAsAmp(exec, path)
 	if err != nil {
 		return "", fmt.Errorf("read ini %s as %s: %w", path, c.ampUser, err)
+	}
+	return out, nil
+}
+
+// readHostFileAsAmp reads a host file that may be owned by the amp user (often
+// mode 0700: director_config.ini, UserGame.ini, …). It tries a plain `cat`
+// first — which succeeds with NO sudo when dune-admin runs as the amp user and
+// owns the file (the recommended AMP layout) — because the narrow AMP sudoers
+// (ampinstmgr/podman/tee only) does NOT grant `cat`, so `sudo cat` hits a
+// password prompt and fails non-interactively. It then falls back to
+// `sudo -i -u <ampUser> cat` for split-user deployments where the admin has
+// additionally granted /usr/bin/cat. Regression fix for #171 (and #173): the
+// reads used to go straight to the un-granted `sudo cat` and bounced with an
+// opaque "exit status 1".
+func (c *ampControl) readHostFileAsAmp(exec Executor, path string) (string, error) {
+	if out, err := exec.Exec(fmt.Sprintf("cat %s 2>/dev/null", shellQuote(path))); err == nil && strings.TrimSpace(out) != "" {
+		return out, nil
+	}
+	out, err := exec.Exec(fmt.Sprintf("sudo -i -u %s cat %s 2>/dev/null", shellQuote(c.ampUser), shellQuote(path)))
+	if err != nil {
+		return "", err
 	}
 	return out, nil
 }
@@ -812,13 +833,20 @@ func (c *ampControl) ReadDefaultINI(_ context.Context, exec Executor, filename s
 // so edits persist and apply on the next instance restart.
 
 // directorConfigPath derives $STATE/director_config.ini from the resolved server
-// INI dir, which is $STATE/ue5-saved/UserSettings (so $STATE is two levels up).
+// INI dir. That dir is either $STATE itself (the documented server_ini_dir form)
+// or its $STATE/ue5-saved/UserSettings subdirectory (install.sh layout), so we
+// strip the optional suffix rather than walking two levels up unconditionally —
+// the latter overshot to …/duneawakening/director_config.ini (which doesn't
+// exist) whenever the resolved dir was already $STATE (#171). Mirrors
+// gameOverridePath, which lands UserOverrides.ini in the same $STATE dir.
 func (c *ampControl) directorConfigPath(exec Executor) (string, error) {
 	dir, err := iniDir(c, exec)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(filepath.Dir(filepath.Dir(dir)), "director_config.ini"), nil
+	d := strings.TrimRight(filepath.ToSlash(dir), "/")
+	d = strings.TrimSuffix(d, "/ue5-saved/UserSettings")
+	return d + "/director_config.ini", nil
 }
 
 func (c *ampControl) readDirectorConfig(exec Executor) (string, string, error) {
@@ -826,9 +854,9 @@ func (c *ampControl) readDirectorConfig(exec Executor) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	out, err := exec.Exec(fmt.Sprintf("sudo -i -u %s cat %s 2>/dev/null", shellQuote(c.ampUser), shellQuote(path)))
+	out, err := c.readHostFileAsAmp(exec, path)
 	if err != nil {
-		return path, "", fmt.Errorf("read %s: %w", path, err)
+		return path, "", fmt.Errorf("read %s: %w — run dune-admin as the %q user (it owns the file), or grant /usr/bin/cat in the AMP sudoers", path, err, c.ampUser)
 	}
 	if strings.TrimSpace(out) == "" {
 		return path, "", fmt.Errorf("director config empty or unreadable at %s", path)

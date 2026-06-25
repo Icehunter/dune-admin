@@ -141,6 +141,8 @@ INIs directly and do **not** need the `amp_api_*` credentials.
 
 **INI changes fail** — verify `server_ini_dir` and that AMP user owns `UserGame.ini` / `UserEngine.ini`.
 
+**Director page (Operations) says "could not read director config" while the Web Interfaces link works** — the page reads the amp-owned `director_config.ini` on the host, while the link is just an HTTP proxy, so `director_url` being correct doesn't help. The file read needs read access: either run the dune-admin service **as the `amp` user** (it owns the `0700` file, no sudo needed), or add `/usr/bin/cat` to the AMP sudoers grant for the service user. `director.log` shows `read …/director_config.ini: exit status 1` when neither is in place.
+
 **Broker commands fail** — set `broker_exec_prefix` to the exact `podman exec` (or `docker exec`) wrapper used on your AMP host.
 
 **Saving a server setting returns an error (502)** — dune-admin could not reach or authenticate to the AMP Web API. Check `amp_api_user` / `amp_api_pass` (an AMP panel login) and `amp_api_port` (default `8081`), and that the instance ADS is running inside the container.

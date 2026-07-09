@@ -1116,7 +1116,7 @@
       "qty": "Qty",
       "quality": "Quality",
       "qualityWarning": "Items with quality above 0 are written to the database but only appear after the player relogs, and may be placed outside their free inventory slots. Quality 0 items are added instantly.",
-      "searchTemplates": "Search templates...",
+      "searchTemplates": "Search templates... (supports * wildcard)",
       "selectTemplate": "Select a template",
       "skipped": "✕ Skipped {{template}}: {{reason}}"
     },
@@ -2080,13 +2080,6 @@
       "unlink": "Unlink",
       "linked": "Guild linked",
       "unlinked": "Guild unlinked",
-      "columns": {
-        "guildId": "Guild ID",
-        "announce": "Announce channel",
-        "status": "Status channel",
-        "statusOn": "Status",
-        "actions": ""
-      },
       "noGuilds": "No guilds added yet — add one in Settings → Guilds, then pick it here."
     },
     "selectGuild": "Search guilds…",

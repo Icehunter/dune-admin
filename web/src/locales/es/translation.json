@@ -388,7 +388,9 @@
     "noItems": "Aún no hay objetos.",
     "beta": "Beta",
     "back": "Atrás",
-    "dismiss": "Descartar"
+    "dismiss": "Descartar",
+    "info": "Info",
+    "details": "Detalles"
   },
   "database": {
     "columnColumn": "Columna",
@@ -1130,7 +1132,7 @@
       "modalTitle": "{{name}} — Dar objetos",
       "qty": "Cant.",
       "quality": "Calidad",
-      "searchTemplates": "Buscar plantillas...",
+      "searchTemplates": "Buscar plantillas... (admite * como comodín)",
       "selectTemplate": "Seleccionar una plantilla",
       "skipped": "✕ {{template}} omitido: {{reason}}",
       "qualityWarning": "Los objetos con calidad superior a 0 se escriben en la base de datos, pero solo aparecen tras el siguiente inicio de sesión del jugador y pueden colocarse fuera de los espacios de inventario libre. Los objetos de calidad 0 se añaden de forma inmediata."
@@ -2101,13 +2103,6 @@
       "unlink": "Unlink",
       "linked": "Guild linked",
       "unlinked": "Guild unlinked",
-      "columns": {
-        "guildId": "Guild ID",
-        "announce": "Announce channel",
-        "status": "Status channel",
-        "statusOn": "Status",
-        "actions": ""
-      },
       "noGuilds": "Aún no hay gremios añadidos: añade uno en Configuración → Gremios y luego selecciónalo aquí."
     },
     "selectGuild": "Buscar gremios…",

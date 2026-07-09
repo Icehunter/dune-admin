@@ -386,7 +386,9 @@
     "noItems": "暂无项目。",
     "beta": "测试版",
     "back": "返回",
-    "dismiss": "忽略"
+    "dismiss": "忽略",
+    "info": "信息",
+    "details": "详情"
   },
   "database": {
     "columnColumn": "列",
@@ -1113,7 +1115,7 @@
       "modalTitle": "{{name}} — 给予物品",
       "qty": "数量",
       "quality": "品质",
-      "searchTemplates": "搜索模板...",
+      "searchTemplates": "搜索模板...（支持 * 通配符）",
       "selectTemplate": "选择一个模板",
       "skipped": "✕ 跳过 {{template}}：{{reason}}",
       "qualityWarning": "品质高于 0 的物品会写入数据库，但须玩家重新登录后才会显示，且可能放置在背包空位之外。品质为 0 的物品将立即生效。"
@@ -2078,13 +2080,6 @@
       "unlink": "Unlink",
       "linked": "Guild linked",
       "unlinked": "Guild unlinked",
-      "columns": {
-        "guildId": "Guild ID",
-        "announce": "Announce channel",
-        "status": "Status channel",
-        "statusOn": "Status",
-        "actions": ""
-      },
       "noGuilds": "尚未添加公会 — 请在 设置 → 公会 中添加，然后在此处选择。"
     },
     "selectGuild": "搜索公会…",

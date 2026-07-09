@@ -388,7 +388,9 @@
     "noItems": "Aucun élément pour l'instant.",
     "beta": "Bêta",
     "back": "Retour",
-    "dismiss": "Ignorer"
+    "dismiss": "Ignorer",
+    "info": "Infos",
+    "details": "Détails"
   },
   "database": {
     "columnColumn": "Colonne",
@@ -1130,7 +1132,7 @@
       "modalTitle": "{{name}} — Donner des objets",
       "qty": "Qté",
       "quality": "Qualité",
-      "searchTemplates": "Rechercher des modèles...",
+      "searchTemplates": "Rechercher des modèles... (prend en charge * comme joker)",
       "selectTemplate": "Sélectionner un modèle",
       "skipped": "✕ {{template}} ignoré : {{reason}}",
       "qualityWarning": "Les objets de qualité supérieure à 0 sont enregistrés en base de données mais n'apparaissent qu'après la reconnexion du joueur, et peuvent être placés en dehors de ses emplacements d'inventaire libres. Les objets de qualité 0 sont ajoutés instantanément."
@@ -2101,13 +2103,6 @@
       "unlink": "Unlink",
       "linked": "Guild linked",
       "unlinked": "Guild unlinked",
-      "columns": {
-        "guildId": "Guild ID",
-        "announce": "Announce channel",
-        "status": "Status channel",
-        "statusOn": "Status",
-        "actions": ""
-      },
       "noGuilds": "Aucune guilde ajoutée — ajoutez-en une dans Paramètres → Guildes, puis sélectionnez-la ici."
     },
     "selectGuild": "Rechercher des guildes…",

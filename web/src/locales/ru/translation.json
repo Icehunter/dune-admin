@@ -390,7 +390,9 @@
     "noItems": "Предметов пока нет.",
     "beta": "Бета",
     "back": "Назад",
-    "dismiss": "Закрыть"
+    "dismiss": "Закрыть",
+    "info": "Инфо",
+    "details": "Подробности"
   },
   "database": {
     "columnColumn": "Столбец",
@@ -1147,7 +1149,7 @@
       "modalTitle": "{{name}} — Выдать предметы",
       "qty": "Кол-во",
       "quality": "Качество",
-      "searchTemplates": "Поиск шаблонов...",
+      "searchTemplates": "Поиск шаблонов... (поддерживает * как подстановочный знак)",
       "selectTemplate": "Выбрать шаблон",
       "skipped": "✕ {{template}} пропущен: {{reason}}",
       "qualityWarning": "Предметы с качеством выше 0 записываются в базу данных, но отображаются только после повторного входа игрока и могут оказаться вне свободных слотов инвентаря. Предметы с качеством 0 добавляются мгновенно."
@@ -2124,13 +2126,6 @@
       "unlink": "Unlink",
       "linked": "Guild linked",
       "unlinked": "Guild unlinked",
-      "columns": {
-        "guildId": "Guild ID",
-        "announce": "Announce channel",
-        "status": "Status channel",
-        "statusOn": "Status",
-        "actions": ""
-      },
       "noGuilds": "Гильдии ещё не добавлены — добавьте одну в Настройки → Гильдии, затем выберите её здесь."
     },
     "selectGuild": "Поиск гильдий…",

@@ -386,7 +386,9 @@
     "noItems": "アイテムはまだありません。",
     "beta": "ベータ",
     "back": "戻る",
-    "dismiss": "閉じる"
+    "dismiss": "閉じる",
+    "info": "情報",
+    "details": "詳細"
   },
   "database": {
     "columnColumn": "カラム",
@@ -1113,7 +1115,7 @@
       "modalTitle": "{{name}} — アイテムを付与",
       "qty": "数量",
       "quality": "品質",
-      "searchTemplates": "テンプレートを検索...",
+      "searchTemplates": "テンプレートを検索...（* ワイルドカードに対応）",
       "selectTemplate": "テンプレートを選択",
       "skipped": "✕ {{template}} をスキップ：{{reason}}",
       "qualityWarning": "品質が 0 より高いアイテムはデータベースに書き込まれますが、プレイヤーが再ログインするまで表示されず、空きインベントリスロット外に配置される場合があります。品質 0 のアイテムは即時追加されます。"
@@ -2078,13 +2080,6 @@
       "unlink": "Unlink",
       "linked": "Guild linked",
       "unlinked": "Guild unlinked",
-      "columns": {
-        "guildId": "Guild ID",
-        "announce": "Announce channel",
-        "status": "Status channel",
-        "statusOn": "Status",
-        "actions": ""
-      },
       "noGuilds": "ギルドがまだ追加されていません — 設定 → ギルド で追加してからここで選択してください。"
     },
     "selectGuild": "ギルドを検索…",

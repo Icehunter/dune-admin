@@ -386,7 +386,9 @@
     "noItems": "Henüz öğe yok.",
     "beta": "Beta",
     "back": "Geri",
-    "dismiss": "Kapat"
+    "dismiss": "Kapat",
+    "info": "Bilgi",
+    "details": "Detaylar"
   },
   "database": {
     "columnColumn": "Sütun",
@@ -1113,7 +1115,7 @@
       "modalTitle": "{{name}} — Eşya Ver",
       "qty": "Adet",
       "quality": "Kalite",
-      "searchTemplates": "Şablonları ara...",
+      "searchTemplates": "Şablonları ara... (* joker karakterini destekler)",
       "selectTemplate": "Bir şablon seçin",
       "skipped": "✕ {{template}} atlandı: {{reason}}",
       "qualityWarning": "Kalitesi 0'ın üzerinde olan eşyalar veritabanına yazılır; ancak yalnızca oyuncu yeniden giriş yaptıktan sonra görünür ve boş envanter slotlarının dışına yerleştirilebilir. Kalite 0 eşyalar anında eklenir."
@@ -2078,13 +2080,6 @@
       "unlink": "Unlink",
       "linked": "Guild linked",
       "unlinked": "Guild unlinked",
-      "columns": {
-        "guildId": "Guild ID",
-        "announce": "Announce channel",
-        "status": "Status channel",
-        "statusOn": "Status",
-        "actions": ""
-      },
       "noGuilds": "Henüz lonca eklenmedi — Ayarlar → Loncalar bölümünden bir tane ekleyin, sonra burada seçin."
     },
     "selectGuild": "Loncaları ara…",

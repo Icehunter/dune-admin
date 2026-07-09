@@ -390,7 +390,9 @@
     "noItems": "Brak elementów.",
     "beta": "Beta",
     "back": "Wstecz",
-    "dismiss": "Odrzuć"
+    "dismiss": "Odrzuć",
+    "info": "Informacje",
+    "details": "Szczegóły"
   },
   "database": {
     "columnColumn": "Kolumna",
@@ -1147,7 +1149,7 @@
       "modalTitle": "{{name}} — Daj przedmioty",
       "qty": "Ilość",
       "quality": "Jakość",
-      "searchTemplates": "Szukaj szablonów...",
+      "searchTemplates": "Szukaj szablonów... (obsługuje * jako symbol wieloznaczny)",
       "selectTemplate": "Wybierz szablon",
       "skipped": "✕ {{template}} pominięto: {{reason}}",
       "qualityWarning": "Przedmioty o jakości powyżej 0 są zapisywane do bazy danych, ale pojawiają się dopiero po ponownym zalogowaniu gracza i mogą zostać umieszczone poza wolnymi miejscami w ekwipunku. Przedmioty o jakości 0 są dodawane natychmiast."
@@ -2124,13 +2126,6 @@
       "unlink": "Unlink",
       "linked": "Guild linked",
       "unlinked": "Guild unlinked",
-      "columns": {
-        "guildId": "Guild ID",
-        "announce": "Announce channel",
-        "status": "Status channel",
-        "statusOn": "Status",
-        "actions": ""
-      },
       "noGuilds": "Nie dodano jeszcze żadnej gildii — dodaj ją w Ustawienia → Gildie, a następnie wybierz tutaj."
     },
     "selectGuild": "Szukaj gildii…",

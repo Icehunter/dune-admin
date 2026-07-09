@@ -386,7 +386,9 @@
     "noItems": "Noch keine Einträge.",
     "beta": "Beta",
     "back": "Zurück",
-    "dismiss": "Schließen"
+    "dismiss": "Schließen",
+    "info": "Info",
+    "details": "Details"
   },
   "database": {
     "columnColumn": "Spalte",
@@ -1113,7 +1115,7 @@
       "modalTitle": "{{name}} — Gegenstände geben",
       "qty": "Menge",
       "quality": "Qualität",
-      "searchTemplates": "Vorlagen suchen...",
+      "searchTemplates": "Vorlagen suchen... (unterstützt * als Platzhalter)",
       "selectTemplate": "Vorlage auswählen",
       "skipped": "✕ {{template}} übersprungen: {{reason}}",
       "qualityWarning": "Gegenstände mit einer Qualität über 0 werden in die Datenbank geschrieben, erscheinen aber erst nach dem nächsten Einloggen des Spielers und können außerhalb der freien Inventarplätze abgelegt werden. Gegenstände mit Qualität 0 werden sofort hinzugefügt."
@@ -2078,13 +2080,6 @@
       "unlink": "Unlink",
       "linked": "Guild linked",
       "unlinked": "Guild unlinked",
-      "columns": {
-        "guildId": "Guild ID",
-        "announce": "Announce channel",
-        "status": "Status channel",
-        "statusOn": "Status",
-        "actions": ""
-      },
       "noGuilds": "Noch keine Gilden hinzugefügt — füge unter Einstellungen → Gilden eine hinzu und wähle sie dann hier."
     },
     "selectGuild": "Gilden suchen…",

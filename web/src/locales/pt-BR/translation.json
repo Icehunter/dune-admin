@@ -388,7 +388,9 @@
     "noItems": "Nenhum item ainda.",
     "beta": "Beta",
     "back": "Voltar",
-    "dismiss": "Dispensar"
+    "dismiss": "Dispensar",
+    "info": "Informações",
+    "details": "Detalhes"
   },
   "database": {
     "columnColumn": "Coluna",
@@ -1130,7 +1132,7 @@
       "modalTitle": "{{name}} — Dar itens",
       "qty": "Qtd.",
       "quality": "Qualidade",
-      "searchTemplates": "Pesquisar templates...",
+      "searchTemplates": "Pesquisar templates... (aceita * como curinga)",
       "selectTemplate": "Selecionar um template",
       "skipped": "✕ {{template}} ignorado: {{reason}}",
       "qualityWarning": "Itens com qualidade acima de 0 são gravados no banco de dados, mas só aparecem após o jogador reconectar, e podem ser colocados fora dos slots livres do inventário. Itens com qualidade 0 são adicionados instantaneamente."
@@ -2101,13 +2103,6 @@
       "unlink": "Unlink",
       "linked": "Guild linked",
       "unlinked": "Guild unlinked",
-      "columns": {
-        "guildId": "Guild ID",
-        "announce": "Announce channel",
-        "status": "Status channel",
-        "statusOn": "Status",
-        "actions": ""
-      },
       "noGuilds": "Nenhuma guilda adicionada ainda — adicione uma em Configurações → Guildas e selecione-a aqui."
     },
     "selectGuild": "Buscar guildas…",

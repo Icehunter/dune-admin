@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { retainSkippedStaged } from './giveItemsHelpers'
+import { retainSkippedStaged, filterTemplates } from './giveItemsHelpers'
 
 type Staged = { template: string, qty: number, quality: number }
+type Template = { id: string, name: string }
 
 describe('retainSkippedStaged', () => {
   it('returns empty when all items were given', () => {
@@ -71,5 +72,61 @@ describe('retainSkippedStaged', () => {
 
   it('empty staged input returns empty', () => {
     expect(retainSkippedStaged([], ['A'])).toEqual([])
+  })
+})
+
+describe('filterTemplates', () => {
+  const templates: Template[] = [
+    { id: 'mtx_patent_a', name: 'Alpha Patent' },
+    { id: 'mtx_patent_b', name: 'Beta Patent' },
+    { id: 'd_debug_sword', name: 'Debug Sword' },
+    { id: 'sword_basic', name: 'Basic Sword' },
+  ]
+
+  it('returns empty when query is empty', () => {
+    expect(filterTemplates(templates, '')).toEqual([])
+  })
+
+  it('always hides d_-prefixed (deprecated, non-functional) items', () => {
+    const result = filterTemplates(templates, 'sword')
+    expect(result.map((t) => t.id)).toEqual(['sword_basic'])
+  })
+
+  it('matches a plain substring case-insensitively (existing behavior)', () => {
+    const result = filterTemplates(templates, 'PATENT')
+    expect(result.map((t) => t.id).sort()).toEqual(['mtx_patent_a', 'mtx_patent_b'])
+  })
+
+  it('supports * as a multi-char wildcard against id', () => {
+    const result = filterTemplates(templates, 'mtx_*_a')
+    expect(result.map((t) => t.id)).toEqual(['mtx_patent_a'])
+  })
+
+  it('supports * as a multi-char wildcard matching multiple results', () => {
+    const result = filterTemplates(templates, 'mtx_*_patent')
+    expect(result).toEqual([])
+    // "mtx_*_patent" doesn't match these ids (patent isn't a trailing
+    // segment) — confirms the glob is a real pattern match, not a substring
+    // fallback that would otherwise match on "patent" alone.
+  })
+
+  it('wildcard also matches against name', () => {
+    const result = filterTemplates(templates, '*Patent')
+    expect(result.map((t) => t.id).sort()).toEqual(['mtx_patent_a', 'mtx_patent_b'])
+  })
+
+  it('escapes regex metacharacters other than * when building a glob', () => {
+    // The "." must stay a literal dot in the glob, not regex "any char" —
+    // otherwise "weirdXid+1*" would wrongly match "weird.id+1_extra" too.
+    const withRegexChars: Template[] = [
+      { id: 'weird.id+1_extra', name: 'Weird' },
+      { id: 'weirdXid+1_extra', name: 'Weird X' },
+    ]
+    expect(filterTemplates(withRegexChars, 'weird.id+1*').map((t) => t.id)).toEqual(['weird.id+1_extra'])
+  })
+
+  it('caps results at 100', () => {
+    const many: Template[] = Array.from({ length: 150 }, (_, i) => ({ id: `item_${i}`, name: `Item ${i}` }))
+    expect(filterTemplates(many, 'item').length).toBe(100)
   })
 })

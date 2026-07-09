@@ -14,7 +14,7 @@ import { ItemDetailDrawer } from '../../../components/ItemDetailDrawer'
 import { ItemOptionRow } from '../../../components/ItemOptionRow'
 import { StagedItemCell } from '../../../components/StagedItemCell'
 import { itemDataSyncAtom } from '../../../data/store'
-import { retainSkippedStaged } from './giveItemsHelpers'
+import { retainSkippedStaged, filterTemplates } from './giveItemsHelpers'
 import { ManagePacksModal } from '../modals/ManagePacksModal'
 import type { GiveItemsViewProps } from './interfaces'
 import type { GiveResult, StagedItem } from './types'
@@ -65,12 +65,7 @@ export const GiveItemsView: React.FC<GiveItemsViewProps> = ({ player }) => {
 
   const nameMap = new Map(templates.map((tpl) => [tpl.id, tpl.name]))
 
-  const _gvq = query.toLowerCase()
-  const filtered = !query
-    ? []
-    : templates
-        .filter((tpl) => tpl.id.toLowerCase().includes(_gvq) || tpl.name.toLowerCase().includes(_gvq))
-        .slice(0, 100)
+  const filtered = filterTemplates(templates, query)
 
   const groupedPacks: Record<string, { id: string, name: string, tier: number }[]> = {}
   for (const pack of packs) {

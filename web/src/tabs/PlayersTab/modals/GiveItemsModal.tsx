@@ -15,6 +15,7 @@ import { ItemDetailDrawer } from '../../../components/ItemDetailDrawer'
 import { ItemOptionRow } from '../../../components/ItemOptionRow'
 import { StagedItemCell } from '../../../components/StagedItemCell'
 import { packsSyncAtom, itemDataSyncAtom } from '../../../data/store'
+import { filterTemplates } from '../views/giveItemsHelpers'
 import type { GiveItemsModalProps } from './interfaces'
 import type { GiveResult, StagedItem } from './types'
 
@@ -57,12 +58,7 @@ export const GiveItemsModal: React.FC<GiveItemsModalProps> = ({ player, open, on
 
   const nameMap = new Map(templates.map((tpl) => [tpl.id, tpl.name]))
 
-  const _giq = query.toLowerCase()
-  const filtered = !query
-    ? []
-    : templates
-        .filter((tpl) => tpl.id.toLowerCase().includes(_giq) || tpl.name.toLowerCase().includes(_giq))
-        .slice(0, 100)
+  const filtered = filterTemplates(templates, query)
 
   const packOptions = Object.entries(packsData.packs).map(([id, pack]) => ({
     id, name: pack.name, category: pack.category, tier: pack.tier,

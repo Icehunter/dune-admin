@@ -2751,8 +2751,8 @@ func cmdDescribeTable(pool *pgxpool.Pool, tbl string) Cmd {
 			SELECT column_name, data_type,
 			       CASE is_nullable WHEN 'YES' THEN 'null' ELSE 'not null' END
 			FROM information_schema.columns
-			WHERE table_schema = $1::text AND table_name = $2::text
-			ORDER BY ordinal_position`, dbSchema, tbl)
+			WHERE table_schema = current_schema() AND table_name = $1::text
+			ORDER BY ordinal_position`, tbl)
 		if err != nil {
 			return msgDescribe{table: tbl, err: err}
 		}
@@ -2775,7 +2775,13 @@ func cmdDescribeTable(pool *pgxpool.Pool, tbl string) Cmd {
 func sampleTableQuery(tbl string, limit int) string {
 	// Sanitize table name defensively even though tbl comes from pg_stat_user_tables.
 	// pgx.Identifier handles quoting and escaping to prevent SQL injection.
-	safeTable := pgx.Identifier{dbSchema, tbl}.Sanitize()
+	//
+	// Deliberately a bare (unqualified) identifier: it resolves through the
+	// connection's search_path, not the package-level dbSchema global, which
+	// is empty at runtime after the multi-server refactor (#283). Qualifying
+	// with the empty global used to produce `FROM "".tbl`, a Postgres
+	// "zero-length delimited identifier" error (SQLSTATE 42601).
+	safeTable := pgx.Identifier{tbl}.Sanitize()
 	return fmt.Sprintf("SELECT * FROM %s LIMIT %d", safeTable, limit)
 }
 
@@ -2839,9 +2845,9 @@ func cmdSearchColumns(pool *pgxpool.Pool, term string) Cmd {
 		rows, err := pool.Query(context.Background(), `
 			SELECT table_name, column_name, data_type
 			FROM information_schema.columns
-			WHERE table_schema = $1::text
-			  AND (column_name ILIKE $2::text OR table_name ILIKE $2::text)
-			ORDER BY table_name, column_name`, dbSchema, "%"+term+"%")
+			WHERE table_schema = current_schema()
+			  AND (column_name ILIKE $1::text OR table_name ILIKE $1::text)
+			ORDER BY table_name, column_name`, "%"+term+"%")
 		if err != nil {
 			return msgSearchCols{err: err}
 		}

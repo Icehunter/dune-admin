@@ -35,29 +35,32 @@ func (c *kubectlControl) GetStatus(ctx context.Context, exec Executor) (*Battleg
 	bgName := c.bgName()
 	kctl := kubectlCLI(exec)
 
-	// startTimestamp drives uptime/age; gamePort + per-server fields come from the
-	// battlegroup status (NOT serverstats, which lacks them — verified on a live
-	// k3s cluster, #203).
+	// gamePort + per-server fields come from the battlegroup status (NOT
+	// serverstats, which lacks them — verified on a live k3s cluster, #203).
+	// Per-row Age used to come from this battlegroup-wide startTimestamp, but
+	// every map/dimension/partition gets its own ServerStats object with its
+	// own metadata.creationTimestamp, so a shared timestamp made every row
+	// report identical uptime (#277) — Age is now sourced per-row below.
 	bgOut, _ := exec.Exec(fmt.Sprintf(
-		`%s get battlegroups -n %s -o jsonpath="{.items[0].spec.title}|{.items[0].status.phase}|{.items[0].status.database.phase}|{.items[0].status.startTimestamp}" 2>/dev/null`,
+		`%s get battlegroups -n %s -o jsonpath="{.items[0].spec.title}|{.items[0].status.phase}|{.items[0].status.database.phase}" 2>/dev/null`,
 		kctl, c.namespace))
-	bgParts := strings.SplitN(strings.TrimSpace(bgOut), "|", 4)
+	bgParts := strings.SplitN(strings.TrimSpace(bgOut), "|", 3)
 
 	// partition → gamePort, read from battlegroup status.servers[].
 	portByPartition := c.gamePortsByPartition(exec, kctl)
-	ageSeconds := ageSecondsFromStartTime(safeIdx(bgParts, 3), time.Now())
 
 	ssOut, _ := exec.Exec(fmt.Sprintf(
-		"%s get serverstats -n %s -o jsonpath='{range .items[*]}{.spec.area.map}|{.spec.area.sietch}|{.spec.area.dimension}|{.spec.area.partition}|{.status.runtime.gamePhase}|{.status.runtime.ready}|{.status.runtime.players}{\"\\n\"}{end}' 2>/dev/null",
+		"%s get serverstats -n %s -o jsonpath='{range .items[*]}{.spec.area.map}|{.spec.area.sietch}|{.spec.area.dimension}|{.spec.area.partition}|{.status.runtime.gamePhase}|{.status.runtime.ready}|{.status.runtime.players}|{.metadata.creationTimestamp}{\"\\n\"}{end}' 2>/dev/null",
 		kctl, c.namespace))
 
+	now := time.Now()
 	var servers []ServerRow
 	for _, line := range strings.Split(strings.TrimSpace(ssOut), "\n") {
 		if line == "" {
 			continue
 		}
-		p := strings.SplitN(line, "|", 7)
-		if len(p) < 7 {
+		p := strings.SplitN(line, "|", 8)
+		if len(p) < 8 {
 			continue
 		}
 		dim, _ := strconv.Atoi(p[2])
@@ -72,7 +75,7 @@ func (c *kubectlControl) GetStatus(ctx context.Context, exec Executor) (*Battleg
 			Ready:      p[5] == "true",
 			Players:    players,
 			Port:       portByPartition[part],
-			AgeSeconds: ageSeconds,
+			AgeSeconds: ageSecondsFromStartTime(p[7], now),
 		})
 	}
 	sort.Slice(servers, func(i, j int) bool { return servers[i].Map < servers[j].Map })

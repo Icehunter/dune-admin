@@ -30,6 +30,12 @@ jobs:
           version: '10.28.1'
 
       - name: Run pnpm audit
+        # TODO: drop continue-on-error once pnpm ships a stable release using the
+        # npm bulk advisory endpoint (pnpm/pnpm#11265) — npm retired the legacy
+        # audit endpoint pnpm 10.x still calls, so this step can only fail with a
+        # 410 right now regardless of real findings. Fixed in v11.0.0-rc.1, not
+        # yet stable as of 2026-07-16.
+        continue-on-error: true
         run: make pnpm-audit
         env:
           HEROUI_AUTH_TOKEN: ${{ secrets.HEROUI_AUTH_TOKEN }}

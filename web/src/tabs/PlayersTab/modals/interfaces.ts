@@ -1,10 +1,16 @@
-import type { Player, TeleportLocation, GivePack } from '../../../api/client'
+import type { InventoryItem, Player, TeleportLocation, GivePack } from '../../../api/client'
 import type { PackDiff } from './types'
 
 export interface GiveItemsModalProps {
   player: Player
   open: boolean
   onClose: () => void
+}
+
+export interface EditItemModalProps {
+  item: InventoryItem | null
+  onClose: () => void
+  onSaved: (item: InventoryItem) => void
 }
 
 export interface ManageLocationsModalProps {

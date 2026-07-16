@@ -1167,7 +1167,10 @@
         "template": "Plantilla"
       },
       "deleteOnlineWarning": "El jugador está en línea — eliminar objetos puede causar desincronizaciones de inventario. ¿Continuar?",
+      "edit": "Editar",
+      "editItem": "Editar {{name}}",
       "itemDeleted": "Objeto eliminado",
+      "itemUpdated": "Objeto actualizado — vuelve a iniciar sesión para verlo en el juego",
       "itemsDeleted": "{{count}} objeto(s) eliminado(s)",
       "deleteSelected": "Eliminar seleccionados",
       "itemsLabel": "Objetos",

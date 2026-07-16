@@ -1150,7 +1150,10 @@
         "template": "Template"
       },
       "deleteOnlineWarning": "Player is online — deleting items may cause inventory desyncs. Continue?",
+      "edit": "Edit",
+      "editItem": "Edit {{name}}",
       "itemDeleted": "Item deleted",
+      "itemUpdated": "Item updated — relog to see in-game",
       "itemsDeleted": "Deleted {{count}} item(s)",
       "deleteSelected": "Delete selected",
       "itemsLabel": "Items",

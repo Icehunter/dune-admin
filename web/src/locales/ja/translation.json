@@ -1150,7 +1150,10 @@
         "template": "テンプレート"
       },
       "deleteOnlineWarning": "プレイヤーはオンラインです — アイテムを削除するとインベントリの同期がずれる可能性があります。続けますか？",
+      "edit": "編集",
+      "editItem": "{{name}} を編集",
       "itemDeleted": "アイテムを削除しました",
+      "itemUpdated": "アイテムを更新しました — ゲーム内に反映するには再ログインしてください",
       "itemsDeleted": "{{count}} 個のアイテムを削除しました",
       "deleteSelected": "選択項目を削除",
       "itemsLabel": "アイテム",

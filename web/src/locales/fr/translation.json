@@ -1167,7 +1167,10 @@
         "template": "Modèle"
       },
       "deleteOnlineWarning": "Le joueur est en ligne — la suppression d'objets peut provoquer des désynchronisations d'inventaire. Continuer ?",
+      "edit": "Modifier",
+      "editItem": "Modifier {{name}}",
       "itemDeleted": "Objet supprimé",
+      "itemUpdated": "Objet mis à jour — reconnectez-vous pour le voir en jeu",
       "itemsDeleted": "{{count}} objet(s) supprimé(s)",
       "deleteSelected": "Supprimer la sélection",
       "itemsLabel": "Objets",

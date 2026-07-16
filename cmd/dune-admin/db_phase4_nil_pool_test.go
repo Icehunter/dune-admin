@@ -119,6 +119,16 @@ func TestCmdRepairItem_NilPool(t *testing.T) {
 	}
 }
 
+func TestCmdUpdateItem_NilPool(t *testing.T) {
+	msg, ok := cmdUpdateItem(nil, 1, 5, 2)().(msgMutate)
+	if !ok {
+		t.Fatal("expected msgMutate")
+	}
+	if msg.err == nil {
+		t.Error("expected error for nil pool")
+	}
+}
+
 func TestCmdRepairPlayerGear_NilPool(t *testing.T) {
 	msg, ok := cmdRepairPlayerGear(nil, 1)().(msgRepairGear)
 	if !ok {

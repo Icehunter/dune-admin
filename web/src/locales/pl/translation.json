@@ -1184,7 +1184,10 @@
         "template": "Szablon"
       },
       "deleteOnlineWarning": "Gracz jest online — usuwanie przedmiotów może spowodować desynchronizację ekwipunku. Kontynuować?",
+      "edit": "Edytuj",
+      "editItem": "Edytuj {{name}}",
       "itemDeleted": "Przedmiot usunięty",
+      "itemUpdated": "Przedmiot zaktualizowany — zaloguj się ponownie, aby zobaczyć w grze",
       "itemsDeleted": "Usunięto {{count}} przedmiot(ów)",
       "deleteSelected": "Usuń zaznaczone",
       "itemsLabel": "Przedmioty",

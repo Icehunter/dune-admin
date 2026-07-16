@@ -1093,6 +1093,51 @@ func handleDeleteItem(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"ok": msg.ok})
 }
 
+// @Summary Edit an existing inventory item's stack size and quality grade
+// @Tags players
+// @Accept json
+// @Produce json
+// @Param id path int true "Item ID"
+// @Param body body object true "stack_size, quality"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/players/item/{id} [put]
+func handleUpdateItem(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		jsonErr(w, fmt.Errorf("invalid id"), 400)
+		return
+	}
+	var req struct {
+		StackSize int64 `json:"stack_size"`
+		Quality   int64 `json:"quality"`
+	}
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, err, 400)
+		return
+	}
+	if req.StackSize < 1 {
+		jsonErr(w, fmt.Errorf("stack_size must be at least 1 — use delete to remove an item"), 400)
+		return
+	}
+	if req.Quality < 0 {
+		jsonErr(w, fmt.Errorf("quality must not be negative"), 400)
+		return
+	}
+	msg, ok := cmdUpdateItem(dbFromCtx(r), id, req.StackSize, req.Quality)().(msgMutate)
+	if !ok {
+		jsonErr(w, fmt.Errorf("internal error"), 500)
+		return
+	}
+	if msg.err != nil {
+		jsonErr(w, msg.err, 500)
+		return
+	}
+	jsonOK(w, map[string]string{"ok": msg.ok})
+}
+
 // @Summary Reset a specialization track for a player
 // @Tags players
 // @Accept json

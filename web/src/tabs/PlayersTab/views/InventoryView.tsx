@@ -12,6 +12,7 @@ import { ItemDetailDrawer } from '../../../components/ItemDetailDrawer'
 import { ItemIcon } from '../../../components/ItemIcon'
 import { itemDataSyncAtom } from '../../../data/store'
 import { usePermissions } from '../../../hooks/usePermissions'
+import { EditItemModal } from '../modals/EditItemModal'
 import type { InventoryViewProps } from './interfaces'
 import type { ItemKey } from './types'
 
@@ -24,6 +25,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
   const [loading, setLoading] = React.useState(false)
   const [selectedKeys, setSelectedKeys] = React.useState<Selection>(new Set())
   const [detailId, setDetailId] = React.useState<string | null>(null)
+  const [editItem, setEditItem] = React.useState<InventoryItem | null>(null)
 
   const ALL_ITEM_COLUMNS: Column<ItemKey>[] = [
     { key: 'template', label: t('players.inventory.columns.template'), isRowHeader: true },
@@ -206,6 +208,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
                   {i.max_durability !== 'N/A' && (
                     <Button size="sm" variant="ghost" onPress={() => handleRepair(i)}>{t('players.inventory.repair')}</Button>
                   )}
+                  <Button isIconOnly size="sm" variant="ghost" aria-label={t('players.inventory.edit')} onPress={() => setEditItem(i)}><Icon name="pencil" /></Button>
                   <Button isIconOnly size="sm" variant="danger-soft" aria-label={t('common.delete')} onPress={() => handleDelete(i.id)}><Icon name="trash" /></Button>
                 </div>
               )
@@ -237,6 +240,12 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ player }) => {
         templateId={detailId}
         name={detailId !== null ? (items.find((it) => it.template_id === detailId)?.name ?? detailId) : undefined}
         onClose={() => setDetailId(null)}
+      />
+
+      <EditItemModal
+        item={editItem}
+        onClose={() => setEditItem(null)}
+        onSaved={(saved) => setItems((prev) => prev.map((i) => i.id === saved.id ? saved : i))}
       />
     </div>
   )

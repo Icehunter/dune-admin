@@ -189,6 +189,7 @@ func buildMux() *http.ServeMux {
 	handleAPI(mux, "GET /api/v1/players/{id}/export", capDataExport, handleCharacterExport)
 	handleAPI(mux, "POST /api/v1/players/delete-account", capPlayersWrite, handleDeleteAccount)
 	handleAPI(mux, "DELETE /api/v1/players/item/{id}", capPlayersWrite, handleDeleteItem)
+	handleAPI(mux, "PUT /api/v1/players/item/{id}", capPlayersWrite, handleUpdateItem)
 	handleAPI(mux, "POST /api/v1/players/reset-spec", capPlayersWrite, handleResetSpec)
 	handleAPI(mux, "POST /api/v1/players/set-faction-tier", capPlayersWrite, handleSetFactionTier)
 	handleAPI(mux, "POST /api/v1/players/progression-unlock", capPlayersWrite, handleProgressionUnlock)

@@ -1206,6 +1206,8 @@ export const api = {
     },
     deleteAccount: (account_id: number, reason: string) => req<MutateResult>('POST', '/players/delete-account', { account_id, reason }),
     deleteItem: (id: number) => req<MutateResult>('DELETE', `/players/item/${id}`),
+    updateItem: (id: number, stack_size: number, quality: number) =>
+      req<MutateResult>('PUT', `/players/item/${id}`, { stack_size, quality }),
     resetSpec: (player_id: number, track_type: string) =>
       req<MutateResult>('POST', '/players/reset-spec', { player_id, track_type }),
     setFactionTier: (actor_id: number, faction_id: number, tier: number) =>

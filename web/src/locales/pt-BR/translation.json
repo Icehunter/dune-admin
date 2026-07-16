@@ -1167,7 +1167,10 @@
         "template": "Template"
       },
       "deleteOnlineWarning": "O jogador está online — excluir itens pode causar dessincronizações de inventário. Continuar?",
+      "edit": "Editar",
+      "editItem": "Editar {{name}}",
       "itemDeleted": "Item excluído",
+      "itemUpdated": "Item atualizado — reconecte-se para ver no jogo",
       "itemsDeleted": "{{count}} item(ns) excluído(s)",
       "deleteSelected": "Excluir selecionados",
       "itemsLabel": "Itens",

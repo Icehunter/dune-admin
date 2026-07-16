@@ -5475,6 +5475,39 @@ func cmdRepairItem(pool *pgxpool.Pool, itemID int64) Cmd {
 	}
 }
 
+// cmdUpdateItem edits an existing item's stack size and quality grade
+// directly (#256) — the only prior edit paths were Repair (durability only)
+// and Delete; stack/quality were otherwise read-only in the admin UI despite
+// the DB happily storing any value. Offline-gated like Repair since the game
+// server owns the live copy while a player is connected.
+func cmdUpdateItem(pool *pgxpool.Pool, itemID, stackSize, quality int64) Cmd {
+	return func() Msg {
+		if pool == nil {
+			return msgMutate{err: fmt.Errorf("not connected")}
+		}
+		ctx := context.Background()
+
+		pawnID, err := lookupRepairItemOwner(ctx, pool, itemID)
+		if err != nil {
+			return msgMutate{err: err}
+		}
+		if err := checkPlayerOffline(ctx, pool, pawnID); err != nil {
+			return msgMutate{err: err}
+		}
+
+		res, err := pool.Exec(ctx, `
+			UPDATE dune.items SET stack_size = $2::bigint, quality_level = $3::bigint
+			WHERE id = $1::bigint`, itemID, stackSize, quality)
+		if err != nil {
+			return msgMutate{err: fmt.Errorf("update item: %w", err)}
+		}
+		if res.RowsAffected() == 0 {
+			return msgMutate{err: fmt.Errorf("item %d not found", itemID)}
+		}
+		return msgMutate{ok: fmt.Sprintf("Updated item %d — relog to see in-game", itemID)}
+	}
+}
+
 // Carried inventories: backpack, equipment, emote wheel, equipped weapons, action wheel, bank.
 var repairGearInventoryTypes = []int32{0, 1, 14, 15, 27, 30}
 

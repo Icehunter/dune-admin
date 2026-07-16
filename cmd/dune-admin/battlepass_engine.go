@@ -76,6 +76,40 @@ func battlepassUnclaimed(tiers []battlepassTier, claimed map[string]string) (unc
 	return unclaimed, needsJourney, needsTags
 }
 
+// battlepassRetroactiveGrantTiers returns tier keys already recorded as
+// earned (not baseline, not already granted) that should be (re-)enqueued on
+// the grant ledger. Needed because enabling auto-grant is not retroactive on
+// its own: battlepassUnclaimed skips any tier already present in `claimed`,
+// so a tier earned before auto-grant was turned on would otherwise never get
+// a ledger row and sit in Pending forever, grantable only by hand (#259/#280).
+func battlepassRetroactiveGrantTiers(claimed map[string]string) []string {
+	var out []string
+	for tierKey, status := range claimed {
+		if status == battlepassClaimEarned {
+			out = append(out, tierKey)
+		}
+	}
+	return out
+}
+
+// enqueueRetroactiveBattlepassGrants (re-)enqueues a pending grant-ledger row
+// for every already-earned tier in `claimed`, when auto-grant is on.
+// recordPendingGrant is idempotent (ON CONFLICT DO NOTHING), so calling this
+// every tick is safe and self-healing — it only ever inserts once per
+// tier/account, and covers tiers earned before auto-grant was turned on
+// (#259/#280).
+func enqueueRetroactiveBattlepassGrants(store *battlepassStore, claimed map[string]string, accountID int64, autoGrant bool) error {
+	if !autoGrant {
+		return nil
+	}
+	for _, tierKey := range battlepassRetroactiveGrantTiers(claimed) {
+		if err := store.recordPendingGrant(tierKey, accountID); err != nil {
+			return fmt.Errorf("record pending grant %s (retroactive): %w", tierKey, err)
+		}
+	}
+	return nil
+}
+
 // evaluateBattlepassPlayer records claims for every newly-satisfied tier.
 // During the account's first complete pass (and unless awardPast is set),
 // satisfied tiers are recorded as baseline — pre-existing progress is not
@@ -86,6 +120,13 @@ func evaluateBattlepassPlayer(ctx context.Context, deps battlepassDeps, store *b
 		return fmt.Errorf("claimed keys: %w", err)
 	}
 	unclaimed, needsJourney, needsTags := battlepassUnclaimed(tiers, claimed)
+
+	// Auto-grant may have just been turned on: tiers earned earlier under
+	// manual-only mode were never enqueued and never will be via the
+	// unclaimed path above, since they're already in `claimed`.
+	if err := enqueueRetroactiveBattlepassGrants(store, claimed, p.AccountID, autoGrant); err != nil {
+		return err
+	}
 
 	baselined := true
 	if !awardPast {

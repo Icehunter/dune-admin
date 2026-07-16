@@ -111,6 +111,83 @@ func TestBattlepassGrantLedger_SuccessTerminal(t *testing.T) {
 	}
 }
 
+// TestBattlepassGrantLedger_RetryLaterDoesNotConsumeAttempt covers the #259/
+// #280 fix: a "player is online" delivery failure is an expected, frequent
+// condition (not a real failure), so it must retry on a short backoff without
+// ever counting toward deferredGrantMaxAttempts. Before this fix, an online
+// failure used the same 24h/3-attempt policy as a genuine error, so a player
+// who stayed online for hours (explicitly reported) would exhaust the ledger
+// row long before they ever logged out, leaving the tier grantable only by
+// hand.
+func TestBattlepassGrantLedger_RetryLaterDoesNotConsumeAttempt(t *testing.T) {
+	s := openMemBattlepassStore(t)
+	if err := s.recordPendingGrant("tier_online", 600); err != nil {
+		t.Fatalf("recordPendingGrant: %v", err)
+	}
+
+	shortBackoff := 5 * time.Minute
+	// Retry-later many more times than deferredGrantMaxAttempts would allow —
+	// the row must never exhaust from this alone.
+	for i := 0; i < deferredGrantMaxAttempts+5; i++ {
+		if err := s.recordGrantLedgerRetryLater("tier_online", 600, "player is online", shortBackoff); err != nil {
+			t.Fatalf("recordGrantLedgerRetryLater %d: %v", i, err)
+		}
+	}
+
+	// Not due immediately — the short backoff is still in effect.
+	dueNow, err := s.listRetryableGrantLedger(time.Now())
+	if err != nil {
+		t.Fatalf("listRetryableGrantLedger now: %v", err)
+	}
+	if len(dueNow) != 0 {
+		t.Fatalf("want 0 due immediately, got %d", len(dueNow))
+	}
+
+	// Due once the short backoff elapses — and crucially still pending with
+	// attempts untouched, unlike a real failure which would have exhausted by now.
+	dueLater, err := s.listRetryableGrantLedger(time.Now().Add(shortBackoff + time.Minute))
+	if err != nil {
+		t.Fatalf("listRetryableGrantLedger later: %v", err)
+	}
+	if len(dueLater) != 1 {
+		t.Fatalf("want 1 due after short backoff (never exhausted), got %d", len(dueLater))
+	}
+	if dueLater[0].Attempts != 0 {
+		t.Errorf("attempts = %d, want 0 — retry-later must not consume an attempt", dueLater[0].Attempts)
+	}
+	if dueLater[0].Status != battlepassGrantPending {
+		t.Errorf("status = %q, want pending", dueLater[0].Status)
+	}
+	if dueLater[0].LastError != "player is online" {
+		t.Errorf("last_error = %q, want %q", dueLater[0].LastError, "player is online")
+	}
+}
+
+func TestBattlepassGrantLedger_RetryLaterPreservesExistingAttemptsOnConflict(t *testing.T) {
+	s := openMemBattlepassStore(t)
+	if err := s.recordPendingGrant("tier_mixed", 700); err != nil {
+		t.Fatalf("recordPendingGrant: %v", err)
+	}
+	// One genuine failure first (attempts -> 1)...
+	if err := s.recordGrantLedgerFailure("tier_mixed", 700, "db hiccup"); err != nil {
+		t.Fatalf("recordGrantLedgerFailure: %v", err)
+	}
+	// ...then an online retry-later must not touch that attempt count.
+	if err := s.recordGrantLedgerRetryLater("tier_mixed", 700, "player is online", time.Minute); err != nil {
+		t.Fatalf("recordGrantLedgerRetryLater: %v", err)
+	}
+	due, err := s.listRetryableGrantLedger(time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatalf("listRetryableGrantLedger: %v", err)
+	}
+	if len(due) != 1 {
+		t.Fatalf("want 1 due row, got %d", len(due))
+	}
+	if due[0].Attempts != 1 {
+		t.Errorf("attempts = %d, want 1 (preserved from the earlier genuine failure)", due[0].Attempts)
+	}
+}
+
 func TestBattlepassGrantLedger_OnlyDueClaimsListed(t *testing.T) {
 	s := openMemBattlepassStore(t)
 	// Two pending rows; one fresh (due now), one just-failed (not yet due).

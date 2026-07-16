@@ -227,6 +227,88 @@ func TestBattlepassSkipsSignalFetchWhenAllClaimed(t *testing.T) {
 	}
 }
 
+// TestBattlepassRetroactiveGrantTiers covers the pure filter used to fix
+// #259/#280: enabling auto-grant is not retroactive on its own, because
+// battlepassUnclaimed skips any tier already present in `claimed` — a tier
+// earned before auto-grant was turned on would otherwise never be
+// (re-)enqueued. Only already-earned (not baseline, not already-granted)
+// tiers should come back.
+func TestBattlepassRetroactiveGrantTiers(t *testing.T) {
+	claimed := map[string]string{
+		"already_granted":      battlepassClaimGranted,
+		"still_baseline":       battlepassClaimBaseline,
+		"earned_no_ledger_yet": battlepassClaimEarned,
+	}
+	got := battlepassRetroactiveGrantTiers(claimed)
+	if len(got) != 1 || got[0] != "earned_no_ledger_yet" {
+		t.Fatalf("battlepassRetroactiveGrantTiers = %v, want only [earned_no_ledger_yet]", got)
+	}
+}
+
+// TestBattlepassAutoGrantEnabledLater_RetroactivelyEnqueuesAlreadyEarnedTier
+// covers the actual reported bug: a tier earned while auto-grant was off (so
+// it was never enqueued on the grant ledger) must get enqueued once
+// auto-grant turns on, even though the tick that discovers this doesn't
+// newly satisfy any tier — level:5 stays at the same level, so it never
+// re-enters `unclaimed`.
+func TestBattlepassAutoGrantEnabledLater_RetroactivelyEnqueuesAlreadyEarnedTier(t *testing.T) {
+	s := seededEngineStore(t)
+	// Simulate a tier earned before auto-grant was ever enabled: recorded
+	// directly on battlepass_claims with no matching grant-ledger row, exactly
+	// what evaluateBattlepassPlayer produced while autoGrant was false.
+	if err := s.recordClaim("level:5", 1, 10, battlepassClaimEarned); err != nil {
+		t.Fatalf("recordClaim: %v", err)
+	}
+	if err := s.markBaselined(1); err != nil {
+		t.Fatalf("markBaselined: %v", err)
+	}
+
+	players := []battlepassPlayer{{AccountID: 1, PawnID: 100, Name: "Paul", Level: 5, Online: false}}
+	deps := mockBattlepassDeps(players, map[int64][]string{}, map[int64][]string{})
+
+	// Auto-grant is now on. Nothing newly unlocks this pass — the pre-existing
+	// earned claim must still be enqueued.
+	if err := evaluateBattlepassTick(context.Background(), deps, s, true, true, 0); err != nil {
+		t.Fatalf("evaluateBattlepassTick: %v", err)
+	}
+
+	due, err := s.listRetryableGrantLedger(time.Now())
+	if err != nil {
+		t.Fatalf("listRetryableGrantLedger: %v", err)
+	}
+	if len(due) != 1 || due[0].TierKey != "level:5" || due[0].AccountID != 1 {
+		t.Fatalf("want 1 retroactively-enqueued pending grant for level:5/1, got %+v", due)
+	}
+}
+
+// TestBattlepassAutoGrantOff_DoesNotRetroactivelyEnqueue guards against the
+// fix over-firing: with auto-grant off, an already-earned tier must not gain
+// a ledger row (it stays manual-only, matching pre-#259/#280 behaviour).
+func TestBattlepassAutoGrantOff_DoesNotRetroactivelyEnqueue(t *testing.T) {
+	s := seededEngineStore(t)
+	if err := s.recordClaim("level:5", 1, 10, battlepassClaimEarned); err != nil {
+		t.Fatalf("recordClaim: %v", err)
+	}
+	if err := s.markBaselined(1); err != nil {
+		t.Fatalf("markBaselined: %v", err)
+	}
+
+	players := []battlepassPlayer{{AccountID: 1, PawnID: 100, Name: "Paul", Level: 5}}
+	deps := mockBattlepassDeps(players, map[int64][]string{}, map[int64][]string{})
+
+	if err := evaluateBattlepassTick(context.Background(), deps, s, true, false, 0); err != nil {
+		t.Fatalf("evaluateBattlepassTick: %v", err)
+	}
+
+	due, err := s.listRetryableGrantLedger(time.Now())
+	if err != nil {
+		t.Fatalf("listRetryableGrantLedger: %v", err)
+	}
+	if len(due) != 0 {
+		t.Fatalf("want 0 pending grants with auto-grant off, got %+v", due)
+	}
+}
+
 func TestClampBattlepassInterval(t *testing.T) {
 	if got := clampBattlepassInterval(0); got != 60*time.Second {
 		t.Errorf("default interval = %v, want 60s", got)

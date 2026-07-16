@@ -4641,6 +4641,26 @@ func intelAtLevel(level int) int64 {
 	}
 }
 
+// errPlayerOnline classifies a checkPlayerOfflinePool failure as "the player
+// is online" specifically, as opposed to a genuine error (DB failure, etc).
+// Callers that can defer instead of failing outright — the battlepass
+// auto-grant loop (#259/#280) — use errors.Is(err, errPlayerOnline) to retry
+// on a short backoff without spending one of their limited attempts.
+var errPlayerOnline = errors.New("player is online")
+
+// playerOnlineError is returned by checkPlayerOfflinePool when the player is
+// online. Its Error() text is the existing admin-facing message; Is lets
+// callers classify it via errors.Is(err, errPlayerOnline) without changing
+// that message (many call sites — giveItems, blueprints, welcome packages —
+// surface .Error() directly to the operator).
+type playerOnlineError struct{ status string }
+
+func (e *playerOnlineError) Error() string {
+	return fmt.Sprintf("player is currently %s — log out first, then apply the edit", e.status)
+}
+
+func (e *playerOnlineError) Is(target error) bool { return target == errPlayerOnline }
+
 // checkPlayerOffline returns an error if the player is currently online.
 // playerID is the pawn actor ID (PlayerCharacter).
 func checkPlayerOffline(ctx context.Context, pool *pgxpool.Pool, playerID int64) error {
@@ -4662,7 +4682,7 @@ func checkPlayerOfflinePool(ctx context.Context, pool *pgxpool.Pool, playerID in
 		return fmt.Errorf("could not check online status: %w", err)
 	}
 	if status != "Offline" {
-		return fmt.Errorf("player is currently %s — log out first, then apply the edit", status)
+		return &playerOnlineError{status: status}
 	}
 	return nil
 }

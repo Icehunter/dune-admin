@@ -3,9 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
+
+// battlepassOnlineRetryBackoff is the short backoff used when a grant attempt
+// fails only because the player is online (#259/#280) — a frequent, expected
+// condition distinct from a genuine delivery failure, so it retries quickly
+// via recordGrantLedgerRetryLater rather than the standard 24h/3-attempt
+// failure policy.
+const battlepassOnlineRetryBackoff = 5 * time.Minute
 
 // battlepass_grant_engine.go implements battlepass auto-grant (#197): the
 // feature-specific delivery + ledger recording that the shared deferred-grant
@@ -52,8 +60,16 @@ func attemptBattlepassGrant(ctx context.Context, store *battlepassStore, deps ba
 }
 
 // recordBattlepassGrantFailure records a failed attempt on the ledger, logging
-// (but not surfacing) a ledger write error.
+// (but not surfacing) a ledger write error. An "online" failure is deferred on
+// a short backoff without consuming an attempt (#259/#280); any other failure
+// uses the standard failure policy (24h backoff, counts toward exhaustion).
 func recordBattlepassGrantFailure(store *battlepassStore, tierKey string, accountID int64, cause error) {
+	if errors.Is(cause, errPlayerOnline) {
+		if recErr := store.recordGrantLedgerRetryLater(tierKey, accountID, cause.Error(), battlepassOnlineRetryBackoff); recErr != nil {
+			componentLog("battlepass").Error().Int64("account_id", accountID).Str("tier_key", tierKey).Err(recErr).Msg("record grant retry-later failed")
+		}
+		return
+	}
 	if recErr := store.recordGrantLedgerFailure(tierKey, accountID, cause.Error()); recErr != nil {
 		componentLog("battlepass").Error().Int64("account_id", accountID).Str("tier_key", tierKey).Err(recErr).Msg("record grant failure failed")
 	}

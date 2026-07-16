@@ -130,6 +130,48 @@ func TestAttemptBattlepassGrant_ExhaustsAfterMaxAttempts(t *testing.T) {
 	}
 }
 
+// TestAttemptBattlepassGrant_OnlineFailureRetriesWithoutExhausting covers the
+// #259/#280 fix: when awardIntel fails specifically because the player is
+// online (errPlayerOnline), the ledger must retry on a short backoff and
+// never exhaust — many consecutive online-failures (far more than
+// deferredGrantMaxAttempts) must still leave the row retryable.
+func TestAttemptBattlepassGrant_OnlineFailureRetriesWithoutExhausting(t *testing.T) {
+	s := openMemBattlepassStore(t)
+	seedEarnedTier(t, s, "tier_online", 500, 40)
+
+	deps := noopBattlepassGrantDeps()
+	deps.resolveGrantTarget = func(_ context.Context, _ int64) (int64, error) { return 1, nil }
+	deps.awardIntel = func(_ context.Context, _, _ int64) error { return errPlayerOnline }
+
+	for i := 0; i < deferredGrantMaxAttempts+5; i++ {
+		if err := attemptBattlepassGrant(context.Background(), s, deps, "tier_online", 500); err == nil {
+			t.Fatalf("attempt %d: want error while player is online", i)
+		}
+	}
+
+	// Still retryable after far more "failures" than deferredGrantMaxAttempts
+	// would normally tolerate — online is not a real failure.
+	due, err := s.listRetryableGrantLedger(time.Now().Add(24 * time.Hour))
+	if err != nil {
+		t.Fatalf("listRetryableGrantLedger: %v", err)
+	}
+	if len(due) != 1 || due[0].TierKey != "tier_online" {
+		t.Fatalf("want tier_online still retryable, got %+v", due)
+	}
+	if due[0].Attempts != 0 {
+		t.Errorf("attempts = %d, want 0 — online failures must not consume attempts", due[0].Attempts)
+	}
+
+	// The player finally logs out: the very next attempt succeeds.
+	deps.awardIntel = func(_ context.Context, _, amount int64) error { return nil }
+	if err := attemptBattlepassGrant(context.Background(), s, deps, "tier_online", 500); err != nil {
+		t.Fatalf("attempt after logout: %v", err)
+	}
+	if due, _ := s.listRetryableGrantLedger(time.Now().Add(100 * deferredGrantRetryBackoff)); len(due) != 0 {
+		t.Errorf("want 0 retryable after success, got %d", len(due))
+	}
+}
+
 func TestBattlepassGrantSource_DrivesRetryLoop(t *testing.T) {
 	s := openMemBattlepassStore(t)
 	seedEarnedTier(t, s, "tier_loop", 400, 25)

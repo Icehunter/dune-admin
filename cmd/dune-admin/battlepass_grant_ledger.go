@@ -121,6 +121,32 @@ func (s *battlepassStore) recordGrantLedgerFailure(tierKey string, accountID int
 	return nil
 }
 
+// recordGrantLedgerRetryLater defers a grant attempt without counting it
+// toward deferredGrantMaxAttempts. Used specifically when delivery failed
+// because the player is online (#259/#280): that is an expected, frequent
+// condition rather than a real failure, and the standard 24h/3-attempt
+// failure policy would exhaust the row — forcing a manual grant — long
+// before a player who stays online for hours ever logs out. attempts and
+// status are deliberately left untouched on conflict.
+func (s *battlepassStore) recordGrantLedgerRetryLater(tierKey string, accountID int64, errMsg string, backoff time.Duration) error {
+	now := time.Now().UTC()
+	nowStr := now.Format(time.RFC3339)
+	nextStr := now.Add(backoff).Format(time.RFC3339)
+	_, err := s.db.Exec(`
+		INSERT INTO battlepass_grant_ledger
+			(server_id, tier_key, account_id, status, attempts, last_error, next_attempt_at, updated_at)
+		VALUES (?, ?, ?, ?, 0, ?, ?, ?)
+		ON CONFLICT(server_id, tier_key, account_id) DO UPDATE SET
+			last_error      = excluded.last_error,
+			next_attempt_at = excluded.next_attempt_at,
+			updated_at      = excluded.updated_at`,
+		s.serverID, tierKey, accountID, battlepassGrantPending, errMsg, nextStr, nowStr)
+	if err != nil {
+		return fmt.Errorf("record battlepass grant retry-later %s/%d: %w", tierKey, accountID, err)
+	}
+	return nil
+}
+
 // listRetryableGrantLedger returns pending grant-ledger rows whose backoff
 // window has elapsed (next_attempt_at <= now, empty = due) and which still have
 // attempts remaining. A fresh pending row (empty next_attempt_at) sorts first

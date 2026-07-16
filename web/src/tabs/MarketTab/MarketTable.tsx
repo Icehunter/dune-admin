@@ -38,6 +38,7 @@ export const MarketTable: React.FC<MarketTableProps> = ({ items, onSelect }) => 
       aria-label={t('market.table.ariaLabel')}
       className="min-h-0 max-h-full"
       rowHeight={56}
+      pageSize={100}
       columns={COLUMNS}
       rows={items}
       rowId={(it) => `${it.template_id}:${it.quality}`}

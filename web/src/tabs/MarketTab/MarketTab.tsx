@@ -15,6 +15,7 @@ import { MarketGrid } from './MarketGrid'
 import { ViewToggle } from './ViewToggle'
 import { ItemDetail } from './ItemDetail'
 import { BotControlPanel } from './bot/BotControlPanel'
+import { fetchAllMarketItems } from './helpers'
 
 const DEFAULT_FILTERS: MarketFilters = { search: '', category: '', owner: '' }
 
@@ -47,7 +48,7 @@ export const MarketTab: React.FC = () => {
       .then(() => setLoading(true))
       .then(() =>
         Promise.all([
-          api.market.items({
+          fetchAllMarketItems(api.market.items, {
             search: filters.search || undefined,
             category: filters.category || undefined,
             owner: filters.owner || undefined,
@@ -55,8 +56,8 @@ export const MarketTab: React.FC = () => {
           categoriesRef.current.length === 0 ? api.market.categories() : Promise.resolve(categoriesRef.current),
         ]),
       )
-      .then(([res, cats]) => {
-        setItems(res.items)
+      .then(([fetchedItems, cats]) => {
+        setItems(fetchedItems)
         if (categoriesRef.current.length === 0) {
           categoriesRef.current = cats
           setCategories(cats)

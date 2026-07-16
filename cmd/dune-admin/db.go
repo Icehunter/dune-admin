@@ -6036,10 +6036,14 @@ func cmdListStorageContainers(pool *pgxpool.Pool) Msg {
 	// Drive from dune.placeables so we catch player-built containers regardless
 	// of whether they've been promoted to an actor row yet (the game creates the
 	// actor lazily on first interaction). building_type is the in-data identity
-	// of the placeable kind; the four below cover the storage-container tiers,
+	// of the placeable kind; the six below cover the storage-container tiers,
 	// noting that "Small Storage Container" registers as SpiceSilo_Placeable
 	// despite sharing the type name with world POI silos — owner_entity_id
-	// distinguishes player-built from world-spawned.
+	// distinguishes player-built from world-spawned. Totem_Placeable /
+	// Totem_Small_Placeable are the Advanced Sub-Fief Console / Sub-Fief
+	// Console — Patch 1.2 gave sub-fiefs their own storage compartment, which
+	// lives on the console's own inventory (same actor_id-keyed join as any
+	// other container, confirmed against a live server) (#263).
 	// User-given container names live on dune.permission_actor.actor_name.
 	// Unnamed containers default to 'None' or '##<PlaceableType>_Placeable' —
 	// filter both out so only real custom names surface.
@@ -6068,7 +6072,9 @@ func cmdListStorageContainers(pool *pgxpool.Pool) Msg {
 		    'SpiceSilo_Placeable',
 		    'GenericContainer_Placeable',
 		    'StorageContainer_Placeable',
-		    'MediumStorageContainer_Placeable'
+		    'MediumStorageContainer_Placeable',
+		    'Totem_Placeable',
+		    'Totem_Small_Placeable'
 		  )
 		  AND p.is_hologram = false
 		  AND p.owner_entity_id IS NOT NULL

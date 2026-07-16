@@ -2231,7 +2231,7 @@ func cmdDeleteItem(pool *pgxpool.Pool, itemID int64) Cmd {
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("delete item: %w", err)}
 		}
-		return msgMutate{ok: fmt.Sprintf("Deleted item %d", itemID)}
+		return msgMutate{ok: fmt.Sprintf("Deleted item %d — relog to see in-game", itemID)}
 	}
 }
 

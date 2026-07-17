@@ -150,7 +150,7 @@ func (c *ampAPIClient) setConfig(node, value string) error {
 	if err != nil {
 		return err
 	}
-	if err := parseActionResult(node, resp); err != nil {
+	if err := parseActionResult("SetConfig", node, resp); err != nil {
 		if !isSessionError(err) {
 			return err
 		}
@@ -168,7 +168,7 @@ func (c *ampAPIClient) setConfig(node, value string) error {
 		if err != nil {
 			return err
 		}
-		return parseActionResult(node, resp)
+		return parseActionResult("SetConfig", node, resp)
 	}
 	return nil
 }
@@ -207,7 +207,7 @@ func (c *ampAPIClient) postUpdate() (string, error) {
 	if strings.TrimSpace(resp) == "" {
 		return resp, nil
 	}
-	if err := parseActionResult("Core/UpdateApplication", resp); err != nil {
+	if err := parseActionResult("UpdateApplication", "", resp); err != nil {
 		return "", err
 	}
 	return resp, nil
@@ -271,31 +271,42 @@ func (c *ampAPIClient) getConfig(node string) (string, error) {
 	return jsonScalarToString(result.CurrentValue), nil
 }
 
-// parseActionResult interprets an AMP SetConfig response, which is either an
-// ActionResult object ({"Status":bool,"Reason":string}) or — on some AMP
-// versions — a bare JSON bool. A missing Status is treated as success (older
-// builds return {} when the write succeeds).
-func parseActionResult(node, resp string) error {
+// parseActionResult interprets an AMP action response (SetConfig,
+// UpdateApplication, ...), which is either an ActionResult object
+// ({"Status":bool,"Reason":string}) or — on some AMP versions — a bare JSON
+// bool. A missing Status is treated as success (older builds return {} when
+// the write succeeds).
+//
+// action names the caller's operation for the error text (e.g. "SetConfig",
+// "UpdateApplication"); node is an optional secondary identifier (the config
+// node path for SetConfig) appended when non-empty. Every call site must pass
+// its own action — reusing another caller's label produces a misleading error
+// (e.g. an UpdateApplication rejection must not say "SetConfig").
+func parseActionResult(action, node, resp string) error {
+	label := action
+	if node != "" {
+		label = action + " " + node
+	}
 	trimmed := strings.TrimSpace(resp)
 	switch trimmed {
 	case "true":
 		return nil
 	case "false":
-		return fmt.Errorf("amp api SetConfig %s: rejected", node)
+		return fmt.Errorf("amp api %s: rejected", label)
 	}
 	var result struct {
 		Status *bool  `json:"Status"`
 		Reason string `json:"Reason"`
 	}
 	if err := json.Unmarshal([]byte(extractJSONObject(trimmed)), &result); err != nil {
-		return fmt.Errorf("amp api SetConfig %s: decode response: %w (output: %s)", node, err, trimmed)
+		return fmt.Errorf("amp api %s: decode response: %w (output: %s)", label, err, trimmed)
 	}
 	if result.Status != nil && !*result.Status {
 		reason := result.Reason
 		if reason == "" {
 			reason = "rejected"
 		}
-		return fmt.Errorf("amp api SetConfig %s: %s", node, reason)
+		return fmt.Errorf("amp api %s: %s", label, reason)
 	}
 	return nil
 }

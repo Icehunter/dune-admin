@@ -174,6 +174,10 @@ func stepClock(step time.Duration) func() time.Time {
 	}
 }
 
+// noopCtxSleep is a sleepFn stub that never blocks and never reports
+// cancellation — used by tests that don't care about ctx cancellation.
+func noopCtxSleep(context.Context, time.Duration) error { return nil }
+
 // TestWaitForUpdateThenRestart_WaitsForTaskToClear verifies the watcher restarts
 // only after the AMP update task has appeared and then cleared.
 func TestWaitForUpdateThenRestart_WaitsForTaskToClear(t *testing.T) {
@@ -189,8 +193,8 @@ func TestWaitForUpdateThenRestart_WaitsForTaskToClear(t *testing.T) {
 		return n, nil
 	}
 	restarted := false
-	err := waitForUpdateThenRestart(statusFn, func() error { restarted = true; return nil },
-		func(time.Duration) {}, stepClock(ampUpdatePollInterval))
+	err := waitForUpdateThenRestart(context.Background(), statusFn, func() error { restarted = true; return nil },
+		noopCtxSleep, stepClock(ampUpdatePollInterval))
 	if err != nil {
 		t.Fatalf("waitForUpdateThenRestart: %v", err)
 	}
@@ -209,9 +213,10 @@ func TestWaitForUpdateThenRestart_RestartsIfTaskNeverAppears(t *testing.T) {
 	t.Parallel()
 	restarted := false
 	err := waitForUpdateThenRestart(
+		context.Background(),
 		func() (int, error) { return 0, nil },
 		func() error { restarted = true; return nil },
-		func(time.Duration) {},
+		noopCtxSleep,
 		stepClock(ampUpdateAppearGrace), // each poll jumps a full grace window
 	)
 	if err != nil {
@@ -228,9 +233,10 @@ func TestWaitForUpdateThenRestart_RestartsAtMaxWait(t *testing.T) {
 	t.Parallel()
 	restarted := false
 	err := waitForUpdateThenRestart(
+		context.Background(),
 		func() (int, error) { return 1, nil }, // task never clears
 		func() error { restarted = true; return nil },
-		func(time.Duration) {},
+		noopCtxSleep,
 		stepClock(ampUpdateMaxWait), // blow past the cap on the second poll
 	)
 	if err != nil {
@@ -246,13 +252,50 @@ func TestWaitForUpdateThenRestart_RestartsAtMaxWait(t *testing.T) {
 func TestWaitForUpdateThenRestart_PropagatesRestartError(t *testing.T) {
 	t.Parallel()
 	err := waitForUpdateThenRestart(
+		context.Background(),
 		func() (int, error) { return 0, nil },
 		func() error { return errors.New("restart boom") },
-		func(time.Duration) {},
+		noopCtxSleep,
 		stepClock(ampUpdateAppearGrace),
 	)
 	if err == nil || !strings.Contains(err.Error(), "restart boom") {
 		t.Fatalf("expected restart error to propagate, got: %v", err)
+	}
+}
+
+// TestWaitForUpdateThenRestart_CtxCancelledStopsWithoutRestart verifies that
+// when the caller's context is cancelled mid-poll, the loop returns the
+// cancellation error immediately and does NOT restart the container — a
+// cancelled watcher (e.g. dune-admin shutting down) must not still fire a
+// container restart behind the operator's back.
+func TestWaitForUpdateThenRestart_CtxCancelledStopsWithoutRestart(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	polls := 0
+	statusFn := func() (int, error) {
+		polls++
+		return 1, nil // task never clears on its own — only cancellation ends this
+	}
+	cancelOnFirstSleep := func(ctx context.Context, _ time.Duration) error {
+		cancel()
+		return ctx.Err()
+	}
+	restarted := false
+	err := waitForUpdateThenRestart(
+		ctx,
+		statusFn,
+		func() error { restarted = true; return nil },
+		cancelOnFirstSleep,
+		stepClock(time.Second), // small steps so grace/max-wait never trip first
+	)
+	if err == nil || !errors.Is(err, context.Canceled) {
+		t.Fatalf("waitForUpdateThenRestart error = %v, want context.Canceled", err)
+	}
+	if restarted {
+		t.Error("a cancelled watcher must not restart the container")
+	}
+	if polls != 1 {
+		t.Errorf("polls = %d, want exactly 1 (loop must stop right after cancellation)", polls)
 	}
 }
 
@@ -310,7 +353,9 @@ func TestAmpExecCommand_UpdateMissingCredentials(t *testing.T) {
 
 // TestAmpExecCommand_UpdateRejectionPropagates verifies an AMP ActionResult
 // rejection (e.g. already up to date) surfaces its reason rather than being
-// swallowed.
+// swallowed, and names the actual failing action rather than the mislabeled
+// "SetConfig" (parseActionResult is shared with setConfig; postUpdate must
+// pass its own action label instead of inheriting setConfig's).
 func TestAmpExecCommand_UpdateRejectionPropagates(t *testing.T) {
 	t.Parallel()
 	exec := &fnExecutor{fn: func(cmd string) (string, error) {
@@ -325,6 +370,12 @@ func TestAmpExecCommand_UpdateRejectionPropagates(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "already up to date") {
 		t.Errorf("error should surface the AMP reason, got: %v", err)
+	}
+	if strings.Contains(err.Error(), "SetConfig") {
+		t.Errorf("update error must not say SetConfig (wrong action), got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "UpdateApplication") {
+		t.Errorf("update error should name UpdateApplication as the failing action, got: %v", err)
 	}
 }
 

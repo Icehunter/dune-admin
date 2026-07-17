@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -348,20 +349,49 @@ func (c *ampControl) kickAfterUpdateRestart(client *ampAPIClient, exec Executor)
 
 // watchUpdateAndRestart waits for the AMP update to finish, then restarts the
 // container. It logs its own outcome (fire-and-forget goroutine).
+//
+// Deliberately uses its own context.Background()-derived lifetime rather than
+// the ExecCommand request's context: the HTTP handler returns almost
+// immediately after kicking this off (that's the whole point — the update can
+// take minutes), so the request's context would be cancelled within
+// milliseconds and kill the watcher before it ever polled once. This mirrors
+// how every other long-running background loop in this codebase manages its
+// own lifetime independently of any triggering request (see
+// applyBattlepassEngine/stopBattlepassEngine in battlepass_engine.go). Wiring
+// an actual shutdown-triggered cancellation (so dune-admin's own graceful
+// shutdown can interrupt a pending watcher cleanly) is a natural follow-up —
+// out of scope here; today ctx cancellation makes the poll loop correctly
+// interruptible and testable, but nothing yet calls cancel() in production.
 func (c *ampControl) watchUpdateAndRestart(client *ampAPIClient, exec Executor) {
 	log := componentLog("control_amp")
 	log.Info().Msg("update kicked off; waiting for the AMP update task to finish, then restarting the container")
 	err := waitForUpdateThenRestart(
+		context.Background(),
 		client.runningTaskCount,
 		func() error { _, e := c.restartGame(exec); return e },
-		time.Sleep,
+		ctxSleep,
 		now,
 	)
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			log.Warn().Err(err).Msg("post-update watcher cancelled before the container restart — recover manually via Server Control → Restart")
+			return
+		}
 		log.Error().Err(err).Msg("post-update container restart failed — recover manually via Server Control → Restart")
 		return
 	}
 	log.Info().Msg("post-update container restart complete")
+}
+
+// ctxSleep is the production sleepFn for waitForUpdateThenRestart: it sleeps
+// for d, or returns early with ctx.Err() if ctx is cancelled first.
+func ctxSleep(ctx context.Context, d time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(d):
+		return nil
+	}
 }
 
 // waitForUpdateThenRestart polls statusFn (AMP running-task count) until the
@@ -369,8 +399,10 @@ func (c *ampControl) watchUpdateAndRestart(client *ampAPIClient, exec Executor) 
 // ever appears within ampUpdateAppearGrace it restarts anyway (fast/no-op
 // update); ampUpdateMaxWait caps the total wait so a task that never clears still
 // recovers. sleepFn/nowFn are injected for testing. Best-effort: transient
-// statusFn errors are ignored (they don't count as "cleared").
-func waitForUpdateThenRestart(statusFn func() (int, error), restartFn func() error, sleepFn func(time.Duration), nowFn func() time.Time) error {
+// statusFn errors are ignored (they don't count as "cleared"). If ctx is
+// cancelled while waiting, the loop returns ctx's error immediately WITHOUT
+// calling restartFn — a cancelled watcher must not still fire a restart.
+func waitForUpdateThenRestart(ctx context.Context, statusFn func() (int, error), restartFn func() error, sleepFn func(context.Context, time.Duration) error, nowFn func() time.Time) error {
 	start := nowFn()
 	seenTask := false
 	for {
@@ -388,7 +420,9 @@ func waitForUpdateThenRestart(statusFn func() (int, error), restartFn func() err
 		if elapsed >= ampUpdateMaxWait {
 			break // safety cap
 		}
-		sleepFn(ampUpdatePollInterval)
+		if err := sleepFn(ctx, ampUpdatePollInterval); err != nil {
+			return err // cancelled — do not restart
+		}
 	}
 	return restartFn()
 }

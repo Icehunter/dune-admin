@@ -210,6 +210,12 @@ func TestAMPAPISetConfig_StatusFalseIsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "No such node") {
 		t.Errorf("error should surface AMP reason, got: %v", err)
 	}
+	// Regression guard: parseActionResult is shared with postUpdate — a
+	// setConfig failure must still name "SetConfig" (only update's messages
+	// changed to name the correct action).
+	if !strings.Contains(err.Error(), "SetConfig") {
+		t.Errorf("setConfig error should still say SetConfig, got: %v", err)
+	}
 }
 
 func TestAMPAPISetConfig_AcceptsBareBoolResult(t *testing.T) {

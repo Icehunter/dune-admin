@@ -17,8 +17,8 @@ func TestAmpExecCommand_RestartContainerModeCyclesContainer(t *testing.T) {
 	if _, err := c.ExecCommand(context.Background(), exec, "restart"); err != nil {
 		t.Fatalf("restart: %v", err)
 	}
-	if !strings.Contains(exec.cmd, "docker restart AMP_X") {
-		t.Errorf("restart cmd = %q, want 'docker restart AMP_X'", exec.cmd)
+	if !strings.Contains(exec.cmd, "docker restart -t 60 AMP_X") {
+		t.Errorf("restart cmd = %q, want 'docker restart -t 60 AMP_X' (generous stop timeout so the heavy container shuts down gracefully instead of wedging on SIGKILL)", exec.cmd)
 	}
 	if strings.Contains(exec.cmd, "ampinstmgr") {
 		t.Errorf("container restart must not use ampinstmgr (does not reap game procs): %q", exec.cmd)
@@ -34,8 +34,8 @@ func TestAmpExecCommand_RestartContainerModeDefaultsPodman(t *testing.T) {
 	if _, err := c.ExecCommand(context.Background(), exec, "restart"); err != nil {
 		t.Fatalf("restart: %v", err)
 	}
-	if !strings.Contains(exec.cmd, "podman restart AMP_X") {
-		t.Errorf("restart cmd = %q, want 'podman restart AMP_X'", exec.cmd)
+	if !strings.Contains(exec.cmd, "podman restart -t 60 AMP_X") {
+		t.Errorf("restart cmd = %q, want 'podman restart -t 60 AMP_X'", exec.cmd)
 	}
 }
 

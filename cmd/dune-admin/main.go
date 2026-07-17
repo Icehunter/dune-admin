@@ -214,6 +214,18 @@ type appConfig struct {
 	AmpPgLib     string `yaml:"amp_pg_lib"     json:"amp_pg_lib"`
 	AmpBackupDir string `yaml:"amp_backup_dir" json:"amp_backup_dir"`
 
+	// AmpContainerStopTimeout is the seconds `<runtime> restart` waits for a
+	// graceful stop before SIGKILL in container mode. 0 → the built-in default
+	// (ampContainerStopTimeout). The runtime default of 10s is too short for the
+	// game shards + in-container Postgres/RabbitMQ and can leave the container
+	// wedged in "stopping" when podman escalates to SIGKILL.
+	AmpContainerStopTimeout int `yaml:"amp_container_stop_timeout" json:"amp_container_stop_timeout"`
+	// AmpUpdateAutoRestart controls whether an AMP "update" automatically restarts
+	// the container once the SteamCMD update finishes (so it boots on the new
+	// files). nil/unset → true. Set false to have update only trigger the update
+	// and leave restarting to the operator.
+	AmpUpdateAutoRestart *bool `yaml:"amp_update_auto_restart" json:"amp_update_auto_restart"`
+
 	// ── Embedded market bot ────────────────────────────────────────────────
 	// MarketBotEnabled starts the market bot as an in-process goroutine.
 	// Pointer so we can distinguish "unset" (default-on) from "explicitly false".

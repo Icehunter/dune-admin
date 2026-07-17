@@ -120,21 +120,29 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 		if cfg.AmpUseContainer != nil {
 			useContainer = *cfg.AmpUseContainer
 		}
+		// An AMP update auto-restarts the container by default; the operator can
+		// opt out with amp_update_auto_restart: false.
+		updateAutoRestart := true
+		if cfg.AmpUpdateAutoRestart != nil {
+			updateAutoRestart = *cfg.AmpUpdateAutoRestart
+		}
 		return &ampControl{
-			instance:         cfg.AmpInstance,
-			container:        container,
-			ampUser:          user,
-			logPath:          cfg.AmpLogPath,
-			directorURL:      cfg.DirectorURL,
-			iniDir:           cfg.ServerIniDir,
-			useContainer:     useContainer,
-			containerRuntime: cfg.AmpContainerRuntime,
-			dataRoot:         cfg.AmpDataRoot,
-			apiUser:          cfg.AmpAPIUser,
-			apiPass:          cfg.AmpAPIPass,
-			apiPort:          cfg.AmpAPIPort,
-			pgBin:            cfg.AmpPgBin,
-			pgLib:            cfg.AmpPgLib,
+			instance:             cfg.AmpInstance,
+			container:            container,
+			ampUser:              user,
+			logPath:              cfg.AmpLogPath,
+			directorURL:          cfg.DirectorURL,
+			iniDir:               cfg.ServerIniDir,
+			useContainer:         useContainer,
+			containerRuntime:     cfg.AmpContainerRuntime,
+			dataRoot:             cfg.AmpDataRoot,
+			apiUser:              cfg.AmpAPIUser,
+			apiPass:              cfg.AmpAPIPass,
+			apiPort:              cfg.AmpAPIPort,
+			pgBin:                cfg.AmpPgBin,
+			pgLib:                cfg.AmpPgLib,
+			containerStopTimeout: cfg.AmpContainerStopTimeout,
+			updateAutoRestart:    updateAutoRestart,
 		}
 	default:
 		return &localControl{

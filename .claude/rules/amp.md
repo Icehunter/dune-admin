@@ -24,6 +24,8 @@ control: amp
 amp_instance:   DuneAwakening01
 amp_container:  AMP_DuneAwakening01       # default: AMP_<instance>
 amp_container_runtime: podman             # podman (default) | docker
+amp_container_stop_timeout: 60            # restart graceful-stop seconds before SIGKILL (default 60)
+amp_update_auto_restart: true             # auto-restart container after an update finishes (default true)
 amp_user:       amp
 amp_log_path:   /AMP/duneawakening/logs   # in-container log dir
 amp_api_user:   admin                     # AMP panel login — enables gameplay-settings writes
@@ -50,7 +52,7 @@ Use `/usr/bin/docker` instead of `/usr/bin/podman` when `amp_container_runtime: 
 | Method | Implementation |
 | --- | --- |
 | `GetStatus` | Lists `DuneSandboxServer-Linux-Shipping` host processes; reports container DB phase |
-| `ExecCommand` | start/stop: `ampinstmgr -s/-q <amp_instance>`. restart (container): `<runtime> restart <container>` — `ampinstmgr` does NOT reap game procs; container restart is the only way to cycle them |
+| `ExecCommand` | start/stop: `ampinstmgr -s/-q <amp_instance>`. restart (container): `<runtime> restart -t <amp_container_stop_timeout> <container>` — `ampinstmgr` does NOT reap game procs; container restart is the only way to cycle them (generous stop timeout so it doesn't wedge on SIGKILL). update: AMP Web API `Core/UpdateApplication` (SteamCMD), then a background watcher polls `Core/GetStatus` RunningTasks and restarts the container when the update finishes (unless `amp_update_auto_restart: false`) |
 | `writeServerSettings` | AMP Web API `Core/Login` + `Core/SetConfig` (node `Meta.GenericModule.<FieldName>`) via in-container curl; needs `amp_api_*` |
 | `ListProcesses` | Host `ps` for game-server processes, decorated with map/port/partition |
 | `ListLogSources` | `<runtime> exec <container> ls <amp_log_path>` |

@@ -88,6 +88,11 @@ type ServerConfig struct {
 	AmpPgLib            string `yaml:"amp_pg_lib"            json:"amp_pg_lib"`
 	AmpBackupDir        string `yaml:"amp_backup_dir"        json:"amp_backup_dir"`
 
+	// Container-restart stop timeout (seconds; 0 → built-in default) and whether
+	// an AMP update auto-restarts the container when it finishes (nil → true).
+	AmpContainerStopTimeout int   `yaml:"amp_container_stop_timeout" json:"amp_container_stop_timeout"`
+	AmpUpdateAutoRestart    *bool `yaml:"amp_update_auto_restart"    json:"amp_update_auto_restart"`
+
 	// Director proxy.
 	DirectorURL string `yaml:"director_url" json:"director_url"`
 

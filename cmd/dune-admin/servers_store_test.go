@@ -78,6 +78,45 @@ func TestServersStore_GetUpdateDelete(t *testing.T) {
 	}
 }
 
+// TestServersStore_RoundTripsAmpUpdateFields guards the DB column plumbing for
+// the two AMP update/restart knobs: a mis-ordered column would silently scramble
+// their values. It checks both a set config and the unset (default) case.
+func TestServersStore_RoundTripsAmpUpdateFields(t *testing.T) {
+	db := openMemUnifiedStore(t)
+	s := newServersStore(db)
+
+	no := false
+	id, err := s.insertServer(ServerConfig{
+		Name: "amp", Control: "amp", AmpInstance: "Dune01",
+		AmpContainerStopTimeout: 90,
+		AmpUpdateAutoRestart:    &no,
+	}, 0)
+	if err != nil {
+		t.Fatalf("insertServer: %v", err)
+	}
+	got, ok, err := s.getServer(id)
+	if err != nil || !ok {
+		t.Fatalf("getServer: ok=%v err=%v", ok, err)
+	}
+	if got.AmpContainerStopTimeout != 90 {
+		t.Errorf("AmpContainerStopTimeout = %d, want 90 (column mis-order?)", got.AmpContainerStopTimeout)
+	}
+	if got.AmpUpdateAutoRestart == nil || *got.AmpUpdateAutoRestart {
+		t.Errorf("AmpUpdateAutoRestart = %v, want non-nil false", got.AmpUpdateAutoRestart)
+	}
+
+	// Unset must round-trip as nil / 0 so config defaults (auto-restart on, 60s)
+	// apply at construction.
+	id2, _ := s.insertServer(ServerConfig{Name: "amp2", Control: "amp"}, 1)
+	got2, _, _ := s.getServer(id2)
+	if got2.AmpUpdateAutoRestart != nil {
+		t.Errorf("unset AmpUpdateAutoRestart = %v, want nil", got2.AmpUpdateAutoRestart)
+	}
+	if got2.AmpContainerStopTimeout != 0 {
+		t.Errorf("unset AmpContainerStopTimeout = %d, want 0", got2.AmpContainerStopTimeout)
+	}
+}
+
 func TestServersStore_HasAnyAndNextPosition(t *testing.T) {
 	db := openMemUnifiedStore(t)
 	s := newServersStore(db)

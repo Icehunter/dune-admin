@@ -69,6 +69,13 @@ server_ini_dir: /home/amp/.ampdata/instances/DuneAwakening01/duneawakening/serve
 # Optional:
 amp_use_container: true
 amp_container_runtime: docker   # podman (default) | docker — match your AMP container backend
+amp_container_stop_timeout: 60  # seconds to wait for a graceful stop on restart before SIGKILL
+                                # (default 60). The runtime default of 10s is too short for the
+                                # game shards + in-container Postgres/RabbitMQ and can wedge the
+                                # container in "stopping"; raise it if your stack stops slowly.
+amp_update_auto_restart: true   # default true — after a Server Control "Update", automatically
+                                # restart the container once SteamCMD finishes so it boots on the
+                                # new files. Set false to trigger the update only and restart manually.
 amp_data_root: /AMP/duneawakening
 director_url: http://127.0.0.1:11717
 broker_exec_prefix: "sudo -i -u amp podman exec AMP_DuneAwakening01"

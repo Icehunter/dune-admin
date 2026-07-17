@@ -150,7 +150,7 @@ func (c *ampAPIClient) setConfig(node, value string) error {
 	if err != nil {
 		return err
 	}
-	if err := parseActionResult(node, resp); err != nil {
+	if err := parseActionResult("SetConfig", node, resp); err != nil {
 		if !isSessionError(err) {
 			return err
 		}
@@ -168,9 +168,85 @@ func (c *ampAPIClient) setConfig(node, value string) error {
 		if err != nil {
 			return err
 		}
-		return parseActionResult(node, resp)
+		return parseActionResult("SetConfig", node, resp)
 	}
 	return nil
+}
+
+// updateApplication triggers AMP's game-server update via Core/UpdateApplication
+// on the instance — the SteamCMD app_update AMP runs from its dashboard "Update"
+// button. AMP performs the update as a background task and returns a RunningTask
+// object; this returns the raw response once the task is accepted. Like
+// setConfig, a stale cached session triggers one re-login and retry.
+func (c *ampAPIClient) updateApplication() (string, error) {
+	resp, err := c.postUpdate()
+	if err == nil || !isSessionError(err) {
+		return resp, err
+	}
+	// Session expired — force re-login and retry once.
+	c.sessionID = ""
+	if _, lerr := c.login(); lerr != nil {
+		return "", lerr
+	}
+	return c.postUpdate()
+}
+
+// postUpdate performs one Core/UpdateApplication call against the current
+// session and interprets the response. An empty body (void return on some AMP
+// builds), a bare {}, or a RunningTask object is success; a {"Status":false}
+// ActionResult is surfaced as an error.
+func (c *ampAPIClient) postUpdate() (string, error) {
+	sid, err := c.ensureSession()
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.post("Core/UpdateApplication", map[string]any{"SESSIONID": sid})
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(resp) == "" {
+		return resp, nil
+	}
+	if err := parseActionResult("UpdateApplication", "", resp); err != nil {
+		return "", err
+	}
+	return resp, nil
+}
+
+// runningTaskCount returns how many tasks AMP reports running on the instance
+// (Core/GetStatus → RunningTasks). The post-update watcher polls this to wait out
+// a SteamCMD update before restarting the container. Re-logs in once on session
+// expiry, like the other calls.
+func (c *ampAPIClient) runningTaskCount() (int, error) {
+	n, err := c.getStatusRunningTasks()
+	if err == nil || !isSessionError(err) {
+		return n, err
+	}
+	c.sessionID = ""
+	if _, lerr := c.login(); lerr != nil {
+		return 0, lerr
+	}
+	return c.getStatusRunningTasks()
+}
+
+// getStatusRunningTasks performs one Core/GetStatus call and returns the length
+// of its RunningTasks array.
+func (c *ampAPIClient) getStatusRunningTasks() (int, error) {
+	sid, err := c.ensureSession()
+	if err != nil {
+		return 0, err
+	}
+	resp, err := c.post("Core/GetStatus", map[string]any{"SESSIONID": sid})
+	if err != nil {
+		return 0, err
+	}
+	var result struct {
+		RunningTasks []json.RawMessage `json:"RunningTasks"`
+	}
+	if err := json.Unmarshal([]byte(extractJSONObject(resp)), &result); err != nil {
+		return 0, fmt.Errorf("amp api GetStatus: decode response: %w (output: %s)", err, resp)
+	}
+	return len(result.RunningTasks), nil
 }
 
 // getConfig reads a single AMP config node's current value.
@@ -195,31 +271,42 @@ func (c *ampAPIClient) getConfig(node string) (string, error) {
 	return jsonScalarToString(result.CurrentValue), nil
 }
 
-// parseActionResult interprets an AMP SetConfig response, which is either an
-// ActionResult object ({"Status":bool,"Reason":string}) or — on some AMP
-// versions — a bare JSON bool. A missing Status is treated as success (older
-// builds return {} when the write succeeds).
-func parseActionResult(node, resp string) error {
+// parseActionResult interprets an AMP action response (SetConfig,
+// UpdateApplication, ...), which is either an ActionResult object
+// ({"Status":bool,"Reason":string}) or — on some AMP versions — a bare JSON
+// bool. A missing Status is treated as success (older builds return {} when
+// the write succeeds).
+//
+// action names the caller's operation for the error text (e.g. "SetConfig",
+// "UpdateApplication"); node is an optional secondary identifier (the config
+// node path for SetConfig) appended when non-empty. Every call site must pass
+// its own action — reusing another caller's label produces a misleading error
+// (e.g. an UpdateApplication rejection must not say "SetConfig").
+func parseActionResult(action, node, resp string) error {
+	label := action
+	if node != "" {
+		label = action + " " + node
+	}
 	trimmed := strings.TrimSpace(resp)
 	switch trimmed {
 	case "true":
 		return nil
 	case "false":
-		return fmt.Errorf("amp api SetConfig %s: rejected", node)
+		return fmt.Errorf("amp api %s: rejected", label)
 	}
 	var result struct {
 		Status *bool  `json:"Status"`
 		Reason string `json:"Reason"`
 	}
 	if err := json.Unmarshal([]byte(extractJSONObject(trimmed)), &result); err != nil {
-		return fmt.Errorf("amp api SetConfig %s: decode response: %w (output: %s)", node, err, trimmed)
+		return fmt.Errorf("amp api %s: decode response: %w (output: %s)", label, err, trimmed)
 	}
 	if result.Status != nil && !*result.Status {
 		reason := result.Reason
 		if reason == "" {
 			reason = "rejected"
 		}
-		return fmt.Errorf("amp api SetConfig %s: %s", node, reason)
+		return fmt.Errorf("amp api %s: %s", label, reason)
 	}
 	return nil
 }

@@ -155,3 +155,10 @@ export interface ItemDetailDrawerProps {
   name?: string | undefined
   onClose: () => void
 }
+
+export interface RestoreProgressModalProps {
+  /** Opens the dialog and starts polling the restore job status. */
+  open: boolean
+  /** Called when the user closes the dialog after the job reaches a terminal state. */
+  onClose: () => void
+}

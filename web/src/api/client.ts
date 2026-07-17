@@ -462,6 +462,32 @@ export type DBBackupFile = {
   size_bytes: number
   modified: string
 }
+export type RestoreStep = {
+  key: string
+  status: 'pending' | 'running' | 'done' | 'skipped' | 'failed'
+}
+export type RestoreStatus = {
+  running: boolean
+  done: boolean
+  failed: boolean
+  file: string
+  steps: RestoreStep[]
+  error: string
+  output: string
+  ignored_errors: number
+  servers_stopped: boolean
+}
+export type CharacterBackup = {
+  id: number
+  account_id: number
+  fls_id: string
+  character_name: string
+  action: string
+  reason: string
+  file_path: string
+  patches_checksum: string
+  created_at: string
+}
 export type BackupRule = {
   days: number[] // 0=Sun .. 6=Sat
   time: string // "HH:MM"
@@ -1144,7 +1170,7 @@ export const api = {
       }
       return res.json()
     },
-    restore: (file: string) => req<BGOutput>('POST', '/battlegroup/restore', { file }),
+    restore: (file: string) => req<{ ok: string }>('POST', '/battlegroup/restore', { file }),
   },
 
   players: {
@@ -1178,32 +1204,15 @@ export const api = {
     awardIntel: (player_id: number, amount: number) =>
       req<MutateResult>('POST', '/players/award-intel', { player_id, amount }),
     rename: (account_id: number, name: string) => req<MutateResult>('POST', '/players/rename', { account_id, name }),
-    deleteCharacter: (account_id: number, reason: string) =>
-      req<MutateResult>('POST', '/players/delete', { account_id, reason }),
+    deleteCharacter: (account_id: number, reason: string, character_name: string, backup: boolean) =>
+      req<MutateResult>('POST', '/players/delete', { account_id, reason, character_name, backup }),
     tags: (account_id: number) => req<string[]>('GET', `/players/${account_id}/tags`),
     updateTags: (account_id: number, add: string[], remove: string[]) => req<MutateResult>('POST', '/players/update-tags', { account_id, add, remove }),
     returningPlayerAward: (account_id: number) => req<MutateResult>('POST', '/players/returning-player-award', { account_id }),
     dismissReturningPlayerAward: (account_id: number) => req<MutateResult>('POST', '/players/dismiss-returning-player-award', { account_id }),
-    exportUrl: (account_id: number) => `${apiBase}/players/${account_id}/export`,
-    exportPlayer: async (account_id: number): Promise<void> => {
-      const token = await window.Clerk?.session?.getToken()
-      const headers: Record<string, string> = {}
-      if (token) headers['Authorization'] = `Bearer ${token}`
-      const res = await fetch(`${apiBase}/players/${account_id}/export`, { headers, credentials: 'include' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }))
-        throw new ApiError(res.status, err.error ?? res.statusText)
-      }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `player_${account_id}_export.json`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    },
+    backupCharacter: (account_id: number, character_name: string, reason: string) =>
+      req<MutateResult>('POST', `/players/${account_id}/backup`, { character_name, reason }),
+    listBackups: (account_id: number) => req<CharacterBackup[]>('GET', `/players/${account_id}/backups`),
     deleteAccount: (account_id: number, reason: string) => req<MutateResult>('POST', '/players/delete-account', { account_id, reason }),
     deleteItem: (id: number) => req<MutateResult>('DELETE', `/players/item/${id}`),
     updateItem: (id: number, stack_size: number, quality: number) =>
@@ -1400,7 +1409,14 @@ export const api = {
     remove: (file: string) => req<MutateResult>('DELETE', `/db-backups?file=${encodeURIComponent(file)}`),
     downloadUrl: (file: string) => `${apiBase}/db-backups/download?file=${encodeURIComponent(file)}`,
     restore: (file: string) =>
-      req<{ ok: string, output: string }>('POST', '/db-backups/restore', { file, confirm: true }),
+      req<{ ok: string }>('POST', '/db-backups/restore', { file, confirm: true }),
+    restoreStatus: () => req<RestoreStatus>('GET', '/db-backups/restore/status'),
+  },
+  characterBackups: {
+    restore: (id: number) =>
+      req<{ ok: string, player_controller_id: number }>('POST', `/character-backups/${id}/restore`, { confirm: true }),
+    remove: (id: number) => req<MutateResult>('DELETE', `/character-backups/${id}`),
+    downloadUrl: (id: number) => `${apiBase}/character-backups/${id}/download`,
   },
   scheduledBackups: {
     get: () => req<ScheduledBackups>('GET', '/scheduled-backups'),

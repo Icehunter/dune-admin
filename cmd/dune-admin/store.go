@@ -292,6 +292,7 @@ func applyUnifiedSchema(db *sql.DB) error {
 		{"server_backup_schedule", initServerBackupScheduleSchema},
 		{"server_restart_schedule", initServerRestartScheduleSchema},
 		{"map_calibration", initMapCalibrationSchema},
+		{"character_backups", initCharacterBackupsSchema},
 	}
 	for _, s := range schemas {
 		if err := s.init(db); err != nil {

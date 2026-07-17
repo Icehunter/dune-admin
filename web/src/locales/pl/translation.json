@@ -1,6 +1,6 @@
 {
   "backups": {
-    "warning": "Zatrzymaj grupę bojową przed utworzeniem lub przywróceniem kopii zapasowej. Kopie wykonane podczas działania gry mogą być niespójne, a przywracanie wymaga zatrzymanej grupy bojowej.",
+    "warning": "Kopie zapasowe wykonane podczas działania gry mogą być niespójne. Przywracanie automatycznie zatrzymuje działające serwery gry i nie może zostać cofnięte.",
     "loadFailed": "Nie udało się załadować kopii: {{message}}",
     "take": {
       "title": "Utwórz kopię",
@@ -22,7 +22,8 @@
     "restoreLabel": "Przywróć",
     "restoreFailed": "Przywracanie nie powiodło się: {{message}}",
     "restoreConfirmTitle": "Przywrócić bazę danych?",
-    "restoreConfirmDesc": "To zastąpi aktywną bazę danych przez {{name}}. Grupa bojowa musi być zatrzymana — tego nie można cofnąć.",
+    "restoreConfirmDesc": "To zastąpi działającą bazę danych plikiem {{name}}. Działające serwery gry zostaną najpierw automatycznie zatrzymane. Tej operacji nie można cofnąć.",
+    "restoreIgnoredNote": "Zignorowano {{n}} nieszkodliwych ostrzeżeń pg_restore.",
     "deleteLabel": "Usuń",
     "deleteConfirmTitle": "Usunąć kopię?",
     "deleteConfirmDesc": "Trwale usunąć {{name}}?",
@@ -42,6 +43,20 @@
       "tzPlaceholder": "lokalna hosta (np. UTC)",
       "save": "Zapisz",
       "saveFailed": "Zapis nie powiódł się: {{message}}"
+    },
+    "restoreProgress": {
+      "title": "Przywracanie bazy danych",
+      "check": "Sprawdzanie stanu battlegroup…",
+      "stop": "Zatrzymywanie serwerów gry…",
+      "stopSkipped": "Serwery gry już zatrzymane",
+      "restore": "Przywracanie bazy danych…",
+      "finalize": "Odświeżanie połączeń i pamięci podręcznych…",
+      "success": "Baza danych przywrócona.",
+      "failure": "Przywracanie nie powiodło się",
+      "leftStopped": "Battlegroup pozostała zatrzymana na czas przywracania — uruchom ją ponownie, gdy będziesz gotowy.",
+      "startBattlegroup": "Uruchom battlegroup",
+      "battlegroupStarted": "Wysłano polecenie uruchomienia battlegroup",
+      "close": "Zamknij"
     }
   },
   "serverHealth": {
@@ -310,7 +325,6 @@
       "dropzone": "Upuść lub kliknij, aby przesłać plik .backup lub .zip z komputera",
       "noBackups": "Brak plików kopii zapasowej na serwerze.",
       "restoreBtn": "Przywróć {{file}}",
-      "restoreCompleted": "Przywracanie zakończone",
       "title": "Przywróć z kopii zapasowej",
       "uploaded": "{{name}} przesłano",
       "warning": "Spowoduje to nadpisanie bieżących danych. Serwer powinien być najpierw zatrzymany."
@@ -734,8 +748,6 @@
   "players": {
     "actions": {
       "admin": {
-        "characterExport": "Eksport postaci",
-        "characterExportDesc": "Pobierz dane postaci jako JSON",
         "confirmReset": "Potwierdź reset",
         "confirmWipe": "Potwierdź wyczyszczenie",
         "delete": "Usuń",
@@ -748,8 +760,6 @@
         "dismiss": "Odrzuć",
         "dismissReturning": "Odrzuć okienko powracającego gracza",
         "dismissReturningDesc": "Oznacza nagrodę jako odebraną, aby okienko logowania przestało się pojawiać",
-        "downloadExport": "Pobierz",
-        "exportDownloaded": "Eksport pobrany",
         "kick": "Wyrzuć",
         "kickDesc": "Rozłącza gracza z serwera",
         "kickPlayer": "Wyrzuć gracza",
@@ -821,11 +831,43 @@
         "deleteCharacterOnlineWarning": "Ten gracz wydaje się być online. Najpierw go wyrzuć, aby usunięcie zakończyło się poprawnie.",
         "deleteCharacterReasonLabel": "Powód (zapisany w dzienniku audytu)",
         "deleteCharacterReasonPlaceholder": "Dlaczego ta postać jest usuwana?",
+        "deleteCharacterBackupLabel": "Utwórz pełną kopię zapasową postaci przed usunięciem",
+        "deleteCharacterBackupOfflineNote": "Gracz musi być offline, aby utworzyć kopię zapasową — kontynuacja bez niej.",
         "deleteCharacterConfirmLabel": "Wpisz „{{phrase}}\", aby potwierdzić",
         "deleteCharacterConfirm": "Usuń na stałe",
         "deleteCharacterCountdown": "Poczekaj {{seconds}} s…",
         "deleteCharacterPhrase": "DELETE",
-        "deleteCharacterDone": "Postać {{player}} usunięta"
+        "deleteCharacterDone": "Postać {{player}} usunięta",
+        "characterBackups": "Kopie zapasowe postaci",
+        "characterBackupsDesc": "Pełne kopie zapasowe postaci za pomocą natywnego systemu transferu gry. Wymaga, aby gracz był offline. Kopia zapasowa może nie dać się przywrócić po aktualizacji serwera (suma kontrolna łatki gry).",
+        "backupScope": {
+          "includedTitle": "Zawarte w kopii zapasowej postaci",
+          "inclCharacter": "Postać, ekwipunek i założone przedmioty",
+          "inclProgression": "Postępy, umiejętności, waluta i journey",
+          "inclBaseBackups": "Kopie bazy z gry wraz z przechowywaną zawartością",
+          "inclVehicles": "Pojazdy zapisane przez kopię pojazdów w grze",
+          "excludedTitle": "Niezawarte",
+          "exclPlacedBases": "Postawione bazy, totemy i ich skrzynie magazynowe",
+          "exclParkedVehicles": "Pojazdy zaparkowane w świecie",
+          "hint": "Najpierw zabezpiecz bazy i pojazdy narzędziami w grze, jeśli mają przetrwać usunięcie lub przywrócenie."
+        },
+        "backupsManualDesc": "Wykonaj teraz pełną kopię zapasową tej postaci.",
+        "backupsOfflineRequired": "Gracz musi być offline, aby utworzyć kopię zapasową.",
+        "backupsCreateNow": "Wykonaj kopię teraz",
+        "backupsManualReason": "ręczna kopia zapasowa",
+        "backupsCreated": "Kopia zapasowa utworzona",
+        "backupsLoading": "Ładowanie kopii zapasowych…",
+        "backupsEmpty": "Brak kopii zapasowych",
+        "backupsRestore": "Przywróć",
+        "backupsRestoreTitle": "Przywrócić tę postać?",
+        "backupsRestoreConfirmDesc": "To całkowicie zastąpi obecne dane gracza {{player}} danymi z kopii zapasowej. Gracz musi być offline. Nie powiedzie się, jeśli gra została zaktualizowana od czasu utworzenia tej kopii.",
+        "backupsRestoreScopeWarning": "Wraca tylko to, co znajduje się w kopii zapasowej. Mienie obecnie postawione w świecie traci właściciela przy przywracaniu — nie jest odzyskiwane.",
+        "backupsRestored": "Postać przywrócona",
+        "backupsDownload": "Pobierz kopię zapasową",
+        "backupsDeleteLabel": "Usuń kopię zapasową",
+        "backupsDeleteTitle": "Usunąć tę kopię zapasową?",
+        "backupsDeleteConfirmDesc": "To trwale usunie plik kopii zapasowej. Tej czynności nie można cofnąć.",
+        "backupsDeleted": "Kopia zapasowa usunięta"
       },
       "contracts": {
         "applyContracts_one": "Zastosuj kontrakt(y) ({{count}})",

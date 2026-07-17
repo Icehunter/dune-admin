@@ -52,7 +52,7 @@ var allCapabilities = map[capability]string{
 	capPlayersDelete:    "Permanently delete characters from the server (irreversible)",
 	capWorldRead:        "View storage, blueprints, bases, maps, and locations",
 	capWorldWrite:       "Modify storage contents, import blueprints, edit locations",
-	capDataExport:       "Export characters, blueprints, bases, and battlepass catalogs",
+	capDataExport:       "Export blueprints, bases, and battlepass catalogs",
 	capServerRead:       "View server status, processes, and version info",
 	capServerControl:    "Start/stop/restart the server, apply updates, spawn vehicles",
 	capBroadcastSend:    "Send broadcasts, shutdown warnings, and notifications",
@@ -115,8 +115,12 @@ func handleAPI(mux *http.ServeMux, pattern string, cap capability, h http.Handle
 	// Player-write routes bust the request scope's cached player list after they
 	// run, so operator mutations reflect on the next read without per-handler
 	// invalidation. Busting after a failed write is harmless (the next read just
-	// reloads the same data).
-	if cap == capPlayersWrite || cap == capPlayersDelete {
+	// reloads the same data). capBackupsManage is included because character
+	// backup/restore mutates player data the same way (a restore in particular
+	// deletes and reinserts the account+actors, transiently reproducing #290's
+	// orphaned player_state row until its own cleanup runs — the stale cache
+	// entry must not outlive that).
+	if cap == capPlayersWrite || cap == capPlayersDelete || cap == capBackupsManage {
 		h = bustPlayersCacheAfter(h)
 	}
 	mux.HandleFunc(pattern, h)

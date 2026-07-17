@@ -1,6 +1,6 @@
 {
   "backups": {
-    "warning": "Detén el grupo de batalla antes de crear o restaurar una copia de seguridad. Las copias tomadas con el juego en marcha pueden ser inconsistentes, y una restauración requiere el grupo de batalla detenido.",
+    "warning": "Las copias de seguridad hechas mientras el juego está en marcha pueden ser inconsistentes. La restauración detiene automáticamente los servidores de juego en ejecución y no se puede deshacer.",
     "loadFailed": "Error al cargar las copias: {{message}}",
     "take": {
       "title": "Crear copia",
@@ -22,7 +22,8 @@
     "restoreLabel": "Restaurar",
     "restoreFailed": "Restauración fallida: {{message}}",
     "restoreConfirmTitle": "¿Restaurar la base de datos?",
-    "restoreConfirmDesc": "Esto reemplaza la base de datos activa con {{name}}. El grupo de batalla debe estar detenido — no se puede deshacer.",
+    "restoreConfirmDesc": "Esto reemplaza la base de datos en producción con {{name}}. Los servidores de juego en ejecución se detienen automáticamente antes. Esta acción no se puede deshacer.",
+    "restoreIgnoredNote": "Se ignoraron {{n}} avisos inofensivos de pg_restore.",
     "deleteLabel": "Eliminar",
     "deleteConfirmTitle": "¿Eliminar copia?",
     "deleteConfirmDesc": "¿Eliminar {{name}} permanentemente?",
@@ -42,6 +43,20 @@
       "tzPlaceholder": "local del host (p. ej. UTC)",
       "save": "Guardar",
       "saveFailed": "Error al guardar: {{message}}"
+    },
+    "restoreProgress": {
+      "title": "Restaurando la base de datos",
+      "check": "Comprobando el estado del battlegroup…",
+      "stop": "Deteniendo los servidores de juego…",
+      "stopSkipped": "Servidores de juego ya detenidos",
+      "restore": "Restaurando la base de datos…",
+      "finalize": "Actualizando conexiones y cachés…",
+      "success": "Base de datos restaurada.",
+      "failure": "Error en la restauración",
+      "leftStopped": "El battlegroup quedó detenido para la restauración — inícialo de nuevo cuando estés listo.",
+      "startBattlegroup": "Iniciar battlegroup",
+      "battlegroupStarted": "Comando de inicio del battlegroup enviado",
+      "close": "Cerrar"
     }
   },
   "serverHealth": {
@@ -309,7 +324,6 @@
       "dropzone": "Suelta o haz clic para subir un archivo .backup o .zip desde tu computadora",
       "noBackups": "Aún no hay archivos de copia de seguridad en el servidor.",
       "restoreBtn": "Restaurar {{file}}",
-      "restoreCompleted": "Restauración completada",
       "title": "Restaurar desde copia de seguridad",
       "uploaded": "{{name}} subido",
       "warning": "Esto sobrescribe los datos actuales. El servidor debe detenerse primero."
@@ -727,8 +741,6 @@
   "players": {
     "actions": {
       "admin": {
-        "characterExport": "Exportar personaje",
-        "characterExportDesc": "Descargar datos del personaje como JSON",
         "confirmReset": "Confirmar restablecimiento",
         "confirmWipe": "Confirmar borrado",
         "delete": "Eliminar",
@@ -741,8 +753,6 @@
         "dismiss": "Descartar",
         "dismissReturning": "Descartar popup de jugador que regresa",
         "dismissReturningDesc": "Marca el premio como reclamado para que el popup de inicio de sesión deje de aparecer",
-        "downloadExport": "Descargar",
-        "exportDownloaded": "Exportación descargada",
         "kick": "Expulsar",
         "kickDesc": "Desconecta al jugador del servidor",
         "kickPlayer": "Expulsar jugador",
@@ -814,11 +824,43 @@
         "deleteCharacterOnlineWarning": "Este jugador parece estar conectado. Expúlsalo primero para que la eliminación se complete correctamente.",
         "deleteCharacterReasonLabel": "Motivo (registrado en el registro de auditoría)",
         "deleteCharacterReasonPlaceholder": "¿Por qué se elimina este personaje?",
+        "deleteCharacterBackupLabel": "Crear una copia de seguridad completa del personaje antes de eliminar",
+        "deleteCharacterBackupOfflineNote": "El jugador debe estar desconectado para crear una copia de seguridad — se continuará sin ella.",
         "deleteCharacterConfirmLabel": "Escribe «{{phrase}}» para confirmar",
         "deleteCharacterConfirm": "Eliminar permanentemente",
         "deleteCharacterCountdown": "Espera {{seconds}} s…",
         "deleteCharacterPhrase": "DELETE",
-        "deleteCharacterDone": "Personaje {{player}} eliminado"
+        "deleteCharacterDone": "Personaje {{player}} eliminado",
+        "characterBackups": "Copias de seguridad del personaje",
+        "characterBackupsDesc": "Copias de seguridad completas del personaje mediante el sistema de transferencia nativo del juego. Requiere que el jugador esté desconectado. Es posible que una copia no se pueda restaurar después de una actualización del servidor (checksum del parche del juego).",
+        "backupScope": {
+          "includedTitle": "Incluido en una copia de seguridad del personaje",
+          "inclCharacter": "Personaje, inventario y objetos equipados",
+          "inclProgression": "Progresión, habilidades, moneda y journey",
+          "inclBaseBackups": "Copias de base del juego, incluido su contenido almacenado",
+          "inclVehicles": "Vehículos guardados mediante la copia de vehículos del juego",
+          "excludedTitle": "No incluido",
+          "exclPlacedBases": "Bases colocadas, tótems y sus cajas de almacenamiento",
+          "exclParkedVehicles": "Vehículos estacionados en el mundo",
+          "hint": "Guarda primero las bases y los vehículos con las herramientas del juego si deben sobrevivir a una eliminación o restauración."
+        },
+        "backupsManualDesc": "Crear ahora una copia de seguridad completa de este personaje.",
+        "backupsOfflineRequired": "El jugador debe estar desconectado para crear una copia de seguridad.",
+        "backupsCreateNow": "Respaldar ahora",
+        "backupsManualReason": "copia de seguridad manual",
+        "backupsCreated": "Copia de seguridad creada",
+        "backupsLoading": "Cargando copias de seguridad…",
+        "backupsEmpty": "Aún no hay copias de seguridad",
+        "backupsRestore": "Restaurar",
+        "backupsRestoreTitle": "¿Restaurar este personaje?",
+        "backupsRestoreConfirmDesc": "Esto reemplaza por completo los datos actuales de {{player}} con la copia de seguridad. El jugador debe estar desconectado. Falla si el juego se actualizó desde que se tomó esta copia de seguridad.",
+        "backupsRestoreScopeWarning": "Solo vuelve lo que está dentro de la copia de seguridad. Las propiedades colocadas actualmente en el mundo pierden su dueño con la restauración — no se recuperan.",
+        "backupsRestored": "Personaje restaurado",
+        "backupsDownload": "Descargar copia de seguridad",
+        "backupsDeleteLabel": "Eliminar copia de seguridad",
+        "backupsDeleteTitle": "¿Eliminar esta copia de seguridad?",
+        "backupsDeleteConfirmDesc": "Esto elimina permanentemente el archivo de copia de seguridad. Esta acción no se puede deshacer.",
+        "backupsDeleted": "Copia de seguridad eliminada"
       },
       "contracts": {
         "applyContracts_one": "Aplicar contrato(s) ({{count}})",

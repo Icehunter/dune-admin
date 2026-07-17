@@ -1,6 +1,6 @@
 {
   "backups": {
-    "warning": "Yedek almadan veya geri yüklemeden önce savaş grubunu durdurun. Oyun çalışırken alınan yedekler tutarsız olabilir ve geri yükleme için savaş grubunun durdurulmuş olması gerekir.",
+    "warning": "Oyun çalışırken alınan yedekler tutarsız olabilir. Geri yükleme, çalışan oyun sunucularını otomatik olarak durdurur ve geri alınamaz.",
     "loadFailed": "Yedekler yüklenemedi: {{message}}",
     "take": {
       "title": "Yedek Al",
@@ -22,7 +22,8 @@
     "restoreLabel": "Geri yükle",
     "restoreFailed": "Geri yükleme başarısız: {{message}}",
     "restoreConfirmTitle": "Veritabanı geri yüklensin mi?",
-    "restoreConfirmDesc": "Bu, aktif veritabanını {{name}} ile değiştirir. Savaş grubu durdurulmuş olmalı — geri alınamaz.",
+    "restoreConfirmDesc": "Bu, canlı veritabanını {{name}} ile değiştirir. Çalışan oyun sunucuları önce otomatik olarak durdurulur. Bu işlem geri alınamaz.",
+    "restoreIgnoredNote": "{{n}} zararsız pg_restore uyarısı yok sayıldı.",
     "deleteLabel": "Sil",
     "deleteConfirmTitle": "Yedek silinsin mi?",
     "deleteConfirmDesc": "{{name}} kalıcı olarak silinsin mi?",
@@ -42,6 +43,20 @@
       "tzPlaceholder": "ana makine yereli (örn. UTC)",
       "save": "Kaydet",
       "saveFailed": "Kaydetme başarısız: {{message}}"
+    },
+    "restoreProgress": {
+      "title": "Veritabanı geri yükleniyor",
+      "check": "Battlegroup durumu kontrol ediliyor…",
+      "stop": "Oyun sunucuları durduruluyor…",
+      "stopSkipped": "Oyun sunucuları zaten durdurulmuş",
+      "restore": "Veritabanı geri yükleniyor…",
+      "finalize": "Bağlantılar ve önbellekler yenileniyor…",
+      "success": "Veritabanı geri yüklendi.",
+      "failure": "Geri yükleme başarısız",
+      "leftStopped": "Battlegroup geri yükleme için durdurulmuş halde bırakıldı — hazır olduğunuzda yeniden başlatın.",
+      "startBattlegroup": "Battlegroup'u başlat",
+      "battlegroupStarted": "Battlegroup başlatma komutu gönderildi",
+      "close": "Kapat"
     }
   },
   "serverHealth": {
@@ -308,7 +323,6 @@
       "dropzone": "Bilgisayarınızdan .backup veya .zip dosyası bırakın ya da tıklayarak yükleyin",
       "noBackups": "Sunucuda henüz yedek dosyası yok.",
       "restoreBtn": "{{file}} Dosyasını Geri Yükle",
-      "restoreCompleted": "Geri yükleme tamamlandı",
       "title": "Yedekten Geri Yükle",
       "uploaded": "{{name}} yüklendi",
       "warning": "Bu işlem mevcut verilerin üzerine yazar. Sunucu önce durdurulmalıdır."
@@ -720,8 +734,6 @@
   "players": {
     "actions": {
       "admin": {
-        "characterExport": "Karakter Dışa Aktarma",
-        "characterExportDesc": "Karakter verilerini JSON olarak indir",
         "confirmReset": "Sıfırlamayı Onayla",
         "confirmWipe": "Silmeyi Onayla",
         "delete": "Sil",
@@ -734,8 +746,6 @@
         "dismiss": "Kapat",
         "dismissReturning": "Geri Dönen Oyuncu Açılır Penceresini Kapat",
         "dismissReturningDesc": "Ödülü alındı olarak işaretler, böylece giriş açılır penceresi görünmeyi bırakır",
-        "downloadExport": "İndir",
-        "exportDownloaded": "Dışa aktarma indirildi",
         "kick": "At",
         "kickDesc": "Oyuncunun sunucu bağlantısını keser",
         "kickPlayer": "Oyuncuyu At",
@@ -807,11 +817,43 @@
         "deleteCharacterOnlineWarning": "Bu oyuncu çevrimiçi görünüyor. Silme işleminin düzgün tamamlanması için önce oyuncuyu atın.",
         "deleteCharacterReasonLabel": "Neden (denetim günlüğüne kaydedilir)",
         "deleteCharacterReasonPlaceholder": "Bu karakter neden siliniyor?",
+        "deleteCharacterBackupLabel": "Silmeden önce tam bir karakter yedeği oluştur",
+        "deleteCharacterBackupOfflineNote": "Yedek oluşturmak için oyuncunun çevrimdışı olması gerekir — yedeksiz devam ediliyor.",
         "deleteCharacterConfirmLabel": "Onaylamak için \"{{phrase}}\" yazın",
         "deleteCharacterConfirm": "Kalıcı olarak sil",
         "deleteCharacterCountdown": "{{seconds}} sn bekleyin…",
         "deleteCharacterPhrase": "DELETE",
-        "deleteCharacterDone": "Karakter {{player}} silindi"
+        "deleteCharacterDone": "Karakter {{player}} silindi",
+        "characterBackups": "Karakter Yedekleri",
+        "characterBackupsDesc": "Oyunun yerel aktarım sistemi üzerinden tam karakter yedekleri. Oyuncunun çevrimdışı olması gerekir. Sunucu güncellemesinden sonra bir yedek geri yüklenemeyebilir (oyun yaması sağlama toplamı).",
+        "backupScope": {
+          "includedTitle": "Karakter yedeğine dahil olanlar",
+          "inclCharacter": "Karakter, envanter ve kuşanılmış eşyalar",
+          "inclProgression": "İlerleme, beceriler, para birimi ve journey",
+          "inclBaseBackups": "Depolanan içerikleriyle birlikte oyun içi üs yedekleri",
+          "inclVehicles": "Oyun içi araç yedeğiyle saklanan araçlar",
+          "excludedTitle": "Dahil olmayanlar",
+          "exclPlacedBases": "Yerleştirilmiş üsler, totemler ve depo sandıkları",
+          "exclParkedVehicles": "Dünyada park edilmiş araçlar",
+          "hint": "Silme veya geri yüklemeden sağ çıkmaları gerekiyorsa üsleri ve araçları önce oyun içi yedekleme araçlarıyla yedekleyin."
+        },
+        "backupsManualDesc": "Bu karakterin tam yedeğini şimdi al.",
+        "backupsOfflineRequired": "Yedek oluşturmak için oyuncunun çevrimdışı olması gerekir.",
+        "backupsCreateNow": "Şimdi Yedekle",
+        "backupsManualReason": "manuel yedek",
+        "backupsCreated": "Yedek oluşturuldu",
+        "backupsLoading": "Yedekler yükleniyor…",
+        "backupsEmpty": "Henüz yedek yok",
+        "backupsRestore": "Geri Yükle",
+        "backupsRestoreTitle": "Bu karakter geri yüklensin mi?",
+        "backupsRestoreConfirmDesc": "Bu, {{player}} adlı oyuncunun mevcut verilerinin tamamını yedekle değiştirir. Oyuncunun çevrimdışı olması gerekir. Bu yedek alındıktan sonra oyun güncellendiyse başarısız olur.",
+        "backupsRestoreScopeWarning": "Yalnızca yedeğin içindekiler geri gelir. Şu anda dünyada yerleştirilmiş mülkler geri yüklemede sahipsiz kalır — kurtarılmaz.",
+        "backupsRestored": "Karakter geri yüklendi",
+        "backupsDownload": "Yedeği indir",
+        "backupsDeleteLabel": "Yedeği sil",
+        "backupsDeleteTitle": "Bu yedek silinsin mi?",
+        "backupsDeleteConfirmDesc": "Bu, yedek dosyasını kalıcı olarak kaldırır. Bu işlem geri alınamaz.",
+        "backupsDeleted": "Yedek silindi"
       },
       "contracts": {
         "applyContracts_one": "Sözleşme(leri) Uygula ({{count}})",

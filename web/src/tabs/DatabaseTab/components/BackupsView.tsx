@@ -7,6 +7,7 @@ import { api } from '../../../api/client'
 import type { DBBackupFile } from '../../../api/client'
 import { Panel, SectionLabel, PageHeader, Icon, ConfirmDialog } from '../../../dune-ui'
 import { usePermissions } from '../../../hooks/usePermissions'
+import { RestoreProgressModal } from '../../../components/RestoreProgressModal'
 import { ScheduleCard } from './ScheduleCard'
 import type { BackupsViewProps } from './interfaces'
 
@@ -24,6 +25,7 @@ export const BackupsView: React.FC<BackupsViewProps> = ({ onRegisterRefresh, hea
   const [loading, setLoading] = React.useState(true)
   const [taking, setTaking] = React.useState(false)
   const [restoreTarget, setRestoreTarget] = React.useState<string | null>(null)
+  const [restoreProgressOpen, setRestoreProgressOpen] = React.useState(false)
   const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null)
   const [busy, setBusy] = React.useState(false)
 
@@ -57,13 +59,15 @@ export const BackupsView: React.FC<BackupsViewProps> = ({ onRegisterRefresh, hea
       .finally(() => setTaking(false))
   }
 
+  // doRestore starts the background restore job and opens the step-progress
+  // dialog, which polls the job status until it reaches a terminal state.
   const doRestore = () => {
     if (!restoreTarget) return
     const file = restoreTarget
     setRestoreTarget(null)
     setBusy(true)
     api.dbBackups.restore(file)
-      .then((res) => toast.success(res.ok))
+      .then(() => setRestoreProgressOpen(true))
       .catch((e: unknown) =>
         toast.danger(t('backups.restoreFailed', { message: e instanceof Error ? e.message : String(e) })))
       .finally(() => setBusy(false))
@@ -206,6 +210,10 @@ export const BackupsView: React.FC<BackupsViewProps> = ({ onRegisterRefresh, hea
         confirmLabel={t('backups.deleteLabel')}
         onConfirm={doDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+      <RestoreProgressModal
+        open={restoreProgressOpen}
+        onClose={() => setRestoreProgressOpen(false)}
       />
     </div>
   )

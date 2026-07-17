@@ -1,6 +1,6 @@
 {
   "backups": {
-    "warning": "Stoppe die Kampfgruppe, bevor du ein Backup erstellst oder wiederherstellst. Backups während des laufenden Spiels können inkonsistent sein, und eine Wiederherstellung erfordert eine gestoppte Kampfgruppe.",
+    "warning": "Backups, die während des Spielbetriebs erstellt werden, können inkonsistent sein. Die Wiederherstellung stoppt laufende Gameserver automatisch und kann nicht rückgängig gemacht werden.",
     "loadFailed": "Backups konnten nicht geladen werden: {{message}}",
     "take": {
       "title": "Backup erstellen",
@@ -22,7 +22,8 @@
     "restoreLabel": "Wiederherstellen",
     "restoreFailed": "Wiederherstellung fehlgeschlagen: {{message}}",
     "restoreConfirmTitle": "Datenbank wiederherstellen?",
-    "restoreConfirmDesc": "Dies ersetzt die aktive Datenbank durch {{name}}. Die Kampfgruppe muss gestoppt sein — dies kann nicht rückgängig gemacht werden.",
+    "restoreConfirmDesc": "Dies ersetzt die Live-Datenbank durch {{name}}. Laufende Gameserver werden vorher automatisch gestoppt. Dies kann nicht rückgängig gemacht werden.",
+    "restoreIgnoredNote": "{{n}} harmlose pg_restore-Hinweise wurden ignoriert.",
     "deleteLabel": "Löschen",
     "deleteConfirmTitle": "Backup löschen?",
     "deleteConfirmDesc": "{{name}} endgültig löschen?",
@@ -42,6 +43,20 @@
       "tzPlaceholder": "Host-lokal (z. B. UTC)",
       "save": "Speichern",
       "saveFailed": "Speichern fehlgeschlagen: {{message}}"
+    },
+    "restoreProgress": {
+      "title": "Datenbank wird wiederhergestellt",
+      "check": "Battlegroup-Status wird geprüft…",
+      "stop": "Gameserver werden gestoppt…",
+      "stopSkipped": "Gameserver bereits gestoppt",
+      "restore": "Datenbank wird wiederhergestellt…",
+      "finalize": "Verbindungen und Caches werden aktualisiert…",
+      "success": "Datenbank wiederhergestellt.",
+      "failure": "Wiederherstellung fehlgeschlagen",
+      "leftStopped": "Die Battlegroup wurde für die Wiederherstellung gestoppt — starten Sie sie, wenn Sie bereit sind.",
+      "startBattlegroup": "Battlegroup starten",
+      "battlegroupStarted": "Startbefehl für die Battlegroup gesendet",
+      "close": "Schließen"
     }
   },
   "serverHealth": {
@@ -308,7 +323,6 @@
       "dropzone": "Ablegen oder klicken, um eine .backup- oder .zip-Datei hochzuladen",
       "noBackups": "Noch keine Sicherungsdateien auf dem Server.",
       "restoreBtn": "{{file}} wiederherstellen",
-      "restoreCompleted": "Wiederherstellung abgeschlossen",
       "title": "Aus Sicherung wiederherstellen",
       "uploaded": "{{name}} hochgeladen",
       "warning": "Dies überschreibt aktuelle Daten. Der Server sollte zuerst gestoppt werden."
@@ -720,8 +734,6 @@
   "players": {
     "actions": {
       "admin": {
-        "characterExport": "Charakterexport",
-        "characterExportDesc": "Charakterdaten als JSON herunterladen",
         "confirmReset": "Zurücksetzen bestätigen",
         "confirmWipe": "Löschung bestätigen",
         "delete": "Löschen",
@@ -734,8 +746,6 @@
         "dismiss": "Schließen",
         "dismissReturning": "Rückkehrenden-Spieler-Popup schließen",
         "dismissReturningDesc": "Markiert die Belohnung als beansprucht, damit das Anmelde-Popup nicht mehr erscheint",
-        "downloadExport": "Herunterladen",
-        "exportDownloaded": "Export heruntergeladen",
         "kick": "Kicken",
         "kickDesc": "Trennt den Spieler vom Server",
         "kickPlayer": "Spieler kicken",
@@ -807,11 +817,43 @@
         "deleteCharacterOnlineWarning": "Dieser Spieler scheint online zu sein. Werfen Sie ihn zuerst hinaus, damit die Löschung sauber abgeschlossen wird.",
         "deleteCharacterReasonLabel": "Grund (wird im Prüfprotokoll gespeichert)",
         "deleteCharacterReasonPlaceholder": "Warum wird dieser Charakter gelöscht?",
+        "deleteCharacterBackupLabel": "Vor dem Löschen ein vollständiges Charakter-Backup erstellen",
+        "deleteCharacterBackupOfflineNote": "Der Spieler muss offline sein, um ein Backup zu erstellen — es wird ohne fortgefahren.",
         "deleteCharacterConfirmLabel": "Geben Sie zur Bestätigung „{{phrase}}\" ein",
         "deleteCharacterConfirm": "Dauerhaft löschen",
         "deleteCharacterCountdown": "Warten Sie {{seconds}} s…",
         "deleteCharacterPhrase": "DELETE",
-        "deleteCharacterDone": "Charakter {{player}} gelöscht"
+        "deleteCharacterDone": "Charakter {{player}} gelöscht",
+        "characterBackups": "Charakter-Backups",
+        "characterBackupsDesc": "Vollständige Charakter-Backups über das native Transfersystem des Spiels. Erfordert, dass der Spieler offline ist. Ein Backup lässt sich nach einem Server-Update möglicherweise nicht mehr wiederherstellen (Spielpatch-Prüfsumme).",
+        "backupScope": {
+          "includedTitle": "In einem Charakter-Backup enthalten",
+          "inclCharacter": "Charakter, Inventar und ausgerüstete Gegenstände",
+          "inclProgression": "Fortschritt, Fähigkeiten, Währung und Journey",
+          "inclBaseBackups": "In-Game-Basis-Backups einschließlich ihres gelagerten Inhalts",
+          "inclVehicles": "Über das In-Game-Fahrzeug-Backup gesicherte Fahrzeuge",
+          "excludedTitle": "Nicht enthalten",
+          "exclPlacedBases": "Platzierte Basen, Totems und deren Lagerkisten",
+          "exclParkedVehicles": "In der Welt abgestellte Fahrzeuge",
+          "hint": "Sichern Sie Basen und Fahrzeuge zuerst mit den In-Game-Backup-Werkzeugen, wenn sie ein Löschen oder Wiederherstellen überstehen sollen."
+        },
+        "backupsManualDesc": "Erstellen Sie jetzt ein vollständiges Backup dieses Charakters.",
+        "backupsOfflineRequired": "Der Spieler muss offline sein, um ein Backup zu erstellen.",
+        "backupsCreateNow": "Jetzt sichern",
+        "backupsManualReason": "manuelles Backup",
+        "backupsCreated": "Backup erstellt",
+        "backupsLoading": "Backups werden geladen…",
+        "backupsEmpty": "Noch keine Backups",
+        "backupsRestore": "Wiederherstellen",
+        "backupsRestoreTitle": "Diesen Charakter wiederherstellen?",
+        "backupsRestoreConfirmDesc": "Dadurch werden die aktuellen Daten von {{player}} vollständig durch das Backup ersetzt. Der Spieler muss offline sein. Schlägt fehl, wenn das Spiel seit diesem Backup aktualisiert wurde.",
+        "backupsRestoreScopeWarning": "Nur der Inhalt des Backups kommt zurück. Aktuell in der Welt platzierter Besitz verliert durch die Wiederherstellung seinen Eigentümer — er wird nicht wiederhergestellt.",
+        "backupsRestored": "Charakter wiederhergestellt",
+        "backupsDownload": "Backup herunterladen",
+        "backupsDeleteLabel": "Backup löschen",
+        "backupsDeleteTitle": "Dieses Backup löschen?",
+        "backupsDeleteConfirmDesc": "Dies entfernt die Backup-Datei dauerhaft. Dies kann nicht rückgängig gemacht werden.",
+        "backupsDeleted": "Backup gelöscht"
       },
       "contracts": {
         "applyContracts_one": "Vertrag/Verträge anwenden ({{count}})",

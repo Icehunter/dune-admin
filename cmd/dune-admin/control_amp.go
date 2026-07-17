@@ -65,6 +65,13 @@ type ampControl struct {
 	// container so it boots clean on the new files). Injected in tests to avoid
 	// spawning the real watcher goroutine.
 	afterUpdateRestart func(client *ampAPIClient, exec Executor)
+
+	// stopPollInterval is how often StopGameServers re-checks the shard listing
+	// after signalling. 0 → 2s. Injected short in tests.
+	stopPollInterval time.Duration
+	// sleep, when set, replaces time.Sleep in StopGameServers' poll loop.
+	// Injected as a no-op in tests so the timeout path runs instantly.
+	sleep func(time.Duration)
 }
 
 const (
@@ -509,6 +516,43 @@ func (c *ampControl) BackupDatabase(exec Executor, conn dbConn, destPath string)
 	return out, nil
 }
 
+// StopGameServers gracefully terminates just the DuneSandboxServer shard
+// processes, leaving the container (and with it Postgres and the broker)
+// running. Implements gameServerStopper for the restore flow: a full
+// `ampinstmgr -q` stop tears down the whole container INCLUDING Postgres, so
+// "stop the battlegroup, then restore" is impossible to satisfy on AMP any
+// other way. The pkill pattern uses the [D] bracket trick so it can never
+// match its own sh -c wrapper's command line — a plain -f pattern SIGTERMs
+// the shell running the pkill. `|| true` because pkill exits 1 when nothing
+// matched (already stopped), which is success here.
+func (c *ampControl) StopGameServers(_ context.Context, exec Executor) error {
+	kill := c.wrapInContainer(`pkill -TERM -f "[D]uneSandboxServer-Linux-Shipping" || true`)
+	if out, err := exec.Exec(kill); err != nil {
+		return fmt.Errorf("signal game servers: %w (%s)", err, out)
+	}
+	interval := c.stopPollInterval
+	if interval <= 0 {
+		interval = 2 * time.Second
+	}
+	sleep := c.sleep
+	if sleep == nil {
+		sleep = time.Sleep
+	}
+	deadline := time.Duration(c.stopTimeout()) * time.Second
+	for waited := time.Duration(0); waited < deadline; waited += interval {
+		procs, err := c.listGameProcesses(exec)
+		if err != nil {
+			return fmt.Errorf("poll game servers: %w", err)
+		}
+		if len(procs) == 0 {
+			return nil
+		}
+		sleep(interval)
+	}
+	procs, _ := c.listGameProcesses(exec)
+	return fmt.Errorf("game servers still running after %ds (%d remaining) — try again or restart the container", c.stopTimeout(), len(procs))
+}
+
 // RestoreDatabase pipes a host dump into pg_restore in-container. DESTRUCTIVE.
 // Implements dbBackupProvider.
 func (c *ampControl) RestoreDatabase(exec Executor, conn dbConn, srcPath string) (string, error) {
@@ -554,7 +598,15 @@ func parseAMPGameProcess(line string) (ampGameProcess, bool) {
 	if len(fields) < 2 {
 		return ampGameProcess{}, false
 	}
-	pid, _ := strconv.Atoi(fields[0])
+	pid, err := strconv.Atoi(fields[0])
+	if err != nil {
+		// Not a `ps` line at all — e.g. a podman/sh error ("Error: no
+		// container ... no such container") when the container is stopped or
+		// missing. Misparsing that as a fake pid-0 process previously made
+		// gameServersRunning report "running" exactly when the battlegroup
+		// was genuinely stopped, blocking DB restore.
+		return ampGameProcess{}, false
+	}
 	argsFields := fields[1:]
 	args := strings.Join(argsFields, " ")
 	return ampGameProcess{
@@ -570,7 +622,7 @@ func parseAMPGameProcess(line string) (ampGameProcess, bool) {
 // that don't parse cleanly are skipped rather than failing the whole map.
 func parseProcessAges(out string) map[int]int {
 	ages := map[int]int{}
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 2 {
 			continue
@@ -627,7 +679,7 @@ func (c *ampControl) listGameProcesses(exec Executor) ([]ampGameProcess, error) 
 		return []ampGameProcess{}, nil
 	}
 	var procs []ampGameProcess
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
@@ -712,7 +764,7 @@ func (c *ampControl) ListLogSources(_ context.Context, exec Executor) ([]LogSour
 		ns = "host:" + c.logPath
 	}
 	var sources []LogSource
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		name := strings.TrimSpace(line)
 		if !strings.HasSuffix(name, ".log") {
 			continue

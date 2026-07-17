@@ -6,7 +6,7 @@ import { Dropzone, Icon } from '../../../dune-ui'
 import type { RestoreModalProps } from './types'
 
 export const RestoreModal: React.FC<RestoreModalProps> = ({
-  open, backupFiles, backupFilesLoading, setBackupFiles, onClose, onRestoreComplete,
+  open, backupFiles, backupFilesLoading, setBackupFiles, onClose, onRestoreStarted,
 }) => {
   const { t } = useTranslation()
   const [selectedFile, setSelectedFile] = React.useState('')
@@ -119,9 +119,8 @@ export const RestoreModal: React.FC<RestoreModalProps> = ({
               onPress={async () => {
                 setRestoreRunning(true)
                 try {
-                  const res = await api.battlegroup.restore(selectedFile)
-                  toast.success(t('battlegroup.restore.restoreCompleted'))
-                  onRestoreComplete(res.output || '(done)')
+                  await api.battlegroup.restore(selectedFile)
+                  onRestoreStarted()
                 }
                 catch (e: unknown) {
                   toast.danger(e instanceof Error ? e.message : String(e))

@@ -1,4 +1,4 @@
-import type { Player } from '../../../../../api/client'
+import type { CharacterBackup, Player } from '../../../../../api/client'
 
 export interface DeleteCharacterModalProps {
   open: boolean
@@ -6,10 +6,21 @@ export interface DeleteCharacterModalProps {
   online: boolean
   busy: boolean
   onCancel: () => void
-  onConfirm: (reason: string) => void
+  onConfirm: (reason: string, backup: boolean) => void
 }
 
 export interface ContractsSectionProps { player: Player }
+
+export interface CharacterBackupsPanelProps { player: Player }
+
+export interface CharacterRestoreModalProps {
+  /** The backup to restore; `null` closes the modal. */
+  backup: CharacterBackup | null
+  playerName: string
+  busy: boolean
+  onCancel: () => void
+  onConfirm: (backup: CharacterBackup) => void
+}
 
 export interface HistorySectionProps { player: Player }
 

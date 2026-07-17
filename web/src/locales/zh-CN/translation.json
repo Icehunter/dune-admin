@@ -1,6 +1,6 @@
 {
   "backups": {
-    "warning": "在创建或恢复备份前请先停止战斗群。游戏运行时创建的备份可能不一致，恢复需要战斗群处于停止状态。",
+    "warning": "游戏运行时创建的备份可能不一致。还原会自动停止正在运行的游戏服务器,且无法撤销。",
     "loadFailed": "加载备份失败：{{message}}",
     "take": {
       "title": "创建备份",
@@ -22,7 +22,8 @@
     "restoreLabel": "恢复",
     "restoreFailed": "恢复失败：{{message}}",
     "restoreConfirmTitle": "恢复数据库？",
-    "restoreConfirmDesc": "这将用 {{name}} 替换当前数据库。战斗群必须已停止——此操作无法撤销。",
+    "restoreConfirmDesc": "这将用 {{name}} 替换线上数据库。正在运行的游戏服务器会先被自动停止。此操作无法撤销。",
+    "restoreIgnoredNote": "已忽略 {{n}} 条无害的 pg_restore 提示。",
     "deleteLabel": "删除",
     "deleteConfirmTitle": "删除备份？",
     "deleteConfirmDesc": "永久删除 {{name}}？",
@@ -42,6 +43,20 @@
       "tzPlaceholder": "主机本地（如 UTC）",
       "save": "保存",
       "saveFailed": "保存失败：{{message}}"
+    },
+    "restoreProgress": {
+      "title": "正在还原数据库",
+      "check": "正在检查战斗群状态…",
+      "stop": "正在停止游戏服务器…",
+      "stopSkipped": "游戏服务器已停止",
+      "restore": "正在还原数据库…",
+      "finalize": "正在刷新连接和缓存…",
+      "success": "数据库已还原。",
+      "failure": "还原失败",
+      "leftStopped": "战斗群在还原期间保持停止状态——准备好后请重新启动。",
+      "startBattlegroup": "启动战斗群",
+      "battlegroupStarted": "已发送战斗群启动命令",
+      "close": "关闭"
     }
   },
   "serverHealth": {
@@ -308,7 +323,6 @@
       "dropzone": "从您的计算机拖放或点击上传 .backup 或 .zip 文件",
       "noBackups": "服务器上暂无备份文件。",
       "restoreBtn": "还原 {{file}}",
-      "restoreCompleted": "还原完成",
       "title": "从备份还原",
       "uploaded": "已上传 {{name}}",
       "warning": "这将覆盖当前数据。应先停止服务器。"
@@ -720,8 +734,6 @@
   "players": {
     "actions": {
       "admin": {
-        "characterExport": "角色导出",
-        "characterExportDesc": "将角色数据下载为 JSON",
         "confirmReset": "确认重置",
         "confirmWipe": "确认清空",
         "delete": "删除",
@@ -734,8 +746,6 @@
         "dismiss": "关闭",
         "dismissReturning": "关闭回归玩家弹窗",
         "dismissReturningDesc": "将奖励标记为已领取，使登录弹窗不再显示",
-        "downloadExport": "下载",
-        "exportDownloaded": "导出已下载",
         "kick": "踢出",
         "kickDesc": "断开玩家与服务器的连接",
         "kickPlayer": "踢出玩家",
@@ -807,11 +817,43 @@
         "deleteCharacterOnlineWarning": "该玩家似乎在线。请先将其踢出,以便删除操作顺利完成。",
         "deleteCharacterReasonLabel": "原因(记录在审计日志中)",
         "deleteCharacterReasonPlaceholder": "为什么要删除该角色?",
+        "deleteCharacterBackupLabel": "删除前创建完整角色备份",
+        "deleteCharacterBackupOfflineNote": "玩家必须离线才能创建备份——将不备份继续操作。",
         "deleteCharacterConfirmLabel": "输入\"{{phrase}}\"以确认",
         "deleteCharacterConfirm": "永久删除",
         "deleteCharacterCountdown": "请等待 {{seconds}} 秒…",
         "deleteCharacterPhrase": "DELETE",
-        "deleteCharacterDone": "角色 {{player}} 已删除"
+        "deleteCharacterDone": "角色 {{player}} 已删除",
+        "characterBackups": "角色备份",
+        "characterBackupsDesc": "通过游戏原生传输系统创建完整角色备份。要求玩家离线。服务器更新后备份可能无法还原(游戏补丁校验和)。",
+        "backupScope": {
+          "includedTitle": "角色备份包含的内容",
+          "inclCharacter": "角色、物品栏和已装备物品",
+          "inclProgression": "进度、技能、货币和旅程",
+          "inclBaseBackups": "游戏内基地备份(含其储存的物品)",
+          "inclVehicles": "通过游戏内载具备份保存的载具",
+          "excludedTitle": "不包含的内容",
+          "exclPlacedBases": "已放置的基地、图腾及其储物箱",
+          "exclParkedVehicles": "停放在世界中的载具",
+          "hint": "如需在删除或还原后保留,请先用游戏内的备份工具打包基地和载具。"
+        },
+        "backupsManualDesc": "立即为该角色创建完整备份。",
+        "backupsOfflineRequired": "玩家必须离线才能创建备份。",
+        "backupsCreateNow": "立即备份",
+        "backupsManualReason": "手动备份",
+        "backupsCreated": "备份已创建",
+        "backupsLoading": "正在加载备份…",
+        "backupsEmpty": "暂无备份",
+        "backupsRestore": "还原",
+        "backupsRestoreTitle": "还原此角色?",
+        "backupsRestoreConfirmDesc": "这将用备份完全替换 {{player}} 的当前数据。玩家必须离线。如果自此备份创建后游戏已更新,则还原会失败。",
+        "backupsRestoreScopeWarning": "只有备份内的内容会恢复。当前放置在世界中的财产会在还原时失去归属——不会被找回。",
+        "backupsRestored": "角色已还原",
+        "backupsDownload": "下载备份",
+        "backupsDeleteLabel": "删除备份",
+        "backupsDeleteTitle": "删除此备份?",
+        "backupsDeleteConfirmDesc": "这将永久删除备份文件。此操作无法撤销。",
+        "backupsDeleted": "备份已删除"
       },
       "contracts": {
         "applyContracts_one": "应用合约 ({{count}})",

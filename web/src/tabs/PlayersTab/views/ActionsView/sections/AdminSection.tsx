@@ -10,6 +10,7 @@ import { useRun, useGate } from '../hooks/useActions'
 import { usePermissions } from '../../../../../hooks/usePermissions'
 import { PlayerSearchField } from '../../../../../components/PlayerSearchField'
 import { DeleteCharacterModal } from './DeleteCharacterModal'
+import { CharacterBackupsPanel } from './CharacterBackupsPanel'
 import type { AdminSectionProps } from './interfaces'
 
 export const AdminSection: React.FC<AdminSectionProps> = ({
@@ -19,7 +20,7 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
   const { can } = usePermissions()
   const canPlayersWrite = can('players:write')
   const canPlayersDelete = can('players:delete')
-  const canExportData = can('data:export')
+  const canBackupsRead = can('backups:read')
   const [busy] = useAtom(busyAtom(player.id))
   const [partitions] = useAtom(partitionsAtom(player.id))
   const [allPlayers] = useAtom(allPlayersAtom(player.id))
@@ -46,10 +47,10 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
 
   const [deleteModalOpen, setDeleteModalOpen] = React.useState(false)
 
-  const handleDeleteCharacter = (reason: string) => {
+  const handleDeleteCharacter = (reason: string, backup: boolean) => {
     setDeleteModalOpen(false)
     run(
-      () => api.players.deleteCharacter(player.account_id, reason),
+      () => api.players.deleteCharacter(player.account_id, reason, player.name, backup),
       t('players.actions.admin.deleteCharacterDone', { player: player.name }),
     )
   }
@@ -103,9 +104,6 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
       () => api.players.dismissReturningPlayerAward(player.account_id),
       `Dismissed returning player popup for ${player.name}`,
     )
-
-  const handleExportPlayer = () =>
-    run(() => api.players.exportPlayer(player.account_id), t('players.actions.admin.exportDownloaded'))
 
   const handleTeleportToPartition = () =>
     run(
@@ -342,22 +340,7 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
         </Panel>
       )}
 
-      {canExportData && (
-        <Panel>
-          <SectionLabel>{t('players.actions.admin.characterExport')}</SectionLabel>
-          <div className="flex items-end gap-3 py-1">
-            <div className="flex-1 text-xs text-muted">{t('players.actions.admin.characterExportDesc')}</div>
-            <Button
-              size="sm"
-              variant="ghost"
-              isDisabled={busy}
-              onPress={handleExportPlayer}
-            >
-              {t('players.actions.admin.downloadExport')}
-            </Button>
-          </div>
-        </Panel>
-      )}
+      {canBackupsRead && <CharacterBackupsPanel player={player} />}
 
       {canPlayersWrite && (
         <React.Fragment>

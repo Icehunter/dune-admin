@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -399,13 +400,13 @@ func handleBGBackupFiles(w http.ResponseWriter, r *http.Request) {
 // backupFile slice the frontend renders (always non-nil).
 func parseHostBackupListing(out, yamlOut string) []backupFile {
 	hasYAML := make(map[string]bool)
-	for _, n := range strings.Split(strings.TrimSpace(yamlOut), "\n") {
+	for n := range strings.SplitSeq(strings.TrimSpace(yamlOut), "\n") {
 		if n != "" {
 			hasYAML[strings.TrimSpace(n)] = true
 		}
 	}
 	files := []backupFile{}
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		if line == "" {
 			continue
 		}
@@ -496,12 +497,23 @@ func handleBGRestore(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, 400)
 		return
 	}
-	out, err := dispatchRestore(r.Context(), ctrl, exec, req.File)
-	if err != nil {
-		jsonErr(w, fmt.Errorf("restore failed: %w\n%s", err, out), 500)
+	// Validate BEFORE starting — never touch game servers over a bad filename.
+	if err := validateRestoreFilename(ctrl, req.File); err != nil {
+		jsonErr(w, err, 400)
 		return
 	}
-	jsonOK(w, map[string]string{"output": out})
+	// Same one-click background flow as the Database page: stop running shards
+	// where the control plane supports it (AMP), restore, classify, recycle
+	// the pool — progress polled via /db-backups/restore/status. This closes
+	// the guard gap where this handler previously restored over a live
+	// battlegroup with no check at all.
+	if err := startRestoreJob(r, req.File); err != nil {
+		jsonErr(w, err, http.StatusConflict)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	_ = json.NewEncoder(w).Encode(map[string]string{"ok": "restore started"})
 }
 
 func allowedBackupArchiveEntry(entryName string) (string, bool) {
@@ -624,20 +636,24 @@ func handleBGBackupUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 // restoreViaControl runs a restore command appropriate for the active control plane.
-// Called by handleBGRestore — kept separate so the restore logic per-provider
-// can be extended without touching the HTTP handler.
-func restoreViaControl(ctx context.Context, ctrl ControlPlane, exec Executor, filename string) (string, error) {
-	// kubectl uses the battlegroup.sh import script.
+// Called via dispatchRestore — kept separate so the restore logic per-provider
+// can be extended without touching the HTTP handler. The pg_restore result is
+// interpreted by classifyPgRestoreResult (exit 1 with a completion summary is
+// success-with-ignorable-errors, not failure).
+func restoreViaControl(_ context.Context, ctrl ControlPlane, exec Executor, filename string) (string, int, error) {
+	// kubectl uses the battlegroup.sh import script — not pg_restore, so its
+	// exit code is meaningful as-is.
 	// TODO: NEVER run battlegroup.sh with sudo — see ExecCommand in control_kubectl.go.
 	if ctrl != nil && ctrl.Name() == "kubectl" {
-		return exec.Exec(fmt.Sprintf(
+		out, err := exec.Exec(fmt.Sprintf(
 			`echo yes | ~/.dune/download/scripts/battlegroup.sh import %s 2>&1`,
 			shellQuote(filename)))
+		return out, 0, err
 	}
 	// docker / local: pg_restore from the backup directory.
 	dir, err := activeBackupDir(ctrl, exec)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	path := strings.TrimRight(dir, "/") + "/" + filename
 	if ns, pod, inPodDir, ok := parseK8sBackupDir(dir); ok {
@@ -649,7 +665,7 @@ func restoreViaControl(ctx context.Context, ctrl ControlPlane, exec Executor, fi
 			kctl, shellQuote(ns), shellQuote(pod), shellQuote(remotePath), shellQuote(tmp),
 		))
 		if copyErr != nil {
-			return copyOut, fmt.Errorf("copy backup to local restore path: %w", copyErr)
+			return copyOut, 0, fmt.Errorf("copy backup to local restore path: %w", copyErr)
 		}
 		defer func() {
 			_, _ = exec.Exec(fmt.Sprintf("rm -f %s 2>/dev/null || sudo rm -f %s 2>/dev/null || true",
@@ -657,9 +673,14 @@ func restoreViaControl(ctx context.Context, ctrl ControlPlane, exec Executor, fi
 		}()
 		path = tmp
 	}
-	return exec.Exec(fmt.Sprintf(
+	out, restoreErr := exec.Exec(fmt.Sprintf(
 		`PGPASSWORD=%s pg_restore --no-password --clean --if-exists -h %s -p %d -U %s -d %s %s 2>&1`,
 		shellQuote(dbPass), dbHost, dbPort, dbUser, dbName, shellQuote(path)))
+	ignored, err := classifyPgRestoreResult(out, restoreErr)
+	if err != nil {
+		return out, 0, err
+	}
+	return out, ignored, nil
 }
 
 // dispatchBackup runs a battlegroup backup against the active control plane.
@@ -686,21 +707,35 @@ func dispatchBackup(ctx context.Context, ctrl ControlPlane, exec Executor) (stri
 // When the plane implements dbBackupProvider (AMP) the file is a .dump restored
 // via pg_restore (issue #169); otherwise it is a .backup restored via
 // restoreViaControl (kubectl battlegroup.sh import / docker / local pg_restore).
-// Filename validation branches on the active store's extension.
-func dispatchRestore(ctx context.Context, ctrl ControlPlane, exec Executor, filename string) (string, error) {
+// Filename validation branches on the active store's extension. Returns the
+// human-facing output and the count of ignorable pg_restore errors (see
+// classifyPgRestoreResult). Callers own the game-stopped guard — use
+// prepareAndRestoreDB unless you have a reason not to.
+func dispatchRestore(ctx context.Context, ctrl ControlPlane, exec Executor, filename string) (string, int, error) {
 	if ctrl == nil || exec == nil {
-		return "", fmt.Errorf("not connected")
+		return "", 0, fmt.Errorf("not connected")
+	}
+	if err := validateRestoreFilename(ctrl, filename); err != nil {
+		return "", 0, err
 	}
 	if prov, ok := ctrl.(dbBackupProvider); ok {
-		if err := validateBackupName(filename); err != nil {
-			return "", err
-		}
 		return restoreDBBackupFile(prov, filename, exec)
 	}
-	if filename == "" || strings.ContainsAny(filename, `/\`) || !strings.HasSuffix(filename, ".backup") {
-		return "", fmt.Errorf("invalid filename")
-	}
 	return restoreViaControl(ctx, ctrl, exec, filename)
+}
+
+// validateRestoreFilename applies the control-plane-appropriate filename rule:
+// .dump (strict charset, validateBackupName) for dbBackupProvider planes (AMP),
+// .backup with no path separators for the legacy control-script path. Shared
+// by dispatchRestore and handleBGRestore's pre-start validation.
+func validateRestoreFilename(ctrl ControlPlane, filename string) error {
+	if _, ok := ctrl.(dbBackupProvider); ok {
+		return validateBackupName(filename)
+	}
+	if filename == "" || strings.ContainsAny(filename, `/\`) || !strings.HasSuffix(filename, ".backup") {
+		return fmt.Errorf("invalid filename")
+	}
+	return nil
 }
 
 // listDBBackupsAsBGFiles adapts the Database-page .dump listing into the

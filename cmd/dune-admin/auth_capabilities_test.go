@@ -59,7 +59,11 @@ func TestCapabilityForRequest(t *testing.T) {
 		{"POST", "/api/v1/players/give-items", capPlayersWrite},
 		{"POST", "/api/v1/players/kick", capPlayersWrite},
 		{"DELETE", "/api/v1/players/item/9", capPlayersWrite},
-		{"GET", "/api/v1/players/5/export", capDataExport},
+		{"POST", "/api/v1/players/5/backup", capBackupsManage},
+		{"GET", "/api/v1/players/5/backups", capBackupsRead},
+		{"POST", "/api/v1/character-backups/5/restore", capBackupsManage},
+		{"GET", "/api/v1/character-backups/5/download", capBackupsRead},
+		{"DELETE", "/api/v1/character-backups/5", capBackupsManage},
 		{"GET", "/api/v1/blueprints/7/export", capDataExport},
 		{"POST", "/api/v1/blueprints/import", capWorldWrite},
 		{"GET", "/api/v1/storage", capWorldRead},
@@ -86,6 +90,7 @@ func TestCapabilityForRequest(t *testing.T) {
 		{"POST", "/api/v1/database/sql", capDatabaseQuery},
 		{"GET", "/api/v1/db-backups", capBackupsRead},
 		{"POST", "/api/v1/db-backups/restore", capBackupsManage},
+		{"GET", "/api/v1/db-backups/restore/status", capBackupsRead},
 	}
 	for _, tt := range tests {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {

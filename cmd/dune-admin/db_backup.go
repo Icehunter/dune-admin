@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -39,6 +41,55 @@ type dbBackupFile struct {
 type dbBackupProvider interface {
 	BackupDatabase(exec Executor, conn dbConn, destPath string) (string, error)
 	RestoreDatabase(exec Executor, conn dbConn, srcPath string) (string, error)
+}
+
+// gameServerStopper is the optional control-plane capability for gracefully
+// stopping just the game-server shard processes while leaving the rest of the
+// stack (Postgres, broker) running. Needed by the restore flow on AMP, where
+// everything shares one container: `ampinstmgr -q` tears the whole container
+// down INCLUDING Postgres, so an operator can never satisfy a "stop the
+// battlegroup, then restore" guard — the app must stop the shards itself.
+type gameServerStopper interface {
+	StopGameServers(ctx context.Context, exec Executor) error
+}
+
+// pgRestoreIgnoredRe matches pg_restore's completion summary. pg_restore
+// prints this line ONLY after running the whole archive to the end — a
+// mid-stream death (broken pipe, lost connection) never produces it.
+var pgRestoreIgnoredRe = regexp.MustCompile(`errors ignored on restore: (\d+)`)
+
+// pgRestoreErrTailLen bounds how much pg_restore output is embedded in a
+// failure message — enough for the operator to see the actual error, without
+// dumping a full log into a toast.
+const pgRestoreErrTailLen = 600
+
+// classifyPgRestoreResult interprets a pg_restore run. `pg_restore --clean`
+// against this schema ALWAYS exits 1: partition-inherited PK drops on
+// event_log_p* and pgcrypto/pg_trgm/ext ownership produce ~38 unavoidable,
+// harmless errors. Treating exit codes as truth made every successful restore
+// report "restore failed". Instead: a run that printed the completion summary
+// ("errors ignored on restore: N") finished the archive and is a success with
+// N ignorable errors; a run that didn't is a real failure, and the error
+// carries the tail of the output so the operator sees WHY, not just "failed".
+func classifyPgRestoreResult(out string, err error) (int, error) {
+	ignored := 0
+	if m := pgRestoreIgnoredRe.FindStringSubmatch(out); m != nil {
+		ignored, _ = strconv.Atoi(m[1])
+	}
+	if err == nil {
+		return ignored, nil
+	}
+	if pgRestoreIgnoredRe.MatchString(out) {
+		return ignored, nil
+	}
+	tail := strings.TrimSpace(out)
+	if len(tail) > pgRestoreErrTailLen {
+		tail = "…" + tail[len(tail)-pgRestoreErrTailLen:]
+	}
+	if tail == "" {
+		return 0, fmt.Errorf("pg_restore: %w", err)
+	}
+	return 0, fmt.Errorf("pg_restore: %w: %s", err, tail)
 }
 
 var backupNameRe = regexp.MustCompile(`^[A-Za-z0-9._-]+\.dump$`)

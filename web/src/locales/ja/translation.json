@@ -1,6 +1,6 @@
 {
   "backups": {
-    "warning": "バックアップの取得や復元の前にバトルグループを停止してください。実行中に取得したバックアップは不整合になる可能性があり、復元にはバトルグループの停止が必要です。",
+    "warning": "ゲーム実行中に作成されたバックアップは不整合になる可能性があります。復元は実行中のゲームサーバーを自動的に停止し、元に戻すことはできません。",
     "loadFailed": "バックアップの読み込みに失敗しました: {{message}}",
     "take": {
       "title": "バックアップを取得",
@@ -22,7 +22,8 @@
     "restoreLabel": "復元",
     "restoreFailed": "復元に失敗しました: {{message}}",
     "restoreConfirmTitle": "データベースを復元しますか？",
-    "restoreConfirmDesc": "現在のデータベースを {{name}} で置き換えます。バトルグループを停止する必要があり、元に戻せません。",
+    "restoreConfirmDesc": "これにより本番データベースが {{name}} に置き換えられます。実行中のゲームサーバーは先に自動停止されます。この操作は元に戻せません。",
+    "restoreIgnoredNote": "{{n}} 件の無害な pg_restore 警告を無視しました。",
     "deleteLabel": "削除",
     "deleteConfirmTitle": "バックアップを削除しますか？",
     "deleteConfirmDesc": "{{name}} を完全に削除しますか？",
@@ -42,6 +43,20 @@
       "tzPlaceholder": "ホストのローカル（例: UTC）",
       "save": "保存",
       "saveFailed": "保存に失敗しました: {{message}}"
+    },
+    "restoreProgress": {
+      "title": "データベースを復元中",
+      "check": "バトルグループの状態を確認中…",
+      "stop": "ゲームサーバーを停止中…",
+      "stopSkipped": "ゲームサーバーは既に停止済み",
+      "restore": "データベースを復元中…",
+      "finalize": "接続とキャッシュを更新中…",
+      "success": "データベースを復元しました。",
+      "failure": "復元に失敗しました",
+      "leftStopped": "復元のためバトルグループは停止されたままです — 準備ができたら再起動してください。",
+      "startBattlegroup": "バトルグループを起動",
+      "battlegroupStarted": "バトルグループの起動コマンドを送信しました",
+      "close": "閉じる"
     }
   },
   "serverHealth": {
@@ -308,7 +323,6 @@
       "dropzone": "コンピューターから .backup または .zip ファイルをドロップするかクリックしてアップロード",
       "noBackups": "サーバーにバックアップファイルがまだありません。",
       "restoreBtn": "{{file}} を復元",
-      "restoreCompleted": "復元が完了しました",
       "title": "バックアップから復元",
       "uploaded": "{{name}} をアップロードしました",
       "warning": "現在のデータが上書きされます。先にサーバーを停止してください。"
@@ -720,8 +734,6 @@
   "players": {
     "actions": {
       "admin": {
-        "characterExport": "キャラクターエクスポート",
-        "characterExportDesc": "キャラクターデータをJSONとしてダウンロード",
         "confirmReset": "リセットを確認",
         "confirmWipe": "削除を確認",
         "delete": "削除",
@@ -734,8 +746,6 @@
         "dismiss": "閉じる",
         "dismissReturning": "復帰プレイヤーポップアップを閉じる",
         "dismissReturningDesc": "報酬を受け取り済みとしてマークし、ログインポップアップが表示されなくなります",
-        "downloadExport": "ダウンロード",
-        "exportDownloaded": "エクスポートをダウンロードしました",
         "kick": "キック",
         "kickDesc": "プレイヤーをサーバーから切断します",
         "kickPlayer": "プレイヤーをキック",
@@ -807,11 +817,43 @@
         "deleteCharacterOnlineWarning": "このプレイヤーはオンラインのようです。削除を正常に完了させるため、先にキックしてください。",
         "deleteCharacterReasonLabel": "理由(監査ログに記録されます)",
         "deleteCharacterReasonPlaceholder": "このキャラクターを削除する理由は?",
+        "deleteCharacterBackupLabel": "削除前にキャラクターの完全バックアップを作成する",
+        "deleteCharacterBackupOfflineNote": "バックアップを作成するにはプレイヤーがオフラインである必要があります — バックアップなしで続行します。",
         "deleteCharacterConfirmLabel": "確認のため「{{phrase}}」と入力してください",
         "deleteCharacterConfirm": "完全に削除",
         "deleteCharacterCountdown": "{{seconds}}秒お待ちください…",
         "deleteCharacterPhrase": "DELETE",
-        "deleteCharacterDone": "キャラクター {{player}} を削除しました"
+        "deleteCharacterDone": "キャラクター {{player}} を削除しました",
+        "characterBackups": "キャラクターバックアップ",
+        "characterBackupsDesc": "ゲーム標準の転送システムによる完全なキャラクターバックアップです。プレイヤーがオフラインである必要があります。サーバーの更新後はバックアップを復元できない場合があります(ゲームパッチのチェックサム)。",
+        "backupScope": {
+          "includedTitle": "キャラクターバックアップに含まれるもの",
+          "inclCharacter": "キャラクター、インベントリ、装備中のアイテム",
+          "inclProgression": "進行状況、スキル、通貨、ジャーニー",
+          "inclBaseBackups": "ゲーム内の拠点バックアップ(保管された中身を含む)",
+          "inclVehicles": "ゲーム内の車両バックアップで保管した乗り物",
+          "excludedTitle": "含まれないもの",
+          "exclPlacedBases": "設置済みの拠点、トーテム、その収納ボックス",
+          "exclParkedVehicles": "世界に駐機中の乗り物",
+          "hint": "削除や復元後も残したい場合は、先にゲーム内のバックアップ機能で拠点と乗り物を保管してください。"
+        },
+        "backupsManualDesc": "今すぐこのキャラクターの完全バックアップを作成します。",
+        "backupsOfflineRequired": "バックアップを作成するにはプレイヤーがオフラインである必要があります。",
+        "backupsCreateNow": "今すぐバックアップ",
+        "backupsManualReason": "手動バックアップ",
+        "backupsCreated": "バックアップを作成しました",
+        "backupsLoading": "バックアップを読み込み中…",
+        "backupsEmpty": "バックアップはまだありません",
+        "backupsRestore": "復元",
+        "backupsRestoreTitle": "このキャラクターを復元しますか?",
+        "backupsRestoreConfirmDesc": "{{player}}の現在のデータはすべてこのバックアップで置き換えられます。プレイヤーはオフラインである必要があります。このバックアップ取得後にゲームが更新されている場合は失敗します。",
+        "backupsRestoreScopeWarning": "バックアップに含まれるものだけが戻ります。現在世界に設置されている資産は復元時に所有権を失い、回復されません。",
+        "backupsRestored": "キャラクターを復元しました",
+        "backupsDownload": "バックアップをダウンロード",
+        "backupsDeleteLabel": "バックアップを削除",
+        "backupsDeleteTitle": "このバックアップを削除しますか?",
+        "backupsDeleteConfirmDesc": "バックアップファイルが完全に削除されます。この操作は元に戻せません。",
+        "backupsDeleted": "バックアップを削除しました"
       },
       "contracts": {
         "applyContracts_one": "コントラクトを適用 ({{count}})",

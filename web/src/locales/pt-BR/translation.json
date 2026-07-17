@@ -1,6 +1,6 @@
 {
   "backups": {
-    "warning": "Pare o grupo de batalha antes de criar ou restaurar um backup. Backups feitos com o jogo em execução podem ser inconsistentes, e a restauração exige o grupo de batalha parado.",
+    "warning": "Backups feitos com o jogo em execução podem ser inconsistentes. A restauração para automaticamente os servidores de jogo em execução e não pode ser desfeita.",
     "loadFailed": "Falha ao carregar backups: {{message}}",
     "take": {
       "title": "Fazer backup",
@@ -22,7 +22,8 @@
     "restoreLabel": "Restaurar",
     "restoreFailed": "Falha na restauração: {{message}}",
     "restoreConfirmTitle": "Restaurar o banco de dados?",
-    "restoreConfirmDesc": "Isto substitui o banco de dados ativo por {{name}}. O grupo de batalha deve estar parado — não pode ser desfeito.",
+    "restoreConfirmDesc": "Isso substitui o banco de dados ao vivo por {{name}}. Servidores de jogo em execução são parados automaticamente antes. Esta ação não pode ser desfeita.",
+    "restoreIgnoredNote": "{{n}} avisos inofensivos do pg_restore foram ignorados.",
     "deleteLabel": "Excluir",
     "deleteConfirmTitle": "Excluir backup?",
     "deleteConfirmDesc": "Excluir {{name}} permanentemente?",
@@ -42,6 +43,20 @@
       "tzPlaceholder": "local do host (ex.: UTC)",
       "save": "Salvar",
       "saveFailed": "Falha ao salvar: {{message}}"
+    },
+    "restoreProgress": {
+      "title": "Restaurando o banco de dados",
+      "check": "Verificando o status do battlegroup…",
+      "stop": "Parando os servidores de jogo…",
+      "stopSkipped": "Servidores de jogo já parados",
+      "restore": "Restaurando o banco de dados…",
+      "finalize": "Atualizando conexões e caches…",
+      "success": "Banco de dados restaurado.",
+      "failure": "Falha na restauração",
+      "leftStopped": "O battlegroup ficou parado para a restauração — inicie-o novamente quando estiver pronto.",
+      "startBattlegroup": "Iniciar battlegroup",
+      "battlegroupStarted": "Comando de início do battlegroup enviado",
+      "close": "Fechar"
     }
   },
   "serverHealth": {
@@ -309,7 +324,6 @@
       "dropzone": "Solte ou clique para enviar um arquivo .backup ou .zip do seu computador",
       "noBackups": "Nenhum arquivo de backup no servidor ainda.",
       "restoreBtn": "Restaurar {{file}}",
-      "restoreCompleted": "Restauração concluída",
       "title": "Restaurar do backup",
       "uploaded": "{{name}} enviado",
       "warning": "Isso substitui os dados atuais. O servidor deve ser parado primeiro."
@@ -727,8 +741,6 @@
   "players": {
     "actions": {
       "admin": {
-        "characterExport": "Exportar personagem",
-        "characterExportDesc": "Baixar dados do personagem como JSON",
         "confirmReset": "Confirmar redefinição",
         "confirmWipe": "Confirmar limpeza",
         "delete": "Excluir",
@@ -741,8 +753,6 @@
         "dismiss": "Dispensar",
         "dismissReturning": "Dispensar popup de jogador retornante",
         "dismissReturningDesc": "Marca o prêmio como reivindicado para que o popup de login pare de aparecer",
-        "downloadExport": "Baixar",
-        "exportDownloaded": "Exportação baixada",
         "kick": "Expulsar",
         "kickDesc": "Desconecta o jogador do servidor",
         "kickPlayer": "Expulsar jogador",
@@ -814,11 +824,43 @@
         "deleteCharacterOnlineWarning": "Este jogador parece estar online. Expulse-o primeiro para que a exclusão seja concluída corretamente.",
         "deleteCharacterReasonLabel": "Motivo (registrado no log de auditoria)",
         "deleteCharacterReasonPlaceholder": "Por que este personagem está sendo excluído?",
+        "deleteCharacterBackupLabel": "Criar um backup completo do personagem antes de excluir",
+        "deleteCharacterBackupOfflineNote": "O jogador precisa estar offline para criar um backup — continuando sem um.",
         "deleteCharacterConfirmLabel": "Digite \"{{phrase}}\" para confirmar",
         "deleteCharacterConfirm": "Excluir permanentemente",
         "deleteCharacterCountdown": "Aguarde {{seconds}} s…",
         "deleteCharacterPhrase": "DELETE",
-        "deleteCharacterDone": "Personagem {{player}} excluído"
+        "deleteCharacterDone": "Personagem {{player}} excluído",
+        "characterBackups": "Backups de personagem",
+        "characterBackupsDesc": "Backups completos do personagem via sistema nativo de transferência do jogo. Requer que o jogador esteja offline. Um backup pode não ser restaurável após uma atualização do servidor (checksum do patch do jogo).",
+        "backupScope": {
+          "includedTitle": "Incluído em um backup de personagem",
+          "inclCharacter": "Personagem, inventário e itens equipados",
+          "inclProgression": "Progressão, habilidades, moeda e journey",
+          "inclBaseBackups": "Backups de base do jogo, incluindo o conteúdo armazenado",
+          "inclVehicles": "Veículos guardados via backup de veículo do jogo",
+          "excludedTitle": "Não incluído",
+          "exclPlacedBases": "Bases construídas, totens e seus baús de armazenamento",
+          "exclParkedVehicles": "Veículos estacionados no mundo",
+          "hint": "Guarde primeiro as bases e os veículos com as ferramentas do jogo se precisarem sobreviver a uma exclusão ou restauração."
+        },
+        "backupsManualDesc": "Fazer um backup completo deste personagem agora.",
+        "backupsOfflineRequired": "O jogador precisa estar offline para criar um backup.",
+        "backupsCreateNow": "Fazer backup agora",
+        "backupsManualReason": "backup manual",
+        "backupsCreated": "Backup criado",
+        "backupsLoading": "Carregando backups…",
+        "backupsEmpty": "Ainda não há backups",
+        "backupsRestore": "Restaurar",
+        "backupsRestoreTitle": "Restaurar este personagem?",
+        "backupsRestoreConfirmDesc": "Isso substitui totalmente os dados atuais de {{player}} pelo backup. O jogador precisa estar offline. Falha se o jogo foi atualizado desde que este backup foi feito.",
+        "backupsRestoreScopeWarning": "Apenas o que está dentro do backup volta. Propriedades atualmente colocadas no mundo perdem o dono na restauração — não são recuperadas.",
+        "backupsRestored": "Personagem restaurado",
+        "backupsDownload": "Baixar backup",
+        "backupsDeleteLabel": "Excluir backup",
+        "backupsDeleteTitle": "Excluir este backup?",
+        "backupsDeleteConfirmDesc": "Isso remove permanentemente o arquivo de backup. Esta ação não pode ser desfeita.",
+        "backupsDeleted": "Backup excluído"
       },
       "contracts": {
         "applyContracts_one": "Aplicar contrato(s) ({{count}})",

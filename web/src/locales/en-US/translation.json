@@ -1,6 +1,6 @@
 {
   "backups": {
-    "warning": "Stop the battlegroup before taking or restoring a backup. Backups taken while the game is running may be inconsistent, and a restore requires the battlegroup stopped.",
+    "warning": "Backups taken while the game is running may be inconsistent. Restoring automatically stops any running game servers first and cannot be undone.",
     "loadFailed": "Failed to load backups: {{message}}",
     "take": {
       "title": "Take Backup",
@@ -22,7 +22,8 @@
     "restoreLabel": "Restore",
     "restoreFailed": "Restore failed: {{message}}",
     "restoreConfirmTitle": "Restore database?",
-    "restoreConfirmDesc": "This replaces the live database with {{name}}. The battlegroup must be stopped — this cannot be undone.",
+    "restoreConfirmDesc": "This replaces the live database with {{name}}. Any running game servers are stopped automatically first. This cannot be undone.",
+    "restoreIgnoredNote": "{{n}} harmless pg_restore notices were ignored.",
     "deleteLabel": "Delete",
     "deleteConfirmTitle": "Delete backup?",
     "deleteConfirmDesc": "Permanently delete {{name}}?",
@@ -42,6 +43,20 @@
       "tzPlaceholder": "host local (e.g. UTC)",
       "save": "Save",
       "saveFailed": "Save failed: {{message}}"
+    },
+    "restoreProgress": {
+      "title": "Restoring Database",
+      "check": "Checking battlegroup status…",
+      "stop": "Stopping game servers…",
+      "stopSkipped": "Game servers already stopped",
+      "restore": "Restoring database…",
+      "finalize": "Refreshing connections and caches…",
+      "success": "Database restored.",
+      "failure": "Restore failed",
+      "leftStopped": "The battlegroup was left stopped for the restore — start it again when ready.",
+      "startBattlegroup": "Start Battlegroup",
+      "battlegroupStarted": "Battlegroup start command sent",
+      "close": "Close"
     }
   },
   "serverHealth": {
@@ -308,7 +323,6 @@
       "dropzone": "Drop or click to upload a .backup or .zip from your computer",
       "noBackups": "No backup files on server yet.",
       "restoreBtn": "Restore {{file}}",
-      "restoreCompleted": "Restore completed",
       "title": "Restore from Backup",
       "uploaded": "Uploaded {{name}}",
       "warning": "This overwrites current data. Server should be stopped first."
@@ -720,8 +734,6 @@
   "players": {
     "actions": {
       "admin": {
-        "characterExport": "Character Export",
-        "characterExportDesc": "Download character data as JSON",
         "confirmReset": "Confirm Reset",
         "confirmWipe": "Confirm Wipe",
         "delete": "Delete",
@@ -734,8 +746,6 @@
         "dismiss": "Dismiss",
         "dismissReturning": "Dismiss Returning Player Popup",
         "dismissReturningDesc": "Marks the award as claimed so the login popup stops appearing",
-        "downloadExport": "Download",
-        "exportDownloaded": "Export downloaded",
         "kick": "Kick",
         "kickDesc": "Disconnects the player from the server",
         "kickPlayer": "Kick Player",
@@ -807,10 +817,42 @@
         "deleteCharacterOnlineWarning": "This player appears to be online. Kick them first so the deletion settles cleanly.",
         "deleteCharacterReasonLabel": "Reason (recorded in the audit log)",
         "deleteCharacterReasonPlaceholder": "Why is this character being deleted?",
+        "deleteCharacterBackupLabel": "Create a full character backup before deleting",
+        "deleteCharacterBackupOfflineNote": "Player must be offline to create a backup — proceeding without one.",
         "deleteCharacterConfirmLabel": "Type \"{{phrase}}\" to confirm",
         "deleteCharacterConfirm": "Delete Permanently",
         "deleteCharacterCountdown": "Wait {{seconds}}s…",
         "deleteCharacterPhrase": "DELETE",
+        "characterBackups": "Character Backups",
+        "characterBackupsDesc": "Full character backups via the game's native transfer system. Requires the player offline. A backup may not restore after a server update (game-patch checksum).",
+        "backupScope": {
+          "includedTitle": "Included in a character backup",
+          "inclCharacter": "Character, inventory, and equipped items",
+          "inclProgression": "Progression, skills, currency, and journey",
+          "inclBaseBackups": "In-game base backups, including their stored contents",
+          "inclVehicles": "Vehicles stored via the in-game vehicle backup",
+          "excludedTitle": "Not included",
+          "exclPlacedBases": "Live placed bases, totems, and their storage boxes",
+          "exclParkedVehicles": "Vehicles parked in the world",
+          "hint": "Pack bases and vehicles with the in-game backup tools first if they must survive a delete or restore."
+        },
+        "backupsManualDesc": "Take a full backup of this character right now.",
+        "backupsOfflineRequired": "Player must be offline to create a backup.",
+        "backupsCreateNow": "Backup Now",
+        "backupsManualReason": "manual backup",
+        "backupsCreated": "Backup created",
+        "backupsLoading": "Loading backups…",
+        "backupsEmpty": "No backups yet",
+        "backupsRestore": "Restore",
+        "backupsRestoreTitle": "Restore this character?",
+        "backupsRestoreConfirmDesc": "This replaces {{player}}'s current data entirely with the backup. Player must be offline. Fails if the game has been updated since this backup was taken.",
+        "backupsRestoreScopeWarning": "Only what is inside the backup comes back. Property currently placed in the world is disowned by the restore — it is not recovered.",
+        "backupsRestored": "Character restored",
+        "backupsDownload": "Download backup",
+        "backupsDeleteLabel": "Delete backup",
+        "backupsDeleteTitle": "Delete this backup?",
+        "backupsDeleteConfirmDesc": "This permanently removes the backup file. This cannot be undone.",
+        "backupsDeleted": "Backup deleted",
         "deleteCharacterDone": "Character {{player}} deleted"
       },
       "contracts": {

@@ -212,6 +212,68 @@ func TestProcessDeleteCharacter(t *testing.T) {
 			t.Fatalf("unexpected error with nil cleanupOrphans: %v", err)
 		}
 	})
+
+	// captureSnapshot must run BEFORE deleteAccount (opposite timing from
+	// cleanupOrphans) — the pawn/controller ids a snapshot needs stop
+	// existing the moment delete_account succeeds.
+
+	t.Run("captureSnapshot called before deleteAccount", func(t *testing.T) {
+		t.Parallel()
+		var order []string
+		err := processDeleteCharacter(deleteCharacterParams{
+			accountID:   42,
+			reason:      "x",
+			resolveUser: func(int64) (string, error) { return "DEADBEEF", nil },
+			captureSnapshot: func() error {
+				order = append(order, "capture")
+				return nil
+			},
+			deleteAccount: func(string, string) (bool, error) {
+				order = append(order, "delete")
+				return true, nil
+			},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(order) != 2 || order[0] != "capture" || order[1] != "delete" {
+			t.Fatalf("call order = %v, want [capture delete]", order)
+		}
+	})
+
+	t.Run("captureSnapshot failure aborts before deleteAccount runs", func(t *testing.T) {
+		t.Parallel()
+		boom := errors.New("capture boom")
+		deleteCalled := false
+		err := processDeleteCharacter(deleteCharacterParams{
+			accountID:       42,
+			reason:          "x",
+			resolveUser:     func(int64) (string, error) { return "DEADBEEF", nil },
+			captureSnapshot: func() error { return boom },
+			deleteAccount:   func(string, string) (bool, error) { deleteCalled = true; return true, nil },
+		})
+		if !errors.Is(err, boom) {
+			t.Fatalf("want capture error to propagate wrapping boom, got %v", err)
+		}
+		if deleteCalled {
+			t.Error("deleteAccount must not run when captureSnapshot fails — the whole point of the checkbox is not proceeding without the safety net")
+		}
+	})
+
+	t.Run("nil captureSnapshot is fine", func(t *testing.T) {
+		t.Parallel()
+		err := processDeleteCharacter(deleteCharacterParams{
+			accountID:     42,
+			reason:        "x",
+			resolveUser:   func(int64) (string, error) { return "DEADBEEF", nil },
+			deleteAccount: func(string, string) (bool, error) { return true, nil },
+			// captureSnapshot intentionally omitted (nil) — must not panic;
+			// this is the "admin didn't check the backup box" path.
+		})
+		if err != nil {
+			t.Fatalf("unexpected error with nil captureSnapshot: %v", err)
+		}
+	})
 }
 
 // TestHandleDeleteCharacter_InputValidation verifies bad input returns 400.

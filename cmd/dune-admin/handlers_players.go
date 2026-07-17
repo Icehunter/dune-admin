@@ -854,8 +854,10 @@ func handleRenameCharacter(w http.ResponseWriter, r *http.Request) {
 // @Router /api/v1/players/delete [post]
 func handleDeleteCharacter(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		AccountID int64  `json:"account_id"`
-		Reason    string `json:"reason"`
+		AccountID     int64  `json:"account_id"`
+		Reason        string `json:"reason"`
+		CharacterName string `json:"character_name"`
+		Backup        bool   `json:"backup"`
 	}
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
@@ -869,7 +871,7 @@ func handleDeleteCharacter(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("reason required"), 400)
 		return
 	}
-	msg, ok := cmdDeleteCharacter(dbFromCtx(r), req.AccountID, req.Reason)().(msgMutate)
+	msg, ok := cmdDeleteCharacter(dbFromCtx(r), characterBackupsStoreForCtx(r), req.AccountID, req.Reason, req.CharacterName, req.Backup)().(msgMutate)
 	if !ok {
 		jsonErr(w, fmt.Errorf("internal error"), 500)
 		return
@@ -1000,40 +1002,6 @@ func handleGrantReturningPlayerAward(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonOK(w, map[string]string{"ok": msg.ok})
-}
-
-// @Summary Export a character's data as a JSON attachment
-// @Tags players
-// @Produce application/octet-stream
-// @Param id path int true "Account ID"
-// @Success 200 {string} string "character-{id}.json attachment"
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /api/v1/players/{id}/export [get]
-func handleCharacterExport(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	accountID, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		jsonErr(w, fmt.Errorf("invalid id"), 400)
-		return
-	}
-	db := dbFromCtx(r)
-	ctx := r.Context()
-	rawID, err := rawFuncomID(ctx, db, accountID)
-	if err != nil {
-		jsonErr(w, fmt.Errorf("account not found: %w", err), 404)
-		return
-	}
-	var result string
-	err = db.QueryRow(ctx, `SELECT dune.character_transfer_export($1)::text`, rawID).Scan(&result)
-	if err != nil {
-		jsonErr(w, fmt.Errorf("export failed: %w", err), 500)
-		return
-	}
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="character-%d.json"`, accountID))
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = fmt.Fprint(w, result)
 }
 
 // @Summary Delete a player account and all associated data

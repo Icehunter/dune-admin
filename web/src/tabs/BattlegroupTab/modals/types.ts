@@ -21,5 +21,7 @@ export type RestoreModalProps = {
   backupFilesLoading: boolean
   setBackupFiles: (files: BackupFile[]) => void
   onClose: () => void
-  onRestoreComplete: (output: string) => void
+  /** Called once the backend restore job is accepted — the caller opens the
+   * shared step-progress dialog, which polls the job to completion. */
+  onRestoreStarted: () => void
 }

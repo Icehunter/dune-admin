@@ -147,6 +147,34 @@ func (s *battlepassStore) recordGrantLedgerRetryLater(tierKey string, accountID 
 	return nil
 }
 
+// healExhaustedOnlineGrantLedger resets grant-ledger rows that were exhausted
+// by the PRE-#259/#280 policy, where "player is online" counted as a real
+// failure and burned all attempts — leaving the players who reported the bug
+// permanently stuck on manual grant even after the fix shipped. It matches
+// exhausted rows whose last_error carries the online message
+// (playerOnlineErrMarker) and returns them to a fresh pending state so the
+// retry engine picks them up. Deliberately UNSCOPED across server_id (runs
+// once at startup on the shared handle, healing every server) and naturally
+// idempotent: post-fix, online failures are recorded via
+// recordGrantLedgerRetryLater and can never exhaust a row with this message
+// again, so a second pass matches nothing.
+func (s *battlepassStore) healExhaustedOnlineGrantLedger() (int64, error) {
+	now := time.Now().UTC().Format(time.RFC3339)
+	res, err := s.db.Exec(`
+		UPDATE battlepass_grant_ledger
+		SET status = ?, attempts = 0, next_attempt_at = '', updated_at = ?
+		WHERE status = ? AND last_error LIKE '%' || ? || '%'`,
+		battlepassGrantPending, now, battlepassGrantExhausted, playerOnlineErrMarker)
+	if err != nil {
+		return 0, fmt.Errorf("heal exhausted online battlepass grants: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("heal exhausted online battlepass grants: %w", err)
+	}
+	return n, nil
+}
+
 // listRetryableGrantLedger returns pending grant-ledger rows whose backoff
 // window has elapsed (next_attempt_at <= now, empty = due) and which still have
 // attempts remaining. A fresh pending row (empty next_attempt_at) sorts first

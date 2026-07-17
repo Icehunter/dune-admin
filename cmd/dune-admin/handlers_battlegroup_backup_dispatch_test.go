@@ -157,7 +157,7 @@ func TestDispatchRestore_AMPUsesDBProvider(t *testing.T) {
 	ctrl := &dbProviderControl{}
 	globalControl = ctrl
 
-	out, err := dispatchRestore(context.Background(), globalControl, globalExecutor, name)
+	out, _, err := dispatchRestore(context.Background(), globalControl, globalExecutor, name)
 	if err != nil {
 		t.Fatalf("dispatchRestore: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestDispatchRestore_AMPRejectsNonDump(t *testing.T) {
 	saveBackupGlobals(t)
 	globalControl = &dbProviderControl{}
 
-	if _, err := dispatchRestore(context.Background(), globalControl, globalExecutor, "snapshot.backup"); err == nil {
+	if _, _, err := dispatchRestore(context.Background(), globalControl, globalExecutor, "snapshot.backup"); err == nil {
 		t.Fatal("expected error restoring a .backup name under AMP")
 	}
 }
@@ -200,7 +200,7 @@ func TestDispatchRestore_NonProviderUsesControlScript(t *testing.T) {
 		return "imported", nil
 	}}
 
-	out, err := dispatchRestore(context.Background(), globalControl, globalExecutor, "snapshot.backup")
+	out, _, err := dispatchRestore(context.Background(), globalControl, globalExecutor, "snapshot.backup")
 	if err != nil {
 		t.Fatalf("dispatchRestore: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestDispatchRestore_NonProviderRejectsNonBackup(t *testing.T) {
 	saveBackupGlobals(t)
 	globalControl = &recordingControl{name: "kubectl"}
 
-	if _, err := dispatchRestore(context.Background(), globalControl, globalExecutor, "dune-x.dump"); err == nil {
+	if _, _, err := dispatchRestore(context.Background(), globalControl, globalExecutor, "dune-x.dump"); err == nil {
 		t.Fatal("expected error restoring a .dump name under kubectl")
 	}
 }

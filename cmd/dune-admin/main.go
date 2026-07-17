@@ -1120,6 +1120,7 @@ func startBackgroundServices(ctx context.Context) {
 	initGivePacksStore()
 	initEventStore()
 	initBattlepassStore()
+	initCharacterBackupsStore()
 }
 
 // initLocationStore opens (or creates) the persistent location store and sets
@@ -1199,6 +1200,7 @@ func initEventStore() {
 func initBattlepassStore() {
 	if globalStore != nil {
 		globalBattlepassStore = newBattlepassStore(globalStore, defaultServerID)
+		healBattlepassGrantLedger(globalBattlepassStore)
 		return
 	}
 	s, err := openBattlepassStore(filepath.Join(configDir(), "battlepass.db"))
@@ -1207,6 +1209,37 @@ func initBattlepassStore() {
 		return
 	}
 	globalBattlepassStore = s
+	healBattlepassGrantLedger(s)
+}
+
+// healBattlepassGrantLedger runs the one-shot #259/#280 ledger self-heal at
+// startup (see healExhaustedOnlineGrantLedger). Best-effort: a failure is
+// logged, never fatal.
+func healBattlepassGrantLedger(s *battlepassStore) {
+	healed, err := s.healExhaustedOnlineGrantLedger()
+	if err != nil {
+		componentLog("battlepass").Warn().Err(err).Msg("grant-ledger self-heal failed")
+		return
+	}
+	if healed > 0 {
+		componentLog("battlepass").Info().Int64("rows", healed).Msg("re-queued grants exhausted by the pre-fix online policy")
+	}
+}
+
+// initCharacterBackupsStore opens (or creates) the character-backups SQLite
+// store and sets globalCharacterBackupsStore. A failure is non-fatal —
+// handlers guard for nil and skip the optional backup step.
+func initCharacterBackupsStore() {
+	if globalStore != nil {
+		globalCharacterBackupsStore = newCharacterBackupsStore(globalStore, defaultServerID)
+		return
+	}
+	s, err := openCharacterBackupsStore(filepath.Join(configDir(), "character-backups.db"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "character backups store: %v (backup-before-delete disabled)\n", err)
+		return
+	}
+	globalCharacterBackupsStore = s
 }
 
 // globalWelcomeCancel stops the welcome-package scanner goroutine on shutdown.

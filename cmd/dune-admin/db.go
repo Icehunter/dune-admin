@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -162,30 +164,37 @@ type serverSummary struct {
 	TrendDays         int             `json:"trend_days"`
 }
 
-const (
-	// playerStateCanonicalJoin resolves at most one dune.player_state row per
-	// account (#290). The game's own post-1.5 schema migration dropped the
-	// unique constraint on encrypted_player_state.account_id (see
-	// seedGMIdentity's doc comment for the full story), and
-	// dune.delete_account never cleans up the player_state row it orphans on
-	// character deletion — so an account can end up with more than one
-	// player_state row. A plain "LEFT JOIN dune.player_state ps ON
-	// ps.account_id = a.owner_account_id" then fans a single actor row
-	// out into one output row per duplicate, which is exactly the "duplicate
-	// players" symptom, and can also hand callers a stale player_pawn_id from
-	// an orphaned row. This LATERAL always picks exactly one row — the
-	// most-recently-active one — mirroring the same "pick the canonical row"
-	// pattern already used by resolvePlayerCharacterID and seedGMIdentity's
-	// dedup step elsewhere in this file. The outer query must alias the
-	// character actor as "a"; this exposes the usual "ps" columns.
-	playerStateCanonicalJoin = `
+// playerStateCanonicalJoinOn builds the canonical-row lateral join for the
+// given actors alias, exposing the single chosen dune.player_state row under
+// psAlias (#290). The game's own post-1.5 schema migration dropped the unique
+// constraint on encrypted_player_state.account_id (see seedGMIdentity's doc
+// comment for the full story), so an account can end up with more than one
+// player_state row; a plain "LEFT JOIN dune.player_state ps ON ps.account_id
+// = <a>.owner_account_id" then fans a single actor row out into one output
+// row per duplicate — the "duplicate players" symptom — and can hand callers
+// a stale player_pawn_id from an orphaned row. This LATERAL always picks
+// exactly one row under THE canonical definition used everywhere:
+// most-recently-active (last_login_time DESC NULLS LAST, id DESC), i.e. the
+// row the game itself last touched. resolvePlayerCharacterID uses the same
+// definition so the players list and every character-keyed feature agree on
+// which duplicate is "the" character. Aliases are compile-time literals from
+// the query constants below, never input.
+func playerStateCanonicalJoinOn(actorAlias, psAlias string) string {
+	return fmt.Sprintf(`
 		LEFT JOIN LATERAL (
 			SELECT * FROM dune.player_state ps2
-			WHERE ps2.account_id = a.owner_account_id
+			WHERE ps2.account_id = %s.owner_account_id
 			ORDER BY ps2.last_login_time DESC NULLS LAST, ps2.id DESC
 			LIMIT 1
-		) ps ON true`
+		) %s ON true`, actorAlias, psAlias)
+}
 
+// playerStateCanonicalJoin is the common "a"/"ps" form of
+// playerStateCanonicalJoinOn — the outer query must alias the character
+// actor as "a"; this exposes the usual "ps" columns.
+var playerStateCanonicalJoin = playerStateCanonicalJoinOn("a", "ps")
+
+const (
 	// factionByAccountJoin resolves a player's faction by ACCOUNT. Faction is
 	// stored on the PlayerController actor, NOT the PlayerCharacter, so joining
 	// dune.player_faction directly onto the character actor (pf.actor_id = a.id)
@@ -198,19 +207,6 @@ const (
 			FROM dune.player_faction pf
 			JOIN dune.actors fa ON fa.id = pf.actor_id
 		) af ON af.account_id = a.owner_account_id`
-
-	// Population counts. The seeded GM identity ($1) is excluded — it is not a
-	// real player. online_status compares against the enum literal (see
-	// cmdFetchOnlineAccountIDs), summed via CASE to match existing query style.
-	// Uses playerStateCanonicalJoin (#290) so a duplicate player_state row
-	// can't inflate the total/online counts the same way it fanned out
-	// cmdFetchPlayers's list.
-	serverCountsSQL = `
-		SELECT
-			COUNT(*) AS total,
-			COALESCE(SUM(CASE WHEN ps.online_status = 'Online' THEN 1 ELSE 0 END), 0) AS online
-		FROM dune.actors a` + playerStateCanonicalJoin + `
-		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
 
 	serverByMapSQL = `
 		SELECT COALESCE(NULLIF(a.map, ''), 'Unknown') AS label, COUNT(*) AS count
@@ -229,22 +225,6 @@ const (
 
 	// Players + economy grouped by faction. LEFT JOINs so characters with no
 	// dune.player_faction row fall into "Unaligned"; COUNT(DISTINCT a.id) stays
-	// correct despite the currency-row fan-out from the balances join. Verified
-	// read-only against the test VM before shipping.
-	serverByFactionSQL = `
-		SELECT
-			COALESCE(f.name, 'Unaligned') AS faction,
-			COUNT(DISTINCT a.id) AS players,
-			COALESCE(SUM(CASE WHEN vcb.currency_id =  dune.get_solaris_id() THEN vcb.balance ELSE 0 END), 0) AS solaris,
-			COALESCE(SUM(CASE WHEN vcb.currency_id <> dune.get_solaris_id() THEN vcb.balance ELSE 0 END), 0) AS scrip
-		FROM dune.actors a` + factionByAccountJoin + `
-		LEFT JOIN dune.factions f ON f.id = af.faction_id
-		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
-		LEFT JOIN dune.player_virtual_currency_balances vcb ON vcb.player_controller_id = ps.player_controller_id
-		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
-		GROUP BY faction
-		ORDER BY players DESC, faction`
-
 	// Cumulative character XP per player (DuneCharacter FLevelComponent), fed
 	// through xpToLevel to compute the server's average character level.
 	serverCharXPSQL = `
@@ -266,6 +246,42 @@ const (
 		JOIN dune.fgl_entities fe ON fe.entity_id = afe.entity_id` + factionByAccountJoin + `
 		LEFT JOIN dune.factions f ON f.id = af.faction_id
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
+)
+
+// Vars (not consts) because they embed playerStateCanonicalJoin, which is
+// built by playerStateCanonicalJoinOn at init.
+var (
+	// Population counts. The seeded GM identity ($1) is excluded — it is not a
+	// real player. online_status compares against the enum literal (see
+	// cmdFetchOnlineAccountIDs), summed via CASE to match existing query style.
+	// Uses playerStateCanonicalJoin (#290) so a duplicate player_state row
+	// can't inflate the total/online counts the same way it fanned out
+	// cmdFetchPlayers's list.
+	serverCountsSQL = `
+		SELECT
+			COUNT(*) AS total,
+			COALESCE(SUM(CASE WHEN ps.online_status = 'Online' THEN 1 ELSE 0 END), 0) AS online
+		FROM dune.actors a` + playerStateCanonicalJoin + `
+		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
+
+	// Players + economy grouped by faction. LEFT JOINs so characters with no
+	// dune.player_faction row fall into "Unaligned"; COUNT(DISTINCT a.id) stays
+	// correct despite the currency-row fan-out from the balances join, and the
+	// canonical player_state join (#290) keeps duplicate state rows from
+	// double-counting currency balances. Verified read-only against the test
+	// VM before shipping.
+	serverByFactionSQL = `
+		SELECT
+			COALESCE(f.name, 'Unaligned') AS faction,
+			COUNT(DISTINCT a.id) AS players,
+			COALESCE(SUM(CASE WHEN vcb.currency_id =  dune.get_solaris_id() THEN vcb.balance ELSE 0 END), 0) AS solaris,
+			COALESCE(SUM(CASE WHEN vcb.currency_id <> dune.get_solaris_id() THEN vcb.balance ELSE 0 END), 0) AS scrip
+		FROM dune.actors a` + factionByAccountJoin + `
+		LEFT JOIN dune.factions f ON f.id = af.faction_id` + playerStateCanonicalJoin + `
+		LEFT JOIN dune.player_virtual_currency_balances vcb ON vcb.player_controller_id = ps.player_controller_id
+		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
+		GROUP BY faction
+		ORDER BY players DESC, faction`
 )
 
 // cmdFetchServerStats computes the Postgres-derived dashboard aggregates (#130):
@@ -455,24 +471,29 @@ func cmdFetchGuilds(ctx context.Context, pool *pgxpool.Pool) ([]guildSummary, er
 	return out, rows.Err()
 }
 
-const guildMembersSQL = `
+// Guild rosters resolve character names through the canonical player_state
+// join (#290) — a bare account_id join duplicates member/invite rows when an
+// account has duplicate state rows. The invites query joins twice (invitee
+// via a/ps, sender via sa/sps); both must be canonical.
+var guildMembersSQL = `
 	SELECT m.player_id, COALESCE(m.role_id, 0), COALESCE(ps.character_name, '')
 	FROM dune.guild_members m
-	JOIN dune.actors a ON a.id = m.player_id
-	LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
+	JOIN dune.actors a ON a.id = m.player_id` + playerStateCanonicalJoin + `
 	WHERE m.guild_id = $1
 	ORDER BY m.role_id, m.player_id`
 
-const guildInvitesSQL = `
+var guildInvitesSQL = `
 	SELECT i.invite_id, i.player_id, COALESCE(ps.character_name, ''),
 	       i.sender_player_id, COALESCE(sps.character_name, '')
 	FROM dune.guild_invites i
-	JOIN dune.actors a ON a.id = i.player_id
-	LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
-	LEFT JOIN dune.actors sa ON sa.id = i.sender_player_id
-	LEFT JOIN dune.player_state sps ON sps.account_id = sa.owner_account_id
+	JOIN dune.actors a ON a.id = i.player_id` + playerStateCanonicalJoin + `
+	LEFT JOIN dune.actors sa ON sa.id = i.sender_player_id` + playerStateCanonicalJoinOnSender + `
 	WHERE i.guild_id = $1
 	ORDER BY i.invite_id`
+
+// playerStateCanonicalJoinOnSender is the sa/sps form for guildInvitesSQL's
+// second (sender) resolution.
+var playerStateCanonicalJoinOnSender = playerStateCanonicalJoinOn("sa", "sps")
 
 func scanGuildMembers(ctx context.Context, pool *pgxpool.Pool, guildID int64) ([]guildMember, error) {
 	rows, err := pool.Query(ctx, guildMembersSQL, guildID)
@@ -1298,10 +1319,7 @@ func ensureGiveItemVolumeCapacity(
 	if perItemVol <= 0 {
 		return nil
 	}
-	availableVol := inv.maxVolume - state.usedVolume
-	if availableVol < 0 {
-		availableVol = 0
-	}
+	availableVol := max(inv.maxVolume-state.usedVolume, 0)
 	maxByVolume := int64(math.Floor(availableVol / perItemVol))
 	if maxByVolume < qty {
 		return fmt.Errorf(
@@ -1321,10 +1339,7 @@ func fillExistingStacks(sorted []giveItemStackSlot, remaining, stackMax int64) (
 		if space <= 0 {
 			continue
 		}
-		add := space
-		if add > remaining {
-			add = remaining
-		}
+		add := min(space, remaining)
 		updates = append(updates, giveItemStackUpdate{id: st.id, add: add})
 		remaining -= add
 	}
@@ -1350,10 +1365,7 @@ func planGiveItemStacks(qty, stackMax int64, stacks []giveItemStackSlot) ([]give
 	}
 	newStacks := make([]int64, 0, newStackCap)
 	for remaining > 0 {
-		size := stackMax
-		if size > remaining {
-			size = remaining
-		}
+		size := min(stackMax, remaining)
 		newStacks = append(newStacks, size)
 		remaining -= size
 	}
@@ -1712,6 +1724,27 @@ func cmdGiveCurrencyCtx(ctx context.Context, db *pgxpool.Pool, controllerID, amo
 	return balance, nil
 }
 
+// findPlayersByNameSQL uses the canonical player_state join (#290) so an
+// account with duplicate state rows can't make a unique character name look
+// ambiguous to the Discord command that consumes this lookup.
+var findPlayersByNameSQL = `
+	SELECT a.id,
+	       COALESCE(a.owner_account_id, 0),
+	       COALESCE(ps.character_name, ''),
+	       COALESCE(ps.player_controller_id, 0),
+	       COALESCE(ac."user", ''),
+	       a.class,
+	       COALESCE(a.map, ''),
+	       COALESCE(af.faction_id, 0),
+	       COALESCE(ps.online_status::text, 'Offline')
+	FROM dune.actors a` + playerStateCanonicalJoin + `
+	LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
+	LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id` + factionByAccountJoin + `
+	WHERE ps.character_name ILIKE '%' || $1 || '%'
+	  AND a.class ILIKE '%PlayerCharacter%'
+	  AND a.owner_account_id <> $2
+	ORDER BY a.id`
+
 // cmdFindPlayersByName looks up player characters whose character_name contains
 // the given substring (case-insensitive). Returns all matches; the caller is
 // responsible for handling 0 (not found) or >1 (ambiguous) results.
@@ -1720,25 +1753,7 @@ func cmdFindPlayersByName(ctx context.Context, db *pgxpool.Pool, name string) ([
 	if db == nil {
 		return nil, fmt.Errorf("database not connected")
 	}
-	rows, err := db.Query(ctx, `
-		SELECT a.id,
-		       COALESCE(a.owner_account_id, 0),
-		       COALESCE(ps.character_name, ''),
-		       COALESCE(ps.player_controller_id, 0),
-		       COALESCE(ac."user", ''),
-		       a.class,
-		       COALESCE(a.map, ''),
-		       COALESCE(af.faction_id, 0),
-		       COALESCE(ps.online_status::text, 'Offline')
-		FROM dune.actors a
-		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
-		LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
-		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id`+factionByAccountJoin+`
-		WHERE ps.character_name ILIKE '%' || $1 || '%'
-		  AND a.class ILIKE '%PlayerCharacter%'
-		  AND a.owner_account_id <> $2
-		ORDER BY a.id`,
-		name, gmIdentityAccountID)
+	rows, err := db.Query(ctx, findPlayersByNameSQL, name, gmIdentityAccountID)
 	if err != nil {
 		return nil, fmt.Errorf("find players by name %q: %w", name, err)
 	}
@@ -1864,14 +1879,22 @@ type deleteCharacterParams struct {
 	// wiring for what it actually does). Optional so existing/older callers
 	// that don't need cleanup keep working unchanged.
 	cleanupOrphans func() error
+	// captureSnapshot, if set, runs BEFORE deleteAccount — the opposite timing
+	// from cleanupOrphans — since the pawn/controller actors a snapshot needs
+	// to scope its capture stop existing the moment delete_account succeeds.
+	// Optional: nil when the admin didn't request a backup, or on any caller
+	// that doesn't support it.
+	captureSnapshot func() error
 }
 
 // processDeleteCharacter validates input, resolves the accounts."user" FLS id,
 // and invokes dune.delete_account. A false result means the proc matched no
 // account row — treated as an error so the caller surfaces a failure rather
-// than a misleading success. cleanupOrphans (if set) runs only after a
-// genuinely successful delete — never on validation failure, a resolve/delete
-// error, or a "not found" result, since there's nothing to clean up yet.
+// than a misleading success. captureSnapshot (if set) runs after validation
+// but BEFORE the delete — the data it needs stops existing once delete_account
+// succeeds. cleanupOrphans (if set) runs only after a genuinely successful
+// delete — never on validation failure, a resolve/delete error, or a "not
+// found" result, since there's nothing to clean up yet.
 func processDeleteCharacter(p deleteCharacterParams) error {
 	if p.accountID == 0 {
 		return fmt.Errorf("account ID required")
@@ -1886,6 +1909,11 @@ func processDeleteCharacter(p deleteCharacterParams) error {
 	}
 	if user == "" {
 		return fmt.Errorf("account %d has no FLS user id", p.accountID)
+	}
+	if p.captureSnapshot != nil {
+		if err := p.captureSnapshot(); err != nil {
+			return fmt.Errorf("capture backup snapshot: %w", err)
+		}
 	}
 	ok, err := p.deleteAccount(user, reason)
 	if err != nil {
@@ -1921,13 +1949,20 @@ func processDeleteCharacter(p deleteCharacterParams) error {
 // over from deletions before this fix shipped, on every future delete.
 // Matches the DELETE-against-base-table style already used by
 // seedGMIdentity for the same underlying schema issue (see its doc comment).
-func cmdDeleteCharacter(pool *pgxpool.Pool, accountID int64, reason string) Cmd {
+//
+// When backup is true, captureSnapshot captures a full native character
+// transfer backup (dune.character_transfer_export — see
+// cmdCaptureCharacterBackup) before the delete runs. The export requires the
+// player to be OFFLINE; a failure there (including "player must be offline")
+// aborts the whole delete rather than proceeding without the safety net the
+// admin asked for.
+func cmdDeleteCharacter(pool *pgxpool.Pool, store *characterBackupsStore, accountID int64, reason, characterName string, backup bool) Cmd {
 	return func() Msg {
 		if pool == nil {
 			return msgMutate{err: fmt.Errorf("not connected")}
 		}
 		ctx := context.Background()
-		err := processDeleteCharacter(deleteCharacterParams{
+		params := deleteCharacterParams{
 			accountID: accountID,
 			reason:    reason,
 			resolveUser: func(id int64) (string, error) {
@@ -1947,13 +1982,346 @@ func cmdDeleteCharacter(pool *pgxpool.Pool, accountID int64, reason string) Cmd 
 					WHERE NOT EXISTS (SELECT 1 FROM dune.accounts a WHERE a.id = encrypted_player_state.account_id)`)
 				return err
 			},
-		})
+		}
+		if backup {
+			params.captureSnapshot = func() error {
+				// store is the REQUEST-scoped backups store (see handleDeleteCharacter)
+				// — never the unscoped global, or the safety backup's metadata row
+				// lands under the wrong server_id and the restore path can't find it.
+				return cmdCaptureCharacterBackup(ctx, pool, store, accountID, characterName, "delete_character", reason)
+			}
+		}
+		err := processDeleteCharacter(params)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 		invalidateAllJourneyCache()
 		return msgMutate{ok: "Character deleted"}
 	}
+}
+
+// ── character backup & restore (native transfer) ────────────────────────────
+// Backs a character up via the game's own full-character transfer subsystem
+// (dune.character_transfer_export / dune.character_transfer_import in
+// db-routines/functions/transfer/) rather than a hand-rolled dump: the same
+// ~50-table footprint (accounts, actors, inventories, items, fgl_entities,
+// vehicles, base backups, progression, everything) the game uses for
+// server-to-server character transfers, with local ids remapped to portable
+// "transfer ids" on export and remapped back to fresh non-colliding ids on
+// import. Export requires the player OFFLINE (the proc raises an exception
+// otherwise); import additionally requires the game patch to match the
+// exported '_patches_checksum' and is a full replace for that FLS id.
+
+// captureCharacterBackupParams bundles the injectable dependencies for
+// processCaptureCharacterBackup so orchestration can be unit-tested without a
+// live DB or filesystem.
+type captureCharacterBackupParams struct {
+	accountID       int64
+	characterName   string
+	action          string
+	reason          string
+	resolveFLSID    func(accountID int64) (string, error)
+	exportCharacter func(flsID string) (string, error)
+	writeFile       func(contents string) (path string, err error)
+	createRecord    func(b characterBackup) error
+}
+
+// characterTransferExportEnvelope is the subset of dune.character_transfer_export's
+// jsonb result this package needs — just enough to record which game patch a
+// backup was taken on, so a restore attempt against a later patch fails with
+// a clear message instead of the game's raw checksum-mismatch error.
+type characterTransferExportEnvelope struct {
+	Checksum string `json:"_patches_checksum"`
+}
+
+// characterTransferChecksum extracts '_patches_checksum' from a
+// character_transfer_export result. A missing field is not an error (returns
+// "") — only malformed JSON is, since that means the export itself is
+// unusable.
+func characterTransferChecksum(data string) (string, error) {
+	var env characterTransferExportEnvelope
+	if err := json.Unmarshal([]byte(data), &env); err != nil {
+		return "", fmt.Errorf("invalid transfer export json: %w", err)
+	}
+	return env.Checksum, nil
+}
+
+// processCaptureCharacterBackup resolves the account's FLS id, exports the
+// character via the native transfer proc, writes the result to a file, and
+// records the backup's metadata — in that order, stopping at the first
+// failure. A backup an admin can't trust (partial write, unrecorded) is worse
+// than no backup at all.
+func processCaptureCharacterBackup(p captureCharacterBackupParams) error {
+	if p.accountID == 0 {
+		return fmt.Errorf("account ID required")
+	}
+	flsID, err := p.resolveFLSID(p.accountID)
+	if err != nil {
+		return fmt.Errorf("resolve account %d: %w", p.accountID, err)
+	}
+	if flsID == "" {
+		return fmt.Errorf("account %d has no FLS user id", p.accountID)
+	}
+	data, err := p.exportCharacter(flsID)
+	if err != nil {
+		return fmt.Errorf("export character: %w", err)
+	}
+	checksum, err := characterTransferChecksum(data)
+	if err != nil {
+		return fmt.Errorf("parse transfer export: %w", err)
+	}
+	path, err := p.writeFile(data)
+	if err != nil {
+		return fmt.Errorf("write backup file: %w", err)
+	}
+	if err := p.createRecord(characterBackup{
+		AccountID:       p.accountID,
+		FLSID:           flsID,
+		CharacterName:   p.characterName,
+		Action:          p.action,
+		Reason:          p.reason,
+		FilePath:        path,
+		PatchesChecksum: checksum,
+	}); err != nil {
+		return fmt.Errorf("record backup metadata: %w", err)
+	}
+	return nil
+}
+
+// writeCharacterBackupFile writes a character_transfer_export result under
+// the existing backups directory (dbBackupDir, db_backup.go — the same place
+// full-database dumps live) in a character-transfers subdirectory, named for
+// the account and capture time.
+func writeCharacterBackupFile(accountID int64, contents string) (string, error) {
+	baseDir, err := dbBackupDir()
+	if err != nil {
+		return "", fmt.Errorf("resolve backups dir: %w", err)
+	}
+	dir := filepath.Join(baseDir, "character-transfers")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return "", fmt.Errorf("create character-transfers dir: %w", err)
+	}
+	path := filepath.Join(dir, fmt.Sprintf("%d-%s.json", accountID, now().UTC().Format("20060102-150405")))
+	// #nosec G304 -- path is built from the configured backups dir + an internal account id + timestamp, never request input
+	if err := os.WriteFile(path, []byte(contents), 0o640); err != nil {
+		return "", fmt.Errorf("write backup file: %w", err)
+	}
+	return path, nil
+}
+
+// cmdCaptureCharacterBackup is the production wiring for
+// processCaptureCharacterBackup: resolves the FLS id via rawFuncomID,
+// exports via dune.character_transfer_export, writes the file, and records
+// it in store. A nil store means the metadata won't be discoverable via the
+// backups list (mirrors initCharacterBackupsStore's "non-fatal" philosophy
+// when the SQLite store failed to open) but the file itself is still
+// written — not treated as a capture failure.
+func cmdCaptureCharacterBackup(ctx context.Context, pool *pgxpool.Pool, store *characterBackupsStore, accountID int64, characterName, action, reason string) error {
+	if pool == nil {
+		return fmt.Errorf("not connected")
+	}
+	return processCaptureCharacterBackup(captureCharacterBackupParams{
+		accountID:     accountID,
+		characterName: characterName,
+		action:        action,
+		reason:        reason,
+		resolveFLSID: func(id int64) (string, error) {
+			return rawFuncomID(ctx, pool, id)
+		},
+		exportCharacter: func(flsID string) (string, error) {
+			var result string
+			err := pool.QueryRow(ctx, `SELECT dune.character_transfer_export($1)::text`, flsID).Scan(&result)
+			return result, err
+		},
+		writeFile: func(contents string) (string, error) {
+			return writeCharacterBackupFile(accountID, contents)
+		},
+		createRecord: func(b characterBackup) error {
+			if store == nil {
+				return nil
+			}
+			_, err := store.create(b)
+			return err
+		},
+	})
+}
+
+// restoreCharacterBackupParams bundles the injectable dependencies for
+// processRestoreCharacterBackup so orchestration can be unit-tested without a
+// live DB or filesystem.
+type restoreCharacterBackupParams struct {
+	backupID  int64
+	getBackup func(id int64) (*characterBackup, error)
+	readFile  func(path string) (string, error)
+	// resolveOldAccountID, if set, looks up the account currently holding
+	// this FLS id BEFORE importCharacter runs — dune.character_transfer_import
+	// calls dune.delete_account internally, which destroys that account, so
+	// this must be resolved first or there's nothing left to look it up by.
+	// Returns 0 (no error) when there's no current account for this FLS id
+	// (e.g. restoring onto a never-before-seen id) — nothing to clean up.
+	resolveOldAccountID func(flsID string) (int64, error)
+	importCharacter     func(data, flsID, characterName string) (int64, error)
+	// cleanupOrphans, if set, runs after a successful importCharacter — the
+	// native dune.character_transfer_import proc calls dune.delete_account
+	// internally to clear out the FLS id's current character before
+	// reinserting the restored one (see cmdDeleteCharacter's doc comment for
+	// what delete_account does and doesn't clean up: #290). That means every
+	// restore reproduces #290's orphaned dune.player_state row for whatever
+	// account previously held this fls_id — surfacing as a second, blank
+	// entry in the players list — unless cleaned up here exactly like
+	// cmdDeleteCharacter's cleanupOrphans already does for plain deletes.
+	cleanupOrphans func() error
+	// cleanupOrphanActors, if set, runs after a successful importCharacter
+	// when resolveOldAccountID found a prior account — dune.delete_account's
+	// own actor deletion has been observed to silently leave the old
+	// controller/pawn/player-state actors behind (owner_account_id pointing
+	// at the now-deleted account) even though it successfully deletes the
+	// accounts/player_state rows. cmdFetchPlayers is rooted on dune.actors,
+	// so a surviving PlayerCharacter-class actor here shows up as a second,
+	// blank-named entry in the players list. Scoped to exactly the account
+	// this restore replaced — never an unscoped actor sweep.
+	cleanupOrphanActors func(oldAccountID int64) error
+	invalidateCache     func()
+}
+
+// processRestoreCharacterBackup loads a backup record, reads its file, and
+// restores it via the native transfer import proc — a full replace of the
+// account's current character data for that FLS id. Returns the new
+// player_controller_id the game assigned. resolveOldAccountID (if set) runs
+// before the import, since the account it looks up is destroyed by it.
+// cleanupOrphans and cleanupOrphanActors (if set) run only after a genuinely
+// successful import; the cache is only invalidated after that — a failed
+// restore hasn't changed anything worth invalidating for.
+func processRestoreCharacterBackup(p restoreCharacterBackupParams) (int64, error) {
+	b, err := p.getBackup(p.backupID)
+	if err != nil {
+		return 0, fmt.Errorf("load backup %d: %w", p.backupID, err)
+	}
+	data, err := p.readFile(b.FilePath)
+	if err != nil {
+		return 0, fmt.Errorf("read backup file: %w", err)
+	}
+	var oldAccountID int64
+	if p.resolveOldAccountID != nil {
+		oldAccountID, err = p.resolveOldAccountID(b.FLSID)
+		if err != nil {
+			return 0, fmt.Errorf("resolve current account for %s: %w", b.FLSID, err)
+		}
+	}
+	newID, err := p.importCharacter(data, b.FLSID, b.CharacterName)
+	if err != nil {
+		return 0, fmt.Errorf("restore character: %w", err)
+	}
+	if p.cleanupOrphans != nil {
+		if err := p.cleanupOrphans(); err != nil {
+			return newID, fmt.Errorf("cleanup orphaned player_state: %w", err)
+		}
+	}
+	if oldAccountID != 0 && p.cleanupOrphanActors != nil {
+		if err := p.cleanupOrphanActors(oldAccountID); err != nil {
+			return newID, fmt.Errorf("cleanup orphaned actors: %w", err)
+		}
+	}
+	if p.invalidateCache != nil {
+		p.invalidateCache()
+	}
+	return newID, nil
+}
+
+// cmdRestoreCharacterBackup is the production wiring for
+// processRestoreCharacterBackup: loads the record from store, reads the file
+// from disk, and restores via dune.character_transfer_import. Requires the
+// player offline and the exported '_patches_checksum' to match the current
+// game patch — the proc itself enforces both and its error messages surface
+// through unchanged.
+func cmdRestoreCharacterBackup(ctx context.Context, pool *pgxpool.Pool, store *characterBackupsStore, backupID int64) (int64, error) {
+	if pool == nil {
+		return 0, fmt.Errorf("not connected")
+	}
+	if store == nil {
+		return 0, fmt.Errorf("character backups store not available")
+	}
+	return processRestoreCharacterBackup(restoreCharacterBackupParams{
+		backupID:  backupID,
+		getBackup: store.get,
+		readFile: func(path string) (string, error) {
+			// #nosec G304 -- path comes from a stored backup record written by writeCharacterBackupFile, never request input directly
+			data, err := os.ReadFile(path)
+			return string(data), err
+		},
+		resolveOldAccountID: func(flsID string) (int64, error) {
+			var id int64
+			err := pool.QueryRow(ctx, `SELECT id FROM dune.accounts WHERE "user" = $1`, flsID).Scan(&id)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return 0, nil
+			}
+			return id, err
+		},
+		importCharacter: func(data, flsID, characterName string) (int64, error) {
+			var newID int64
+			err := pool.QueryRow(ctx, `SELECT dune.character_transfer_import($1::jsonb, $2, $3)`, data, flsID, characterName).Scan(&newID)
+			return newID, err
+		},
+		cleanupOrphans: func() error {
+			_, err := pool.Exec(ctx, `
+				DELETE FROM dune.encrypted_player_state
+				WHERE NOT EXISTS (SELECT 1 FROM dune.accounts a WHERE a.id = encrypted_player_state.account_id)`)
+			return err
+		},
+		cleanupOrphanActors: func(oldAccountID int64) error {
+			return cleanupOrphanActorsForAccount(ctx, pool, oldAccountID)
+		},
+		invalidateCache: invalidateAllJourneyCache,
+	})
+}
+
+// orphanPlayerActorsDeleteSQL removes ONLY the leaked player actor trio
+// (character pawn / controller / player-state) still owned by a destroyed
+// account. The class scoping is a hard safety property, not an optimisation:
+// dune.delete_account (and therefore character_transfer_import, which calls
+// it) strips ownership/permission ranks from the player's bases, storage
+// boxes, totems, and vehicles but deliberately leaves their actor rows alive
+// — so after a restore, all of the old owner's property shares this same
+// dangling owner_account_id. An unscoped delete keyed on owner_account_id
+// alone would permanently destroy every one of those structures and their
+// inventories. Never widen this predicate.
+const orphanPlayerActorsDeleteSQL = `
+	DELETE FROM dune.actors
+	WHERE owner_account_id = $1
+	  AND (class ILIKE '%PlayerCharacter%'
+	    OR class ILIKE '%PlayerController%'
+	    OR class ILIKE '%PlayerState%')`
+
+// cleanupOrphanActorsForAccount deletes the player actor trio still pointing
+// at oldAccountID after it's been destroyed (see cleanupOrphanActors' doc
+// comment on restoreCharacterBackupParams). Mirrors dune.delete_account's own
+// cascade: guild/party/ownership cleanup keyed on the controller actor, then
+// the player actor rows themselves — scoped to the player actor classes only
+// (see orphanPlayerActorsDeleteSQL for why that scoping is load-bearing).
+func cleanupOrphanActorsForAccount(ctx context.Context, pool *pgxpool.Pool, oldAccountID int64) error {
+	var controllerID int64
+	err := pool.QueryRow(ctx, `
+		SELECT id FROM dune.actors
+		WHERE owner_account_id = $1 AND class ILIKE '%PlayerController%'
+		LIMIT 1`, oldAccountID).Scan(&controllerID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("resolve surviving controller actor: %w", err)
+	}
+	if controllerID != 0 {
+		if _, err := pool.Exec(ctx, `SELECT dune.guild_handle_actor_delete($1)`, controllerID); err != nil {
+			return fmt.Errorf("guild cascade: %w", err)
+		}
+		if _, err := pool.Exec(ctx, `SELECT dune.remove_party_member($1, 0::SMALLINT)`, controllerID); err != nil {
+			return fmt.Errorf("party cascade: %w", err)
+		}
+		if _, err := pool.Exec(ctx, `SELECT dune.ownership_handle_actor_delete($1)`, controllerID); err != nil {
+			return fmt.Errorf("ownership cascade: %w", err)
+		}
+	}
+	if _, err := pool.Exec(ctx, orphanPlayerActorsDeleteSQL, oldAccountID); err != nil {
+		return fmt.Errorf("delete surviving player actors: %w", err)
+	}
+	return nil
 }
 
 func cmdGetPlayerTags(pool *pgxpool.Pool, accountID int64) Cmd {
@@ -2339,20 +2707,34 @@ type msgOnlineState struct {
 	err  error
 }
 
+// onlineStateSQL reads dune.player_state directly, so it applies the #290
+// canonical-row rules itself: DISTINCT ON (account) picks the
+// most-recently-active row when an account has duplicates, and the accounts
+// EXISTS filter keeps orphaned state rows (account already deleted) from
+// showing up as phantom players in the activity view.
+const onlineStateSQL = `
+	SELECT sub.player_controller_id, sub.character_name, sub.map, sub.status, sub.last_seen
+	FROM (
+		SELECT DISTINCT ON (ps.account_id)
+		       ps.player_controller_id,
+		       COALESCE(ps.character_name, '') AS character_name,
+		       COALESCE(a.map, '') AS map,
+		       ps.online_status::text AS status,
+		       COALESCE(to_char(ps.last_avatar_activity AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS'), '') AS last_seen,
+		       ps.last_avatar_activity
+		FROM dune.player_state ps
+		LEFT JOIN dune.actors a ON a.id = ps.player_controller_id
+		WHERE ps.account_id <> $1
+		  AND EXISTS (SELECT 1 FROM dune.accounts ac WHERE ac.id = ps.account_id)
+		ORDER BY ps.account_id, ps.last_login_time DESC NULLS LAST, ps.id DESC
+	) sub
+	ORDER BY sub.status DESC, sub.last_avatar_activity DESC`
+
 func cmdFetchOnlineState(pool *pgxpool.Pool) Msg {
 	if pool == nil {
 		return msgOnlineState{err: fmt.Errorf("not connected")}
 	}
-	rows, err := pool.Query(context.Background(), `
-		SELECT ps.player_controller_id,
-		       COALESCE(ps.character_name, ''),
-		       COALESCE(a.map, ''),
-		       ps.online_status::text,
-		       COALESCE(to_char(ps.last_avatar_activity AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS'), '')
-		FROM dune.player_state ps
-		LEFT JOIN dune.actors a ON a.id = ps.player_controller_id
-		WHERE ps.account_id <> $1
-		ORDER BY ps.online_status DESC, ps.last_avatar_activity DESC`, gmIdentityAccountID)
+	rows, err := pool.Query(context.Background(), onlineStateSQL, gmIdentityAccountID)
 	if err != nil {
 		return msgOnlineState{err: err}
 	}
@@ -2602,13 +2984,8 @@ func applyFactionRepDelta(ctx context.Context, pool *pgxpool.Pool, actorID int64
 		SELECT COALESCE(reputation_amount, 0) FROM dune.player_faction_reputation
 		WHERE actor_id = $1::bigint AND faction_id = $2::smallint`, actorID, factionID).Scan(&currentRep)
 
-	newRep := currentRep + delta
-	if newRep < 0 {
-		newRep = 0
-	}
-	if newRep > factionRepCap {
-		newRep = factionRepCap
-	}
+	newRep := max(currentRep+delta, 0)
+	newRep = min(newRep, factionRepCap)
 
 	_, err := pool.Exec(ctx, `
 		SELECT dune.set_player_faction_reputation($1::bigint, $2::smallint, $3::integer)`,
@@ -3010,11 +3387,20 @@ func playerKeyColumn(ctx context.Context, pool *pgxpool.Pool, table string) stri
 // resolvePlayerCharacterID maps an account id to its character id
 // (dune.encrypted_player_state.id) — the key the migrated per-character tables
 // use. journey_story_node.character_id is a foreign key to this column.
+// resolvePlayerCharacterIDSQL picks the character id under the SAME canonical
+// definition as playerStateCanonicalJoinOn (#290): most-recently-active. It
+// previously ordered by oldest id, which for an account with duplicate state
+// rows resolved a DIFFERENT row than the players list showed — tag/journey
+// edits silently targeted the stale duplicate. The game keys its own runtime
+// writes (journey, tags) to the row it loaded at login, i.e. the live one.
+const resolvePlayerCharacterIDSQL = `
+	SELECT id FROM dune.encrypted_player_state WHERE account_id = $1
+	ORDER BY last_login_time DESC NULLS LAST, id DESC
+	LIMIT 1`
+
 func resolvePlayerCharacterID(ctx context.Context, pool *pgxpool.Pool, accountID int64) (int64, error) {
 	var characterID int64
-	err := pool.QueryRow(ctx,
-		`SELECT id FROM dune.encrypted_player_state WHERE account_id = $1 ORDER BY id LIMIT 1`,
-		accountID).Scan(&characterID)
+	err := pool.QueryRow(ctx, resolvePlayerCharacterIDSQL, accountID).Scan(&characterID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, fmt.Errorf("no character found for account %d", accountID)
 	}
@@ -4714,8 +5100,14 @@ var errPlayerOnline = errors.New("player is online")
 // surface .Error() directly to the operator).
 type playerOnlineError struct{ status string }
 
+// playerOnlineErrMarker is the stable prefix of playerOnlineError's message.
+// battlepassStore.healExhaustedOnlineGrantLedger matches ledger rows on it to
+// identify grants exhausted by the pre-#259/#280 policy — keep the two in
+// sync via this constant, never by retyping the string.
+const playerOnlineErrMarker = "player is currently"
+
 func (e *playerOnlineError) Error() string {
-	return fmt.Sprintf("player is currently %s — log out first, then apply the edit", e.status)
+	return fmt.Sprintf("%s %s — log out first, then apply the edit", playerOnlineErrMarker, e.status)
 }
 
 func (e *playerOnlineError) Is(target error) bool { return target == errPlayerOnline }
@@ -4727,11 +5119,19 @@ func checkPlayerOffline(ctx context.Context, pool *pgxpool.Pool, playerID int64)
 }
 
 // checkPlayerOfflinePool is the injectable (ctx+pool) form of checkPlayerOffline.
+// checkPlayerOfflineSQL guards live-state writes. If duplicate player_state
+// rows share a pawn id (#290), it must fail CLOSED: any non-Offline row sorts
+// first (false < true in Postgres), so the guard sees "online" if any
+// duplicate says so, instead of reading an arbitrary first row.
+const checkPlayerOfflineSQL = `
+	SELECT online_status::text FROM dune.player_state
+	WHERE player_pawn_id = $1
+	ORDER BY (online_status::text = 'Offline'), last_login_time DESC NULLS LAST
+	LIMIT 1`
+
 func checkPlayerOfflinePool(ctx context.Context, pool *pgxpool.Pool, playerID int64) error {
 	var status string
-	err := pool.QueryRow(ctx, `
-		SELECT online_status::text FROM dune.player_state
-		WHERE player_pawn_id = $1`, playerID).Scan(&status)
+	err := pool.QueryRow(ctx, checkPlayerOfflineSQL, playerID).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		// No player_state row means the player has never connected or their
 		// session record was cleaned up — treat as offline.
@@ -4851,17 +5251,11 @@ func fetchKeystoneBonusForPawn(ctx context.Context, pool *pgxpool.Pool, playerID
 }
 
 func computeAwardCharXPOutcome(currentXP, spentSP, keystoneBonus, amount int64) charXPOutcome {
-	newXP := currentXP + amount
-	if newXP > maxCharXP {
-		newXP = maxCharXP
-	}
+	newXP := min(currentXP+amount, maxCharXP)
 	newLevel := int64(xpToLevel(newXP))
 	newTotalSP := newLevel + keystoneBonus
 	// Starter job always occupies 1 SP that is excluded from spentSP.
-	newUnspentSP := newTotalSP - spentSP - 1
-	if newUnspentSP < 0 {
-		newUnspentSP = 0
-	}
+	newUnspentSP := max(newTotalSP-spentSP-1, 0)
 	newIntel := intelAtLevel(int(newLevel))
 	return charXPOutcome{
 		newXP:        newXP,
@@ -5198,10 +5592,7 @@ func grantAllKeystoneTargets(xp, spentSP int64) (int64, int64, int64) {
 	level := int64(xpToLevel(xp))
 	expectedTotal := level + keystoneBonus
 	// UnspentSkillPoints = total - non-starter spent - 1 (starter job always occupies 1 SP).
-	expectedUnspent := expectedTotal - spentSP - 1
-	if expectedUnspent < 0 {
-		expectedUnspent = 0
-	}
+	expectedUnspent := max(expectedTotal-spentSP-1, 0)
 	return expectedTotal, expectedUnspent, keystoneBonus
 }
 
@@ -5315,10 +5706,7 @@ func cmdResetAllKeystones(pool *pgxpool.Pool, playerID int64) Cmd {
 
 		level := int64(xpToLevel(xp))
 		newTotal := level
-		newUnspent := newTotal - spentSP - 1
-		if newUnspent < 0 {
-			newUnspent = 0
-		}
+		newUnspent := max(newTotal-spentSP-1, 0)
 
 		if _, err := pool.Exec(ctx, `
 			UPDATE dune.fgl_entities

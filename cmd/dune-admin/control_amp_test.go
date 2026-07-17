@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 type fakeAMPExecutor struct {
@@ -70,6 +71,106 @@ func TestParseAMPGameProcess(t *testing.T) {
 
 	if _, ok := parseAMPGameProcess("garbage"); ok {
 		t.Fatalf("expected malformed line to be rejected")
+	}
+
+	// A podman error line (e.g. the container was stopped/removed) has 2+
+	// whitespace-separated fields but a non-numeric first field. Without a
+	// real numeric-pid check this was misparsed as a fake running process
+	// (pid 0), making gameServersRunning report the battlegroup as "running"
+	// right when it's genuinely stopped — a catch-22 that blocked DB restore.
+	errLine := `Error: no container with name or ID "AMP_DuneAwakening01" found: no such container`
+	if _, ok := parseAMPGameProcess(errLine); ok {
+		t.Fatalf("expected a podman error line (non-numeric pid) to be rejected")
+	}
+}
+
+// TestAmpStopGameServers_StopsAndPolls verifies the graceful shard stop:
+// a self-match-safe pkill inside the container, then polling until the
+// process listing drains.
+func TestAmpStopGameServers_StopsAndPolls(t *testing.T) {
+	t.Parallel()
+	procLine := "123 /srv/DuneSandboxServer-Linux-Shipping DuneSandbox HaggaBasinS -Port=7777 -PartitionIndex=3"
+	var cmds []string
+	listCalls := 0
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		cmds = append(cmds, cmd)
+		if strings.Contains(cmd, "pkill") {
+			return "", nil
+		}
+		listCalls++
+		if listCalls == 1 {
+			return procLine, nil // first poll: one shard still draining
+		}
+		return "", nil // second poll: all gone
+	}}
+	var slept []time.Duration
+	c := &ampControl{
+		container: "AMP_DuneTest01", ampUser: "amp", useContainer: true,
+		stopPollInterval: time.Millisecond,
+		sleep:            func(d time.Duration) { slept = append(slept, d) },
+	}
+
+	if err := c.StopGameServers(context.Background(), exec); err != nil {
+		t.Fatalf("StopGameServers: %v", err)
+	}
+
+	kill := cmds[0]
+	if !strings.Contains(kill, `[D]uneSandboxServer-Linux-Shipping`) {
+		t.Fatalf("kill command must use the self-match-safe bracket pattern, got %q", kill)
+	}
+	// The raw process name must never appear in the pkill pattern — pkill -f
+	// matches its own sh -c wrapper's cmdline and SIGTERMs itself otherwise.
+	if strings.Contains(kill, `pkill -TERM -f "DuneSandboxServer`) {
+		t.Fatalf("kill command self-matches, got %q", kill)
+	}
+	if !strings.Contains(kill, "|| true") {
+		t.Fatalf("pkill exits 1 on no-match — command needs '|| true', got %q", kill)
+	}
+	if !strings.Contains(kill, "podman exec AMP_DuneTest01") {
+		t.Fatalf("kill command must run inside the container, got %q", kill)
+	}
+	if listCalls != 2 {
+		t.Fatalf("poll calls = %d, want 2", listCalls)
+	}
+	if len(slept) == 0 {
+		t.Fatal("expected a sleep between polls")
+	}
+}
+
+// TestAmpStopGameServers_Timeout verifies a bounded, informative failure when
+// shards refuse to die.
+func TestAmpStopGameServers_Timeout(t *testing.T) {
+	t.Parallel()
+	procLine := "123 /srv/DuneSandboxServer-Linux-Shipping DuneSandbox HaggaBasinS -Port=7777 -PartitionIndex=3"
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		if strings.Contains(cmd, "pkill") {
+			return "", nil
+		}
+		return procLine, nil // never drains
+	}}
+	c := &ampControl{
+		container: "AMP_DuneTest01", ampUser: "amp", useContainer: true,
+		containerStopTimeout: 1,
+		stopPollInterval:     time.Millisecond,
+		sleep:                func(time.Duration) {},
+	}
+
+	err := c.StopGameServers(context.Background(), exec)
+	if err == nil {
+		t.Fatal("expected a timeout error")
+	}
+	if !strings.Contains(err.Error(), "still running") {
+		t.Fatalf("error should say shards are still running, got %v", err)
+	}
+}
+
+// TestAmpImplementsGameServerStopper pins the optional-capability assertion
+// the restore flow depends on.
+func TestAmpImplementsGameServerStopper(t *testing.T) {
+	t.Parallel()
+	var ctrl ControlPlane = &ampControl{}
+	if _, ok := ctrl.(gameServerStopper); !ok {
+		t.Fatal("ampControl must implement gameServerStopper")
 	}
 }
 

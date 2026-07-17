@@ -17,6 +17,7 @@ import {
 import { ConfirmDialog } from './modals/ConfirmDialog'
 import { CommandOutputModal } from './modals/CommandOutputModal'
 import { RestoreModal } from './modals/RestoreModal'
+import { RestoreProgressModal } from '../../components/RestoreProgressModal'
 
 const POLL_MS = 30_000
 
@@ -58,6 +59,7 @@ export const BattlegroupTab: React.FC = () => {
 
   // Restore modal
   const [showRestore, setShowRestore] = React.useState(false)
+  const [restoreProgressOpen, setRestoreProgressOpen] = React.useState(false)
   const [backupFiles, setBackupFiles] = React.useState<BackupFile[]>([])
   const [backupFilesLoading, setBackupFilesLoading] = React.useState(false)
 
@@ -402,12 +404,14 @@ export const BattlegroupTab: React.FC = () => {
         backupFilesLoading={backupFilesLoading}
         setBackupFiles={setBackupFiles}
         onClose={() => setShowRestore(false)}
-        onRestoreComplete={(output) => {
-          setCmdOutput(output)
-          setCmdDone(true)
-          setRunningCmd('restore')
+        onRestoreStarted={() => {
           setShowRestore(false)
+          setRestoreProgressOpen(true)
         }}
+      />
+      <RestoreProgressModal
+        open={restoreProgressOpen}
+        onClose={() => setRestoreProgressOpen(false)}
       />
     </div>
   )

@@ -15,6 +15,97 @@ func openMemBattlepassStore(t *testing.T) *battlepassStore {
 	return s
 }
 
+// exhaustLedgerRow drives a row to exhausted with the given error message.
+func exhaustLedgerRow(t *testing.T, s *battlepassStore, tierKey string, accountID int64, errMsg string) {
+	t.Helper()
+	for range deferredGrantMaxAttempts {
+		if err := s.recordGrantLedgerFailure(tierKey, accountID, errMsg); err != nil {
+			t.Fatalf("recordGrantLedgerFailure: %v", err)
+		}
+	}
+}
+
+// TestHealExhaustedOnlineGrantLedger covers the #259/#280 self-heal: rows
+// exhausted by the PRE-fix policy (online failures counted as attempts) must
+// be reset to retryable, while genuinely-failed exhausted rows, granted rows,
+// and pending rows stay untouched. Post-fix, online failures never reach the
+// exhaustion path, so the heal is naturally idempotent.
+func TestHealExhaustedOnlineGrantLedger(t *testing.T) {
+	s := openMemBattlepassStore(t)
+	onlineMsg := "award intel: " + (&playerOnlineError{status: "Online"}).Error()
+
+	exhaustLedgerRow(t, s, "tier_online", 1, onlineMsg)
+	exhaustLedgerRow(t, s, "tier_real", 2, "give item: connection refused")
+	if err := s.recordPendingGrant("tier_pending", 3); err != nil {
+		t.Fatalf("recordPendingGrant: %v", err)
+	}
+	if err := s.recordGrantLedgerSuccess("tier_granted", 4); err != nil {
+		t.Fatalf("recordGrantLedgerSuccess: %v", err)
+	}
+
+	healed, err := s.healExhaustedOnlineGrantLedger()
+	if err != nil {
+		t.Fatalf("heal: %v", err)
+	}
+	if healed != 1 {
+		t.Fatalf("healed = %d, want 1 (only the online-exhausted row)", healed)
+	}
+
+	due, err := s.listRetryableGrantLedger(time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatalf("listRetryableGrantLedger: %v", err)
+	}
+	keys := map[string]battlepassGrantLedgerRow{}
+	for _, r := range due {
+		keys[r.TierKey] = r
+	}
+	healedRow, ok := keys["tier_online"]
+	if !ok {
+		t.Fatalf("healed row not retryable; due = %v", keys)
+	}
+	if healedRow.Attempts != 0 || healedRow.Status != battlepassGrantPending {
+		t.Fatalf("healed row = %+v, want pending/0 attempts", healedRow)
+	}
+	if _, ok := keys["tier_real"]; ok {
+		t.Fatal("genuinely-exhausted row must stay exhausted")
+	}
+
+	// Idempotent: a second heal touches nothing.
+	healed, err = s.healExhaustedOnlineGrantLedger()
+	if err != nil {
+		t.Fatalf("second heal: %v", err)
+	}
+	if healed != 0 {
+		t.Fatalf("second heal healed = %d, want 0", healed)
+	}
+}
+
+// TestHealExhaustedOnlineGrantLedger_AllServerScopes — the heal runs once at
+// startup on the shared handle and must repair every server's rows, not just
+// the default scope.
+func TestHealExhaustedOnlineGrantLedger_AllServerScopes(t *testing.T) {
+	s := openMemBattlepassStore(t)
+	onlineMsg := (&playerOnlineError{status: "Online"}).Error()
+
+	other := s.withScope(2)
+	exhaustLedgerRow(t, other, "tier_online", 9, onlineMsg)
+
+	healed, err := s.healExhaustedOnlineGrantLedger()
+	if err != nil {
+		t.Fatalf("heal: %v", err)
+	}
+	if healed != 1 {
+		t.Fatalf("healed = %d, want 1 (row on scope 2)", healed)
+	}
+	due, err := other.listRetryableGrantLedger(time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatalf("list scope 2: %v", err)
+	}
+	if len(due) != 1 {
+		t.Fatalf("scope 2 due = %d, want 1", len(due))
+	}
+}
+
 func TestBattlepassGrantLedger_RecordPending(t *testing.T) {
 	s := openMemBattlepassStore(t)
 	if err := s.recordPendingGrant("tier_a", 100); err != nil {
@@ -79,7 +170,7 @@ func TestBattlepassGrantLedger_ExhaustsAfterMaxAttempts(t *testing.T) {
 	if err := s.recordPendingGrant("tier_c", 300); err != nil {
 		t.Fatalf("recordPendingGrant: %v", err)
 	}
-	for i := 0; i < deferredGrantMaxAttempts; i++ {
+	for i := range deferredGrantMaxAttempts {
 		if err := s.recordGrantLedgerFailure("tier_c", 300, "boom"); err != nil {
 			t.Fatalf("failure %d: %v", i, err)
 		}
@@ -128,7 +219,7 @@ func TestBattlepassGrantLedger_RetryLaterDoesNotConsumeAttempt(t *testing.T) {
 	shortBackoff := 5 * time.Minute
 	// Retry-later many more times than deferredGrantMaxAttempts would allow —
 	// the row must never exhaust from this alone.
-	for i := 0; i < deferredGrantMaxAttempts+5; i++ {
+	for i := range deferredGrantMaxAttempts + 5 {
 		if err := s.recordGrantLedgerRetryLater("tier_online", 600, "player is online", shortBackoff); err != nil {
 			t.Fatalf("recordGrantLedgerRetryLater %d: %v", i, err)
 		}

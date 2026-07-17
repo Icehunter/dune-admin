@@ -121,6 +121,97 @@ func TestProcessDeleteCharacter(t *testing.T) {
 			t.Fatal("expected error when delete_account reports no rows affected")
 		}
 	})
+
+	// #290: dune.delete_account never deletes the orphaned dune.player_state
+	// row it leaves behind, which is what causes duplicate Players-list rows
+	// and give-items/teleport to resolve against a stale pawn actor after a
+	// deletion. cleanupOrphans is the injected hook that cleans that up —
+	// it must run only after a genuinely successful delete, never otherwise.
+
+	t.Run("cleanupOrphans called after successful delete", func(t *testing.T) {
+		t.Parallel()
+		called := false
+		err := processDeleteCharacter(deleteCharacterParams{
+			accountID:     42,
+			reason:        "x",
+			resolveUser:   func(int64) (string, error) { return "DEADBEEF", nil },
+			deleteAccount: func(string, string) (bool, error) { return true, nil },
+			cleanupOrphans: func() error {
+				called = true
+				return nil
+			},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !called {
+			t.Error("cleanupOrphans must be called after a successful delete")
+		}
+	})
+
+	t.Run("cleanupOrphans not called when deleteAccount fails", func(t *testing.T) {
+		t.Parallel()
+		boom := errors.New("db down")
+		err := processDeleteCharacter(deleteCharacterParams{
+			accountID:     42,
+			reason:        "x",
+			resolveUser:   func(int64) (string, error) { return "DEADBEEF", nil },
+			deleteAccount: func(string, string) (bool, error) { return false, boom },
+			cleanupOrphans: func() error {
+				t.Error("cleanupOrphans must not be called when deleteAccount fails")
+				return nil
+			},
+		})
+		if !errors.Is(err, boom) {
+			t.Fatalf("want boom, got %v", err)
+		}
+	})
+
+	t.Run("cleanupOrphans not called when deleteAccount reports not found", func(t *testing.T) {
+		t.Parallel()
+		err := processDeleteCharacter(deleteCharacterParams{
+			accountID:     42,
+			reason:        "x",
+			resolveUser:   func(int64) (string, error) { return "DEADBEEF", nil },
+			deleteAccount: func(string, string) (bool, error) { return false, nil },
+			cleanupOrphans: func() error {
+				t.Error("cleanupOrphans must not be called when delete_account reports no rows affected")
+				return nil
+			},
+		})
+		if err == nil {
+			t.Fatal("expected error when delete_account reports no rows affected")
+		}
+	})
+
+	t.Run("cleanupOrphans error propagates", func(t *testing.T) {
+		t.Parallel()
+		boom := errors.New("cleanup boom")
+		err := processDeleteCharacter(deleteCharacterParams{
+			accountID:      42,
+			reason:         "x",
+			resolveUser:    func(int64) (string, error) { return "DEADBEEF", nil },
+			deleteAccount:  func(string, string) (bool, error) { return true, nil },
+			cleanupOrphans: func() error { return boom },
+		})
+		if !errors.Is(err, boom) {
+			t.Fatalf("want cleanup error to propagate wrapping boom, got %v", err)
+		}
+	})
+
+	t.Run("nil cleanupOrphans is fine", func(t *testing.T) {
+		t.Parallel()
+		err := processDeleteCharacter(deleteCharacterParams{
+			accountID:     42,
+			reason:        "x",
+			resolveUser:   func(int64) (string, error) { return "DEADBEEF", nil },
+			deleteAccount: func(string, string) (bool, error) { return true, nil },
+			// cleanupOrphans intentionally omitted (nil) — must not panic.
+		})
+		if err != nil {
+			t.Fatalf("unexpected error with nil cleanupOrphans: %v", err)
+		}
+	})
 }
 
 // TestHandleDeleteCharacter_InputValidation verifies bad input returns 400.

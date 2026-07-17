@@ -70,8 +70,7 @@ func cmdFetchPlayers(pool *pgxpool.Pool) Msg {
 		       COALESCE(a.map, ''),
 		       COALESCE(af.faction_id, 0),
 		       COALESCE(ps.online_status::text, 'Offline')
-		FROM dune.actors a
-		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
+		FROM dune.actors a`+playerStateCanonicalJoin+`
 		LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
 		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id`+factionByAccountJoin+`
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
@@ -164,6 +163,29 @@ type serverSummary struct {
 }
 
 const (
+	// playerStateCanonicalJoin resolves at most one dune.player_state row per
+	// account (#290). The game's own post-1.5 schema migration dropped the
+	// unique constraint on encrypted_player_state.account_id (see
+	// seedGMIdentity's doc comment for the full story), and
+	// dune.delete_account never cleans up the player_state row it orphans on
+	// character deletion — so an account can end up with more than one
+	// player_state row. A plain "LEFT JOIN dune.player_state ps ON
+	// ps.account_id = a.owner_account_id" then fans a single actor row
+	// out into one output row per duplicate, which is exactly the "duplicate
+	// players" symptom, and can also hand callers a stale player_pawn_id from
+	// an orphaned row. This LATERAL always picks exactly one row — the
+	// most-recently-active one — mirroring the same "pick the canonical row"
+	// pattern already used by resolvePlayerCharacterID and seedGMIdentity's
+	// dedup step elsewhere in this file. The outer query must alias the
+	// character actor as "a"; this exposes the usual "ps" columns.
+	playerStateCanonicalJoin = `
+		LEFT JOIN LATERAL (
+			SELECT * FROM dune.player_state ps2
+			WHERE ps2.account_id = a.owner_account_id
+			ORDER BY ps2.last_login_time DESC NULLS LAST, ps2.id DESC
+			LIMIT 1
+		) ps ON true`
+
 	// factionByAccountJoin resolves a player's faction by ACCOUNT. Faction is
 	// stored on the PlayerController actor, NOT the PlayerCharacter, so joining
 	// dune.player_faction directly onto the character actor (pf.actor_id = a.id)
@@ -180,12 +202,14 @@ const (
 	// Population counts. The seeded GM identity ($1) is excluded — it is not a
 	// real player. online_status compares against the enum literal (see
 	// cmdFetchOnlineAccountIDs), summed via CASE to match existing query style.
+	// Uses playerStateCanonicalJoin (#290) so a duplicate player_state row
+	// can't inflate the total/online counts the same way it fanned out
+	// cmdFetchPlayers's list.
 	serverCountsSQL = `
 		SELECT
 			COUNT(*) AS total,
 			COALESCE(SUM(CASE WHEN ps.online_status = 'Online' THEN 1 ELSE 0 END), 0) AS online
-		FROM dune.actors a
-		LEFT JOIN dune.player_state ps ON ps.account_id = a.owner_account_id
+		FROM dune.actors a` + playerStateCanonicalJoin + `
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
 
 	serverByMapSQL = `
@@ -1833,12 +1857,21 @@ type deleteCharacterParams struct {
 	reason        string
 	resolveUser   func(accountID int64) (string, error)
 	deleteAccount func(user, reason string) (bool, error)
+	// cleanupOrphans, if set, runs after a successful deleteAccount to clean
+	// up whatever deleteAccount itself doesn't (#290: dune.delete_account
+	// deletes the player's actors and account row but never the
+	// dune.player_state row, leaving it orphaned — see cmdDeleteCharacter's
+	// wiring for what it actually does). Optional so existing/older callers
+	// that don't need cleanup keep working unchanged.
+	cleanupOrphans func() error
 }
 
 // processDeleteCharacter validates input, resolves the accounts."user" FLS id,
 // and invokes dune.delete_account. A false result means the proc matched no
 // account row — treated as an error so the caller surfaces a failure rather
-// than a misleading success.
+// than a misleading success. cleanupOrphans (if set) runs only after a
+// genuinely successful delete — never on validation failure, a resolve/delete
+// error, or a "not found" result, since there's nothing to clean up yet.
 func processDeleteCharacter(p deleteCharacterParams) error {
 	if p.accountID == 0 {
 		return fmt.Errorf("account ID required")
@@ -1861,6 +1894,11 @@ func processDeleteCharacter(p deleteCharacterParams) error {
 	if !ok {
 		return fmt.Errorf("no character deleted for account %d", p.accountID)
 	}
+	if p.cleanupOrphans != nil {
+		if err := p.cleanupOrphans(); err != nil {
+			return fmt.Errorf("cleanup orphaned player_state: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -1868,6 +1906,21 @@ func processDeleteCharacter(p deleteCharacterParams) error {
 // dune.delete_account proc, which deletes the player actors (with row locking),
 // respawn beacons, and account row; writes an account_removal_log audit entry;
 // fires guild/party/ownership cascades; and pg_notifies the live server.
+//
+// dune.delete_account never deletes the character's dune.player_state row
+// (a view over dune.encrypted_player_state) — it survives with a dangling
+// account_id and stale player_pawn_id/player_controller_id pointing at the
+// now-deleted actors (#290). That orphan is what causes duplicate rows in
+// the Players list (cmdFetchPlayers LEFT JOINs player_state on account_id;
+// more than one row per account fans the join out) and give-items/teleport
+// resolving against a deleted pawn actor after the player rejoins. Once
+// delete_account succeeds, cleanupOrphans removes every player_state row
+// whose account no longer exists at all — this can never touch a row
+// belonging to a currently-valid account, and being unscoped (not filtered
+// to just this account) it also retroactively cleans up any orphans left
+// over from deletions before this fix shipped, on every future delete.
+// Matches the DELETE-against-base-table style already used by
+// seedGMIdentity for the same underlying schema issue (see its doc comment).
 func cmdDeleteCharacter(pool *pgxpool.Pool, accountID int64, reason string) Cmd {
 	return func() Msg {
 		if pool == nil {
@@ -1887,6 +1940,12 @@ func cmdDeleteCharacter(pool *pgxpool.Pool, accountID int64, reason string) Cmd 
 					return false, err
 				}
 				return deleted, nil
+			},
+			cleanupOrphans: func() error {
+				_, err := pool.Exec(ctx, `
+					DELETE FROM dune.encrypted_player_state
+					WHERE NOT EXISTS (SELECT 1 FROM dune.accounts a WHERE a.id = encrypted_player_state.account_id)`)
+				return err
 			},
 		})
 		if err != nil {

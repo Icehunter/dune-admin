@@ -111,9 +111,16 @@ func enqueueRetroactiveBattlepassGrants(store *battlepassStore, claimed map[stri
 }
 
 // evaluateBattlepassPlayer records claims for every newly-satisfied tier.
-// During the account's first complete pass (and unless awardPast is set),
-// satisfied tiers are recorded as baseline — pre-existing progress is not
-// rewarded; the pass pays for new unlocks only.
+// Baselining is per-(account,tier), not per-account: a tier only earns once
+// the engine has actually watched THAT TIER transition from unsatisfied to
+// satisfied for THIS account (see battlepassTierAction) — unless awardPast is
+// set, which pays out satisfied tiers on first sight. This protects against a
+// tier that is added to the catalog after an account is already active and
+// happens to be satisfied by default (e.g. a Steam-achievement journey node
+// that reads complete for every character regardless of real progress,
+// #297): the old per-account flag only guarded an account's very first pass
+// ever, so a later-added default-satisfied tier was wrongly recorded as
+// freshly earned and auto-granted real in-game intel.
 func evaluateBattlepassPlayer(ctx context.Context, deps battlepassDeps, store *battlepassStore, tiers []battlepassTier, p battlepassPlayer, awardPast, autoGrant bool) error {
 	claimed, err := store.claimedKeys(p.AccountID)
 	if err != nil {
@@ -128,55 +135,85 @@ func evaluateBattlepassPlayer(ctx context.Context, deps battlepassDeps, store *b
 		return err
 	}
 
-	baselined := true
-	if !awardPast {
-		baselined, err = store.isBaselined(p.AccountID)
-		if err != nil {
-			return fmt.Errorf("baselined check: %w", err)
-		}
-	}
-
 	if len(unclaimed) > 0 {
-		status := battlepassClaimEarned
-		if !baselined {
-			status = battlepassClaimBaseline
-		}
-		// Only enqueue auto-grant for genuinely earned tiers — baseline rows are
-		// pre-existing progress and never grantable.
-		enqueue := autoGrant && status == battlepassClaimEarned
-		if err := recordSatisfiedBattlepassTiers(ctx, deps, store, unclaimed, p, status, needsJourney, needsTags, enqueue); err != nil {
+		if err := recordSatisfiedBattlepassTiers(ctx, deps, store, unclaimed, p, awardPast, autoGrant, needsJourney, needsTags); err != nil {
 			return err
-		}
-	}
-
-	// Only mark baselined after a fully successful pass — failing earlier
-	// keeps old progress eligible for baselining, never for rewards.
-	if !baselined {
-		if err := store.markBaselined(p.AccountID); err != nil {
-			return fmt.Errorf("mark baselined: %w", err)
 		}
 	}
 	return nil
 }
 
-// recordSatisfiedBattlepassTiers fetches the needed signal sets and records a
-// claim with the given status for every satisfied tier.
-func recordSatisfiedBattlepassTiers(ctx context.Context, deps battlepassDeps, store *battlepassStore, tiers []battlepassTier, p battlepassPlayer, status string, needsJourney, needsTags, enqueueGrant bool) error {
+// battlepassTierAction decides what to do with one tier for one account this
+// pass, given whether the tier is currently satisfied, whether the engine has
+// previously observed it unsatisfied for this account (seen), and whether the
+// operator has opted to award pre-existing progress (awardPast).
+//
+//   - Unsatisfied: never recorded as a claim; the account+tier pair is
+//     (idempotently) marked as watched-unsatisfied so a later satisfied
+//     observation can be recognised as a genuine transition.
+//   - Satisfied, first sight (not seen) and awardPast is off: recorded as
+//     baseline — pre-existing progress, never grantable. This is what
+//     protects a newly-added, default-satisfied tier (e.g. a Steam-achievement
+//     journey node) from being paid out to an already-active account.
+//   - Satisfied, and either seen or awardPast: recorded as earned — a genuine
+//     unsatisfied→satisfied transition (or the operator explicitly opted to
+//     reward existing progress).
+func battlepassTierAction(satisfied, seen, awardPast bool) (record bool, status string, mark bool) {
+	if !satisfied {
+		return false, "", true
+	}
+	if awardPast || seen {
+		return true, battlepassClaimEarned, false
+	}
+	return true, battlepassClaimBaseline, false
+}
+
+// recordSatisfiedBattlepassTiers fetches the needed signal sets and, for each
+// unclaimed tier, applies battlepassTierAction: records a claim (baseline or
+// earned) for satisfied tiers, or marks unsatisfied tiers as watched so a
+// future satisfied observation is recognised as a genuine transition. Auto-
+// grant is enqueued per-tier — only for tiers that end up earned — since a
+// single pass can baseline some tiers and earn others for the same account.
+func recordSatisfiedBattlepassTiers(ctx context.Context, deps battlepassDeps, store *battlepassStore, tiers []battlepassTier, p battlepassPlayer, awardPast, autoGrant bool, needsJourney, needsTags bool) error {
 	journey, tags, err := fetchBattlepassSignals(ctx, deps, p.AccountID, needsJourney, needsTags)
 	if err != nil {
 		return err
 	}
+	seen, err := store.seenUnsatisfiedKeys(p.AccountID)
+	if err != nil {
+		return fmt.Errorf("seen unsatisfied keys: %w", err)
+	}
 	for _, t := range tiers {
-		if !battlepassTierSatisfied(t, p.Level, journey, tags) {
-			continue
+		satisfied := battlepassTierSatisfied(t, p.Level, journey, tags)
+		if err := applyBattlepassTierAction(store, t, p.AccountID, satisfied, seen[t.TierKey], awardPast, autoGrant); err != nil {
+			return err
 		}
-		if err := store.recordClaim(t.TierKey, p.AccountID, t.Intel, status); err != nil {
-			return fmt.Errorf("record claim %s: %w", t.TierKey, err)
+	}
+	return nil
+}
+
+// applyBattlepassTierAction runs battlepassTierAction's decision for one tier
+// and persists the result: marks the tier watched-unsatisfied, or records a
+// claim and (for a genuinely earned tier with auto-grant on) enqueues the
+// grant. Extracted from recordSatisfiedBattlepassTiers's loop body to keep
+// both functions under the cognitive-complexity gate.
+func applyBattlepassTierAction(store *battlepassStore, t battlepassTier, accountID int64, satisfied, seen, awardPast, autoGrant bool) error {
+	record, status, mark := battlepassTierAction(satisfied, seen, awardPast)
+	if mark {
+		if err := store.markSeenUnsatisfied(t.TierKey, accountID); err != nil {
+			return fmt.Errorf("mark seen unsatisfied %s: %w", t.TierKey, err)
 		}
-		if enqueueGrant {
-			if err := store.recordPendingGrant(t.TierKey, p.AccountID); err != nil {
-				return fmt.Errorf("record pending grant %s: %w", t.TierKey, err)
-			}
+		return nil
+	}
+	if !record {
+		return nil
+	}
+	if err := store.recordClaim(t.TierKey, accountID, t.Intel, status); err != nil {
+		return fmt.Errorf("record claim %s: %w", t.TierKey, err)
+	}
+	if autoGrant && status == battlepassClaimEarned {
+		if err := store.recordPendingGrant(t.TierKey, accountID); err != nil {
+			return fmt.Errorf("record pending grant %s: %w", t.TierKey, err)
 		}
 	}
 	return nil

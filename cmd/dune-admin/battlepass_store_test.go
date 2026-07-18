@@ -513,6 +513,49 @@ func TestRecordGrantFailureForTier_singleTier(t *testing.T) {
 	}
 }
 
+// TestBattlepassStoreMarkSeenUnsatisfiedIdempotent covers the per-(account,tier)
+// baseline marker (replaces the old per-account isBaselined/markBaselined
+// gate): repeated marks for the same tier/account must not duplicate rows or
+// error, matching the ON CONFLICT DO NOTHING pattern used elsewhere in this
+// store (e.g. recordClaim).
+func TestBattlepassStoreMarkSeenUnsatisfiedIdempotent(t *testing.T) {
+	s := testBattlepassStore(t)
+
+	if err := s.markSeenUnsatisfied("level:10", 1); err != nil {
+		t.Fatalf("markSeenUnsatisfied: %v", err)
+	}
+	if err := s.markSeenUnsatisfied("level:10", 1); err != nil {
+		t.Fatalf("markSeenUnsatisfied repeat: %v", err)
+	}
+
+	seen, err := s.seenUnsatisfiedKeys(1)
+	if err != nil {
+		t.Fatalf("seenUnsatisfiedKeys: %v", err)
+	}
+	if len(seen) != 1 || !seen["level:10"] {
+		t.Fatalf("seenUnsatisfiedKeys = %v, want {level:10: true}", seen)
+	}
+}
+
+// TestBattlepassStoreSeenUnsatisfiedKeysScopedPerAccount guards against the
+// marker leaking across accounts — each account's baseline must be judged
+// independently.
+func TestBattlepassStoreSeenUnsatisfiedKeysScopedPerAccount(t *testing.T) {
+	s := testBattlepassStore(t)
+
+	if err := s.markSeenUnsatisfied("level:10", 1); err != nil {
+		t.Fatalf("markSeenUnsatisfied account 1: %v", err)
+	}
+
+	seen2, err := s.seenUnsatisfiedKeys(2)
+	if err != nil {
+		t.Fatalf("seenUnsatisfiedKeys account 2: %v", err)
+	}
+	if len(seen2) != 0 {
+		t.Fatalf("account 2 must not see account 1's markers: %v", seen2)
+	}
+}
+
 func TestBattlepassStoreCountsByTier(t *testing.T) {
 	s := testBattlepassStore(t)
 	_ = s.recordClaim("level:5", 1, 10, battlepassClaimEarned)

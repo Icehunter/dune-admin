@@ -102,6 +102,12 @@ CREATE TABLE IF NOT EXISTS battlepass_accounts (
 	account_id   INTEGER NOT NULL,
 	baselined_at TEXT    NOT NULL,
 	PRIMARY KEY (server_id, account_id)
+);
+CREATE TABLE IF NOT EXISTS battlepass_tier_seen (
+	server_id  INTEGER NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+	tier_key   TEXT    NOT NULL,
+	account_id INTEGER NOT NULL,
+	PRIMARY KEY (server_id, tier_key, account_id)
 );`
 
 type battlepassStore struct {
@@ -557,22 +563,11 @@ func (s *battlepassStore) recordGrantFailure(accountID int64, errMsg string) err
 	return nil
 }
 
-// isBaselined reports whether the account's pre-existing progress has been
-// recorded. Until then, satisfied tiers are claimed as baseline (no reward).
-func (s *battlepassStore) isBaselined(accountID int64) (bool, error) {
-	var one int
-	err := s.db.QueryRow(
-		`SELECT 1 FROM battlepass_accounts WHERE server_id = ? AND account_id = ?`,
-		s.serverID, accountID).Scan(&one)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("battlepass baselined check for %d: %w", accountID, err)
-	}
-	return true, nil
-}
-
+// markBaselined records that the account's pre-existing progress has been
+// baselined. Retained for the battlepass_accounts table/migrations and for
+// tests that simulate pre-fix data state; the engine's per-(account,tier)
+// evaluation (battlepassTierAction) no longer gates on this — see
+// seenUnsatisfiedKeys/markSeenUnsatisfied.
 func (s *battlepassStore) markBaselined(accountID int64) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := s.db.Exec(`
@@ -580,6 +575,47 @@ func (s *battlepassStore) markBaselined(accountID int64) error {
 		ON CONFLICT(server_id, account_id) DO NOTHING`, s.serverID, accountID, now)
 	if err != nil {
 		return fmt.Errorf("mark battlepass baselined %d: %w", accountID, err)
+	}
+	return nil
+}
+
+// seenUnsatisfiedKeys returns the set of tier_keys the engine has previously
+// observed unsatisfied for this account — the per-(account,tier) baseline
+// marker that replaced the per-account isBaselined/markBaselined gate. A tier
+// only earns (rather than baselines) on its first satisfied observation once
+// seen[tierKey] is true, meaning a genuine unsatisfied→satisfied transition
+// was actually watched for THIS tier, not just for the account as a whole.
+func (s *battlepassStore) seenUnsatisfiedKeys(accountID int64) (map[string]bool, error) {
+	rows, err := s.db.Query(
+		`SELECT tier_key FROM battlepass_tier_seen WHERE server_id = ? AND account_id = ?`,
+		s.serverID, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("seen unsatisfied keys for %d: %w", accountID, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]bool)
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, fmt.Errorf("scan seen unsatisfied key: %w", err)
+		}
+		out[key] = true
+	}
+	return out, rows.Err()
+}
+
+// markSeenUnsatisfied idempotently records that tierKey was observed
+// unsatisfied for accountID this pass. ON CONFLICT DO NOTHING makes repeated
+// calls across ticks safe.
+func (s *battlepassStore) markSeenUnsatisfied(tierKey string, accountID int64) error {
+	_, err := s.db.Exec(`
+		INSERT INTO battlepass_tier_seen (server_id, tier_key, account_id)
+		VALUES (?, ?, ?)
+		ON CONFLICT(server_id, tier_key, account_id) DO NOTHING`,
+		s.serverID, tierKey, accountID)
+	if err != nil {
+		return fmt.Errorf("mark battlepass tier seen unsatisfied %s/%d: %w", tierKey, accountID, err)
 	}
 	return nil
 }

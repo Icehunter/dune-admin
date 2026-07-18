@@ -84,6 +84,106 @@ func TestBattlepassTierSatisfied(t *testing.T) {
 	}
 }
 
+// TestBattlepassTierAction covers the pure per-(account,tier) baseline
+// decision that replaced the per-account isBaselined/markBaselined gate
+// (#297): a tier only earns once the engine has actually watched it
+// transition from unsatisfied to satisfied (seen=true), or when the operator
+// opts in via awardPast. An unsatisfied tier is never recorded — it's only
+// (idempotently) marked as watched, regardless of seen/awardPast.
+func TestBattlepassTierAction(t *testing.T) {
+	tests := []struct {
+		name       string
+		satisfied  bool
+		seen       bool
+		awardPast  bool
+		wantRecord bool
+		wantStatus string
+		wantMark   bool
+	}{
+		{"unsatisfied marks seen, never records", false, false, false, false, "", true},
+		{"unsatisfied ignores seen and awardPast", false, true, true, false, "", true},
+		{"satisfied on first sight baselines", true, false, false, true, battlepassClaimBaseline, false},
+		{"satisfied after being watched unsatisfied earns", true, true, false, true, battlepassClaimEarned, false},
+		{"satisfied with awardPast earns even on first sight", true, false, true, true, battlepassClaimEarned, false},
+		{"satisfied with awardPast and seen still earns", true, true, true, true, battlepassClaimEarned, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			record, status, mark := battlepassTierAction(tt.satisfied, tt.seen, tt.awardPast)
+			if record != tt.wantRecord || status != tt.wantStatus || mark != tt.wantMark {
+				t.Errorf("battlepassTierAction(satisfied=%v, seen=%v, awardPast=%v) = (%v, %q, %v), want (%v, %q, %v)",
+					tt.satisfied, tt.seen, tt.awardPast, record, status, mark,
+					tt.wantRecord, tt.wantStatus, tt.wantMark)
+			}
+		})
+	}
+}
+
+// TestBattlepassNewTierAddedAfterAccountActive_BaselinesInsteadOfEarning is
+// the direct regression test for the reported bug: a game update introduced
+// achievement tiers (Steam-achievement journey nodes that are satisfied by
+// default for every character, independent of real progress) after existing
+// accounts already had claim history. The old per-ACCOUNT baseline flag only
+// protected an account's very first evaluation pass ever; any tier added
+// later that happened to already be satisfied was recorded as a fresh
+// "earned" claim and auto-granted real in-game intel to players who never did
+// anything to earn it (e.g. a 32-XP character showing 56 granted
+// achievements). The fix: a tier only earns once the engine has actually
+// watched THAT TIER transition from unsatisfied to satisfied for THIS
+// account — a default-true tier the engine never saw unsatisfied baselines
+// instead, exactly like first-run progress does.
+func TestBattlepassNewTierAddedAfterAccountActive_BaselinesInsteadOfEarning(t *testing.T) {
+	s := seededEngineStore(t)
+	players := []battlepassPlayer{{AccountID: 1, PawnID: 100, Name: "LowLevelPlayer", Level: 1}}
+	deps := mockBattlepassDeps(players, map[int64][]string{}, map[int64][]string{})
+
+	// Account is already active: level:5 was watched unsatisfied and earned in
+	// an earlier era, long before the new tier below ever existed.
+	if err := s.recordClaim("level:5", 1, 10, battlepassClaimEarned); err != nil {
+		t.Fatalf("seed prior claim: %v", err)
+	}
+
+	// A battlepass update adds a new achievement tier that is satisfied by
+	// default — exactly like DA_ACH_SteamAchievements.sb-ach-exploration10.
+	newTier := battlepassTier{
+		TierKey: "journey:DA_ACH_SteamAchievements.sb-ach-exploration10", Category: "achievement",
+		Label: "Achievement: Exploration 10", Signal: battlepassSignalJourneyNode,
+		SignalKey: "DA_ACH_SteamAchievements.sb-ach-exploration10", Intel: 2, Enabled: true,
+	}
+	if _, err := s.createTier(newTier); err != nil {
+		t.Fatalf("add new tier: %v", err)
+	}
+	// The node is satisfied for this account from the very first observation —
+	// the engine never watched it unsatisfied.
+	journey := map[int64][]string{1: {"DA_ACH_SteamAchievements.sb-ach-exploration10"}}
+	deps.fetchCompletedJourneyNodes = func(ctx context.Context, accountID int64) ([]string, error) {
+		return journey[accountID], nil
+	}
+
+	if err := evaluateBattlepassTick(context.Background(), deps, s, false, true, 0); err != nil {
+		t.Fatalf("tick: %v", err)
+	}
+
+	keys, err := s.claimedKeys(1)
+	if err != nil {
+		t.Fatalf("claimedKeys: %v", err)
+	}
+	const newKey = "journey:DA_ACH_SteamAchievements.sb-ach-exploration10"
+	if got := keys[newKey]; got != battlepassClaimBaseline {
+		t.Fatalf("new default-satisfied tier = %q, want baseline (not earned)", got)
+	}
+
+	due, err := s.listRetryableGrantLedger(time.Now())
+	if err != nil {
+		t.Fatalf("listRetryableGrantLedger: %v", err)
+	}
+	for _, d := range due {
+		if d.TierKey == newKey {
+			t.Fatalf("bogus achievement tier must not be auto-granted, got pending grant %+v", d)
+		}
+	}
+}
+
 func TestBattlepassFirstEvaluationBaselines(t *testing.T) {
 	s := seededEngineStore(t)
 	players := []battlepassPlayer{{AccountID: 1, PawnID: 100, Name: "Paul", Level: 7}}
@@ -173,13 +273,17 @@ func TestBattlepassFetchErrorSkipsBaseline(t *testing.T) {
 		return nil, fmt.Errorf("db down")
 	}
 
-	// Evaluation fails mid-pass: the account must NOT be marked baselined,
-	// so the next successful pass still baselines instead of over-rewarding.
+	// Evaluation fails mid-pass: no claims and no seen-unsatisfied markers may
+	// be recorded, so the next successful pass still baselines pre-existing
+	// progress instead of over-rewarding it.
 	if err := evaluateBattlepassTick(context.Background(), deps, s, false, false, 0); err != nil {
 		t.Fatalf("tick: %v", err)
 	}
-	if baselined, _ := s.isBaselined(1); baselined {
-		t.Fatal("account must not be baselined after a failed evaluation pass")
+	if keys, _ := s.claimedKeys(1); len(keys) != 0 {
+		t.Fatalf("claims recorded despite fetch failure: %v", keys)
+	}
+	if seen, _ := s.seenUnsatisfiedKeys(1); len(seen) != 0 {
+		t.Fatalf("seen-unsatisfied markers recorded despite fetch failure: %v", seen)
 	}
 
 	deps.fetchCompletedJourneyNodes = func(ctx context.Context, accountID int64) ([]string, error) {
@@ -431,9 +535,10 @@ func TestRunBattlepassEngineBootScanRunsBeforeFirstInterval(t *testing.T) {
 	// startDelay=0 so the boot scan fires immediately.
 	go runBattlepassEngine(ctx, deps, s, time.Hour, 0, 0, true, false)
 
-	// Poll claimedKeys: with awardPast=true the engine records claims as "earned"
-	// but does NOT call markBaselined (that only runs when !baselined). Waiting for
-	// a non-empty claim set is the correct completion signal for award-past mode.
+	// Poll claimedKeys: with awardPast=true every satisfied tier earns
+	// immediately (battlepassTierAction always returns earned when awardPast
+	// is set). Waiting for a non-empty claim set is the correct completion
+	// signal for award-past mode.
 	deadline := time.After(2 * time.Second)
 	for {
 		keys, _ := s.claimedKeys(1)

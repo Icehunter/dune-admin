@@ -1036,7 +1036,10 @@
         "setSkillModule": "Beceri Modülü Ayarla",
         "skillModules": "Beceri modülleri",
         "skillPoints": "Beceri Puanları",
-        "skillPointsNote": "Harcanmamış puanları ayarlar"
+        "skillPointsNote": "Harcanmamış puanları ayarlar",
+        "currentIntel": "Mevcut: {{intel}} / {{max}} intel — seviye {{level}} için beklenen {{expected}}",
+        "setIntel": "Intel ayarla",
+        "setIntelNote": "Mevcut inteli üzerine yazar (0–2.779) · oyuncu çevrimdışı olmalı"
       },
       "sections": {
         "admin": "Yönetici",
@@ -1237,6 +1240,15 @@
       "online": "Online",
       "offline": "Offline",
       "empty": "No players found"
+    },
+    "intelAudit": {
+      "title": "Intel Denetimi",
+      "note": "Seviyesinin kazandırması gerekenden fazla intele sahip karakterler (battle pass toplu verme temizliği). Düzeltmek için oyuncular çevrimdışı olmalı.",
+      "refresh": "Yenile",
+      "empty": "Fazla inteli olan karakter yok.",
+      "online": "Çevrimiçi",
+      "setExpected": "Beklenene ayarla",
+      "fixed": "{{name}} inteli {{intel}} olarak ayarlandı"
     }
   },
   "server": {
@@ -1899,7 +1911,19 @@
     },
     "importSuccess": "{{count}} kademe içe aktarıldı.",
     "exportSuccess": "Katalog dışa aktarıldı.",
-    "importFailed": "İçe aktarma başarısız: {{message}}"
+    "importFailed": "İçe aktarma başarısız: {{message}}",
+    "reset": {
+      "section": "Talep Temizliği",
+      "hint": "Toplu verme olayından kurtarma. Hesap ID 0 bu sunucudaki tüm hesaplara uygulanır.",
+      "accountId": "Hesap ID (0 = tümü)",
+      "run": "Sıfırla",
+      "demoteHint": "Demote: kazanılmış talepler baseline olur — otomatik vermeye bir şey kalmaz; verilmiş geçmiş korunur.",
+      "purgeHint": "Purge: tüm talepleri ve izleme işaretlerini birlikte siler — sonraki taramada her şey yeniden baseline olur.",
+      "confirmTitle": "Battle pass talepleri sıfırlansın mı ({{mode}})?",
+      "scopeAll": "Bu sunucudaki TÜM hesaplara uygulanır.",
+      "scopeAccount": "Yalnızca {{accountId}} hesabına uygulanır.",
+      "done": "Sıfırlama tamamlandı: {{claims}} talep güncellendi, {{ledger}} kuyruktaki verme kaldırıldı."
+    }
   },
   "auth": {
     "signInSubtitle": "Sunucunuzu yönetmek için giriş yapın",

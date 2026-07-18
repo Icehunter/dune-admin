@@ -1,6 +1,6 @@
 import { atom } from 'jotai'
 import { atomFamily } from 'jotai-family'
-import type { Player, JourneyNode, TeleportLocation, ContractEntry } from '../../../../api/client'
+import type { Player, JourneyNode, TeleportLocation, ContractEntry, IntelInfo } from '../../../../api/client'
 
 type ConfirmState = {
   title: string
@@ -13,6 +13,7 @@ export const playerAtom = atomFamily(() => atom<Player | null>(null))
 export const partitionsAtom = atomFamily(() => atom<TeleportLocation[]>([]))
 export const allPlayersAtom = atomFamily(() => atom<Player[]>([]))
 export const charXPCurrentAtom = atomFamily(() => atom<{ xp: number, level: number } | null>(null))
+export const intelCurrentAtom = atomFamily(() => atom<IntelInfo | null>(null))
 
 export const nodesAtom = atomFamily(() => atom<JourneyNode[]>([]))
 export const nodesLoadedAtom = atomFamily(() => atom(false))

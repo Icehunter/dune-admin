@@ -181,6 +181,9 @@ func buildMux() *http.ServeMux {
 	handleAPI(mux, "POST /api/v1/players/award-xp", capPlayersWrite, handleAwardXP)
 	handleAPI(mux, "POST /api/v1/players/award-char-xp", capPlayersWrite, handleAwardCharXP)
 	handleAPI(mux, "POST /api/v1/players/award-intel", capPlayersWrite, handleAwardIntel)
+	handleAPI(mux, "GET /api/v1/players/{id}/intel", capPlayersRead, handleGetIntel)
+	handleAPI(mux, "POST /api/v1/players/set-intel", capPlayersWrite, handleSetIntel)
+	handleAPI(mux, "GET /api/v1/players/intel-audit", capPlayersRead, handleIntelAudit)
 	handleAPI(mux, "POST /api/v1/players/rename", capPlayersWrite, handleRenameCharacter)
 	handleAPI(mux, "POST /api/v1/players/delete", capPlayersDelete, handleDeleteCharacter)
 	handleAPI(mux, "GET /api/v1/players/{id}/tags", capPlayersRead, handleGetPlayerTags)
@@ -377,6 +380,7 @@ func buildMux() *http.ServeMux {
 	handleAPI(mux, "POST /api/v1/battlepass/reseed", capBattlepassManage, handleBattlepassReseed)
 	handleAPI(mux, "POST /api/v1/battlepass/grant", capBattlepassManage, handleBattlepassGrant)
 	handleAPI(mux, "POST /api/v1/battlepass/grant-tier", capBattlepassManage, handleBattlepassGrantTier)
+	handleAPI(mux, "POST /api/v1/battlepass/claims/reset", capBattlepassManage, handleBattlepassResetClaims)
 	handleAPI(mux, "GET /api/v1/battlepass/config", capBattlepassRead, handleGetBattlepassConfig)
 	handleAPI(mux, "PUT /api/v1/battlepass/config", capBattlepassManage, handleSaveBattlepassConfig)
 

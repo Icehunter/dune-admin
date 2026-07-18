@@ -1036,7 +1036,10 @@
         "setSkillModule": "Fertigkeitsmodul festlegen",
         "skillModules": "Fertigkeitsmodule",
         "skillPoints": "Fertigkeitspunkte",
-        "skillPointsNote": "Legt ungenutzte Punkte fest"
+        "skillPointsNote": "Legt ungenutzte Punkte fest",
+        "currentIntel": "Aktuell: {{intel}} / {{max}} Intel — erwartet {{expected}} auf Stufe {{level}}",
+        "setIntel": "Intel setzen",
+        "setIntelNote": "Überschreibt aktuelles Intel (0–2.779) · Spieler muss offline sein"
       },
       "sections": {
         "admin": "Admin",
@@ -1237,6 +1240,15 @@
       "online": "Online",
       "offline": "Offline",
       "empty": "No players found"
+    },
+    "intelAudit": {
+      "title": "Intel-Prüfung",
+      "note": "Charaktere mit mehr Intel, als ihre Stufe erlaubt (Battlepass-Massenvergabe-Bereinigung). Spieler müssen zum Korrigieren offline sein.",
+      "refresh": "Aktualisieren",
+      "empty": "Keine Charaktere mit überschüssigem Intel.",
+      "online": "Online",
+      "setExpected": "Auf Erwartungswert setzen",
+      "fixed": "Intel von {{name}} auf {{intel}} gesetzt"
     }
   },
   "server": {
@@ -1899,7 +1911,19 @@
     },
     "importSuccess": "{{count}} Stufen importiert.",
     "exportSuccess": "Katalog exportiert.",
-    "importFailed": "Import fehlgeschlagen: {{message}}"
+    "importFailed": "Import fehlgeschlagen: {{message}}",
+    "reset": {
+      "section": "Claims-Bereinigung",
+      "hint": "Wiederherstellung nach einer Massenvergabe. Konto-ID 0 gilt für alle Konten dieses Servers.",
+      "accountId": "Konto-ID (0 = alle)",
+      "run": "Zurücksetzen",
+      "demoteHint": "Demote: verdiente Claims werden zu Baseline — nichts bleibt für Auto-Grant; vergebene Historie bleibt erhalten.",
+      "purgeHint": "Purge: löscht alle Claims und Seen-Marker zusammen — beim nächsten Scan wird alles neu baselined.",
+      "confirmTitle": "Battlepass-Claims zurücksetzen ({{mode}})?",
+      "scopeAll": "Gilt für JEDES Konto auf diesem Server.",
+      "scopeAccount": "Gilt nur für Konto {{accountId}}.",
+      "done": "Zurücksetzen abgeschlossen: {{claims}} Claims aktualisiert, {{ledger}} geplante Vergaben entfernt."
+    }
   },
   "auth": {
     "signInSubtitle": "Melde dich an, um deinen Server zu verwalten",

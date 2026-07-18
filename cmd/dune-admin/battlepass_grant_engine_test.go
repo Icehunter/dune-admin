@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"maps"
+	"slices"
 	"testing"
 	"time"
 )
@@ -188,6 +191,150 @@ func TestBattlepassGrantSource_DrivesRetryLoop(t *testing.T) {
 	processDeferredGrantTick(context.Background(), src, src.attempt, time.Now())
 	if granted != 25 {
 		t.Errorf("granted intel via loop = %d, want 25", granted)
+	}
+}
+
+// failOnDeliveryDeps returns deps whose delivery hooks fail the test — used to
+// assert the idempotency guard skips delivery entirely.
+func failOnDeliveryDeps(t *testing.T) battlepassGrantDeps {
+	t.Helper()
+	deps := noopBattlepassGrantDeps()
+	deps.resolveGrantTarget = func(_ context.Context, _ int64) (int64, error) {
+		t.Errorf("resolveGrantTarget called — delivery must be skipped")
+		return 1, nil
+	}
+	deps.awardIntel = func(_ context.Context, _, _ int64) error {
+		t.Errorf("awardIntel called — delivery must be skipped")
+		return nil
+	}
+	deps.giveItem = func(_ context.Context, _ int64, _ string, _, _ int64) error {
+		t.Errorf("giveItem called — delivery must be skipped")
+		return nil
+	}
+	return deps
+}
+
+// TestAttemptBattlepassGrant_SkipsClaimAlreadyGranted covers the manual-grant
+// race: the operator grants a tier via the UI while its ledger row is still
+// pending. The auto-grant attempt must not deliver again, and must seal the
+// ledger so it stops retrying.
+func TestAttemptBattlepassGrant_SkipsClaimAlreadyGranted(t *testing.T) {
+	s := openMemBattlepassStore(t)
+	seedEarnedTier(t, s, "tier_m", 100, 50)
+	if err := s.markGrantedForTier(100, "tier_m"); err != nil {
+		t.Fatalf("markGrantedForTier: %v", err)
+	}
+
+	if err := attemptBattlepassGrant(context.Background(), s, failOnDeliveryDeps(t), "tier_m", 100); err != nil {
+		t.Fatalf("attemptBattlepassGrant: %v", err)
+	}
+	if due, _ := s.listRetryableGrantLedger(time.Now().Add(100 * deferredGrantRetryBackoff)); len(due) != 0 {
+		t.Errorf("want ledger sealed after skip, got %d retryable", len(due))
+	}
+}
+
+// TestAttemptBattlepassGrant_SkipsGrantedLedgerRow: a ledger row that is
+// already granted (terminal) must never deliver again, whatever state the
+// claim is in.
+func TestAttemptBattlepassGrant_SkipsGrantedLedgerRow(t *testing.T) {
+	s := openMemBattlepassStore(t)
+	seedEarnedTier(t, s, "tier_g", 100, 50)
+	if err := s.recordGrantLedgerSuccess("tier_g", 100); err != nil {
+		t.Fatalf("recordGrantLedgerSuccess: %v", err)
+	}
+
+	if err := attemptBattlepassGrant(context.Background(), s, failOnDeliveryDeps(t), "tier_g", 100); err != nil {
+		t.Fatalf("attemptBattlepassGrant: %v", err)
+	}
+}
+
+// TestAttemptBattlepassGrant_SkipsMissingClaim: a pending ledger row whose
+// claim no longer exists (cleaned up) must skip delivery and seal the ledger.
+func TestAttemptBattlepassGrant_SkipsMissingClaim(t *testing.T) {
+	s := openMemBattlepassStore(t)
+	if _, err := s.createTier(battlepassTier{
+		TierKey: "tier_del", Category: "level", Label: "tier_del",
+		Signal: battlepassSignalLevel, Threshold: 1, Intel: 10, Enabled: true,
+	}); err != nil {
+		t.Fatalf("createTier: %v", err)
+	}
+	if err := s.recordPendingGrant("tier_del", 100); err != nil {
+		t.Fatalf("recordPendingGrant: %v", err)
+	}
+
+	if err := attemptBattlepassGrant(context.Background(), s, failOnDeliveryDeps(t), "tier_del", 100); err != nil {
+		t.Fatalf("attemptBattlepassGrant: %v", err)
+	}
+	if due, _ := s.listRetryableGrantLedger(time.Now().Add(100 * deferredGrantRetryBackoff)); len(due) != 0 {
+		t.Errorf("want ledger sealed after skip, got %d retryable", len(due))
+	}
+}
+
+// TestBattlepassGrantSource_MultipleDueTiersOneAccount is the #291 regression
+// test: an account with several due tiers in one tick must receive each tier's
+// reward exactly once. The old account-keyed pending map collapsed them all to
+// the last tier, delivering it N times and skipping the rest.
+func TestBattlepassGrantSource_MultipleDueTiersOneAccount(t *testing.T) {
+	s := openMemBattlepassStore(t)
+	seedEarnedTier(t, s, "tier_a", 100, 10)
+	seedEarnedTier(t, s, "tier_b", 100, 20)
+	seedEarnedTier(t, s, "tier_c", 100, 30)
+
+	deps := noopBattlepassGrantDeps()
+	deps.resolveGrantTarget = func(_ context.Context, _ int64) (int64, error) { return 1, nil }
+	var amounts []int64
+	deps.awardIntel = func(_ context.Context, _, amount int64) error {
+		amounts = append(amounts, amount)
+		return nil
+	}
+
+	src := newBattlepassGrantSource(s, deps)
+	processDeferredGrantTick(context.Background(), src, src.attempt, time.Now())
+
+	slices.Sort(amounts)
+	if !slices.Equal(amounts, []int64{10, 20, 30}) {
+		t.Fatalf("intel amounts = %v, want each tier delivered exactly once [10 20 30]", amounts)
+	}
+	claims, _ := s.listClaims(100)
+	if len(claims) != 3 {
+		t.Fatalf("want 3 claims, got %d", len(claims))
+	}
+	for _, c := range claims {
+		if c.Status != battlepassClaimGranted {
+			t.Errorf("claim %s status = %s, want granted", c.TierKey, c.Status)
+		}
+	}
+	if due, _ := s.listRetryableGrantLedger(time.Now().Add(100 * deferredGrantRetryBackoff)); len(due) != 0 {
+		t.Errorf("want 0 retryable after tick, got %d", len(due))
+	}
+}
+
+func TestBattlepassGrantSource_MixedAccountsAndTiers(t *testing.T) {
+	s := openMemBattlepassStore(t)
+	seedEarnedTier(t, s, "tier_a", 100, 10)
+	seedEarnedTier(t, s, "tier_b", 100, 20)
+	// seedEarnedTier creates the tier on first use; account 200 claims existing tiers.
+	if err := s.recordClaim("tier_a", 200, 10, battlepassClaimEarned); err != nil {
+		t.Fatalf("recordClaim: %v", err)
+	}
+	if err := s.recordPendingGrant("tier_a", 200); err != nil {
+		t.Fatalf("recordPendingGrant: %v", err)
+	}
+
+	deps := noopBattlepassGrantDeps()
+	deps.resolveGrantTarget = func(_ context.Context, accountID int64) (int64, error) { return accountID, nil }
+	delivered := map[string]int{}
+	deps.awardIntel = func(_ context.Context, pawnID, amount int64) error {
+		delivered[fmt.Sprintf("%d/%d", pawnID, amount)]++
+		return nil
+	}
+
+	src := newBattlepassGrantSource(s, deps)
+	processDeferredGrantTick(context.Background(), src, src.attempt, time.Now())
+
+	want := map[string]int{"100/10": 1, "100/20": 1, "200/10": 1}
+	if !maps.Equal(delivered, want) {
+		t.Fatalf("delivered = %v, want %v", delivered, want)
 	}
 }
 

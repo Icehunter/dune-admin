@@ -1036,7 +1036,10 @@
         "setSkillModule": "Set Skill Module",
         "skillModules": "Skill modules",
         "skillPoints": "Skill Points",
-        "skillPointsNote": "Sets unspent points"
+        "skillPointsNote": "Sets unspent points",
+        "currentIntel": "Current: {{intel}} / {{max}} intel — expected {{expected}} at level {{level}}",
+        "setIntel": "Set Intel",
+        "setIntelNote": "Overwrites current intel (0–2,779) · player must be offline"
       },
       "sections": {
         "admin": "Admin",
@@ -1237,6 +1240,15 @@
       "online": "Online",
       "offline": "Offline",
       "empty": "No players found"
+    },
+    "intelAudit": {
+      "title": "Intel Audit",
+      "note": "Characters holding more intel than their level should have earned (battlepass mass-grant cleanup). Players must be offline to fix.",
+      "refresh": "Refresh",
+      "empty": "No characters with excess intel.",
+      "online": "Online",
+      "setExpected": "Set to expected",
+      "fixed": "Set {{name}}'s intel to {{intel}}"
     }
   },
   "server": {
@@ -1791,7 +1803,19 @@
     },
     "importSuccess": "Imported {{count}} tiers.",
     "exportSuccess": "Catalog exported.",
-    "importFailed": "Import failed: {{message}}"
+    "importFailed": "Import failed: {{message}}",
+    "reset": {
+      "section": "Claims Cleanup",
+      "hint": "Recover from a mass-grant incident. Account ID 0 applies to every account on this server.",
+      "accountId": "Account ID (0 = all)",
+      "run": "Reset",
+      "demoteHint": "Demote: earned claims become baseline — nothing left to auto-grant; granted history is kept.",
+      "purgeHint": "Purge: deletes all claims and seen-markers together — everything re-baselines on the next scan.",
+      "confirmTitle": "Reset battlepass claims ({{mode}})?",
+      "scopeAll": "Applies to EVERY account on this server.",
+      "scopeAccount": "Applies to account {{accountId}} only.",
+      "done": "Reset complete: {{claims}} claims updated, {{ledger}} queued grants removed."
+    }
   },
   "events": {
     "title": "Events ({{count}})",

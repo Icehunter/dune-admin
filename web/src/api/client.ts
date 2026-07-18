@@ -667,6 +667,31 @@ export type StatSnapshot = {
   solaris_balance: number | null
 }
 
+export type IntelInfo = {
+  intel: number
+  level: number
+  expected_at_level: number
+  max: number
+}
+
+export type IntelAuditRow = {
+  account_id: number
+  pawn_id: number
+  name: string
+  level: number
+  intel: number
+  expected_intel: number
+  online: boolean
+}
+
+export type BattlepassResetResult = {
+  mode: string
+  account_id: number
+  ledger_rows: number
+  claims: number
+  seen_markers?: number
+}
+
 export type TeleportLocation = {
   name: string
   x: number
@@ -1203,6 +1228,10 @@ export const api = {
       req<MutateResult>('POST', '/players/award-char-xp', { player_id, amount, fls_id }),
     awardIntel: (player_id: number, amount: number) =>
       req<MutateResult>('POST', '/players/award-intel', { player_id, amount }),
+    intelCurrent: (id: number) => req<IntelInfo>('GET', `/players/${id}/intel`),
+    setIntel: (player_id: number, amount: number) =>
+      req<MutateResult>('POST', '/players/set-intel', { player_id, amount }),
+    intelAudit: () => req<IntelAuditRow[]>('GET', '/players/intel-audit'),
     rename: (account_id: number, name: string) => req<MutateResult>('POST', '/players/rename', { account_id, name }),
     deleteCharacter: (account_id: number, reason: string, character_name: string, backup: boolean) =>
       req<MutateResult>('POST', '/players/delete', { account_id, reason, character_name, backup }),
@@ -1596,5 +1625,7 @@ export const api = {
     importCatalog: (payload: BattlepassCatalogExport) => req<{ imported: number }>('POST', '/battlepass/import', payload),
     config: () => req<BattlepassConfig>('GET', '/battlepass/config'),
     saveConfig: (cfg: BattlepassConfig) => req<BattlepassConfig>('PUT', '/battlepass/config', cfg),
+    resetClaims: (mode: 'demote' | 'purge', account_id?: number) =>
+      req<BattlepassResetResult>('POST', '/battlepass/claims/reset', { mode, account_id: account_id ?? 0 }),
   },
 }

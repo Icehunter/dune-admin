@@ -513,6 +513,62 @@ func (s *battlepassStore) recordGrantFailureForTier(accountID int64, tierKey, er
 	return nil
 }
 
+// demoteEarnedClaims flips earned claims to baseline — the #293 cleanup: the
+// claims stay on record (so re-evaluation cannot re-earn them) but nothing is
+// left for auto-grant or manual grant to deliver. Granted claims are delivery
+// history and are untouched. accountID 0 = every account in this server scope.
+func (s *battlepassStore) demoteEarnedClaims(accountID int64) (int64, error) {
+	now := time.Now().UTC().Format(time.RFC3339)
+	q := `UPDATE battlepass_claims SET status = ?, updated_at = ?
+	      WHERE server_id = ? AND status = ?`
+	args := []any{battlepassClaimBaseline, now, s.serverID, battlepassClaimEarned}
+	if accountID != 0 {
+		q += ` AND account_id = ?`
+		args = append(args, accountID)
+	}
+	res, err := s.db.Exec(q, args...)
+	if err != nil {
+		return 0, fmt.Errorf("demote earned battlepass claims: %w", err)
+	}
+	return res.RowsAffected()
+}
+
+// purgeClaims deletes claims of every status. MUST always be paired with
+// purgeTierSeen: deleting claims while keeping the seen-unsatisfied markers
+// makes every still-satisfied tier re-earn — and auto-grant re-deliver — on
+// the next scan (see TestBattlepassPurgeClaimsAloneReearns). accountID 0 =
+// every account in this server scope.
+func (s *battlepassStore) purgeClaims(accountID int64) (int64, error) {
+	q := `DELETE FROM battlepass_claims WHERE server_id = ?`
+	args := []any{s.serverID}
+	if accountID != 0 {
+		q += ` AND account_id = ?`
+		args = append(args, accountID)
+	}
+	res, err := s.db.Exec(q, args...)
+	if err != nil {
+		return 0, fmt.Errorf("purge battlepass claims: %w", err)
+	}
+	return res.RowsAffected()
+}
+
+// purgeTierSeen deletes the watched-unsatisfied markers. Paired with
+// purgeClaims so a purged account re-baselines instead of re-earning.
+// accountID 0 = every account in this server scope.
+func (s *battlepassStore) purgeTierSeen(accountID int64) (int64, error) {
+	q := `DELETE FROM battlepass_tier_seen WHERE server_id = ?`
+	args := []any{s.serverID}
+	if accountID != 0 {
+		q += ` AND account_id = ?`
+		args = append(args, accountID)
+	}
+	res, err := s.db.Exec(q, args...)
+	if err != nil {
+		return 0, fmt.Errorf("purge battlepass tier_seen: %w", err)
+	}
+	return res.RowsAffected()
+}
+
 // earnedTotals returns account_id → pending (earned, ungranted) intel.
 func (s *battlepassStore) earnedTotals() (map[int64]int64, error) {
 	rows, err := s.db.Query(`

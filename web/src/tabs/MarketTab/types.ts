@@ -25,7 +25,7 @@ export type MarketGridProps = {
   onSelect: (item: MarketItem) => void
 }
 
-export type MarketTableKey = 'display_name' | 'quality' | 'category' | 'tier' | 'rarity' | 'lowest_price' | 'total_stock' | 'bot_stock' | 'listing_count'
+export type MarketTableKey = 'display_name' | 'quality' | 'category' | 'tier' | 'rarity' | 'lowest_price' | 'total_stock' | 'listing_count'
 
 export type MarketTableProps = {
   items: MarketItem[]

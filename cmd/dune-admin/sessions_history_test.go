@@ -72,4 +72,12 @@ func TestGetSessionHistory_RespectsLimit(t *testing.T) {
 	if len(recs) != 3 {
 		t.Fatalf("expected 3 records with limit=3, got %d", len(recs))
 	}
+	// The cap must keep the NEWEST rows (#294): a chart that hits the limit
+	// must window the most recent history, still in ascending order.
+	wantStarts := []string{"2026-01-03T10:00:00Z", "2026-01-04T10:00:00Z", "2026-01-05T10:00:00Z"}
+	for i, r := range recs {
+		if r.StartedAt != wantStarts[i] {
+			t.Errorf("[%d] StartedAt = %s, want %s (newest window, ascending)", i, r.StartedAt, wantStarts[i])
+		}
+	}
 }

@@ -1036,7 +1036,10 @@
         "setSkillModule": "スキルモジュールを設定",
         "skillModules": "スキルモジュール",
         "skillPoints": "スキルポイント",
-        "skillPointsNote": "未使用ポイントを設定します"
+        "skillPointsNote": "未使用ポイントを設定します",
+        "currentIntel": "現在: {{intel}} / {{max}} インテル — レベル{{level}}の期待値 {{expected}}",
+        "setIntel": "インテルを設定",
+        "setIntelNote": "現在のインテルを上書き（0～2,779）・プレイヤーはオフラインである必要があります"
       },
       "sections": {
         "admin": "管理者",
@@ -1237,6 +1240,15 @@
       "online": "Online",
       "offline": "Offline",
       "empty": "No players found"
+    },
+    "intelAudit": {
+      "title": "インテル監査",
+      "note": "レベル相応より多くのインテルを持つキャラクター（バトルパス大量付与のクリーンアップ）。修正にはプレイヤーがオフラインである必要があります。",
+      "refresh": "更新",
+      "empty": "過剰なインテルを持つキャラクターはいません。",
+      "online": "オンライン",
+      "setExpected": "期待値に設定",
+      "fixed": "{{name}}のインテルを{{intel}}に設定しました"
     }
   },
   "server": {
@@ -1899,7 +1911,19 @@
     },
     "importSuccess": "{{count}} 個のティアをインポートしました。",
     "exportSuccess": "カタログをエクスポートしました。",
-    "importFailed": "インポート失敗: {{message}}"
+    "importFailed": "インポート失敗: {{message}}",
+    "reset": {
+      "section": "クレームのクリーンアップ",
+      "hint": "大量付与インシデントからの復旧。アカウントID 0はこのサーバーの全アカウントに適用されます。",
+      "accountId": "アカウントID（0 = 全て）",
+      "run": "リセット",
+      "demoteHint": "Demote: 獲得済みクレームをベースラインに変更 — 自動付与の対象はなくなり、付与済み履歴は保持されます。",
+      "purgeHint": "Purge: 全クレームと観測マーカーを同時に削除 — 次回スキャンで全てが再ベースライン化されます。",
+      "confirmTitle": "バトルパスのクレームをリセットしますか（{{mode}}）？",
+      "scopeAll": "このサーバーの全アカウントに適用されます。",
+      "scopeAccount": "アカウント{{accountId}}のみに適用されます。",
+      "done": "リセット完了: {{claims}}件のクレームを更新、{{ledger}}件の待機中付与を削除しました。"
+    }
   },
   "auth": {
     "signInSubtitle": "サインインしてサーバーを管理",

@@ -6,7 +6,7 @@ import { NumberInput, Panel, SectionLabel } from '../../../../../dune-ui'
 import { skillModulesSyncAtom } from '../../../../../data/store'
 import { api } from '../../../../../api/client'
 import { FACTIONS } from '../../../types'
-import { busyAtom, charXPCurrentAtom } from '../store'
+import { busyAtom, charXPCurrentAtom, intelCurrentAtom } from '../store'
 import { useRun } from '../hooks/useActions'
 import type { ResourcesSectionProps } from './interfaces'
 
@@ -14,12 +14,14 @@ export const ResourcesSection: React.FC<ResourcesSectionProps> = ({ player }) =>
   const { t } = useTranslation()
   const [busy] = useAtom(busyAtom(player.id))
   const [charXPCurrent, setCharXPCurrent] = useAtom(charXPCurrentAtom(player.id))
+  const [intelCurrent, setIntelCurrent] = useAtom(intelCurrentAtom(player.id))
   const run = useRun(player.id)
   const [allSkillModules] = useAtom(skillModulesSyncAtom)
 
   const [currency, setCurrency] = React.useState(100)
   const [scrip, setScrip] = React.useState(100)
   const [intel, setIntel] = React.useState(100)
+  const [intelTarget, setIntelTarget] = React.useState(0)
   const [charXP, setCharXP] = React.useState(1000)
   const [factionId, setFactionId] = React.useState(player.faction_id > 0 ? player.faction_id : 1)
   const [repDelta, setRepDelta] = React.useState(100)
@@ -43,11 +45,20 @@ export const ResourcesSection: React.FC<ResourcesSectionProps> = ({ player }) =>
       `Gave ${scrip} scrip to ${player.name}`,
     )
 
+  const refreshIntel = () =>
+    api.players.intelCurrent(player.id).then(setIntelCurrent).catch(() => {})
+
   const handleAwardIntel = () =>
     run(
       () => api.players.awardIntel(player.id, intel),
       `Awarded ${intel} intel to ${player.name}`,
-    )
+    ).then(refreshIntel)
+
+  const handleSetIntel = () =>
+    run(
+      () => api.players.setIntel(player.id, intelTarget),
+      `Set intel to ${intelTarget} for ${player.name}`,
+    ).then(refreshIntel)
 
   const handleAwardCharXP = () =>
     run(
@@ -92,6 +103,20 @@ export const ResourcesSection: React.FC<ResourcesSectionProps> = ({ player }) =>
     />
   )
 
+  const renderIntelCurrent = (): React.ReactNode => {
+    if (!intelCurrent) return null
+    return (
+      <div className="text-xs text-muted mb-2">
+        {t('players.actions.resources.currentIntel', {
+          intel: intelCurrent.intel.toLocaleString(),
+          max: intelCurrent.max.toLocaleString(),
+          expected: intelCurrent.expected_at_level.toLocaleString(),
+          level: intelCurrent.level,
+        })}
+      </div>
+    )
+  }
+
   const actionRow = (label: string, inputs: React.ReactNode, btnLabel: string, onAction: () => void) => (
     <div className="flex items-end gap-3 py-3 border-b border-border/40 last:border-b-0">
       <div className="w-36 shrink-0 text-sm text-muted">{label}</div>
@@ -116,11 +141,21 @@ export const ResourcesSection: React.FC<ResourcesSectionProps> = ({ player }) =>
           t('players.actions.resources.give'),
           handleGiveScrip,
         )}
+        {renderIntelCurrent()}
         {actionRow(
           t('players.actions.resources.awardIntel'),
           numInput(intel, setIntel, 1, 9999999),
           t('players.actions.resources.award'),
           handleAwardIntel,
+        )}
+        {actionRow(
+          t('players.actions.resources.setIntel'),
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted">{t('players.actions.resources.setIntelNote')}</span>
+            {numInput(intelTarget, setIntelTarget, 0, 2779)}
+          </div>,
+          t('players.actions.resources.set'),
+          handleSetIntel,
         )}
       </Panel>
 
@@ -134,8 +169,8 @@ export const ResourcesSection: React.FC<ResourcesSectionProps> = ({ player }) =>
         {actionRow(
           t('players.actions.resources.awardCharXP'),
           <div className="flex flex-col gap-0.5">
-            {numInput(charXP, setCharXP, 0, 344440)}
             <span className="text-xs text-muted">{t('players.actions.resources.charXPNote')}</span>
+            {numInput(charXP, setCharXP, 0, 344440)}
           </div>,
           t('players.actions.resources.award'),
           handleAwardCharXP,
@@ -148,8 +183,8 @@ export const ResourcesSection: React.FC<ResourcesSectionProps> = ({ player }) =>
         {actionRow(
           t('players.actions.resources.skillPoints'),
           <div className="flex flex-col gap-0.5">
-            {numInput(skillPointsAmount, setSkillPointsAmount, 0, 9999)}
             <span className="text-xs text-muted">{t('players.actions.resources.skillPointsNote')}</span>
+            {numInput(skillPointsAmount, setSkillPointsAmount, 0, 9999)}
           </div>,
           t('players.actions.resources.set'),
           handleSetSkillPoints,
@@ -222,8 +257,8 @@ export const ResourcesSection: React.FC<ResourcesSectionProps> = ({ player }) =>
         {actionRow(
           t('players.actions.resources.reputation'),
           <div className="flex flex-col gap-0.5">
-            {numInput(repDelta, setRepDelta, 0, 12474)}
             <span className="text-xs text-muted">{t('players.actions.resources.reputationNote')}</span>
+            {numInput(repDelta, setRepDelta, 0, 12474)}
           </div>,
           t('players.actions.resources.give'),
           handleGiveFactionRep,

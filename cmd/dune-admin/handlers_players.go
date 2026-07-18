@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -808,6 +809,115 @@ func handleAwardIntel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonOK(w, map[string]string{"ok": msg.ok})
+}
+
+// @Summary Get a player's current intel points
+// @Description Returns current intel, the character's level, the expected
+// @Description cumulative intel for that level, and the spendable cap.
+// @Tags players
+// @Produce json
+// @Param id path int true "Player (pawn) ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/players/{id}/intel [get]
+func handleGetIntel(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		jsonErr(w, fmt.Errorf("invalid id"), 400)
+		return
+	}
+	db := dbFromCtx(r)
+	if db == nil {
+		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
+		return
+	}
+	intel, err := cmdFetchIntelCtx(r.Context(), db, id)
+	if err != nil {
+		if errors.Is(err, errNotFound) {
+			jsonErr(w, fmt.Errorf("player %d has no intel component", id), 404)
+			return
+		}
+		jsonErr(w, err, 500)
+		return
+	}
+	level := 0
+	expected := int64(0)
+	if msg, ok := cmdFetchCharXP(db, id)().(msgCharXP); ok && msg.err == nil {
+		level = msg.level
+		expected = intelAtLevel(level)
+	}
+	jsonOK(w, map[string]any{
+		"intel":             intel,
+		"level":             level,
+		"expected_at_level": expected,
+		"max":               maxIntelPoints,
+	})
+}
+
+// @Summary Set a player's intel points to an explicit value
+// @Description Clamped to [0, cap]. May reduce the balance — the cleanup path
+// @Description for over-granted intel. The player must be offline.
+// @Tags players
+// @Accept json
+// @Produce json
+// @Param body body object true "player_id, amount"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/players/set-intel [post]
+func handleSetIntel(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		PlayerID int64 `json:"player_id"`
+		Amount   int64 `json:"amount"`
+	}
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, err, 400)
+		return
+	}
+	if req.PlayerID == 0 {
+		jsonErr(w, fmt.Errorf("player_id required"), 400)
+		return
+	}
+	if req.Amount < 0 || req.Amount > maxIntelPoints {
+		jsonErr(w, fmt.Errorf("amount must be between 0 and %d", maxIntelPoints), 400)
+		return
+	}
+	db := dbFromCtx(r)
+	if db == nil {
+		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
+		return
+	}
+	if err := cmdSetIntelCtx(r.Context(), db, req.PlayerID, req.Amount); err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
+	jsonOK(w, map[string]string{
+		"ok": fmt.Sprintf("Set intel points to %d for player %d", req.Amount, req.PlayerID),
+	})
+}
+
+// @Summary List characters whose intel exceeds the expected value for their level
+// @Description Cleanup audit for the #293 battlepass mass-grant: every row is a
+// @Description character holding more intel than its level should have earned.
+// @Tags players
+// @Produce json
+// @Success 200 {array} intelAuditRow
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/players/intel-audit [get]
+func handleIntelAudit(w http.ResponseWriter, r *http.Request) {
+	db := dbFromCtx(r)
+	if db == nil {
+		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
+		return
+	}
+	rows, err := cmdFetchIntelAuditRows(r.Context(), db)
+	if err != nil {
+		jsonErr(w, err, 500)
+		return
+	}
+	jsonOK(w, rows)
 }
 
 // @Summary Rename a player's character

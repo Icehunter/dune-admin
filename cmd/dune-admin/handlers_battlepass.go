@@ -760,3 +760,76 @@ func handleImportBattlepassCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonOK(w, map[string]any{"imported": len(tiers)})
 }
+
+// battlepassResetModes are the accepted values for handleBattlepassResetClaims.
+const (
+	battlepassResetDemote = "demote"
+	battlepassResetPurge  = "purge"
+)
+
+// @Summary Reset battlepass claims after an incident
+// @Description #293 cleanup. mode "demote": earned claims become baseline
+// @Description (never grantable, block re-earning; granted rows kept as
+// @Description history). mode "purge": delete claims AND seen-markers together
+// @Description so everything re-baselines on the next scan. Both modes also
+// @Description drop pending/exhausted auto-grant ledger rows. account_id 0 or
+// @Description omitted = every account on this server.
+// @Tags battlepass
+// @Accept json
+// @Produce json
+// @Param body body object true "mode (demote|purge), account_id?"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/battlepass/claims/reset [post]
+func handleBattlepassResetClaims(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AccountID int64  `json:"account_id"`
+		Mode      string `json:"mode"`
+	}
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, fmt.Errorf("invalid request body"), http.StatusBadRequest)
+		return
+	}
+	if req.Mode != battlepassResetDemote && req.Mode != battlepassResetPurge {
+		jsonErr(w, fmt.Errorf("mode must be %q or %q", battlepassResetDemote, battlepassResetPurge), http.StatusBadRequest)
+		return
+	}
+	store := battlepassStoreForCtx(r)
+	if store == nil {
+		jsonErr(w, fmt.Errorf("battlepass store not available"), http.StatusServiceUnavailable)
+		return
+	}
+
+	ledgerRows, err := store.deleteUnsettledGrantLedger(req.AccountID)
+	if err != nil {
+		jsonErr(w, err, http.StatusInternalServerError)
+		return
+	}
+	result := map[string]any{"mode": req.Mode, "account_id": req.AccountID, "ledger_rows": ledgerRows}
+	if req.Mode == battlepassResetDemote {
+		demoted, err := store.demoteEarnedClaims(req.AccountID)
+		if err != nil {
+			jsonErr(w, err, http.StatusInternalServerError)
+			return
+		}
+		result["claims"] = demoted
+		jsonOK(w, result)
+		return
+	}
+	// purge: claims and tier_seen MUST go together — deleting claims alone
+	// re-earns every still-satisfied tier on the next scan (re-grant storm).
+	claims, err := store.purgeClaims(req.AccountID)
+	if err != nil {
+		jsonErr(w, err, http.StatusInternalServerError)
+		return
+	}
+	seen, err := store.purgeTierSeen(req.AccountID)
+	if err != nil {
+		jsonErr(w, err, http.StatusInternalServerError)
+		return
+	}
+	result["claims"] = claims
+	result["seen_markers"] = seen
+	jsonOK(w, result)
+}

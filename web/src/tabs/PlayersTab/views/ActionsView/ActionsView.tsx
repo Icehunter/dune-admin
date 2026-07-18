@@ -9,7 +9,7 @@ import { ACTION_SECTIONS, type ActionSection } from '../../types'
 import { api } from '../../../../api/client'
 import { usePermissions } from '../../../../hooks/usePermissions'
 import {
-  playerAtom, partitionsAtom, allPlayersAtom, charXPCurrentAtom, confirmAtom,
+  playerAtom, partitionsAtom, allPlayersAtom, charXPCurrentAtom, intelCurrentAtom, confirmAtom,
 } from './store'
 import { ResourcesSection } from './sections/ResourcesSection'
 import { SpecsSection } from './sections/SpecsSection'
@@ -38,6 +38,7 @@ export const ActionsView: React.FC<ActionsViewProps> = ({ player }) => {
   const setPartitions = useSetAtom(partitionsAtom(player.id))
   const setAllPlayers = useSetAtom(allPlayersAtom(player.id))
   const setCharXPCurrent = useSetAtom(charXPCurrentAtom(player.id))
+  const setIntelCurrent = useSetAtom(intelCurrentAtom(player.id))
   const [confirmPending, setConfirmPending] = useAtom(confirmAtom(player.id))
 
   const [showManageLocations, setShowManageLocations] = React.useState(false)
@@ -60,14 +61,16 @@ export const ActionsView: React.FC<ActionsViewProps> = ({ player }) => {
         api.locations.list(),
         api.players.charXPCurrent(player.id),
         api.players.list(),
+        api.players.intelCurrent(player.id).catch(() => null),
       ]))
-      .then(([parts, xp, ps]) => {
+      .then(([parts, xp, ps, intel]) => {
         setPartitions(parts)
         setCharXPCurrent(xp)
         setAllPlayers(ps.filter((p) => p.id !== player.id))
+        setIntelCurrent(intel)
       })
       .catch((e: unknown) => toast.danger(e instanceof Error ? e.message : String(e)))
-  }, [player.id, player.faction_id, setPartitions, setCharXPCurrent, setAllPlayers])
+  }, [player.id, player.faction_id, setPartitions, setCharXPCurrent, setAllPlayers, setIntelCurrent])
 
   const renderSection = (): React.ReactNode => {
     switch (section) {

@@ -5056,6 +5056,15 @@ func intelGrantDelta(current, requested int64) int64 {
 	return min(requested, headroom)
 }
 
+// intelSetValue returns the value a set-intel request actually writes: the
+// requested value clamped to [0, maxIntelPoints]. Unlike intelGrantDelta this
+// MAY reduce an existing balance — that is its purpose (#293 cleanup: intel
+// over-granted by the battlepass incident is otherwise unremovable). Mirrors
+// the SQL clamp in cmdSetIntelCtx and is the unit-tested source of truth.
+func intelSetValue(requested int64) int64 {
+	return min(max(requested, 0), maxIntelPoints)
+}
+
 // intelAtLevel returns cumulative intel points earned through a given level.
 // Based on IntelPointsRewarded curve in SkillXPPerLevel.json:
 //
@@ -5397,6 +5406,121 @@ func cmdAwardIntelCtx(ctx context.Context, pool *pgxpool.Pool, playerID, amount 
 		return fmt.Errorf("TechKnowledgePlayerComponent not found for player %d — ensure player is a PlayerCharacter actor", playerID)
 	}
 	return nil
+}
+
+// cmdFetchIntelCtx returns the character's current intel points from the pawn
+// actor's TechKnowledgePlayerComponent. Returns errNotFound when the actor has
+// no such component (not a PlayerCharacter).
+func cmdFetchIntelCtx(ctx context.Context, pool *pgxpool.Pool, playerID int64) (int64, error) {
+	var intel int64
+	err := pool.QueryRow(ctx, `
+		SELECT (properties->'TechKnowledgePlayerComponent'->>'m_TechKnowledgePoints')::bigint
+		FROM dune.actors
+		WHERE id = $1 AND properties ? 'TechKnowledgePlayerComponent'`, playerID).Scan(&intel)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, errNotFound
+		}
+		return 0, fmt.Errorf("fetch intel for player %d: %w", playerID, err)
+	}
+	return intel, nil
+}
+
+// cmdSetIntelCtx sets the character's intel points to an explicit value,
+// clamped to [0, maxIntelPoints]. Unlike cmdAwardIntelCtx this may REDUCE the
+// balance — the cleanup path for intel over-granted by the #293 battlepass
+// incident. The player must be offline: the game caches
+// TechKnowledgePlayerComponent in memory and would clobber a live edit.
+// Mirrors intelSetValue (unit-tested).
+func cmdSetIntelCtx(ctx context.Context, pool *pgxpool.Pool, playerID, value int64) error {
+	if playerID == 0 {
+		return fmt.Errorf("player ID required")
+	}
+	if err := checkPlayerOfflinePool(ctx, pool, playerID); err != nil {
+		return err
+	}
+	res, err := pool.Exec(ctx, `
+		UPDATE dune.actors
+		SET properties = jsonb_set(
+			properties,
+			'{TechKnowledgePlayerComponent,m_TechKnowledgePoints}',
+			to_jsonb(LEAST(GREATEST($2::bigint, 0), $3::bigint))
+		)
+		WHERE id = $1
+		  AND properties ? 'TechKnowledgePlayerComponent'`, playerID, value, maxIntelPoints)
+	if err != nil {
+		return fmt.Errorf("set intel: %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("TechKnowledgePlayerComponent not found for player %d — ensure player is a PlayerCharacter actor", playerID)
+	}
+	return nil
+}
+
+// intelAuditRow is one character in the intel audit: current intel next to the
+// expected cumulative intel for the character's level.
+type intelAuditRow struct {
+	AccountID     int64  `json:"account_id"`
+	PawnID        int64  `json:"pawn_id"`
+	Name          string `json:"name"`
+	Level         int    `json:"level"`
+	Intel         int64  `json:"intel"`
+	ExpectedIntel int64  `json:"expected_intel"`
+	Online        bool   `json:"online"`
+}
+
+// intelAuditOverages keeps only the rows whose intel exceeds the expected
+// value for their level, filling ExpectedIntel on every returned row. Pure —
+// unit-tested separately from the query.
+func intelAuditOverages(rows []intelAuditRow) []intelAuditRow {
+	out := make([]intelAuditRow, 0)
+	for _, r := range rows {
+		r.ExpectedIntel = intelAtLevel(r.Level)
+		if r.Intel > r.ExpectedIntel {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// cmdFetchIntelAuditRows returns every character whose intel exceeds the
+// expected cumulative intel for their level (#293 cleanup: finds all
+// mass-grant victims). Level derives from char XP; expected from intelAtLevel.
+func cmdFetchIntelAuditRows(ctx context.Context, pool *pgxpool.Pool) ([]intelAuditRow, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT ps.account_id,
+		       ps.player_pawn_id,
+		       COALESCE(ps.character_name, ''),
+		       (ps.online_status::text = 'Online'),
+		       COALESCE((fe.components->'FLevelComponent'->1->>'TotalXPEarned')::bigint, 0),
+		       COALESCE((a.properties->'TechKnowledgePlayerComponent'->>'m_TechKnowledgePoints')::bigint, 0)
+		FROM dune.player_state ps
+		JOIN dune.actors a ON a.id = ps.player_pawn_id
+		LEFT JOIN dune.actor_fgl_entities afe
+		       ON afe.actor_id = ps.player_pawn_id AND afe.slot_name = 'DuneCharacter'
+		LEFT JOIN dune.fgl_entities fe ON fe.entity_id = afe.entity_id
+		WHERE ps.player_pawn_id IS NOT NULL
+		  AND a.properties ? 'TechKnowledgePlayerComponent'
+		  AND ps.account_id <> $1`, gmIdentityAccountID)
+	if err != nil {
+		return nil, fmt.Errorf("fetch intel audit rows: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]intelAuditRow, 0)
+	for rows.Next() {
+		var r intelAuditRow
+		var xp int64
+		if err := rows.Scan(&r.AccountID, &r.PawnID, &r.Name, &r.Online, &xp, &r.Intel); err != nil {
+			return nil, fmt.Errorf("scan intel audit row: %w", err)
+		}
+		r.Level = xpToLevel(xp)
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return intelAuditOverages(out), nil
 }
 
 // ── blueprint JSON types ──────────────────────────────────────────────────────

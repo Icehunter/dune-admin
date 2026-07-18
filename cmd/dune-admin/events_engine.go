@@ -568,14 +568,20 @@ func parseRewardSpec(rewardJSON string) (*rewardSpec, error) {
 type eventGrantSource struct {
 	deps  eventDeps
 	store *eventStore
-	// pending maps an owner (account) ID to the full claim record for the
-	// current tick, so the attempt closure can recover typed claim fields the
-	// generic deferredClaim does not carry.
-	pending map[int64]eventClaimRecord
+	// pending maps a full claim key (event:version:account) to the typed claim
+	// record for the current tick. Keying by account alone collapses an
+	// account's claims across multiple events, double-delivering one of them
+	// and skipping the rest (#291).
+	pending map[string]eventClaimRecord
+}
+
+// eventClaimKey identifies one claim within a tick: event, version, account.
+func eventClaimKey(eventID int64, version int, accountID int64) string {
+	return fmt.Sprintf("%d:%d:%d", eventID, version, accountID)
 }
 
 func newEventGrantSource(deps eventDeps, store *eventStore) *eventGrantSource {
-	return &eventGrantSource{deps: deps, store: store, pending: map[int64]eventClaimRecord{}}
+	return &eventGrantSource{deps: deps, store: store, pending: map[string]eventClaimRecord{}}
 }
 
 func (s *eventGrantSource) listRetryableDeferredClaims(now time.Time) ([]deferredClaim, error) {
@@ -584,18 +590,22 @@ func (s *eventGrantSource) listRetryableDeferredClaims(now time.Time) ([]deferre
 		return nil, err
 	}
 	out := make([]deferredClaim, 0, len(claims))
-	s.pending = make(map[int64]eventClaimRecord, len(claims))
+	s.pending = make(map[string]eventClaimRecord, len(claims))
 	for _, c := range claims {
-		s.pending[c.AccountID] = c
-		out = append(out, deferredClaim{OwnerID: c.AccountID, Attempts: c.Attempts})
+		s.pending[eventClaimKey(c.EventID, c.Version, c.AccountID)] = c
+		out = append(out, deferredClaim{
+			OwnerID:  c.AccountID,
+			Attempts: c.Attempts,
+			Ref:      fmt.Sprintf("%d:%d", c.EventID, c.Version),
+		})
 	}
 	return out, nil
 }
 
 func (s *eventGrantSource) attempt(ctx context.Context, dc deferredClaim) error {
-	claim, ok := s.pending[dc.OwnerID]
+	claim, ok := s.pending[fmt.Sprintf("%s:%d", dc.Ref, dc.OwnerID)]
 	if !ok {
-		return fmt.Errorf("event claim for account %d not found in tick", dc.OwnerID)
+		return fmt.Errorf("event claim %s for account %d not found in tick", dc.Ref, dc.OwnerID)
 	}
 	return attemptGrantForClaim(ctx, s.deps, s.store, claim)
 }

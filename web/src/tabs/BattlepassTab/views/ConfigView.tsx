@@ -6,6 +6,7 @@ import { api } from '../../../api/client'
 import type { BattlepassConfig } from '../../../api/client'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { Icon, NumberInput, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
+import { ResetClaimsPanel } from './ResetClaimsPanel'
 
 const DEFAULTS: BattlepassConfig = {
   battlepass_enabled: false,
@@ -153,6 +154,8 @@ export const ConfigView: React.FC = () => {
             {t('battlepass.config.timingHint')}
           </p>
         </Panel>
+
+        {can('battlepass:manage') && <ResetClaimsPanel />}
       </div>
 
       {can('battlepass:manage') && (

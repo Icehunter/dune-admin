@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
+	"time"
 )
 
 func ptr[T any](v T) *T { return &v }
@@ -102,6 +104,81 @@ func TestGetStatSnapshotHistory_NilSolarisBalanceWhenNotSet(t *testing.T) {
 	}
 	if got[0].SolarisBalance != nil {
 		t.Fatalf("want nil SolarisBalance, got %d", *got[0].SolarisBalance)
+	}
+}
+
+// TestGetStatSnapshotHistory_ReturnsNewestOverLimit is the #294 regression
+// test: snapshots accrue one row per 5 minutes online, so an account passes
+// any fixed cap within days. The cap must window the NEWEST rows (in ascending
+// order for the charts) — the old ASC+LIMIT query returned the oldest rows
+// forever, freezing the Solari/XP graphs on the first few days of data.
+func TestGetStatSnapshotHistory_ReturnsNewestOverLimit(t *testing.T) {
+	t.Parallel()
+	db := openTestSessionDB(t)
+	ctx := context.Background()
+
+	for i := range 10 {
+		snap := statSnapshot{
+			AccountID:      9,
+			SnappedAt:      fmt.Sprintf("2026-01-01T10:%02d:00Z", i),
+			SolarisBalance: ptr(int64(1000 + i)),
+		}
+		if err := writeStatSnapshot(ctx, db, snap, defaultServerID); err != nil {
+			t.Fatalf("writeStatSnapshot: %v", err)
+		}
+	}
+
+	got, err := getStatSnapshotHistory(ctx, db, defaultServerID, 9, 5)
+	if err != nil {
+		t.Fatalf("getStatSnapshotHistory: %v", err)
+	}
+	if len(got) != 5 {
+		t.Fatalf("want 5 snapshots, got %d", len(got))
+	}
+	for i, s := range got {
+		wantAt := fmt.Sprintf("2026-01-01T10:%02d:00Z", 5+i)
+		if s.SnappedAt != wantAt {
+			t.Errorf("[%d] SnappedAt = %s, want %s (newest window, ascending)", i, s.SnappedAt, wantAt)
+		}
+	}
+}
+
+// TestPruneStatSnapshots: rows older than the cutoff are removed for the given
+// server scope only; newer rows and other servers' rows survive.
+func TestPruneStatSnapshots(t *testing.T) {
+	t.Parallel()
+	db := openTestSessionDB(t)
+	ctx := context.Background()
+
+	rows := []struct {
+		serverID  int
+		snappedAt string
+	}{
+		{defaultServerID, "2026-01-01T10:00:00Z"}, // old — pruned
+		{defaultServerID, "2026-05-01T10:00:00Z"}, // new — kept
+		{2, "2026-01-01T10:00:00Z"},               // old but different server — kept
+	}
+	for _, r := range rows {
+		snap := statSnapshot{AccountID: 4, SnappedAt: r.snappedAt}
+		if err := writeStatSnapshot(ctx, db, snap, r.serverID); err != nil {
+			t.Fatalf("writeStatSnapshot: %v", err)
+		}
+	}
+
+	cutoff := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	pruned, err := pruneStatSnapshots(ctx, db, defaultServerID, cutoff)
+	if err != nil {
+		t.Fatalf("pruneStatSnapshots: %v", err)
+	}
+	if pruned != 1 {
+		t.Fatalf("pruned = %d, want 1", pruned)
+	}
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM stat_snapshots`).Scan(&count); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("remaining rows = %d, want 2 (new row + other server)", count)
 	}
 }
 

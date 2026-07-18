@@ -2,6 +2,13 @@ import * as React from 'react'
 import type { Selection } from '@heroui/react'
 import type { DataGridColumnSize } from '@heroui-pro/react'
 
+// Structurally identical to react-aria's SortDescriptor (not re-exported by
+// @heroui-pro/react's package root, so declared here).
+export type SortDescriptor = {
+  column: string | number
+  direction: 'ascending' | 'descending'
+}
+
 export type Column<K extends string> = {
   key: K
   label: string

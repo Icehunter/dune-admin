@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 )
@@ -821,6 +822,63 @@ func TestAttemptGrantForClaim_ExhaustsAfterMaxAttempts(t *testing.T) {
 	}
 	if len(due) != 0 {
 		t.Errorf("want 0 retryable after exhaustion, got %d", len(due))
+	}
+}
+
+// TestEventGrantSource_MultipleDueEventsOneAccount mirrors the #291 battlepass
+// regression on the events side: one account with due claims on two different
+// events must receive each event's reward exactly once. The old account-keyed
+// pending map collapsed them to whichever claim was listed last.
+func TestEventGrantSource_MultipleDueEventsOneAccount(t *testing.T) {
+	store := openMemEventStore(t)
+	evA, err := store.create(eventDefinition{
+		Name: "race_a", Type: eventTypeMilestone, Config: "{}", Reward: `{"currency":10}`,
+	})
+	if err != nil {
+		t.Fatalf("create race_a: %v", err)
+	}
+	evB, err := store.create(eventDefinition{
+		Name: "race_b", Type: eventTypeMilestone, Config: "{}", Reward: `{"currency":20}`,
+	})
+	if err != nil {
+		t.Fatalf("create race_b: %v", err)
+	}
+
+	// Same account, one pending claim per event. The "grant currency:" last
+	// error makes sliceRewardSpec retry the full reward.
+	if err := store.recordFailed(evA.ID, evA.Version, 101, "grant currency: boom"); err != nil {
+		t.Fatalf("recordFailed a: %v", err)
+	}
+	if err := store.recordFailed(evB.ID, evB.Version, 101, "grant currency: boom"); err != nil {
+		t.Fatalf("recordFailed b: %v", err)
+	}
+
+	deps := noopDeps()
+	deps.resolveGrantTargets = func(_ context.Context, _ int64) (int64, int64, error) {
+		return 201, 301, nil
+	}
+	var amounts []int64
+	deps.grantCurrency = func(_ context.Context, _, amount int64) error {
+		amounts = append(amounts, amount)
+		return nil
+	}
+
+	src := newEventGrantSource(deps, store)
+	processDeferredGrantTick(context.Background(), src, src.attempt,
+		time.Now().Add(eventGrantRetryBackoff+time.Hour))
+
+	slices.Sort(amounts)
+	if !slices.Equal(amounts, []int64{10, 20}) {
+		t.Fatalf("currency amounts = %v, want each event delivered exactly once [10 20]", amounts)
+	}
+	for _, ev := range []eventDefinition{*evA, *evB} {
+		status, _, exists, err := store.getClaimStatus(ev.ID, ev.Version, 101)
+		if err != nil || !exists {
+			t.Fatalf("getClaimStatus %s: exists=%v err=%v", ev.Name, exists, err)
+		}
+		if status != eventClaimStatusGranted {
+			t.Errorf("%s claim status = %q, want granted", ev.Name, status)
+		}
 	}
 }
 

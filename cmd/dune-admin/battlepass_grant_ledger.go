@@ -1,6 +1,8 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -173,6 +175,42 @@ func (s *battlepassStore) healExhaustedOnlineGrantLedger() (int64, error) {
 		return 0, fmt.Errorf("heal exhausted online battlepass grants: %w", err)
 	}
 	return n, nil
+}
+
+// deleteUnsettledGrantLedger removes pending and exhausted grant-ledger rows —
+// the #293 cleanup path, so a claims reset also stops queued auto-deliveries.
+// Granted rows are delivery history and are kept. accountID 0 = every account
+// in this server scope.
+func (s *battlepassStore) deleteUnsettledGrantLedger(accountID int64) (int64, error) {
+	q := `DELETE FROM battlepass_grant_ledger
+	      WHERE server_id = ? AND status IN (?, ?)`
+	args := []any{s.serverID, battlepassGrantPending, battlepassGrantExhausted}
+	if accountID != 0 {
+		q += ` AND account_id = ?`
+		args = append(args, accountID)
+	}
+	res, err := s.db.Exec(q, args...)
+	if err != nil {
+		return 0, fmt.Errorf("delete unsettled battlepass grant ledger: %w", err)
+	}
+	return res.RowsAffected()
+}
+
+// grantLedgerStatus returns the ledger status for (tierKey, accountID), or ""
+// when no row exists.
+func (s *battlepassStore) grantLedgerStatus(tierKey string, accountID int64) (string, error) {
+	var status string
+	err := s.db.QueryRow(
+		`SELECT status FROM battlepass_grant_ledger
+		 WHERE server_id = ? AND tier_key = ? AND account_id = ?`,
+		s.serverID, tierKey, accountID).Scan(&status)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("battlepass grant ledger status %s/%d: %w", tierKey, accountID, err)
+	}
+	return status, nil
 }
 
 // listRetryableGrantLedger returns pending grant-ledger rows whose backoff

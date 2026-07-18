@@ -951,6 +951,19 @@ body,
   background: transparent;
 }
 
+/* ── DataGrid width discipline ────────────────────────────────────────────
+   The grid's <table> defaults to auto layout, so a single unbreakable string
+   (e.g. the mono template ID under an item name) widens its column past the
+   resolved width and pushes the whole table beyond its container — the table
+   underfills on some screens and forces horizontal scrolling on others.
+   Fixed layout makes the header-resolved column widths authoritative: the
+   table always spans exactly its container, and overflowing cell content
+   clips/ellipsizes inside its cell instead of stretching the table. */
+[data-slot="data-grid"] table {
+  table-layout: fixed;
+  width: 100%;
+}
+
 /* ── Table scroll clipping under filtered ancestors ──────────────────────
    The HUD plate-echo `filter` on panels/dialogs trips a Chromium bug:
    descendants of an overflow scroller stop being CLIPPED FOR HIT-TESTING

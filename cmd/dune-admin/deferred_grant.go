@@ -27,15 +27,18 @@ const (
 )
 
 // deferredClaim is the feature-agnostic view of one retryable claim that the
-// shared loop carries to the per-feature attempt closure for logging context.
-// Feature attempt closures hold their own typed claim, so only the owner ID and
-// attempt count are needed here.
+// shared loop carries to the per-feature attempt closure.
 type deferredClaim struct {
 	// OwnerID identifies the grant recipient (account ID for both events and
 	// battlepass).
 	OwnerID int64
 	// Attempts is how many grant attempts have already been made.
 	Attempts int
+	// Ref is the feature-specific claim identity within an owner (battlepass:
+	// tier_key; events: "eventID:version"). One owner can have several due
+	// claims in a single tick, so the claim identity must travel with each
+	// claim — an owner-keyed side map collapses them and double-delivers (#291).
+	Ref string
 }
 
 // deferredGrantSource exposes the due-claim query the shared loop needs. Each

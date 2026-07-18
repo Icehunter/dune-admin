@@ -7,6 +7,7 @@ import type { FactionStat, FactionTrends, ServerSummary } from '../../../api/cli
 import { DataTable, PageHeader, Panel, SectionLabel } from '../../../dune-ui'
 import type { Column } from '../../../dune-ui'
 import type { FactionCol } from './types'
+import { IntelAuditPanel } from './IntelAuditPanel'
 import { Sep } from './Sep'
 import { Stat } from './Stat'
 
@@ -263,6 +264,8 @@ export const ServerDashboard: React.FC = () => {
                       </React.Fragment>
                     )}
               </Panel>
+
+              <IntelAuditPanel />
             </React.Fragment>
           )}
     </div>

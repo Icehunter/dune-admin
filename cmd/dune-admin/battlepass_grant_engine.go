@@ -28,6 +28,15 @@ const battlepassOnlineRetryBackoff = 5 * time.Minute
 // pending view stays consistent. Returns an error only when delivery fails (the
 // failure is recorded on the ledger first so backoff applies).
 func attemptBattlepassGrant(ctx context.Context, store *battlepassStore, deps battlepassGrantDeps, tierKey string, accountID int64) error {
+	settled, err := battlepassGrantAlreadySettled(store, tierKey, accountID)
+	if err != nil {
+		recordBattlepassGrantFailure(store, tierKey, accountID, err)
+		return fmt.Errorf("check settled %d/%s: %w", accountID, tierKey, err)
+	}
+	if settled {
+		return nil
+	}
+
 	tier, err := store.getTierByKey(tierKey)
 	if err != nil {
 		// A missing tier cannot be auto-granted; record the failure so it
@@ -57,6 +66,31 @@ func attemptBattlepassGrant(ctx context.Context, store *battlepassStore, deps ba
 	}
 	deliverBattlepassTierItems(ctx, deps, tier, pawnID)
 	return nil
+}
+
+// battlepassGrantAlreadySettled reports whether delivery for (tierKey,
+// accountID) must be skipped: the ledger row is already granted (terminal), or
+// the claim is no longer earned — a manual grant raced the auto-grant loop, or
+// the claim was cleaned up. In the no-longer-earned case the ledger row is
+// sealed so the loop stops retrying a reward that already landed.
+func battlepassGrantAlreadySettled(store *battlepassStore, tierKey string, accountID int64) (bool, error) {
+	status, err := store.grantLedgerStatus(tierKey, accountID)
+	if err != nil {
+		return false, err
+	}
+	if status == "granted" {
+		return true, nil
+	}
+	if _, err := store.earnedClaim(accountID, tierKey); err != nil {
+		if errors.Is(err, errBattlepassNothingEarned) {
+			if sealErr := store.recordGrantLedgerSuccess(tierKey, accountID); sealErr != nil {
+				componentLog("battlepass").Error().Int64("account_id", accountID).Str("tier_key", tierKey).Err(sealErr).Msg("seal settled grant ledger row failed")
+			}
+			return true, nil
+		}
+		return false, err
+	}
+	return false, nil
 }
 
 // recordBattlepassGrantFailure records a failed attempt on the ledger, logging
@@ -94,17 +128,17 @@ func deliverBattlepassTierItems(ctx context.Context, deps battlepassGrantDeps, t
 }
 
 // battlepassGrantSource adapts a battlepassStore to the shared
-// deferredGrantSource contract for the auto-grant retry loop.
+// deferredGrantSource contract for the auto-grant retry loop. The tier key
+// travels on each deferredClaim's Ref — one account routinely has several due
+// tiers in a tick (retroactive enqueue), and an account-keyed side map would
+// collapse them to one tier, delivering it N times (#291).
 type battlepassGrantSource struct {
 	store *battlepassStore
 	deps  battlepassGrantDeps
-	// pending maps owner (account) ID → tier_key for the current tick so the
-	// attempt closure can recover the tier the generic deferredClaim drops.
-	pending map[int64]string
 }
 
 func newBattlepassGrantSource(store *battlepassStore, deps battlepassGrantDeps) *battlepassGrantSource {
-	return &battlepassGrantSource{store: store, deps: deps, pending: map[int64]string{}}
+	return &battlepassGrantSource{store: store, deps: deps}
 }
 
 func (s *battlepassGrantSource) listRetryableDeferredClaims(now time.Time) ([]deferredClaim, error) {
@@ -113,22 +147,17 @@ func (s *battlepassGrantSource) listRetryableDeferredClaims(now time.Time) ([]de
 		return nil, err
 	}
 	out := make([]deferredClaim, 0, len(rows))
-	s.pending = make(map[int64]string, len(rows))
 	for _, r := range rows {
-		// One account may have several due tiers; the closure resolves them in
-		// order via the per-claim tier key carried below.
-		out = append(out, deferredClaim{OwnerID: r.AccountID, Attempts: r.Attempts})
-		s.pending[r.AccountID] = r.TierKey
+		out = append(out, deferredClaim{OwnerID: r.AccountID, Attempts: r.Attempts, Ref: r.TierKey})
 	}
 	return out, nil
 }
 
 func (s *battlepassGrantSource) attempt(ctx context.Context, dc deferredClaim) error {
-	tierKey, ok := s.pending[dc.OwnerID]
-	if !ok {
-		return fmt.Errorf("battlepass grant for account %d not found in tick", dc.OwnerID)
+	if dc.Ref == "" {
+		return fmt.Errorf("battlepass grant for account %d carries no tier key", dc.OwnerID)
 	}
-	return attemptBattlepassGrant(ctx, s.store, s.deps, tierKey, dc.OwnerID)
+	return attemptBattlepassGrant(ctx, s.store, s.deps, dc.Ref, dc.OwnerID)
 }
 
 // battlepassAutoGrant returns the effective auto-grant flag (default off).

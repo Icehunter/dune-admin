@@ -84,6 +84,8 @@ type listingInfo struct {
 	stackSize int64
 	price     int64
 	grade     int64
+	mask      int32
+	depth     int16
 }
 
 type Exchange struct {
@@ -159,6 +161,10 @@ func NewExchange(db *pgxpool.Pool, cachePath string, catalog []CatalogItem, cfg 
 		)`); err != nil {
 		_ = cache.Close()
 		return nil, fmt.Errorf("init metadata cache: %w", err)
+	}
+	if err := migrateCategoryCache(cache, logger); err != nil {
+		_ = cache.Close()
+		return nil, fmt.Errorf("migrate category cache: %w", err)
 	}
 
 	ex := &Exchange{
@@ -495,69 +501,19 @@ func (e *Exchange) initBotUser(ctx context.Context) error {
 	return nil
 }
 
+// refreshCategoryCache re-learns authoritative masks (#295). Sources, in
+// precedence order: real player sell listings (always win, always overwrite —
+// the old only-learn-unknown rule let the first guess ever cached win
+// forever), and game patch-time corrections detected as bot rows whose mask
+// differs from the recorded bot_written value. The bot's own guesses are
+// never learned back into the cache — that was the self-poisoning loop that
+// made wrong schematic categories permanent.
 func (e *Exchange) refreshCategoryCache(ctx context.Context) {
-	rows, err := e.cache.Query(
-		`SELECT template_id, category_mask, category_depth FROM categories`)
-	if err != nil {
-		e.log.Warn().Err(err).Msg("load category cache failed")
-	} else {
-		for rows.Next() {
-			var tmpl string
-			var mask int32
-			var depth int16
-			if err := rows.Scan(&tmpl, &mask, &depth); err != nil {
-				continue
-			}
-			e.categories[strings.ToLower(tmpl)] = categoryEntry{mask: mask, depth: depth}
-		}
-		_ = rows.Close()
-	}
-
-	liveRows, err := e.db.Query(ctx, `
-		SELECT DISTINCT template_id, category_mask, category_depth
-		FROM dune.dune_exchange_orders
-		WHERE category_mask != 0`)
-	if err != nil {
-		e.log.Warn().Err(err).Msg("live category scan failed")
-		return
-	}
-	defer liveRows.Close()
-
-	type entry struct {
-		tmpl  string
-		mask  int32
-		depth int16
-	}
-	var toWrite []entry
-	for liveRows.Next() {
-		var tmpl string
-		var mask int32
-		var depth int16
-		if err := liveRows.Scan(&tmpl, &mask, &depth); err != nil {
-			continue
-		}
-		key := strings.ToLower(tmpl)
-		if _, known := e.categories[key]; !known {
-			e.categories[key] = categoryEntry{mask: mask, depth: depth}
-			toWrite = append(toWrite, entry{tmpl, mask, depth})
-		}
-	}
-
-	for _, en := range toWrite {
-		if _, err := e.cache.Exec(`
-			INSERT INTO categories (template_id, category_mask, category_depth)
-			VALUES (?, ?, ?)
-			ON CONFLICT (template_id) DO UPDATE
-			  SET category_mask  = excluded.category_mask,
-			      category_depth = excluded.category_depth`,
-			en.tmpl, en.mask, en.depth); err != nil {
-			e.log.Warn().Str("template_id", en.tmpl).Err(err).Msg("persist category failed")
-		}
-	}
-
-	if len(toWrite) > 0 {
-		e.log.Info().Int("new", len(toWrite)).Int("total", len(e.categories)).Msg("category cache updated")
-	}
+	e.loadLocalCategories()
+	playerRows := e.queryCatRows(ctx, playerCategoryLearnSQL)
+	botRows := e.queryCatRows(ctx, botCategoryScanSQL, e.ownerID)
+	updates := mergeAuthoritative(e.categories, playerRows, botRows, e.loadBotWritten())
+	e.persistCategoryUpdates(updates)
 }
 
 // categoryFor returns the category_mask and category_depth for a listing.
@@ -777,11 +733,16 @@ func (e *Exchange) createListingsBatch(ctx context.Context, listings []pendingLi
 			continue
 		}
 		ok := true
+		// Track what this batch writes per template so bot_written provenance
+		// lets refresh detect later game corrections (#295). Recorded only on
+		// commit — a rolled-back batch wrote nothing.
+		writtenEntries := make(map[string]categoryEntry)
 		for _, pl := range batch {
 			catMask, catDepth, catOK := e.categoryFor(pl.item)
 			if !catOK {
 				continue // no trustworthy mask — skip rather than pollute the category snapshot
 			}
+			writtenEntries[pl.item.TemplateID] = categoryEntry{mask: catMask, depth: catDepth}
 			qualityLevel := pl.grade
 			listPrice := gradeFloor(pl.item, pl.grade, snap)
 			if pl.item.MaterialCost <= 0 {
@@ -826,6 +787,9 @@ func (e *Exchange) createListingsBatch(ctx context.Context, listings []pendingLi
 		}
 		if ok {
 			_ = tx.Commit(ctx)
+			if err := e.recordBotWritten(writtenEntries); err != nil {
+				e.log.Warn().Err(err).Msg("record bot_written after batch failed")
+			}
 		} else {
 			_ = tx.Rollback(ctx)
 		}
@@ -920,7 +884,8 @@ func (e *Exchange) ListTick(ctx context.Context, catalog []CatalogItem) {
 	// Excluding expired rows means the bot refills those slots on this tick
 	// rather than counting them toward the quota while players see them as gone.
 	rows, err := e.db.Query(ctx, `
-		SELECT o.id, o.template_id, o.item_id, o.item_price, i.stack_size, o.quality_level
+		SELECT o.id, o.template_id, o.item_id, o.item_price, i.stack_size, o.quality_level,
+		       COALESCE(o.category_mask, 0), COALESCE(o.category_depth, 0)
 		FROM dune.dune_exchange_orders o
 		JOIN dune.items i ON i.id = o.item_id
 		WHERE o.owner_id = $1 AND o.is_npc_order = TRUE
@@ -934,11 +899,13 @@ func (e *Exchange) ListTick(ctx context.Context, catalog []CatalogItem) {
 	for rows.Next() {
 		var orderID, itemID, price, stack, grade int64
 		var tmpl string
-		if err := rows.Scan(&orderID, &tmpl, &itemID, &price, &stack, &grade); err != nil {
+		var mask int32
+		var depth int16
+		if err := rows.Scan(&orderID, &tmpl, &itemID, &price, &stack, &grade, &mask, &depth); err != nil {
 			continue
 		}
 		k := gradeKey{tmpl, grade}
-		current[k] = append(current[k], listingInfo{orderID, itemID, stack, price, grade})
+		current[k] = append(current[k], listingInfo{orderID, itemID, stack, price, grade, mask, depth})
 	}
 	rows.Close()
 
@@ -947,6 +914,7 @@ func (e *Exchange) ListTick(ctx context.Context, catalog []CatalogItem) {
 	type topUp struct{ itemID, stackMax int64 }
 	var topUps []topUp
 	var pending []pendingListing
+	remaskPlans := make(map[string]remaskPlan)
 
 	created, topped, pruned, errs := 0, 0, 0, 0
 
@@ -962,6 +930,7 @@ func (e *Exchange) ListTick(ctx context.Context, catalog []CatalogItem) {
 		if basePrice <= 0 {
 			continue
 		}
+		desiredMask, desiredDepth, desiredOK := e.categoryFor(item)
 
 		for _, grade := range applicableGrades(item) {
 			key := gradeKey{item.TemplateID, grade}
@@ -993,6 +962,13 @@ func (e *Exchange) ListTick(ctx context.Context, catalog []CatalogItem) {
 				} else {
 					valid = append(valid, l)
 				}
+			}
+
+			// Converge live listings whose mask drifted from the current best
+			// category (a player listed this template, the game corrected it,
+			// or a map fix shipped) — fixes wrong categories in place (#295).
+			if desiredOK {
+				collectRemask(remaskPlans, item.TemplateID, valid, categoryEntry{mask: desiredMask, depth: desiredDepth})
 			}
 
 			// Collect depleted stacks for bulk update.
@@ -1040,6 +1016,9 @@ func (e *Exchange) ListTick(ctx context.Context, catalog []CatalogItem) {
 			FROM unnest($1::bigint[], $2::bigint[]) AS u(id, s)
 			WHERE dune.items.id = u.id`, ids, sizes)
 	}
+
+	// Converge drifted categories on live listings (owner+NPC scoped).
+	e.applyRemasks(ctx, remaskPlans)
 
 	// Batch insert new listings.
 	e.log.Debug().Int("pending", len(pending)).Int("current_slots", len(current)).

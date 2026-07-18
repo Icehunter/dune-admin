@@ -218,12 +218,17 @@ type sessionRecord struct {
 }
 
 func getSessionHistory(ctx context.Context, db *sql.DB, serverID int, accountID int64, limit int) ([]sessionRecord, error) {
+	// Newest window, returned ascending for the charts (#294): the inner DESC
+	// LIMIT keeps the cap on the most recent rows — a plain ASC LIMIT would
+	// permanently return the oldest rows once the account exceeds the cap.
 	rows, err := db.QueryContext(ctx, `
-		SELECT started_at, ended_at, duration_secs
-		FROM play_sessions
-		WHERE server_id = ? AND account_id = ? AND ended_at IS NOT NULL
-		ORDER BY started_at ASC
-		LIMIT ?
+		SELECT started_at, ended_at, duration_secs FROM (
+			SELECT started_at, ended_at, duration_secs
+			FROM play_sessions
+			WHERE server_id = ? AND account_id = ? AND ended_at IS NOT NULL
+			ORDER BY started_at DESC
+			LIMIT ?
+		) ORDER BY started_at ASC
 	`, serverID, accountID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("query session history for account %d: %w", accountID, err)
@@ -281,14 +286,22 @@ func writeStatSnapshot(ctx context.Context, sdb *sql.DB, snap statSnapshot, serv
 }
 
 func getStatSnapshotHistory(ctx context.Context, sdb *sql.DB, serverID int, accountID int64, limit int) ([]statSnapshot, error) {
+	// Newest window, returned ascending for the charts (#294): snapshots accrue
+	// one row per online 5-minute tick, so any fixed cap is exceeded within
+	// days — the inner DESC LIMIT keeps the cap on the most recent rows.
 	rows, err := sdb.QueryContext(ctx, `
 		SELECT snapped_at, char_xp, skill_points, intel_points,
 		       combat_xp, crafting_xp, gathering_xp, exploration_xp, sabotage_xp,
 		       solaris_balance
-		FROM stat_snapshots
-		WHERE server_id = ? AND account_id = ?
-		ORDER BY snapped_at ASC
-		LIMIT ?
+		FROM (
+			SELECT snapped_at, char_xp, skill_points, intel_points,
+			       combat_xp, crafting_xp, gathering_xp, exploration_xp, sabotage_xp,
+			       solaris_balance
+			FROM stat_snapshots
+			WHERE server_id = ? AND account_id = ?
+			ORDER BY snapped_at DESC
+			LIMIT ?
+		) ORDER BY snapped_at ASC
 	`, serverID, accountID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("query stat snapshot history for account %d: %w", accountID, err)
@@ -406,15 +419,51 @@ func pollOnce(ctx context.Context, pool *pgxpool.Pool, db *sql.DB, serverID int)
 	}
 }
 
+// statSnapshotRetention bounds stat_snapshots growth: at one row per online
+// player per 5 minutes the table grows forever without it (#294). 90 days keeps
+// far more than the charts' newest-N window ever shows. play_sessions (one row
+// per login) is deliberately kept forever.
+const statSnapshotRetention = 90 * 24 * time.Hour
+
+// pruneStatSnapshots deletes this server's snapshots older than the cutoff.
+func pruneStatSnapshots(ctx context.Context, db *sql.DB, serverID int, olderThan time.Time) (int64, error) {
+	res, err := db.ExecContext(ctx,
+		`DELETE FROM stat_snapshots WHERE server_id = ? AND snapped_at < ?`,
+		serverID, olderThan.UTC().Format(time.RFC3339))
+	if err != nil {
+		return 0, fmt.Errorf("prune stat snapshots for server %d: %w", serverID, err)
+	}
+	return res.RowsAffected()
+}
+
+// runSnapshotPrune applies the retention policy once, logging the outcome.
+func runSnapshotPrune(ctx context.Context, db *sql.DB, serverID int) {
+	pruned, err := pruneStatSnapshots(ctx, db, serverID, time.Now().Add(-statSnapshotRetention))
+	if err != nil {
+		componentLog("sessions").Warn().Int("server_id", serverID).Err(err).Msg("session poller: snapshot prune failed")
+		return
+	}
+	if pruned > 0 {
+		componentLog("sessions").Info().Int("server_id", serverID).Int64("pruned", pruned).Msg("session poller: pruned old stat snapshots")
+	}
+}
+
 func startSessionPoller(ctx context.Context, pool *pgxpool.Pool, db *sql.DB, serverID int, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+	// Retention runs once at startup and then daily — cheap enough to keep off
+	// the 5-minute poll path.
+	runSnapshotPrune(ctx, db, serverID)
+	pruneTicker := time.NewTicker(24 * time.Hour)
+	defer pruneTicker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			pollOnce(ctx, pool, db, serverID)
+		case <-pruneTicker.C:
+			runSnapshotPrune(ctx, db, serverID)
 		}
 	}
 }

@@ -74,6 +74,28 @@ func TestProcessDeferredGrantTick_OnlyDueClaimsRetried(t *testing.T) {
 	}
 }
 
+func TestProcessDeferredGrantTick_DistinctRefsSameOwner(t *testing.T) {
+	// One owner may have several due claims in a tick (e.g. multiple battlepass
+	// tiers). Each claim's Ref must reach the attempt func unchanged — the loop
+	// must never collapse same-owner claims (#291).
+	src := &fakeDeferredSource{claims: []deferredClaim{
+		{OwnerID: 9, Ref: "tier_a"},
+		{OwnerID: 9, Ref: "tier_b"},
+	}}
+	var refs []string
+	attempt := func(_ context.Context, c deferredClaim) error {
+		if c.OwnerID != 9 {
+			t.Errorf("OwnerID = %d, want 9", c.OwnerID)
+		}
+		refs = append(refs, c.Ref)
+		return nil
+	}
+	processDeferredGrantTick(context.Background(), src, attempt, time.Now())
+	if len(refs) != 2 || refs[0] != "tier_a" || refs[1] != "tier_b" {
+		t.Fatalf("refs = %v, want [tier_a tier_b]", refs)
+	}
+}
+
 func TestProcessDeferredGrantTick_ListError(t *testing.T) {
 	src := &fakeDeferredSource{listErr: errors.New("db down")}
 	attempted := false

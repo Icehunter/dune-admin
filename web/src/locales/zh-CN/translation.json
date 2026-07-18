@@ -1036,7 +1036,10 @@
         "setSkillModule": "设置技能模块",
         "skillModules": "技能模块",
         "skillPoints": "技能点",
-        "skillPointsNote": "设置未使用的技能点"
+        "skillPointsNote": "设置未使用的技能点",
+        "currentIntel": "当前：{{intel}} / {{max}} 情报点 — 等级 {{level}} 应有 {{expected}}",
+        "setIntel": "设置情报点",
+        "setIntelNote": "覆盖当前情报点（0–2,779）· 玩家必须离线"
       },
       "sections": {
         "admin": "管理员",
@@ -1237,6 +1240,15 @@
       "online": "Online",
       "offline": "Offline",
       "empty": "No players found"
+    },
+    "intelAudit": {
+      "title": "情报点审计",
+      "note": "持有超出其等级应得情报点的角色（战斗通行证批量发放清理）。修复时玩家必须离线。",
+      "refresh": "刷新",
+      "empty": "没有情报点超额的角色。",
+      "online": "在线",
+      "setExpected": "设为应有值",
+      "fixed": "已将 {{name}} 的情报点设为 {{intel}}"
     }
   },
   "server": {
@@ -1899,7 +1911,19 @@
     },
     "importSuccess": "已导入 {{count}} 个阶位。",
     "exportSuccess": "目录已导出。",
-    "importFailed": "导入失败：{{message}}"
+    "importFailed": "导入失败：{{message}}",
+    "reset": {
+      "section": "领取记录清理",
+      "hint": "从批量发放事故中恢复。账户 ID 0 应用于此服务器的所有账户。",
+      "accountId": "账户 ID（0 = 全部）",
+      "run": "重置",
+      "demoteHint": "Demote：已获得的领取记录变为基线 — 自动发放不再有目标；已发放历史保留。",
+      "purgeHint": "Purge：同时删除所有领取记录和观测标记 — 下次扫描时全部重新基线化。",
+      "confirmTitle": "重置战斗通行证领取记录（{{mode}}）？",
+      "scopeAll": "应用于此服务器的所有账户。",
+      "scopeAccount": "仅应用于账户 {{accountId}}。",
+      "done": "重置完成：更新了 {{claims}} 条领取记录，移除了 {{ledger}} 条排队发放。"
+    }
   },
   "auth": {
     "signInSubtitle": "登录以管理您的服务器",

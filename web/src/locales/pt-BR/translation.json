@@ -1049,7 +1049,10 @@
         "setSkillModule": "Definir módulo de habilidade",
         "skillModules": "Módulos de habilidade",
         "skillPoints": "Pontos de habilidade",
-        "skillPointsNote": "Define pontos não gastos"
+        "skillPointsNote": "Define pontos não gastos",
+        "currentIntel": "Atual: {{intel}} / {{max}} intel — esperado {{expected}} no nível {{level}}",
+        "setIntel": "Definir intel",
+        "setIntelNote": "Substitui o intel atual (0–2.779) · o jogador precisa estar offline"
       },
       "sections": {
         "admin": "Admin",
@@ -1254,6 +1257,15 @@
       "online": "Online",
       "offline": "Offline",
       "empty": "No players found"
+    },
+    "intelAudit": {
+      "title": "Auditoria de intel",
+      "note": "Personagens com mais intel do que o nível deveria ter concedido (limpeza da concessão em massa do passe de batalha). Jogadores precisam estar offline para corrigir.",
+      "refresh": "Atualizar",
+      "empty": "Nenhum personagem com intel excedente.",
+      "online": "Online",
+      "setExpected": "Definir para o esperado",
+      "fixed": "Intel de {{name}} definido para {{intel}}"
     }
   },
   "server": {
@@ -1922,7 +1934,19 @@
     },
     "importSuccess": "{{count}} níveis importados.",
     "exportSuccess": "Catálogo exportado.",
-    "importFailed": "Falha na importação: {{message}}"
+    "importFailed": "Falha na importação: {{message}}",
+    "reset": {
+      "section": "Limpeza de reivindicações",
+      "hint": "Recuperação após uma concessão em massa. Conta 0 aplica-se a todas as contas deste servidor.",
+      "accountId": "ID da conta (0 = todas)",
+      "run": "Redefinir",
+      "demoteHint": "Demote: reivindicações ganhas viram baseline — nada resta para concessão automática; o histórico concedido é mantido.",
+      "purgeHint": "Purge: exclui todas as reivindicações e marcadores juntos — tudo é re-baselined no próximo escaneamento.",
+      "confirmTitle": "Redefinir reivindicações do passe de batalha ({{mode}})?",
+      "scopeAll": "Aplica-se a TODAS as contas deste servidor.",
+      "scopeAccount": "Aplica-se somente à conta {{accountId}}.",
+      "done": "Redefinição concluída: {{claims}} reivindicações atualizadas, {{ledger}} concessões na fila removidas."
+    }
   },
   "auth": {
     "signInSubtitle": "Entre para gerenciar seu servidor",

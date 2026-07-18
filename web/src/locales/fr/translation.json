@@ -1049,7 +1049,10 @@
         "setSkillModule": "Définir le module de compétence",
         "skillModules": "Modules de compétence",
         "skillPoints": "Points de compétence",
-        "skillPointsNote": "Définit les points non dépensés"
+        "skillPointsNote": "Définit les points non dépensés",
+        "currentIntel": "Actuel : {{intel}} / {{max}} intel — attendu {{expected}} au niveau {{level}}",
+        "setIntel": "Définir l'intel",
+        "setIntelNote": "Remplace l'intel actuel (0–2 779) · le joueur doit être hors ligne"
       },
       "sections": {
         "admin": "Admin",
@@ -1254,6 +1257,15 @@
       "online": "Online",
       "offline": "Offline",
       "empty": "No players found"
+    },
+    "intelAudit": {
+      "title": "Audit d'intel",
+      "note": "Personnages détenant plus d'intel que leur niveau ne devrait (nettoyage de l'attribution massive du passe de combat). Les joueurs doivent être hors ligne pour corriger.",
+      "refresh": "Actualiser",
+      "empty": "Aucun personnage avec un excédent d'intel.",
+      "online": "En ligne",
+      "setExpected": "Définir à la valeur attendue",
+      "fixed": "Intel de {{name}} défini à {{intel}}"
     }
   },
   "server": {
@@ -1922,7 +1934,19 @@
     },
     "importSuccess": "{{count}} paliers importés.",
     "exportSuccess": "Catalogue exporté.",
-    "importFailed": "Échec de l'importation : {{message}}"
+    "importFailed": "Échec de l'importation : {{message}}",
+    "reset": {
+      "section": "Nettoyage des réclamations",
+      "hint": "Récupération après une attribution massive. Le compte 0 s'applique à tous les comptes de ce serveur.",
+      "accountId": "ID de compte (0 = tous)",
+      "run": "Réinitialiser",
+      "demoteHint": "Demote : les réclamations gagnées deviennent baseline — plus rien à attribuer automatiquement ; l'historique accordé est conservé.",
+      "purgeHint": "Purge : supprime ensemble toutes les réclamations et marqueurs — tout repart en baseline au prochain scan.",
+      "confirmTitle": "Réinitialiser les réclamations du passe de combat ({{mode}}) ?",
+      "scopeAll": "S'applique à TOUS les comptes de ce serveur.",
+      "scopeAccount": "S'applique uniquement au compte {{accountId}}.",
+      "done": "Réinitialisation terminée : {{claims}} réclamations mises à jour, {{ledger}} attributions en attente supprimées."
+    }
   },
   "auth": {
     "signInSubtitle": "Connectez-vous pour gérer votre serveur",

@@ -1062,7 +1062,10 @@
         "setSkillModule": "Ustaw moduł umiejętności",
         "skillModules": "Moduły umiejętności",
         "skillPoints": "Punkty umiejętności",
-        "skillPointsNote": "Ustawia niewydane punkty"
+        "skillPointsNote": "Ustawia niewydane punkty",
+        "currentIntel": "Obecnie: {{intel}} / {{max}} intel — oczekiwane {{expected}} na poziomie {{level}}",
+        "setIntel": "Ustaw intel",
+        "setIntelNote": "Nadpisuje obecny intel (0–2 779) · gracz musi być offline"
       },
       "sections": {
         "admin": "Admin",
@@ -1271,6 +1274,15 @@
       "online": "Online",
       "offline": "Offline",
       "empty": "No players found"
+    },
+    "intelAudit": {
+      "title": "Audyt intelu",
+      "note": "Postacie posiadające więcej intelu niż wynika z poziomu (sprzątanie po masowym przyznaniu battlepassa). Gracze muszą być offline, aby naprawić.",
+      "refresh": "Odśwież",
+      "empty": "Brak postaci z nadmiarem intelu.",
+      "online": "Online",
+      "setExpected": "Ustaw oczekiwane",
+      "fixed": "Ustawiono intel {{name}} na {{intel}}"
     }
   },
   "server": {
@@ -1945,7 +1957,19 @@
     },
     "importSuccess": "Zaimportowano {{count}} poziomów.",
     "exportSuccess": "Katalog wyeksportowany.",
-    "importFailed": "Import nie powiódł się: {{message}}"
+    "importFailed": "Import nie powiódł się: {{message}}",
+    "reset": {
+      "section": "Czyszczenie roszczeń",
+      "hint": "Odzyskiwanie po masowym przyznaniu. ID konta 0 dotyczy wszystkich kont na tym serwerze.",
+      "accountId": "ID konta (0 = wszystkie)",
+      "run": "Resetuj",
+      "demoteHint": "Demote: zdobyte roszczenia stają się baseline — nic nie zostaje do auto-przyznania; historia przyznanych zostaje.",
+      "purgeHint": "Purge: usuwa wszystkie roszczenia i znaczniki razem — wszystko zostanie ponownie zbaselinowane przy następnym skanie.",
+      "confirmTitle": "Zresetować roszczenia battlepassa ({{mode}})?",
+      "scopeAll": "Dotyczy WSZYSTKICH kont na tym serwerze.",
+      "scopeAccount": "Dotyczy tylko konta {{accountId}}.",
+      "done": "Reset zakończony: zaktualizowano {{claims}} roszczeń, usunięto {{ledger}} oczekujących przyznań."
+    }
   },
   "auth": {
     "signInSubtitle": "Zaloguj się, aby zarządzać serwerem",

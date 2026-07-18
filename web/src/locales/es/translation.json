@@ -1049,7 +1049,10 @@
         "setSkillModule": "Establecer módulo de habilidad",
         "skillModules": "Módulos de habilidad",
         "skillPoints": "Puntos de habilidad",
-        "skillPointsNote": "Establece puntos no gastados"
+        "skillPointsNote": "Establece puntos no gastados",
+        "currentIntel": "Actual: {{intel}} / {{max}} intel — esperado {{expected}} en nivel {{level}}",
+        "setIntel": "Fijar intel",
+        "setIntelNote": "Sobrescribe el intel actual (0–2.779) · el jugador debe estar desconectado"
       },
       "sections": {
         "admin": "Admin",
@@ -1254,6 +1257,15 @@
       "online": "Online",
       "offline": "Offline",
       "empty": "No players found"
+    },
+    "intelAudit": {
+      "title": "Auditoría de intel",
+      "note": "Personajes con más intel del que su nivel debería haber ganado (limpieza de la concesión masiva del pase de batalla). Los jugadores deben estar desconectados para corregir.",
+      "refresh": "Actualizar",
+      "empty": "Ningún personaje con intel excedente.",
+      "online": "En línea",
+      "setExpected": "Fijar al esperado",
+      "fixed": "Intel de {{name}} fijado en {{intel}}"
     }
   },
   "server": {
@@ -1922,7 +1934,19 @@
     },
     "importSuccess": "{{count}} rangos importados.",
     "exportSuccess": "Catálogo exportado.",
-    "importFailed": "Error de importación: {{message}}"
+    "importFailed": "Error de importación: {{message}}",
+    "reset": {
+      "section": "Limpieza de reclamaciones",
+      "hint": "Recuperación tras una concesión masiva. La cuenta 0 aplica a todas las cuentas de este servidor.",
+      "accountId": "ID de cuenta (0 = todas)",
+      "run": "Restablecer",
+      "demoteHint": "Demote: las reclamaciones ganadas pasan a baseline — nada queda para la concesión automática; el historial otorgado se conserva.",
+      "purgeHint": "Purge: elimina todas las reclamaciones y marcadores juntos — todo se vuelve a baseline en el siguiente escaneo.",
+      "confirmTitle": "¿Restablecer reclamaciones del pase de batalla ({{mode}})?",
+      "scopeAll": "Aplica a TODAS las cuentas de este servidor.",
+      "scopeAccount": "Aplica solo a la cuenta {{accountId}}.",
+      "done": "Restablecimiento completo: {{claims}} reclamaciones actualizadas, {{ledger}} concesiones en cola eliminadas."
+    }
   },
   "auth": {
     "signInSubtitle": "Inicia sesión para administrar tu servidor",

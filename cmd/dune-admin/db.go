@@ -6893,6 +6893,44 @@ type playerPgStats struct {
 	LastSeen        *time.Time `json:"last_seen"`
 }
 
+// fetchItemFormSolari sums Solari held as stackable SolarisCoin item stacks:
+// what the player is carrying, plus Solari sitting in containers/placeables
+// they own, using the same ownership-chain join as cmdListStorageContainers.
+// Top-level inventories only (no recursion into sub-containers nested inside
+// those). This is distinct from the bank ledger (player_virtual_currency_balances)
+// — dune_exchange_retrieve_solaris_from_item converts one into the other,
+// confirming they're genuinely separate stores (#266). Shared by
+// cmdFetchPlayerPgStats (the live "Solaris display") and fetchSolarisBalance
+// (the periodic stat-snapshot collector, #297) so the two totals can never
+// drift apart again.
+func fetchItemFormSolari(ctx context.Context, pool *pgxpool.Pool, accountID int64) (int64, error) {
+	if pool == nil {
+		return 0, fmt.Errorf("not connected")
+	}
+	var itemSolari int64
+	itemRow := pool.QueryRow(ctx, `
+		SELECT COALESCE(SUM(i.stack_size), 0)
+		FROM dune.items i
+		JOIN dune.inventories inv ON inv.id = i.inventory_id
+		WHERE lower(i.template_id) = 'solariscoin'
+		  AND (
+		    inv.actor_id IN (SELECT player_pawn_id FROM dune.player_state WHERE account_id = $1)
+		    OR inv.actor_id IN (
+		      SELECT p.id
+		      FROM dune.placeables p
+		      JOIN dune.actor_fgl_entities afe    ON afe.entity_id = p.owner_entity_id
+		      JOIN dune.permission_actor_rank par ON par.permission_actor_id = afe.actor_id
+		      JOIN dune.actors player_a           ON player_a.id = par.player_id
+		      WHERE player_a.owner_account_id = $1
+		    )
+		  )
+	`, accountID)
+	if err := itemRow.Scan(&itemSolari); err != nil {
+		return 0, fmt.Errorf("fetch item-form solari for account %d: %w", accountID, err)
+	}
+	return itemSolari, nil
+}
+
 // cmdFetchPlayerPgStats gathers all Postgres-derived stats for a player.
 //
 // Economy uses two queries:
@@ -6936,29 +6974,12 @@ func cmdFetchPlayerPgStats(ctx context.Context, pool *pgxpool.Pool, accountID in
 	// separate from the bank ledger above (dune_exchange_retrieve_solaris_from_item
 	// converts one into the other, confirming they're genuinely distinct stores).
 	// The bank-only total under-reported a player's wealth (#266) — add Solari
-	// the player is carrying, plus Solari sitting in containers they own, using
-	// the same ownership-chain join as cmdListStorageContainers. Top-level
-	// inventories only (no recursion into sub-containers nested inside those).
-	var itemSolari int64
-	itemRow := pool.QueryRow(ctx, `
-		SELECT COALESCE(SUM(i.stack_size), 0)
-		FROM dune.items i
-		JOIN dune.inventories inv ON inv.id = i.inventory_id
-		WHERE lower(i.template_id) = 'solariscoin'
-		  AND (
-		    inv.actor_id IN (SELECT player_pawn_id FROM dune.player_state WHERE account_id = $1)
-		    OR inv.actor_id IN (
-		      SELECT p.id
-		      FROM dune.placeables p
-		      JOIN dune.actor_fgl_entities afe    ON afe.entity_id = p.owner_entity_id
-		      JOIN dune.permission_actor_rank par ON par.permission_actor_id = afe.actor_id
-		      JOIN dune.actors player_a           ON player_a.id = par.player_id
-		      WHERE player_a.owner_account_id = $1
-		    )
-		  )
-	`, accountID)
-	if err := itemRow.Scan(&itemSolari); err != nil {
-		return stats, fmt.Errorf("fetch item-form solari for account %d: %w", accountID, err)
+	// the player is carrying, plus Solari sitting in containers they own. Shared
+	// with fetchSolarisBalance (the stat-snapshot collector, #297) via
+	// fetchItemFormSolari so the two totals can never drift apart again.
+	itemSolari, err := fetchItemFormSolari(ctx, pool, accountID)
+	if err != nil {
+		return stats, err
 	}
 	stats.SolarisBal += itemSolari
 
@@ -7209,21 +7230,38 @@ func cmdFetchPlayerSnapshot(ctx context.Context, pool *pgxpool.Pool, accountID i
 	return snap, nil
 }
 
+// fetchSolarisBalance returns the total Solari the stat-snapshot collector
+// should record for a player: wallet balance plus item-form Solari (#297).
+// The bank-only version of this query returned nil whenever a player had no
+// wallet row, which silently dropped history points for anyone whose only
+// Solari was carried as SolarisCoin items or sitting in an owned base stash
+// — the Solari chart looked "stopped" rather than merely never-started. A
+// player with no wallet row and no item Solari still gets a real 0 recorded,
+// not a NULL, so the chart carries an unbroken series.
 func fetchSolarisBalance(ctx context.Context, pool *pgxpool.Pool, accountID int64) (*int64, error) {
-	var bal int64
+	if pool == nil {
+		return nil, fmt.Errorf("not connected")
+	}
+	var walletBal int64
 	err := pool.QueryRow(ctx, `
 		SELECT pvc.balance
 		FROM dune.player_virtual_currency_balances pvc
 		JOIN dune.player_state ps ON ps.player_controller_id = pvc.player_controller_id
 		WHERE ps.account_id = $1 AND pvc.currency_id = 0
-	`, accountID).Scan(&bal)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
+	`, accountID).Scan(&walletBal)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("fetch solaris snapshot for account %d: %w", accountID, err)
 	}
-	return &bal, nil
+	// walletBal stays 0 on ErrNoRows — a player without a wallet row may
+	// still carry Solari as items.
+
+	itemSolari, err := fetchItemFormSolari(ctx, pool, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	total := walletBal + itemSolari
+	return &total, nil
 }
 
 // cmdActorIDFromFlsID resolves the player pawn actor ID from their hex FLS ID

@@ -49,6 +49,7 @@ export const ItemDetail: React.FC<ItemDetailProps> = ({ item, onClose }) => {
                 templateId={item.template_id}
                 name={item.display_name}
                 entry={entry}
+                category={item.category}
                 market={{
                   lowestPrice: item.lowest_price,
                   totalStock: item.total_stock,

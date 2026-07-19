@@ -838,6 +838,16 @@ func (e *Exchange) BuyTick(ctx context.Context) {
 	e.ensureAccessPoint(ctx)
 	e.learnGameEpoch(ctx)
 
+	// Refresh the category cache before buying (#295). buyPlayerListings deletes
+	// the purchased player order below, and a live player sell order is the only
+	// source refreshCategoryCache learns a game-corrected mask from. With the
+	// default 5-min buy / 30-min list cadence, a schematic the game auto-corrected
+	// could get bought (and its order deleted) several buy ticks before the next
+	// list tick ever looked at it — so the correction was lost and the item got
+	// re-listed under the bot's guessed category forever. Learning here, right
+	// before the delete, closes that window every single tick.
+	e.refreshCategoryCache(ctx)
+
 	snap := e.cfg.Snapshot()
 
 	gameNow := e.gameNow()

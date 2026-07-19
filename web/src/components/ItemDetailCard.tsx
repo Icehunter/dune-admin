@@ -56,12 +56,20 @@ export type ItemDetailCardProps = {
   /** Display name override (e.g. from the templates list). Falls back to entry.name then templateId. */
   name?: string | undefined
   entry: ItemEntry | null
+  /**
+   * Category override for the displayed "Category" row (e.g. MarketItem.category,
+   * which reclassifies schematics into schematics/<segment>). Without this the raw
+   * catalog path from entry.category is shown, which disagreed with the market
+   * table's category for schematics (#295) — pass the same computed value the
+   * caller already used to categorize the item so the two views always agree.
+   */
+  category?: string | undefined
   market?: MarketDetail | undefined
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
-export const ItemDetailCard: React.FC<ItemDetailCardProps> = ({ templateId, name, entry, market }) => {
+export const ItemDetailCard: React.FC<ItemDetailCardProps> = ({ templateId, name, entry, category, market }) => {
   const qualityData = useAtomValue(qualityDataSync)
 
   const img = iconUrl(templateId, 'detail')
@@ -72,6 +80,9 @@ export const ItemDetailCard: React.FC<ItemDetailCardProps> = ({ templateId, name
   const isWeapon = entry?.category?.startsWith('items/weapons')
   const isGradeable = entry?.is_gradeable
   const displayName = name || entry?.name || templateId
+  // Prefer the caller-computed category (e.g. MarketItem.category) for display so
+  // it always matches whatever category the caller listed/grouped this item under.
+  const displayCategory = category ?? entry?.category
 
   const listings = market?.listings ?? []
   const byQuality = listings.reduce<Record<number, MarketListing[]>>((acc, l) => {
@@ -107,12 +118,12 @@ export const ItemDetailCard: React.FC<ItemDetailCardProps> = ({ templateId, name
   )
 
   const renderItemInfoPanel = (): React.ReactNode => {
-    if (!entry?.category && !entry?.slot && !entry?.faction && !market) return null
+    if (!displayCategory && !entry?.slot && !entry?.faction && !market) return null
     return (
       <Panel>
         <SectionLabel>Item Info</SectionLabel>
-        {entry?.category
-          ? <Row label="Category" value={entry.category} wrap />
+        {displayCategory
+          ? <Row label="Category" value={displayCategory} wrap />
           : null}
         {entry?.slot
           ? <Row label="Slot" value={entry.slot} />

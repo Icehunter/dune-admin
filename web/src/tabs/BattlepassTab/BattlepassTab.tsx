@@ -562,7 +562,7 @@ export const BattlepassTab: React.FC = () => {
         )}
 
         {can('battlepass:read') && section === 'config' && (
-          <Panel className="flex flex-col min-h-0 flex-1">
+          <Panel className="flex flex-col min-h-0 flex-1" contentClassName="flex-1 min-h-0">
             <ConfigView />
           </Panel>
         )}

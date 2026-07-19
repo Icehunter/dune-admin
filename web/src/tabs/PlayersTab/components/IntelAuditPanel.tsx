@@ -8,12 +8,19 @@ import type { Column } from '../../../dune-ui'
 import { usePermissions } from '../../../hooks/usePermissions'
 import type { IntelAuditCol } from './types'
 
+// Every column below is sortable, and the header's sort chevron renders
+// inline after the label text (plain text flow, not a fixed-position icon)
+// — so any column can wrap the chevron onto its own line the moment it
+// becomes the active sort column, if its width was only ever sized for the
+// bare label. Each width here includes headroom for that inline icon, not
+// just the label text.
 const columns: Column<IntelAuditCol>[] = [
-  { key: 'name', label: 'Name' },
-  { key: 'level', label: 'Level', width: 70, align: 'end' },
-  { key: 'intel', label: 'Intel', width: 90, align: 'end' },
-  { key: 'expected_intel', label: 'Expected', width: 90, align: 'end' },
-  { key: 'delta', label: 'Over by', width: 90, align: 'end' },
+  { key: 'name', label: 'Name', width: '1fr', minWidth: 160 },
+  { key: 'account_id', label: 'Account ID', width: 140, align: 'end' },
+  { key: 'level', label: 'Level', width: 90, align: 'end' },
+  { key: 'intel', label: 'Intel', width: 100, align: 'end' },
+  { key: 'expected_intel', label: 'Expected', width: 120, align: 'end' },
+  { key: 'delta', label: 'Over by', width: 120, align: 'end' },
   { key: 'actions', label: '', width: 150, align: 'end', sortable: false },
 ]
 
@@ -74,6 +81,7 @@ export const IntelAuditPanel: React.FC = (): React.ReactElement => {
   const renderCell = (row: IntelAuditRow, key: IntelAuditCol): React.ReactNode => {
     switch (key) {
       case 'name': return row.name
+      case 'account_id': return <span className="tabular-nums text-muted font-mono">{row.account_id}</span>
       case 'level': return <span className="tabular-nums">{row.level}</span>
       case 'intel': return <span className="tabular-nums">{row.intel.toLocaleString()}</span>
       case 'expected_intel': return <span className="tabular-nums">{row.expected_intel.toLocaleString()}</span>
@@ -85,6 +93,7 @@ export const IntelAuditPanel: React.FC = (): React.ReactElement => {
   const sortValue = (row: IntelAuditRow, key: IntelAuditCol): string | number => {
     switch (key) {
       case 'name': return row.name
+      case 'account_id': return row.account_id
       case 'level': return row.level
       case 'intel': return row.intel
       case 'expected_intel': return row.expected_intel

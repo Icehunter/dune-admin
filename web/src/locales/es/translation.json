@@ -1939,6 +1939,8 @@
       "section": "Limpieza de reclamaciones",
       "hint": "Recuperación tras una concesión masiva. La cuenta 0 aplica a todas las cuentas de este servidor.",
       "accountId": "ID de cuenta (0 = todas)",
+      "playerSearch": "Buscar jugador objetivo",
+      "playerSearchPlaceholder": "Buscar jugador… (dejar vacío para todas las cuentas)",
       "run": "Restablecer",
       "demoteHint": "Demote: las reclamaciones ganadas pasan a baseline — nada queda para la concesión automática; el historial otorgado se conserva.",
       "purgeHint": "Purge: elimina todas las reclamaciones y marcadores juntos — todo se vuelve a baseline en el siguiente escaneo.",

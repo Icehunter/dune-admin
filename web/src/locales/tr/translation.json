@@ -1916,6 +1916,8 @@
       "section": "Talep Temizliği",
       "hint": "Toplu verme olayından kurtarma. Hesap ID 0 bu sunucudaki tüm hesaplara uygulanır.",
       "accountId": "Hesap ID (0 = tümü)",
+      "playerSearch": "Hedeflenecek oyuncuyu ara",
+      "playerSearchPlaceholder": "Oyuncu ara… (tüm hesaplar için boş bırakın)",
       "run": "Sıfırla",
       "demoteHint": "Demote: kazanılmış talepler baseline olur — otomatik vermeye bir şey kalmaz; verilmiş geçmiş korunur.",
       "purgeHint": "Purge: tüm talepleri ve izleme işaretlerini birlikte siler — sonraki taramada her şey yeniden baseline olur.",

@@ -1808,6 +1808,8 @@
       "section": "Claims Cleanup",
       "hint": "Recover from a mass-grant incident. Account ID 0 applies to every account on this server.",
       "accountId": "Account ID (0 = all)",
+      "playerSearch": "Search player to target",
+      "playerSearchPlaceholder": "Search player… (leave empty for all accounts)",
       "run": "Reset",
       "demoteHint": "Demote: earned claims become baseline — nothing left to auto-grant; granted history is kept.",
       "purgeHint": "Purge: deletes all claims and seen-markers together — everything re-baselines on the next scan.",

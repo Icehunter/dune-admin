@@ -1916,6 +1916,8 @@
       "section": "Claims-Bereinigung",
       "hint": "Wiederherstellung nach einer Massenvergabe. Konto-ID 0 gilt für alle Konten dieses Servers.",
       "accountId": "Konto-ID (0 = alle)",
+      "playerSearch": "Spieler zum Anvisieren suchen",
+      "playerSearchPlaceholder": "Spieler suchen… (leer lassen für alle Konten)",
       "run": "Zurücksetzen",
       "demoteHint": "Demote: verdiente Claims werden zu Baseline — nichts bleibt für Auto-Grant; vergebene Historie bleibt erhalten.",
       "purgeHint": "Purge: löscht alle Claims und Seen-Marker zusammen — beim nächsten Scan wird alles neu baselined.",

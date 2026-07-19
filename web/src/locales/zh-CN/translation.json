@@ -1916,6 +1916,8 @@
       "section": "领取记录清理",
       "hint": "从批量发放事故中恢复。账户 ID 0 应用于此服务器的所有账户。",
       "accountId": "账户 ID（0 = 全部）",
+      "playerSearch": "搜索要定位的玩家",
+      "playerSearchPlaceholder": "搜索玩家…（留空表示所有账户）",
       "run": "重置",
       "demoteHint": "Demote：已获得的领取记录变为基线 — 自动发放不再有目标；已发放历史保留。",
       "purgeHint": "Purge：同时删除所有领取记录和观测标记 — 下次扫描时全部重新基线化。",

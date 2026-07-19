@@ -1962,6 +1962,8 @@
       "section": "Czyszczenie roszczeń",
       "hint": "Odzyskiwanie po masowym przyznaniu. ID konta 0 dotyczy wszystkich kont na tym serwerze.",
       "accountId": "ID konta (0 = wszystkie)",
+      "playerSearch": "Wyszukaj gracza do wskazania",
+      "playerSearchPlaceholder": "Szukaj gracza… (pozostaw puste dla wszystkich kont)",
       "run": "Resetuj",
       "demoteHint": "Demote: zdobyte roszczenia stają się baseline — nic nie zostaje do auto-przyznania; historia przyznanych zostaje.",
       "purgeHint": "Purge: usuwa wszystkie roszczenia i znaczniki razem — wszystko zostanie ponownie zbaselinowane przy następnym skanie.",

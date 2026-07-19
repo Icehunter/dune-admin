@@ -1939,6 +1939,8 @@
       "section": "Limpeza de reivindicações",
       "hint": "Recuperação após uma concessão em massa. Conta 0 aplica-se a todas as contas deste servidor.",
       "accountId": "ID da conta (0 = todas)",
+      "playerSearch": "Buscar jogador para direcionar",
+      "playerSearchPlaceholder": "Buscar jogador… (deixe vazio para todas as contas)",
       "run": "Redefinir",
       "demoteHint": "Demote: reivindicações ganhas viram baseline — nada resta para concessão automática; o histórico concedido é mantido.",
       "purgeHint": "Purge: exclui todas as reivindicações e marcadores juntos — tudo é re-baselined no próximo escaneamento.",

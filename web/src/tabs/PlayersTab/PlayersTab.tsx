@@ -203,9 +203,10 @@ export const PlayersTab: React.FC = () => {
         {selected
           ? (
               <React.Fragment>
-                {/* Fixed header: name + status + tab nav */}
+                {/* Fixed header: name + account id + status + tab nav */}
                 <div className="shrink-0 flex items-center gap-2 pr-3 py-2">
                   <span className="font-semibold text-accent">{selected.name}</span>
+                  <span className="text-muted text-xs font-mono">{`#${selected.account_id}`}</span>
                   <StatusDot status={selected.online_status} />
                   <span className="text-muted text-xs">{selected.online_status}</span>
                   <Segment

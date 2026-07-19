@@ -1939,6 +1939,8 @@
       "section": "Nettoyage des réclamations",
       "hint": "Récupération après une attribution massive. Le compte 0 s'applique à tous les comptes de ce serveur.",
       "accountId": "ID de compte (0 = tous)",
+      "playerSearch": "Rechercher un joueur à cibler",
+      "playerSearchPlaceholder": "Rechercher un joueur… (laisser vide pour tous les comptes)",
       "run": "Réinitialiser",
       "demoteHint": "Demote : les réclamations gagnées deviennent baseline — plus rien à attribuer automatiquement ; l'historique accordé est conservé.",
       "purgeHint": "Purge : supprime ensemble toutes les réclamations et marqueurs — tout repart en baseline au prochain scan.",

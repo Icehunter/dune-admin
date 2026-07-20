@@ -406,14 +406,26 @@ func preserveServerMaskedSecrets(next *ServerConfig, old ServerConfig) {
 }
 
 // preserveServerConnectionFields keeps connection fields the client left blank on
-// an update from wiping the persisted value. Currently the only such field is
-// ssh_mode: a client that omits it (e.g. a UI build without the ssh_mode field)
-// must not silently reset a "command" server back to the library default. An
-// explicit value always wins, so a deliberate change to "library"/"command" is
-// honored. New blank-preserving connection fields go here (hence the plural name).
+// an update from wiping the persisted value. A client that omits a field (e.g. a
+// mismatched or older UI build) must not silently reset it. An explicit value
+// always wins, so a deliberate change is still honored. New blank-preserving
+// connection fields go here (hence the plural name).
+//
+//   - ssh_mode: omitting it must not reset a "command" server to the library default.
+//   - control (+ its namespace): omitting it must not wipe a configured "amp"/
+//     "kubectl"/"docker" server back to blank — a blank control resolves to the
+//     "local" plane, which surfaces as "local control plane does not support
+//     GetStatus" and breaks the whole server. The dropdown never posts blank when
+//     present, so preserve-on-blank can't block a legitimate control-plane switch.
 func preserveServerConnectionFields(next *ServerConfig, old ServerConfig) {
 	if next.SSHMode == "" {
 		next.SSHMode = old.SSHMode
+	}
+	if next.Control == "" {
+		next.Control = old.Control
+	}
+	if next.ControlNamespace == "" {
+		next.ControlNamespace = old.ControlNamespace
 	}
 }
 

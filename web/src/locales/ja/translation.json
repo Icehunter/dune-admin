@@ -65,6 +65,7 @@
     "ifaceSaveFailed": "保存に失敗しました: {{message}}",
     "ifaceLabel": "ラベル",
     "ifaceUrl": "URL (http:// または /path)",
+    "ifaceNoProxy": "直接開く（プロキシを使用しない）",
     "editInterfaces": "Web インターフェースを編集",
     "removeInterface": "削除",
     "addInterface": "インターフェースを追加",

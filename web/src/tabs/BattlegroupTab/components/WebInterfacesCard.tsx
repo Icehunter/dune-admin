@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Skeleton, Spinner, toast } from '@heroui/react'
+import { Button, Checkbox, Skeleton, Spinner, toast } from '@heroui/react'
 import { Icon, FieldInput } from '../../../dune-ui'
 import { api } from '../../../api/client'
 import type { Status, WebInterface } from '../../../api/client'
@@ -41,6 +41,8 @@ export const WebInterfacesCard: React.FC<{ status: Status | null }> = ({ status 
   }
   const setField = (i: number, key: 'label' | 'url', v: string) =>
     setDraft((d) => d.map((row, idx) => (idx === i ? { ...row, [key]: v } : row)))
+  const setNoProxy = (i: number, v: boolean) =>
+    setDraft((d) => d.map((row, idx) => (idx === i ? { ...row, noProxy: v } : row)))
 
   const save = () => {
     const clean = draft.filter((r) => r.label.trim() && r.url.trim())
@@ -106,6 +108,17 @@ export const WebInterfacesCard: React.FC<{ status: Status | null }> = ({ status 
                 ariaLabel={t('serverHealth.ifaceUrl')}
                 className="flex-1 font-mono"
               />
+              {/* Opt this entry out of the mesh web proxy — the SPA opens the
+                  URL above as-is instead of a rewritten proxy port. For
+                  NAT/reverse-proxy setups where only fixed published ports
+                  are reachable, the rewritten URL is unreachable. (#261) */}
+              <Checkbox
+                isSelected={row.noProxy ?? false}
+                onChange={(v) => setNoProxy(i, v)}
+                className="shrink-0"
+              >
+                <span className="text-xs text-muted whitespace-nowrap">{t('serverHealth.ifaceNoProxy')}</span>
+              </Checkbox>
               <Button
                 size="sm"
                 variant="ghost"

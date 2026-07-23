@@ -503,6 +503,11 @@ export type ScheduledBackups = {
 export type WebInterface = {
   label: string
   url: string
+  // noProxy opts this entry out of the mesh web proxy: the SPA opens `url`
+  // as-is instead of a rewritten proxy port. For NAT/reverse-proxy setups
+  // where only fixed published ports are reachable, the proxy's rewritten
+  // URL is unreachable — this restores the pre-v0.42.0 behaviour per entry.
+  noProxy?: boolean
   // proxyPort, when set, is the local dune-admin port that reverse-proxies this
   // service over the mesh tunnel. The SPA opens it via the current host on that
   // port, so the (possibly unresolvable) game-side url is bypassed.

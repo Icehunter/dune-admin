@@ -65,6 +65,7 @@
     "ifaceSaveFailed": "保存失败：{{message}}",
     "ifaceLabel": "标签",
     "ifaceUrl": "URL（http:// 或 /path）",
+    "ifaceNoProxy": "直接打开（不使用代理）",
     "editInterfaces": "编辑 Web 界面",
     "removeInterface": "移除",
     "addInterface": "添加界面",

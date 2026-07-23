@@ -65,6 +65,7 @@
     "ifaceSaveFailed": "Error al guardar: {{message}}",
     "ifaceLabel": "Etiqueta",
     "ifaceUrl": "URL (http:// o /ruta)",
+    "ifaceNoProxy": "Abrir directamente (sin proxy)",
     "editInterfaces": "Editar interfaces web",
     "removeInterface": "Eliminar",
     "addInterface": "Añadir interfaz",

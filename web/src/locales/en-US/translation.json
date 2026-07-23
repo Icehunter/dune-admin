@@ -65,6 +65,7 @@
     "ifaceSaveFailed": "Save failed: {{message}}",
     "ifaceLabel": "Label",
     "ifaceUrl": "URL (http:// or /path)",
+    "ifaceNoProxy": "Open directly (don't proxy)",
     "editInterfaces": "Edit web interfaces",
     "removeInterface": "Remove",
     "addInterface": "Add interface",

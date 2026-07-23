@@ -65,6 +65,7 @@
     "ifaceSaveFailed": "Kaydetme başarısız: {{message}}",
     "ifaceLabel": "Etiket",
     "ifaceUrl": "URL (http:// veya /yol)",
+    "ifaceNoProxy": "Doğrudan aç (proxy kullanma)",
     "editInterfaces": "Web arayüzlerini düzenle",
     "removeInterface": "Kaldır",
     "addInterface": "Arayüz ekle",

@@ -61,9 +61,13 @@ func resolveProxyTargets(ifaces []webInterface, listenPort int) []proxyTarget {
 // schemeAndDialFor returns the upstream scheme and host:port dune-admin can Dial
 // for a web interface: a discovered entry uses its Target (raw CRD host:port,
 // always plain HTTP), otherwise the absolute http(s) URL is parsed. Returns
-// ("", "") when the entry is not proxyable (same-origin/relative URL). Single
-// source of truth so resolveProxyTargets and withProxyPorts can't drift.
+// ("", "") when the entry is not proxyable (same-origin/relative URL, or the
+// operator opted out via NoProxy — see #261). Single source of truth so
+// resolveProxyTargets and withProxyPorts can't drift.
 func schemeAndDialFor(w webInterface) (scheme, dial string) {
+	if w.NoProxy {
+		return "", ""
+	}
 	if w.Target != "" {
 		return "http", w.Target
 	}
@@ -110,6 +114,9 @@ type webInterfaceOut struct {
 	URL         string `json:"url"`
 	ProxyPort   int    `json:"proxyPort,omitempty"`
 	ProxyScheme string `json:"proxyScheme,omitempty"`
+	// NoProxy is echoed back so the SPA edit form reflects the persisted
+	// opt-out. (#261)
+	NoProxy bool `json:"noProxy,omitempty"`
 }
 
 // withProxyPorts attaches each entry's proxy port + scheme (matched by dial
@@ -123,7 +130,7 @@ func withProxyPorts(ifaces []webInterface, targets []proxyTarget) []webInterface
 	out := make([]webInterfaceOut, 0, len(ifaces))
 	for _, w := range ifaces {
 		_, dial := schemeAndDialFor(w)
-		entry := webInterfaceOut{Label: w.Label, URL: w.URL, ProxyPort: portByAddr[dial]}
+		entry := webInterfaceOut{Label: w.Label, URL: w.URL, NoProxy: w.NoProxy, ProxyPort: portByAddr[dial]}
 		if entry.ProxyPort != 0 {
 			entry.ProxyScheme = proxyListenScheme
 		}

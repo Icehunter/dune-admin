@@ -49,6 +49,18 @@ type ControlPlane interface {
 	ReadDefaultINI(ctx context.Context, exec Executor, filename string) string
 }
 
+// partitionRestarter is the optional control-plane capability for restarting a
+// single map/partition without cycling the whole Battlegroup. Only the kubectl
+// control plane implements it, via Funcom's ServerRestart CRD (serverrestarts.
+// igw.funcom.com) — a dedicated per-pod restart primitive distinct from the
+// whole-CRD "spec.stop" patch ExecCommand("restart") uses. AMP and docker/local
+// run every partition's process inside one shared container, so there is no
+// narrower unit to restart there (see .claude/rules/amp.md) — those planes
+// simply don't implement this interface, and handlers type-assert for it.
+type partitionRestarter interface {
+	RestartPartition(ctx context.Context, exec Executor, partition int) (string, error)
+}
+
 // ── Types shared across control plane implementations ─────────────────────────
 
 type BattlegroupStatus struct {

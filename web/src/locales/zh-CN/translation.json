@@ -275,6 +275,7 @@
       "backup": "备份",
       "backupMsg": "创建数据库备份？这可能需要几分钟。",
       "restart": "重启",
+      "restart-partition": "重启分区",
       "restartMsg": "重启服务器？玩家将短暂断开连接。",
       "restore": "还原",
       "restoreMsg": "从备份还原数据库？这将覆盖当前数据。",
@@ -319,6 +320,14 @@
     "noGameServers": "未找到游戏服务器。",
     "noOutput": "（无输出）",
     "phase": "阶段",
+    "restartPartition": {
+      "body": "此操作仅重启 {{map}}（分区 {{partition}}）的服务器进程。此地图上的玩家将短暂断开连接——Battlegroup 中的其他地图不受影响。",
+      "confirm": "重启分区",
+      "failed": "重启 {{map}} 失败：{{message}}",
+      "success": "{{map}} 分区已重启",
+      "title": "重启 {{map}}？",
+      "tooltip": "仅重启此分区"
+    },
     "restore": {
       "dropzone": "从您的计算机拖放或点击上传 .backup 或 .zip 文件",
       "noBackups": "服务器上暂无备份文件。",

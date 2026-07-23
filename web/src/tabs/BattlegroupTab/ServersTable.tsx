@@ -1,25 +1,30 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { EmptyState } from '@heroui-pro/react'
+import { Button, Tooltip } from '@heroui/react'
 import { DataTable, Icon } from '../../dune-ui'
 import { phaseColor } from './helpers'
 import { formatUptime } from './uptime'
 import { getServerColumns, type ServerRow, type ServerSortKey, type ServersTableProps } from './types'
 
-export const ServersTable: React.FC<ServersTableProps> = ({ servers, isInitializing, loading, emptyMessage }) => {
+export const ServersTable: React.FC<ServersTableProps> = ({
+  servers, isInitializing, loading, emptyMessage, canRestartPartition = false, onRestartPartition,
+}) => {
   const { t } = useTranslation()
+  const columns = getServerColumns(t).filter((c) => canRestartPartition || c.key !== 'actions')
   return (
     <DataTable<ServerRow, ServerSortKey>
       aria-label={t('nav.battlegroup')}
       className="min-h-0 max-h-full"
       loading={loading}
-      columns={getServerColumns(t)}
+      columns={columns}
       rows={servers}
       rowId={(s) => `${s.map}-${s.dimension}-${s.partition}`}
       initialSort={{ column: 'map', direction: 'ascending' }}
       sortValue={(r, k) => {
         if (k === 'ready') return r.ready ? 1 : 0
         if (k === 'age') return r.ageSeconds ?? 0
+        if (k === 'actions') return ''
         return r[k] as string | number
       }}
       emptyState={emptyMessage && (
@@ -67,6 +72,22 @@ export const ServersTable: React.FC<ServersTableProps> = ({ servers, isInitializ
           case 'dimension': return <span className="text-muted">{s.dimension}</span>
           case 'partition': return <span className="text-muted">{s.partition}</span>
           case 'age': return <span className="font-mono text-muted">{formatUptime(s.ageSeconds)}</span>
+          case 'actions':
+            return (
+              <Tooltip delay={300}>
+                <Tooltip.Trigger>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={t('battlegroup.restartPartition.tooltip')}
+                    onPress={() => onRestartPartition?.(s)}
+                  >
+                    <Icon name="rotate-ccw" />
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content>{t('battlegroup.restartPartition.tooltip')}</Tooltip.Content>
+              </Tooltip>
+            )
         }
       }}
     />

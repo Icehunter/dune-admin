@@ -9,7 +9,7 @@ import { ScheduledRestartsCard } from '../../components/ScheduledRestartsCard'
 import { useStatus } from '../../hooks/useStatus'
 import { usePermissions } from '../../hooks/usePermissions'
 
-import { ACTIONS, INIT_WARN_MS, type ActionDef, type DetailedStatus } from './types'
+import { ACTIONS, INIT_WARN_MS, type ActionDef, type DetailedStatus, type ServerRow } from './types'
 import { ServersTable } from './ServersTable'
 import {
   HealthCard, HealthChips, BgVmCard, ComponentHealthCard, GameReadyCard, WebInterfacesCard,
@@ -17,6 +17,7 @@ import {
 import { ConfirmDialog } from './modals/ConfirmDialog'
 import { CommandOutputModal } from './modals/CommandOutputModal'
 import { RestoreModal } from './modals/RestoreModal'
+import { PartitionRestartConfirm } from './modals/PartitionRestartConfirm'
 import { RestoreProgressModal } from '../../components/RestoreProgressModal'
 
 const POLL_MS = 30_000
@@ -35,6 +36,7 @@ export const BattlegroupTab: React.FC = () => {
   const [confirmCmd, setConfirmCmd] = React.useState<ActionDef | null>(null)
   const [startedAt, setStartedAt] = React.useState<number | null>(null)
   const [lastBackupFile, setLastBackupFile] = React.useState<string | null>(null)
+  const [confirmPartitionRestart, setConfirmPartitionRestart] = React.useState<ServerRow | null>(null)
 
   // Broadcasts
   const [broadcastTitle, setBroadcastTitle] = React.useState('')
@@ -131,6 +133,26 @@ export const BattlegroupTab: React.FC = () => {
     }
   }
 
+  const runRestartPartition = async (server: ServerRow) => {
+    setConfirmPartitionRestart(null)
+    setRunningCmd('restart-partition')
+    setCmdOutput(null)
+    setCmdDone(false)
+    try {
+      const res = await api.battlegroup.restartPartition(server.partition)
+      setCmdOutput(res.output || t('battlegroup.noOutput'))
+      setCmdDone(true)
+      toast.success(t('battlegroup.restartPartition.success', { map: server.map }))
+      fetchStatus()
+    }
+    catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setCmdOutput(`Error: ${msg}`)
+      setCmdDone(true)
+      toast.danger(t('battlegroup.restartPartition.failed', { map: server.map, message: msg }))
+    }
+  }
+
   const openRestore = () => {
     setBackupFilesLoading(true)
     setBackupFiles([])
@@ -152,6 +174,11 @@ export const BattlegroupTab: React.FC = () => {
   // path: AMP (db-backup provider → pg_dump/.dump) and kubectl (battlegroup.sh →
   // .backup). docker/local would surface an erroring button, so hide it (#169).
   const backupSupported = connStatus?.control === 'amp' || connStatus?.control === 'kubectl'
+
+  // Per-partition restart only exists on kubectl today, via Funcom's
+  // ServerRestart CRD (#185) — AMP/docker/local run every partition inside
+  // one shared container/process group with no narrower restart unit.
+  const partitionRestartSupported = connStatus?.control === 'kubectl'
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">
@@ -196,6 +223,8 @@ export const BattlegroupTab: React.FC = () => {
             isInitializing={isInitializing}
             loading={firstLoad}
             emptyMessage={status ? t('battlegroup.noGameServers') : t('battlegroup.clickRefresh')}
+            canRestartPartition={can('server:control') && partitionRestartSupported}
+            onRestartPartition={setConfirmPartitionRestart}
           />
         </HealthCard>
 
@@ -387,6 +416,11 @@ export const BattlegroupTab: React.FC = () => {
         action={confirmCmd}
         onConfirm={runCmd}
         onClose={() => setConfirmCmd(null)}
+      />
+      <PartitionRestartConfirm
+        server={confirmPartitionRestart}
+        onConfirm={runRestartPartition}
+        onClose={() => setConfirmPartitionRestart(null)}
       />
       <CommandOutputModal
         runningCmd={runningCmd}

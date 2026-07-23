@@ -276,6 +276,7 @@
       "backup": "Sauvegarder",
       "backupMsg": "Créer une sauvegarde de la base de données ? Cela peut prendre quelques minutes.",
       "restart": "Redémarrer",
+      "restart-partition": "Redémarrer la partition",
       "restartMsg": "Redémarrer le serveur ? Les joueurs seront brièvement déconnectés.",
       "restore": "Restaurer",
       "restoreMsg": "Restaurer la base de données depuis une sauvegarde ? Cela écrasera les données actuelles.",
@@ -320,6 +321,14 @@
     "noGameServers": "Aucun serveur de jeu trouvé.",
     "noOutput": "(aucune sortie)",
     "phase": "Phase",
+    "restartPartition": {
+      "body": "Cela redémarre uniquement le processus serveur de {{map}} (partition {{partition}}). Les joueurs sur cette carte seront brièvement déconnectés — les autres cartes du Battlegroup ne sont pas affectées.",
+      "confirm": "Redémarrer la partition",
+      "failed": "Échec du redémarrage de {{map}} : {{message}}",
+      "success": "Partition de {{map}} redémarrée",
+      "title": "Redémarrer {{map}} ?",
+      "tooltip": "Redémarrer uniquement cette partition"
+    },
     "restore": {
       "dropzone": "Déposer ou cliquer pour télécharger un fichier .backup ou .zip depuis votre ordinateur",
       "noBackups": "Aucun fichier de sauvegarde sur le serveur.",

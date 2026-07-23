@@ -1,5 +1,5 @@
 import type { BackupFile } from '../../../api/client'
-import type { ActionDef } from '../types'
+import type { ActionDef, ServerRow } from '../types'
 
 export type CommandOutputModalProps = {
   runningCmd: string | null
@@ -12,6 +12,12 @@ export type CommandOutputModalProps = {
 export type ConfirmDialogProps = {
   action: ActionDef | null
   onConfirm: (a: ActionDef) => void
+  onClose: () => void
+}
+
+export type PartitionRestartConfirmProps = {
+  server: ServerRow | null
+  onConfirm: (server: ServerRow) => void
   onClose: () => void
 }
 

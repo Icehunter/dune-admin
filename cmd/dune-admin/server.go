@@ -155,6 +155,7 @@ func buildMux() *http.ServeMux {
 	// ── battlegroup ───────────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/battlegroup/status", capServerRead, handleBGStatus)
 	handleAPI(mux, "POST /api/v1/battlegroup/exec", capServerControl, handleBGExec)
+	handleAPI(mux, "POST /api/v1/battlegroup/restart-partition", capServerControl, handleBGRestartPartition)
 	handleAPI(mux, "GET /api/v1/battlegroup/pods", capServerRead, handleBGPods)
 	handleAPI(mux, "GET /api/v1/battlegroup/backup-files", capBackupsRead, handleBGBackupFiles)
 	handleAPI(mux, "GET /api/v1/battlegroup/backup-files/download", capBackupsRead, handleBGBackupDownload)

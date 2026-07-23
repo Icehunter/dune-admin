@@ -1333,6 +1333,7 @@
     },
     "broker": {
       "adminAddr": "管理者アドレス",
+      "ampHint": "AMPでは、brokerは以下の実行プレフィックス経由でアクセスされます(コンテナexec経由のrabbitmqctl)。ネットワークアドレス、ユーザー、パスワードは使用されません。",
       "execPrefix": "実行プレフィックス",
       "execPrefixHint": "brokerがコンテナ内にある場合",
       "gameAddr": "ゲームアドレス",

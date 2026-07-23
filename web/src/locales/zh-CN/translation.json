@@ -1333,6 +1333,7 @@
     },
     "broker": {
       "adminAddr": "管理员地址",
+      "ampHint": "在 AMP 下，broker 通过下方的执行前缀访问(通过容器 exec 执行 rabbitmqctl)——网络地址、用户和密码不会被使用。",
       "execPrefix": "执行前缀",
       "execPrefixHint": "当 broker 在容器内时使用",
       "gameAddr": "游戏地址",

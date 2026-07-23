@@ -1333,6 +1333,7 @@
     },
     "broker": {
       "adminAddr": "Admin addr",
+      "ampHint": "Under AMP the broker is reached via the exec prefix below (rabbitmqctl through container exec) — network address, user, and password aren't used.",
       "execPrefix": "Exec prefix",
       "execPrefixHint": "when broker is inside a container",
       "gameAddr": "Game addr",

@@ -1375,6 +1375,7 @@
     },
     "broker": {
       "adminAddr": "Adres administracyjny",
+      "ampHint": "W AMP broker jest osiągany przez poniższy prefiks wykonania (rabbitmqctl przez exec kontenera) — adres sieciowy, użytkownik i hasło nie są używane.",
       "execPrefix": "Prefiks wykonania",
       "execPrefixHint": "gdy broker jest wewnątrz kontenera",
       "gameAddr": "Adres gry",

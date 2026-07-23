@@ -1333,6 +1333,7 @@
     },
     "broker": {
       "adminAddr": "Yönetici adresi",
+      "ampHint": "AMP altında broker'a aşağıdaki exec ön eki üzerinden erişilir (konteyner exec üzerinden rabbitmqctl) — ağ adresi, kullanıcı ve parola kullanılmaz.",
       "execPrefix": "Exec ön eki",
       "execPrefixHint": "broker bir konteyner içindeyken",
       "gameAddr": "Oyun adresi",

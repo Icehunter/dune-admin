@@ -7,6 +7,7 @@ import { iconUrl, categoryColor, qualityLabel, BG_PURPLE } from '../../utils/ico
 import { itemDataSyncAtom } from '../../data/store'
 import type { MarketGridProps } from './types'
 import { QualityArc } from './QualityArc'
+import { DisableItemAction } from './DisableItemAction'
 
 // Max volume for bar scaling (most wearable/weapon items top out around 30V)
 const VOL_MAX = 30
@@ -32,7 +33,9 @@ const RARITY_BORDER: Record<string, string> = {
   memento: 'border-rarity-memento/60',
 }
 
-export const MarketGrid: React.FC<MarketGridProps> = ({ items, onSelect }: MarketGridProps) => {
+export const MarketGrid: React.FC<MarketGridProps> = (
+  { items, onSelect, canManageBot, botConfig, onItemDisabled }: MarketGridProps,
+) => {
   const { t } = useTranslation()
   const itemData = useAtomValue(itemDataSyncAtom)
 
@@ -68,85 +71,97 @@ export const MarketGrid: React.FC<MarketGridProps> = ({ items, onSelect }: Marke
           const volPct = volume > 0 ? Math.min(1, volume / VOL_MAX) * 100 : 0
 
           return (
-            <button
-              key={key}
-              className={`group flex flex-col rounded-[var(--radius)] border-2 ${border} bg-surface text-left transition-all overflow-hidden hover:shadow-md`}
-              onClick={() => onSelect(item)}
-            >
-              {/* Icon area */}
-              <div
-                className="relative w-full aspect-square flex items-center justify-center shrink-0"
-                style={isSchematic
-                  ? SCHEMATIC_BG
-                  : { background: isNamedSet ? BG_PURPLE : categoryColor(item.category, rarity) }}
+            <div key={key} className="relative group">
+              <button
+                className={`flex flex-col w-full rounded-[var(--radius)] border-2 ${border} bg-surface text-left transition-all overflow-hidden hover:shadow-md`}
+                onClick={() => onSelect(item)}
               >
-                {/* Item image */}
-                {img
-                  ? (
-                      <img
-                        src={img}
-                        alt={item.display_name}
-                        className="w-full h-full object-contain p-2 transition-transform duration-200 group-hover:scale-105"
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                {/* Icon area */}
+                <div
+                  className="relative w-full aspect-square flex items-center justify-center shrink-0"
+                  style={isSchematic
+                    ? SCHEMATIC_BG
+                    : { background: isNamedSet ? BG_PURPLE : categoryColor(item.category, rarity) }}
+                >
+                  {/* Item image */}
+                  {img
+                    ? (
+                        <img
+                          src={img}
+                          alt={item.display_name}
+                          className="w-full h-full object-contain p-2 transition-transform duration-200 group-hover:scale-105"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                        />
+                      )
+                    : (
+                        <span className="text-3xl text-white/20 font-bold uppercase select-none">
+                          {item.display_name.charAt(0)}
+                        </span>
+                      )}
+
+                  {/* Quality arc — top-right corner, only for gradeable items */}
+                  {entry?.is_gradeable && (
+                    <div className="absolute top-1 right-1 pointer-events-none">
+                      <QualityArc quality={item.quality} size={20} />
+                    </div>
+                  )}
+
+                  {/* Left weight/volume bar — teal, scales with volume */}
+                  {volume > 0 && (
+                    <div className="absolute left-1.5 bottom-1.5 w-1 rounded-full overflow-hidden" style={{ height: '40%' }}>
+                      <div className="absolute inset-0 bg-white/10" />
+                      <div
+                        className="absolute bottom-0 left-0 right-0 rounded-full"
+                        style={{ height: `${volPct}%`, background: '#4dd0c4' }}
                       />
-                    )
-                  : (
-                      <span className="text-3xl text-white/20 font-bold uppercase select-none">
-                        {item.display_name.charAt(0)}
+                    </div>
+                  )}
+
+                  {/* Bottom gradient blending into card body */}
+                  <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-surface to-transparent pointer-events-none" />
+                </div>
+
+                {/* Card body */}
+                <div className="px-2.5 pb-2.5 pt-1 flex flex-col gap-1 min-w-0">
+                  <span className="text-xs font-medium leading-snug line-clamp-2 text-foreground">
+                    {item.display_name}
+                  </span>
+                  <div className="flex items-center justify-between gap-1">
+                    {item.quality > 0
+                      ? <span className="text-[10px] text-muted truncate">{qualityLabel(item.quality)}</span>
+                      : <span />}
+                    {rarity && (
+                      <span
+                        className="text-[10px] capitalize font-medium shrink-0"
+                        style={{ color: `var(--rarity-${rarity})` }}
+                      >
+                        {rarity}
                       </span>
                     )}
-
-                {/* Quality arc — top-right corner, only for gradeable items */}
-                {entry?.is_gradeable && (
-                  <div className="absolute top-1 right-1 pointer-events-none">
-                    <QualityArc quality={item.quality} size={20} />
                   </div>
-                )}
-
-                {/* Left weight/volume bar — teal, scales with volume */}
-                {volume > 0 && (
-                  <div className="absolute left-1.5 bottom-1.5 w-1 rounded-full overflow-hidden" style={{ height: '40%' }}>
-                    <div className="absolute inset-0 bg-white/10" />
-                    <div
-                      className="absolute bottom-0 left-0 right-0 rounded-full"
-                      style={{ height: `${volPct}%`, background: '#4dd0c4' }}
-                    />
-                  </div>
-                )}
-
-                {/* Bottom gradient blending into card body */}
-                <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-surface to-transparent pointer-events-none" />
-              </div>
-
-              {/* Card body */}
-              <div className="px-2.5 pb-2.5 pt-1 flex flex-col gap-1 min-w-0">
-                <span className="text-xs font-medium leading-snug line-clamp-2 text-foreground">
-                  {item.display_name}
-                </span>
-                <div className="flex items-center justify-between gap-1">
-                  {item.quality > 0
-                    ? <span className="text-[10px] text-muted truncate">{qualityLabel(item.quality)}</span>
-                    : <span />}
-                  {rarity && (
-                    <span
-                      className="text-[10px] capitalize font-medium shrink-0"
-                      style={{ color: `var(--rarity-${rarity})` }}
-                    >
-                      {rarity}
+                  <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-border/40 mt-0.5">
+                    <span className="text-sm font-mono text-accent font-semibold truncate">
+                      {item.lowest_price.toLocaleString()}
                     </span>
-                  )}
+                    <span className="text-[10px] text-muted shrink-0">
+                      ×
+                      {item.total_stock.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-border/40 mt-0.5">
-                  <span className="text-sm font-mono text-accent font-semibold truncate">
-                    {item.lowest_price.toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-muted shrink-0">
-                    ×
-                    {item.total_stock.toLocaleString()}
-                  </span>
-                </div>
+              </button>
+
+              {/* Disable action — sibling overlay, not nested in the card button (#288) */}
+              <div className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                <DisableItemAction
+                  item={item}
+                  botConfig={botConfig}
+                  canManage={canManageBot}
+                  onDisabled={onItemDisabled}
+                  variant="icon"
+                />
               </div>
-            </button>
+            </div>
           )
         })}
       </div>

@@ -649,6 +649,15 @@
       "tickingEnabled": "Ticking enabled"
     },
     "botControl": "Bot Control",
+    "disable": {
+      "alreadyDisabled": "Disabled",
+      "ariaLabel": "Disable {{name}} for the market bot",
+      "button": "Disable",
+      "confirmBody": "{{name}} will be blacklisted from the market bot. Its bot listings are removed on the next bot tick — no full market wipe. Player-owned orders are never affected.",
+      "confirmLabel": "Disable",
+      "confirmTitle": "Disable market item?",
+      "success": "{{name}} disabled — bot listings clear on the next tick."
+    },
     "itemDetail": {
       "activeListings": "Active Listings",
       "armorStats": "Armor Stats",
@@ -689,6 +698,7 @@
     },
     "subtitle": "Browse active exchange listings from bot and player sellers.",
     "table": {
+      "actions": "Actions",
       "ariaLabel": "Market items",
       "botStock": "Bot Stock",
       "category": "Category",

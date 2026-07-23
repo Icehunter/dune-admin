@@ -1,4 +1,4 @@
-import type { MarketItem } from '../../api/client'
+import type { MarketItem, BotConfig } from '../../api/client'
 
 export type MarketView = 'grid' | 'table'
 
@@ -23,13 +23,29 @@ export type Node = {
 export type MarketGridProps = {
   items: MarketItem[]
   onSelect: (item: MarketItem) => void
+  canManageBot: boolean
+  botConfig: BotConfig | null
+  onItemDisabled: (cfg: BotConfig) => void
 }
 
-export type MarketTableKey = 'display_name' | 'quality' | 'category' | 'tier' | 'rarity' | 'lowest_price' | 'total_stock' | 'listing_count'
+export type MarketTableKey = 'display_name' | 'quality' | 'category' | 'tier' | 'rarity' | 'lowest_price' | 'total_stock' | 'listing_count' | 'actions'
 
 export type MarketTableProps = {
   items: MarketItem[]
   onSelect: (item: MarketItem) => void
+  canManageBot: boolean
+  botConfig: BotConfig | null
+  onItemDisabled: (cfg: BotConfig) => void
+}
+
+export type DisableItemActionVariant = 'button' | 'icon'
+
+export type DisableItemActionProps = {
+  item: MarketItem
+  botConfig: BotConfig | null
+  canManage: boolean
+  onDisabled: (cfg: BotConfig) => void
+  variant: DisableItemActionVariant
 }
 
 export type MarketFilters = {

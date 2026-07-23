@@ -6,6 +6,7 @@ import { Icon as IconifyIcon } from '@iconify/react'
 import type { MarketItem } from '../../api/client'
 import { ItemIcon } from '../../components/ItemIcon'
 import { qualityLabel } from '../../utils/icons'
+import { DisableItemAction } from './DisableItemAction'
 import type { MarketTableKey, MarketTableProps } from './types'
 
 const RARITY_COLORS: Record<string, string> = {
@@ -18,7 +19,9 @@ const RARITY_COLORS: Record<string, string> = {
   memento: 'text-rarity-memento',
 }
 
-export const MarketTable: React.FC<MarketTableProps> = ({ items, onSelect }) => {
+export const MarketTable: React.FC<MarketTableProps> = (
+  { items, onSelect, canManageBot, botConfig, onItemDisabled }: MarketTableProps,
+) => {
   const { t } = useTranslation()
 
   const COLUMNS: Column<MarketTableKey>[] = [
@@ -30,6 +33,7 @@ export const MarketTable: React.FC<MarketTableProps> = ({ items, onSelect }) => 
     { key: 'lowest_price', label: t('market.table.lowestPrice'), width: 150 },
     { key: 'total_stock', label: t('market.table.stock'), width: 80 },
     { key: 'listing_count', label: t('market.table.listings'), width: 90 },
+    ...(canManageBot ? [{ key: 'actions' as const, label: t('market.table.actions'), width: 130, sortable: false }] : []),
   ]
 
   return (
@@ -52,6 +56,7 @@ export const MarketTable: React.FC<MarketTableProps> = ({ items, onSelect }) => 
           case 'lowest_price': return it.lowest_price
           case 'total_stock': return it.total_stock
           case 'listing_count': return it.listing_count
+          case 'actions': return ''
         }
       }}
       onRowAction={onSelect}
@@ -102,6 +107,16 @@ export const MarketTable: React.FC<MarketTableProps> = ({ items, onSelect }) => 
             return <span className="text-muted">{it.total_stock.toLocaleString()}</span>
           case 'listing_count':
             return <span className="text-muted">{it.listing_count}</span>
+          case 'actions':
+            return (
+              <DisableItemAction
+                item={it}
+                botConfig={botConfig}
+                canManage={canManageBot}
+                onDisabled={onItemDisabled}
+                variant="button"
+              />
+            )
         }
       }}
     />

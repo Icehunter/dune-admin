@@ -3,7 +3,7 @@ import { useAtom } from 'jotai'
 import { Button, Spinner } from '@heroui/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../api/client'
-import type { MarketItem } from '../../api/client'
+import type { MarketItem, BotConfig } from '../../api/client'
 import { usePermissions } from '../../hooks/usePermissions'
 import { Icon, LoadingState, PageHeader } from '../../dune-ui'
 import { MarketSidebar } from './MarketSidebar'
@@ -33,6 +33,8 @@ export const MarketTab: React.FC = () => {
   // Show Bot Control whenever the bot is configured (embedded or remote),
   // even if currently disabled/not running.
   const [botConfigured, setBotConfigured] = React.useState(false)
+  const [botConfig, setBotConfig] = React.useState<BotConfig | null>(null)
+  const canManageBot = can('market-bot:manage')
 
   React.useEffect(() => {
     api.marketBot
@@ -42,6 +44,13 @@ export const MarketTab: React.FC = () => {
       .then((s) => setBotConfigured(s.configured ?? (s.mode !== undefined && s.mode !== 'none')))
       .catch(() => setBotConfigured(false))
   }, [])
+
+  // Fetch the bot config so per-row disable actions (#288) can read/update
+  // disabled_items without opening the bot drawer.
+  React.useEffect(() => {
+    if (!canManageBot) return
+    api.marketBot.config().then(setBotConfig).catch(() => {})
+  }, [canManageBot])
 
   const load = (): void => {
     Promise.resolve()
@@ -136,10 +145,22 @@ export const MarketTab: React.FC = () => {
               )
             : view === 'grid'
               ? (
-                  <MarketGrid items={items} onSelect={setSelected} />
+                  <MarketGrid
+                    items={items}
+                    onSelect={setSelected}
+                    canManageBot={canManageBot}
+                    botConfig={botConfig}
+                    onItemDisabled={setBotConfig}
+                  />
                 )
               : (
-                  <MarketTable items={items} onSelect={setSelected} />
+                  <MarketTable
+                    items={items}
+                    onSelect={setSelected}
+                    canManageBot={canManageBot}
+                    botConfig={botConfig}
+                    onItemDisabled={setBotConfig}
+                  />
                 )}
         </div>
 

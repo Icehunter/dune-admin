@@ -251,6 +251,9 @@ const HEATMAP_COLORS: Record<string, string> = {
   jasmium: 'rgb(180,100,220)', erythrite: 'rgb(220,60,60)',
   t6_resource_a: 'rgb(100,220,220)', t6_resource_b: 'rgb(60,180,220)',
   sandworm_territory: 'rgb(255,80,30)',
+  titanium_ore: 'rgb(180,180,190)',
+  spice_field_small: 'rgb(230,150,60)', spice_field_medium: 'rgb(220,120,40)',
+  spice_field_large: 'rgb(200,90,20)',
 }
 
 const DD_ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']
@@ -266,6 +269,7 @@ const HEATMAP_TYPES: Record<string, string[]> = {
     'aluminum_ore', 'basalt', 'carbon_fiber', 'copper_ore',
     'fiber', 'fuel', 'iron_ore',
     'sandworm_territory', 'scrap_metal', 'stone', 't6_resource_a', 't6_resource_b',
+    'titanium_ore', 'spice_field_small', 'spice_field_medium', 'spice_field_large',
   ],
 }
 

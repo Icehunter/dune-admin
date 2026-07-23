@@ -50,3 +50,14 @@ export const FACTIONS = [
   { id: 3, name: 'None' },
   { id: 4, name: 'Smuggler' },
 ]
+
+// Keyed by faction_id (not the translated label) so it's locale-independent.
+// Matches ServerDashboard's chart palette: Atreides green, Harkonnen red,
+// Smuggler spice-amber; None/Unaligned (id 0) grey.
+export const FACTION_COLOR: Record<number, string> = {
+  0: '#8a8a8a',
+  1: '#52c080',
+  2: '#e05252',
+  3: '#8a8a8a',
+  4: '#c9820a',
+}

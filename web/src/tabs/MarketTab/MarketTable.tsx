@@ -33,7 +33,10 @@ export const MarketTable: React.FC<MarketTableProps> = (
     { key: 'lowest_price', label: t('market.table.lowestPrice'), width: 150 },
     { key: 'total_stock', label: t('market.table.stock'), width: 80 },
     { key: 'listing_count', label: t('market.table.listings'), width: 90 },
-    ...(canManageBot ? [{ key: 'actions' as const, label: t('market.table.actions'), width: 130, sortable: false }] : []),
+    // Only show the column when there's an actual bot config to act on —
+    // otherwise every cell renders empty (DisableItemAction returns null),
+    // which reads as a broken button rather than "no bot configured here".
+    ...(canManageBot && botConfig ? [{ key: 'actions' as const, label: t('market.table.actions'), width: 130, sortable: false }] : []),
   ]
 
   return (

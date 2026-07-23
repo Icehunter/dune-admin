@@ -3,7 +3,7 @@ import { Button, Checkbox, ListBox, Select } from '@heroui/react'
 import { Segment } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../../../dune-ui'
-import { PLAYER_COLUMNS } from '../types'
+import { FACTION_COLOR, PLAYER_COLUMNS } from '../types'
 import type { PlayerSortKey, PlayerStatusFilter } from '../types'
 import type { PlayerListControlsProps } from './interfaces'
 
@@ -30,26 +30,32 @@ export const PlayerListControls: React.FC<PlayerListControlsProps> = ({
     onFactionFilterChange(next)
   }
 
-  // Faction facet is a Checkbox group (frontend.md: "Checkbox (filter/option)
-  // — use Checkbox"), not a Select — RAC's Select is the wrong primitive for
-  // a filter facet and every other selectionMode="multiple" usage in this
+  // Faction facet is a Checkbox group (filter/option control, per
+  // frontend.md), not a Select — RAC's Select is the wrong primitive for a
+  // filter facet and every other selectionMode="multiple" usage in this
   // codebase is on DataTable/DataGrid row selection, not a dropdown. Renders
   // nothing until the player list has loaded at least one faction_id.
+  // Structure/styling matches LiveMapTab's FilterPanel checkboxes (compound
+  // Checkbox.Content/Control/Indicator + colored dot) for visual consistency.
   const renderFactionFilter = (): React.ReactNode => {
     if (factionOptions.length === 0) return null
     return (
       <div className="flex flex-col gap-1">
-        <span className="text-[10px] uppercase tracking-wide text-muted">
+        <span className="text-[10px] uppercase tracking-wide text-muted px-1">
           {t('players.filter.faction')}
         </span>
-        <div className="flex flex-wrap gap-x-3 gap-y-1">
+        <div className="flex flex-col">
           {factionOptions.map((f) => (
             <Checkbox
               key={f.id}
               isSelected={factionFilter.has(f.id)}
               onChange={(isSelected) => toggleFaction(f.id, isSelected)}
             >
-              {f.label}
+              <Checkbox.Content className="w-full max-w-none gap-2 py-1.5 px-1 hover:bg-surface-secondary rounded-[var(--radius)] cursor-pointer">
+                <Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>
+                <span style={{ color: FACTION_COLOR[f.id] ?? '#8a8a8a' }} className="text-xs shrink-0">●</span>
+                <span className="flex-1 text-xs text-foreground">{f.label}</span>
+              </Checkbox.Content>
             </Checkbox>
           ))}
         </div>

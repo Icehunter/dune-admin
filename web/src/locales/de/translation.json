@@ -276,6 +276,7 @@
       "backup": "Sichern",
       "backupMsg": "Datenbanksicherung erstellen? Dies kann einige Minuten dauern.",
       "restart": "Neustarten",
+      "restart-partition": "Partition neu starten",
       "restartMsg": "Server neustarten? Spieler werden kurz getrennt.",
       "restore": "Wiederherstellen",
       "restoreMsg": "Datenbank aus Sicherung wiederherstellen? Aktuelle Daten werden überschrieben.",
@@ -320,6 +321,14 @@
     "noGameServers": "Keine Spielserver gefunden.",
     "noOutput": "(keine Ausgabe)",
     "phase": "Phase",
+    "restartPartition": {
+      "body": "Dies startet nur den Serverprozess von {{map}} (Partition {{partition}}) neu. Spieler auf dieser Karte werden kurz getrennt — andere Karten der Battlegroup sind nicht betroffen.",
+      "confirm": "Partition neu starten",
+      "failed": "Neustart von {{map}} fehlgeschlagen: {{message}}",
+      "success": "{{map}}-Partition neu gestartet",
+      "title": "{{map}} neu starten?",
+      "tooltip": "Nur diese Partition neu starten"
+    },
     "restore": {
       "dropzone": "Ablegen oder klicken, um eine .backup- oder .zip-Datei hochzuladen",
       "noBackups": "Noch keine Sicherungsdateien auf dem Server.",

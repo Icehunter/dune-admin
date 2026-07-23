@@ -1206,6 +1206,7 @@ export const api = {
       return res.json()
     },
     restore: (file: string) => req<{ ok: string }>('POST', '/battlegroup/restore', { file }),
+    restartPartition: (partition: number) => req<BGOutput>('POST', '/battlegroup/restart-partition', { partition }),
   },
 
   players: {

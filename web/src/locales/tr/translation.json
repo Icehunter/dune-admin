@@ -276,6 +276,7 @@
       "backup": "Yedekle",
       "backupMsg": "Veritabanı yedeği oluşturulsun mu? Bu işlem birkaç dakika sürebilir.",
       "restart": "Yeniden Başlat",
+      "restart-partition": "Bölümü Yeniden Başlat",
       "restartMsg": "Sunucu yeniden başlatılsın mı? Oyuncular kısa süreliğine bağlantısı kesilecek.",
       "restore": "Geri Yükle",
       "restoreMsg": "Veritabanı yedekten geri yüklensin mi? Bu işlem mevcut verilerin üzerine yazacak.",
@@ -320,6 +321,14 @@
     "noGameServers": "Oyun sunucusu bulunamadı.",
     "noOutput": "(çıktı yok)",
     "phase": "Aşama",
+    "restartPartition": {
+      "body": "Bu yalnızca {{map}} (bölüm {{partition}}) sunucu sürecini yeniden başlatır. Bu haritadaki oyuncuların bağlantısı kısa süreliğine kesilir — Battlegroup'taki diğer haritalar etkilenmez.",
+      "confirm": "Bölümü Yeniden Başlat",
+      "failed": "{{map}} yeniden başlatılamadı: {{message}}",
+      "success": "{{map}} bölümü yeniden başlatıldı",
+      "title": "{{map}} yeniden başlatılsın mı?",
+      "tooltip": "Yalnızca bu bölümü yeniden başlat"
+    },
     "restore": {
       "dropzone": "Bilgisayarınızdan .backup veya .zip dosyası bırakın ya da tıklayarak yükleyin",
       "noBackups": "Sunucuda henüz yedek dosyası yok.",

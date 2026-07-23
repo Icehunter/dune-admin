@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
@@ -254,6 +255,150 @@ func (c *kubectlControl) ExecCommand(_ context.Context, exec Executor, cmd strin
 		// legitimately need sudo; battlegroup.sh does NOT.
 		return exec.Exec(fmt.Sprintf("~/.dune/download/scripts/battlegroup.sh %s 2>&1", cmd))
 	}
+}
+
+// serverRestartAPIVersion is the apiVersion for Funcom's ServerRestart CRD
+// (serverrestarts.igw.funcom.com), confirmed live via `kubectl explain
+// serverrestarts --recursive` on a k3s cluster (#185). The group is shared
+// with the sibling Battlegroup/ServerStats/ServerSet CRDs in this deployment;
+// the version is assumed "v1" by convention since no ServerRestart object has
+// ever been created there to read an apiVersion off directly. If `kubectl
+// apply` ever fails with a version-mismatch error, reconfirm with:
+//
+//	kubectl get crd serverrestarts.igw.funcom.com -o jsonpath='{.spec.versions[?(@.served)].name}'
+const serverRestartAPIVersion = "igw.funcom.com/v1"
+
+// RestartPartition restarts a single map/partition's game-server pod without
+// cycling the whole Battlegroup (#185). Unlike ExecCommand("restart") — which
+// patches the Battlegroup CRD's spec.stop and bounces every partition — this
+// creates a ServerRestart CR (mode: Pods) targeting only the one pod backing
+// the requested partition. That CR is Funcom's own operator-sanctioned
+// restart primitive (its "reason" field is clearly meant for an auditable,
+// blessed path — not a raw `kubectl delete pod`), though no ServerRestart
+// object had ever been created on the reference cluster at the time this was
+// written, so the apply behavior itself (recreation timing, whether the
+// object is cleaned up afterward) is unverified against a live cluster.
+func (c *kubectlControl) RestartPartition(_ context.Context, exec Executor, partition int) (string, error) {
+	kctl := kubectlCLI(exec)
+	ns := c.namespace
+
+	pod, err := findPartitionPod(exec, kctl, ns, partition)
+	if err != nil {
+		return "", fmt.Errorf("resolve pod for partition %d: %w", partition, err)
+	}
+
+	manifest, err := buildServerRestartManifest(ns, c.bgName(), pod, partition)
+	if err != nil {
+		return "", fmt.Errorf("build ServerRestart manifest: %w", err)
+	}
+
+	out, err := exec.Exec(fmt.Sprintf(
+		"echo %s | %s apply -n %s -f - 2>&1",
+		shellQuote(manifest), kctl, ns))
+	if err != nil {
+		return out, fmt.Errorf("create ServerRestart for partition %d (pod %s): %w — output: %s",
+			partition, pod, err, strings.TrimSpace(out))
+	}
+	return out, nil
+}
+
+// findServerSetForPartition returns the name of the ServerSet CR whose
+// spec.partitions list contains the requested partition index. Each ServerSet
+// (e.g. "sh-<id>-sg-survival-1") corresponds to exactly one map/partition —
+// confirmed live via `kubectl get serverset -o yaml` (#185) — so this is the
+// authoritative way to go from a partition index to the workload backing it.
+func findServerSetForPartition(exec Executor, kctl, ns string, partition int) (string, error) {
+	out, err := exec.Exec(fmt.Sprintf(
+		`%s get serversets -n %s -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{range .spec.partitions[*]}{.}{" "}{end}{"\n"}{end}' 2>/dev/null`,
+		kctl, ns))
+	if err != nil {
+		return "", fmt.Errorf("list serversets: %w", err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if line == "" {
+			continue
+		}
+		name, partsStr, ok := strings.Cut(line, "|")
+		if !ok || name == "" {
+			continue
+		}
+		for _, p := range strings.Fields(partsStr) {
+			if n, convErr := strconv.Atoi(p); convErr == nil && n == partition {
+				return name, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no ServerSet found for partition %d", partition)
+}
+
+// findPartitionPod resolves the concrete pod name backing a partition's
+// ServerSet. Pod names are expected to follow the StatefulSet-ordinal
+// convention (<serverset-name>-<N>), but rather than assuming ordinal 0 this
+// looks up whatever pod is actually running with that name prefix — the
+// ServerSet's replica count isn't part of dune-admin's data model, and
+// guessing an ordinal for a destructive, player-disrupting action is not
+// acceptable.
+func findPartitionPod(exec Executor, kctl, ns string, partition int) (string, error) {
+	ssName, err := findServerSetForPartition(exec, kctl, ns, partition)
+	if err != nil {
+		return "", err
+	}
+	podOut, err := exec.Exec(fmt.Sprintf(
+		"%s get pods -n %s --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | grep -- %s | head -1",
+		kctl, ns, shellQuote("^"+ssName+"-")))
+	if err != nil {
+		return "", fmt.Errorf("list pods for serverset %s: %w", ssName, err)
+	}
+	pod := strings.TrimSpace(podOut)
+	if pod == "" {
+		return "", fmt.Errorf("no pod found for serverset %s (partition %d)", ssName, partition)
+	}
+	return pod, nil
+}
+
+// serverRestartManifest is the minimal JSON shape of a ServerRestart CR
+// (serverrestarts.igw.funcom.com). kubectl apply accepts JSON as a strict
+// subset of YAML, so building compact single-line JSON (rather than YAML)
+// lets the whole manifest travel as one shell-quoted argument with no
+// heredoc/multi-line quoting concerns.
+type serverRestartManifest struct {
+	APIVersion string                  `json:"apiVersion"`
+	Kind       string                  `json:"kind"`
+	Metadata   map[string]string       `json:"metadata"`
+	Spec       serverRestartSpecFields `json:"spec"`
+}
+
+type serverRestartSpecFields struct {
+	BattleGroup string `json:"battleGroup"`
+	Mode        string `json:"mode"`
+	Pod         string `json:"pod"`
+	Reason      string `json:"reason"`
+}
+
+// buildServerRestartManifest builds the ServerRestart CR JSON for restarting
+// a single pod (mode: Pods). generateName (not name) is used because these
+// objects are one-shot audit records, not something dune-admin ever reads
+// back or reuses.
+func buildServerRestartManifest(ns, bgName, pod string, partition int) (string, error) {
+	m := serverRestartManifest{
+		APIVersion: serverRestartAPIVersion,
+		Kind:       "ServerRestart",
+		Metadata: map[string]string{
+			"generateName": "dune-admin-restart-",
+			"namespace":    ns,
+		},
+		Spec: serverRestartSpecFields{
+			BattleGroup: bgName,
+			Mode:        "Pods",
+			Pod:         pod,
+			Reason:      fmt.Sprintf("dune-admin: restart partition %d (%s) requested via UI", partition, pod),
+		},
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
 func (c *kubectlControl) ListProcesses(_ context.Context, exec Executor) ([]ProcessInfo, string, error) {

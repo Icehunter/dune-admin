@@ -276,6 +276,7 @@
       "backup": "Backup",
       "backupMsg": "Create a database backup? This may take a few minutes.",
       "restart": "Restart",
+      "restart-partition": "Restart Partition",
       "restartMsg": "Restart the server? Players will be briefly disconnected.",
       "restore": "Restore",
       "restoreMsg": "Restore database from backup? This will overwrite current data.",
@@ -320,6 +321,14 @@
     "noGameServers": "No game servers found.",
     "noOutput": "(no output)",
     "phase": "Phase",
+    "restartPartition": {
+      "body": "This restarts only the {{map}} (partition {{partition}}) server process. Players on this map will be briefly disconnected — other maps in the Battlegroup are unaffected.",
+      "confirm": "Restart Partition",
+      "failed": "Failed to restart {{map}}: {{message}}",
+      "success": "{{map}} partition restarted",
+      "title": "Restart {{map}}?",
+      "tooltip": "Restart just this partition"
+    },
     "restore": {
       "dropzone": "Drop or click to upload a .backup or .zip from your computer",
       "noBackups": "No backup files on server yet.",

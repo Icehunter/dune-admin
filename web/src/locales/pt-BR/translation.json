@@ -277,6 +277,7 @@
       "backup": "Fazer backup",
       "backupMsg": "Criar um backup do banco de dados? Isso pode levar alguns minutos.",
       "restart": "Reiniciar",
+      "restart-partition": "Reiniciar partição",
       "restartMsg": "Reiniciar o servidor? Os jogadores serão brevemente desconectados.",
       "restore": "Restaurar",
       "restoreMsg": "Restaurar banco de dados do backup? Isso substituirá os dados atuais.",
@@ -321,6 +322,14 @@
     "noGameServers": "Nenhum servidor de jogo encontrado.",
     "noOutput": "(sem saída)",
     "phase": "Fase",
+    "restartPartition": {
+      "body": "Isso reinicia apenas o processo do servidor de {{map}} (partição {{partition}}). Os jogadores neste mapa serão desconectados brevemente — os outros mapas do Battlegroup não são afetados.",
+      "confirm": "Reiniciar partição",
+      "failed": "Falha ao reiniciar {{map}}: {{message}}",
+      "success": "Partição de {{map}} reiniciada",
+      "title": "Reiniciar {{map}}?",
+      "tooltip": "Reiniciar apenas esta partição"
+    },
     "restore": {
       "dropzone": "Solte ou clique para enviar um arquivo .backup ou .zip do seu computador",
       "noBackups": "Nenhum arquivo de backup no servidor ainda.",

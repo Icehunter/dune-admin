@@ -127,6 +127,51 @@ func handleBGExec(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, map[string]string{"output": out})
 }
 
+// @Summary Restart a single map/partition without cycling the whole Battlegroup
+// @Tags battlegroup
+// @Accept json
+// @Produce json
+// @Param body body object true "partition: partition index to restart"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 501 {object} map[string]string
+// @Failure 503 {object} map[string]string
+// @Router /api/v1/battlegroup/restart-partition [post]
+func handleBGRestartPartition(w http.ResponseWriter, r *http.Request) {
+	ctrl := controlFromCtx(r)
+	if ctrl == nil {
+		jsonErr(w, fmt.Errorf("not connected"), 503)
+		return
+	}
+	restarter, ok := ctrl.(partitionRestarter)
+	if !ok {
+		jsonErr(w, fmt.Errorf("%s control plane does not support per-partition restart", ctrl.Name()), http.StatusNotImplemented)
+		return
+	}
+	var req struct {
+		Partition int `json:"partition"`
+	}
+	if err := decode(r, &req); err != nil {
+		jsonErr(w, err, 400)
+		return
+	}
+	if req.Partition < 0 {
+		jsonErr(w, fmt.Errorf("invalid partition %d", req.Partition), 400)
+		return
+	}
+	out, err := restarter.RestartPartition(r.Context(), executorFromCtx(r), req.Partition)
+	if err != nil {
+		jsonErr(w, fmt.Errorf("restart partition %d: %w — output: %s", req.Partition, err, out), 500)
+		return
+	}
+	// Same cache-drop as the whole-battlegroup lifecycle commands — a
+	// partition restart changes that server's status too.
+	if sc := serverFromCtx(r); sc != nil {
+		invalidateServerHealth(sc.ID)
+	}
+	jsonOK(w, map[string]string{"output": out})
+}
+
 // @Summary List battlegroup pods/processes and their namespace
 // @Tags battlegroup
 // @Produce json

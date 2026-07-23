@@ -6,9 +6,14 @@ export type ServersTableProps = {
   isInitializing: boolean
   loading?: boolean
   emptyMessage?: string
+  /** Shows the per-row restart-partition action. Omit/false to hide the
+   * column entirely (control plane doesn't support it, or the user lacks
+   * server:control). */
+  canRestartPartition?: boolean
+  onRestartPartition?: (server: ServerRow) => void
 }
 
-export type ServerSortKey = 'map' | 'phase' | 'players' | 'queue' | 'ready' | 'dimension' | 'partition' | 'age'
+export type ServerSortKey = 'map' | 'phase' | 'players' | 'queue' | 'ready' | 'dimension' | 'partition' | 'age' | 'actions'
 
 export type ServerRow = {
   map: string
@@ -53,6 +58,7 @@ export function getServerColumns(t: TFunction): Column<ServerSortKey>[] {
     { key: 'dimension', label: t('battlegroup.columns.dim'), width: 60 },
     { key: 'partition', label: t('battlegroup.columns.part'), width: 60 },
     { key: 'age', label: t('battlegroup.columns.age'), width: 80 },
+    { key: 'actions', label: '', width: 90, sortable: false },
   ]
 }
 

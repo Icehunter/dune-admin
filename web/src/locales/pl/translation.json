@@ -278,6 +278,7 @@
       "backup": "Kopia zapasowa",
       "backupMsg": "Utworzyć kopię zapasową bazy danych? Może to potrwać kilka minut.",
       "restart": "Uruchom ponownie",
+      "restart-partition": "Restart partycji",
       "restartMsg": "Uruchomić serwer ponownie? Gracze zostaną krótko rozłączeni.",
       "restore": "Przywróć",
       "restoreMsg": "Przywrócić bazę danych z kopii zapasowej? Spowoduje to nadpisanie bieżących danych.",
@@ -322,6 +323,14 @@
     "noGameServers": "Nie znaleziono serwerów gry.",
     "noOutput": "(brak wyjścia)",
     "phase": "Faza",
+    "restartPartition": {
+      "body": "Spowoduje to ponowne uruchomienie tylko procesu serwera {{map}} (partycja {{partition}}). Gracze na tej mapie zostaną krótko rozłączeni — inne mapy w Battlegroup nie zostaną dotknięte.",
+      "confirm": "Zrestartuj partycję",
+      "failed": "Nie udało się zrestartować {{map}}: {{message}}",
+      "success": "Zrestartowano partycję {{map}}",
+      "title": "Zrestartować {{map}}?",
+      "tooltip": "Zrestartuj tylko tę partycję"
+    },
     "restore": {
       "dropzone": "Upuść lub kliknij, aby przesłać plik .backup lub .zip z komputera",
       "noBackups": "Brak plików kopii zapasowej na serwerze.",

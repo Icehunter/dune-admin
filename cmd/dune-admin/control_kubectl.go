@@ -128,23 +128,31 @@ func (c *kubectlControl) vmHostIP() string {
 // raw host:port addresses reported by the battlegroup CRD. Empty addresses are
 // skipped. The game's director and file browser serve over http on node ports
 // (matching director_url's http convention).
+//
+// Target uses the same rewritten host as URL (#275): the mesh web proxy dials
+// Target (schemeAndDialFor in web_proxy.go), and the raw CRD address is often a
+// public/WAN node IP the executor can't route to — dialing it 502s even though
+// the displayed (rewritten) URL is reachable. Deriving both from rewriteHost
+// keeps them from drifting apart again.
 func webInterfacesFromAddresses(vmHost, directorAddr, fileBrowserAddr string) []webInterface {
 	var out []webInterface
-	if url := webInterfaceURL(vmHost, directorAddr); url != "" {
-		out = append(out, webInterface{Label: directorInterfaceLabel, URL: url, Target: strings.TrimSpace(directorAddr)})
+	if host := rewriteHost(vmHost, directorAddr); host != "" {
+		out = append(out, webInterface{Label: directorInterfaceLabel, URL: "http://" + host + "/", Target: host})
 	}
-	if url := webInterfaceURL(vmHost, fileBrowserAddr); url != "" {
-		out = append(out, webInterface{Label: "File Browser", URL: url, Target: strings.TrimSpace(fileBrowserAddr)})
+	if host := rewriteHost(vmHost, fileBrowserAddr); host != "" {
+		out = append(out, webInterface{Label: "File Browser", URL: "http://" + host + "/", Target: host})
 	}
 	return out
 }
 
-// webInterfaceURL turns a CRD-reported host:port into an operator-reachable URL.
-// The CRD advertises a node IP that is often a public/WAN address the operator
-// can't route to, so the host is rewritten to the VM IP dune-admin connects to
-// (vmHost), keeping the node port. Falls back to the reported host when vmHost
-// is unknown (local executor).
-func webInterfaceURL(vmHost, addr string) string {
+// rewriteHost turns a CRD-reported host:port into the operator-reachable
+// host:port dune-admin (and the mesh web proxy) should use — both to display and
+// to dial. The CRD advertises a node IP that is often a public/WAN address the
+// operator/executor can't route to, so the host is rewritten to the VM IP
+// dune-admin connects to (vmHost), keeping the node port. Falls back to the
+// reported host when vmHost is unknown (local executor). Returns "" for an
+// empty/blank addr or when the resulting host is empty.
+func rewriteHost(vmHost, addr string) string {
 	addr = strings.TrimSpace(addr)
 	if addr == "" {
 		return ""
@@ -160,7 +168,18 @@ func webInterfaceURL(vmHost, addr string) string {
 		return ""
 	}
 	if port != "" {
-		return "http://" + net.JoinHostPort(host, port) + "/"
+		return net.JoinHostPort(host, port)
+	}
+	return host
+}
+
+// webInterfaceURL turns a CRD-reported host:port into an operator-reachable URL.
+// Thin wrapper over rewriteHost for callers that only need the URL (e.g. tests
+// exercising the host-rewrite behavior directly).
+func webInterfaceURL(vmHost, addr string) string {
+	host := rewriteHost(vmHost, addr)
+	if host == "" {
+		return ""
 	}
 	return "http://" + host + "/"
 }

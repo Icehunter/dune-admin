@@ -9,13 +9,15 @@ import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { usePermissions } from '../../hooks/usePermissions'
 import { DiscordBadge } from './components/DiscordBadge'
 import { PlayerDetailPanel } from './components/PlayerDetailPanel'
+import { PlayerListControls } from './components/PlayerListControls'
 import { ServerDashboard } from './components/ServerDashboard'
 import { StatusDot } from './components/StatusDot'
 import { InventoryView } from './views/InventoryView'
 import { VehiclesView } from './views/VehiclesView'
 import { GiveItemsView } from './views/GiveItemsView'
 import { ActionsView } from './views/ActionsView'
-import type { DetailTab } from './types'
+import { comparePlayers, factionLabel } from './playerListHelpers'
+import type { DetailTab, PlayerSortKey, PlayerStatusFilter, SortDir } from './types'
 
 const POLL_MS = 30_000
 
@@ -41,7 +43,10 @@ export const PlayersTab: React.FC = () => {
   const [players, setPlayers] = React.useState<Player[]>([])
   const [loading, setLoading] = React.useState(false)
   const [search, setSearch] = React.useState('')
-  const [statusFilter, setStatusFilter] = React.useState<'all' | 'online' | 'offline'>('all')
+  const [statusFilter, setStatusFilter] = React.useState<PlayerStatusFilter>('all')
+  const [factionFilter, setFactionFilter] = React.useState<Set<number>>(new Set())
+  const [sortKey, setSortKey] = React.useState<PlayerSortKey>('name')
+  const [sortDir, setSortDir] = React.useState<SortDir>('asc')
   const [selected, setSelected] = React.useState<Player | null>(null)
   const [activeTab, setActiveTab] = React.useState<DetailTab>('overview')
 
@@ -78,11 +83,20 @@ export const PlayersTab: React.FC = () => {
     : statusFilter === 'offline'
       ? _searched.filter((p) => p.online_status !== 'Online')
       : _searched
-  const filtered = [..._byStatus].sort((a, b) => {
-    const aOn = a.online_status === 'Online' ? 1 : 0
-    const bOn = b.online_status === 'Online' ? 1 : 0
-    return bOn !== aOn ? bOn - aOn : a.name.localeCompare(b.name)
-  })
+  const _byFaction = factionFilter.size === 0
+    ? _byStatus
+    : _byStatus.filter((p) => factionFilter.has(p.faction_id))
+
+  // SORT is a single axis + direction, orthogonal to the FILTER facets above
+  // (#281) — no more hard online-first grouping.
+  const unalignedLabel = t('players.detail.unaligned')
+  const filtered = [..._byFaction].sort(
+    (a, b) => comparePlayers(a, b, sortKey, sortDir, unalignedLabel),
+  )
+
+  const factionOptions = Array.from(new Set(players.map((p) => p.faction_id)))
+    .sort((a, b) => a - b)
+    .map((id) => ({ id, label: factionLabel(id, unalignedLabel) }))
 
   const navItems = filtered.map((p) => {
     const statusDotColor = p.online_status === 'Online'
@@ -140,27 +154,17 @@ export const PlayersTab: React.FC = () => {
         )}
         width="w-80"
         listHeader={(
-          <Segment
-            aria-label={t('players.filter.label')}
-            variant="ghost"
-            size="sm"
-            className="w-full"
-            selectedKey={statusFilter}
-            onSelectionChange={(key) => setStatusFilter(key as 'all' | 'online' | 'offline')}
-          >
-            <Segment.Item id="all">
-              <Segment.Separator />
-              {t('players.filter.all')}
-            </Segment.Item>
-            <Segment.Item id="online">
-              <Segment.Separator />
-              {t('players.filter.online')}
-            </Segment.Item>
-            <Segment.Item id="offline">
-              <Segment.Separator />
-              {t('players.filter.offline')}
-            </Segment.Item>
-          </Segment>
+          <PlayerListControls
+            sortKey={sortKey}
+            onSortKeyChange={setSortKey}
+            sortDir={sortDir}
+            onToggleSortDir={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            factionFilter={factionFilter}
+            onFactionFilterChange={setFactionFilter}
+            factionOptions={factionOptions}
+          />
         )}
         emptyContent={t('players.filter.empty')}
       >

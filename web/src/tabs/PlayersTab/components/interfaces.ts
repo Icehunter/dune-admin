@@ -1,5 +1,6 @@
 import * as React from 'react'
 import type { Player, SessionRecord, StatSnapshot } from '../../../api/client'
+import type { PlayerSortKey, PlayerStatusFilter, SortDir } from '../types'
 
 export interface PlayerCardProps {
   player: Player
@@ -48,4 +49,21 @@ export interface SolarisPoint {
 
 export interface StatusDotProps {
   status: string
+}
+
+export interface PlayerFactionOption {
+  id: number
+  label: string
+}
+
+export interface PlayerListControlsProps {
+  sortKey: PlayerSortKey
+  onSortKeyChange: (key: PlayerSortKey) => void
+  sortDir: SortDir
+  onToggleSortDir: () => void
+  statusFilter: PlayerStatusFilter
+  onStatusFilterChange: (status: PlayerStatusFilter) => void
+  factionFilter: Set<number>
+  onFactionFilterChange: (factions: Set<number>) => void
+  factionOptions: PlayerFactionOption[]
 }

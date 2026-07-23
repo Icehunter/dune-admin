@@ -1240,7 +1240,20 @@
       "all": "All",
       "online": "Online",
       "offline": "Offline",
-      "empty": "No players found"
+      "empty": "No players found",
+      "faction": "Filter by faction"
+    },
+    "sort": {
+      "label": "Sort by",
+      "columns": {
+        "id": "ID",
+        "name": "Name",
+        "class": "Class",
+        "map": "Map",
+        "faction_id": "Faction"
+      },
+      "ascLabel": "Sort ascending",
+      "descLabel": "Sort descending"
     },
     "intelAudit": {
       "title": "Intel Denetimi",

@@ -7,6 +7,12 @@ import "testing"
 // operator may not be able to route to, so the host is rewritten to the VM IP
 // dune-admin connects to (vmHost) while keeping the node port. Empty addresses
 // are skipped.
+//
+// Target must match the URL host (#275): the proxy dials Target, and a raw,
+// unroutable CRD address there produces a 502 even though the displayed URL
+// (host-rewritten to vmHost) is reachable. Pre-fix, Target kept the raw CRD
+// address while URL was rewritten — this test enforces they derive from the
+// same rewrite.
 func TestWebInterfacesFromAddresses(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -16,24 +22,24 @@ func TestWebInterfacesFromAddresses(t *testing.T) {
 		want     []webInterface
 	}{
 		{
-			name:     "rewrites the CRD node IP to the VM IP, keeps the port",
+			name:     "rewrites the CRD node IP to the VM IP, keeps the port, Target matches URL host",
 			vmHost:   "192.168.0.67",
 			director: "207.216.171.194:31592",
 			files:    "207.216.171.194:18888",
 			want: []webInterface{
-				{Label: "Battlegroup Director", URL: "http://192.168.0.67:31592/", Target: "207.216.171.194:31592"},
-				{Label: "File Browser", URL: "http://192.168.0.67:18888/", Target: "207.216.171.194:18888"},
+				{Label: "Battlegroup Director", URL: "http://192.168.0.67:31592/", Target: "192.168.0.67:31592"},
+				{Label: "File Browser", URL: "http://192.168.0.67:18888/", Target: "192.168.0.67:18888"},
 			},
 		},
 		{
-			name:     "only file browser",
+			name:     "only file browser, Target matches URL host",
 			vmHost:   "192.168.0.67",
 			director: "",
 			files:    "207.216.171.194:18888",
-			want:     []webInterface{{Label: "File Browser", URL: "http://192.168.0.67:18888/", Target: "207.216.171.194:18888"}},
+			want:     []webInterface{{Label: "File Browser", URL: "http://192.168.0.67:18888/", Target: "192.168.0.67:18888"}},
 		},
 		{
-			name:     "no vmHost (local executor) falls back to the reported host",
+			name:     "no vmHost (local executor) falls back to the reported host for both URL and Target",
 			vmHost:   "",
 			director: "207.216.171.194:31592",
 			files:    "",
@@ -45,6 +51,13 @@ func TestWebInterfacesFromAddresses(t *testing.T) {
 			director: "  ",
 			files:    "",
 			want:     nil,
+		},
+		{
+			name:     "CRD address with no port: Target is the bare rewritten host, matching URL",
+			vmHost:   "192.168.0.67",
+			director: "207.216.171.194",
+			files:    "",
+			want:     []webInterface{{Label: "Battlegroup Director", URL: "http://192.168.0.67/", Target: "192.168.0.67"}},
 		},
 	}
 	for _, tt := range tests {

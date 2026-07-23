@@ -111,6 +111,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ cfg, set, setBool, s
           <TwoColumnGrid>
             <FieldRow label={t('settings.amp.apiUser')}><TextInput value={cfg.amp_api_user} onChange={set('amp_api_user')} placeholder="admin" /></FieldRow>
             <FieldRow label={t('settings.amp.apiPassword')}><TextInput value={cfg.amp_api_pass} onChange={set('amp_api_pass')} type="password" placeholder={MASKED} /></FieldRow>
+            <FieldRow label={t('settings.amp.apiHost')} hint={t('settings.amp.apiHostHint')}><TextInput value={cfg.amp_api_host} onChange={set('amp_api_host')} placeholder="127.0.0.1" /></FieldRow>
             <FieldRow label={t('settings.amp.apiPort')}>
               <TextInput
                 value={cfg.amp_api_port ? String(cfg.amp_api_port) : ''}

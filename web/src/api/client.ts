@@ -206,6 +206,10 @@ export type AppConfig = {
   amp_data_root: string
   amp_api_user: string
   amp_api_pass: string // masked when non-empty
+  // Host for the AMP Web API call. Empty → 127.0.0.1 (AMP and the game server
+  // share a host). Set only for a split control-plane topology where AMP's
+  // Web API runs on a separate, reachable VM from the game server (issue #284).
+  amp_api_host: string
   amp_api_port: number
   director_url: string
   // Optional host override for control-plane-discovered Web Interface URLs

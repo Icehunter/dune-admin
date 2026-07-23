@@ -191,9 +191,13 @@ type appConfig struct {
 	// AMP Web API credentials — let dune-admin manage server settings under AMP
 	// by writing them through AMP's own config API (Core/SetConfig), so they
 	// survive AMP regenerating the game INIs. The API is the instance ADS,
-	// reached in-container at 127.0.0.1:<amp_api_port> (default 8081).
+	// reached in-container at 127.0.0.1:<amp_api_port> (default 8081). Set
+	// amp_api_host when AMP's Web API runs on a different, reachable host than
+	// the game server — a split control-plane topology (issue #284) — so the
+	// call targets that host directly instead of the game host's own loopback.
 	AmpAPIUser  string `yaml:"amp_api_user" json:"amp_api_user"`
 	AmpAPIPass  string `yaml:"amp_api_pass" json:"amp_api_pass"`
+	AmpAPIHost  string `yaml:"amp_api_host" json:"amp_api_host"`
 	AmpAPIPort  int    `yaml:"amp_api_port" json:"amp_api_port"`
 	DirectorURL string `yaml:"director_url" json:"director_url"`
 	// WebInterfaceHostOverride is an optional per-server host that takes

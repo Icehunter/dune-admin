@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 )
 
@@ -11,28 +13,40 @@ import (
 // the AMP container at http://127.0.0.1:8081/API/.
 const defaultAmpAPIPort = 8081
 
+// defaultAmpAPIHost is used when amp_api_host is unset — the common case where
+// AMP and the game server share a host, so the ADS Web API is only reachable
+// on that host's own loopback.
+const defaultAmpAPIHost = "127.0.0.1"
+
 // ampAPIClient talks to a CubeCoders AMP instance's Web API. Under the AMP
 // control plane, gameplay/server settings are owned by AMP: it regenerates
 // UserEngine.ini / UserGame.ini from its own config (GenericModule.kvp →
 // App.AppSettings) on every start, so a direct INI edit gets clobbered. Writing
 // through the AMP API persists cleanly and survives restarts.
 //
-// Requests are issued by building a curl command, wrapping it for in-container
-// execution via wrap (ampControl.wrapInContainer), and running it through the
-// host Executor. The AMP ADS port is not exposed on the host, but the executor
-// already execs into the container for logs and rabbitmqctl, so the same path
-// reaches the loopback API with no extra port plumbing.
+// Requests are issued by building a curl command and running it through the
+// host Executor. When host is unset/loopback (the common single-host install),
+// the command is wrapped for in-container execution via wrap
+// (ampControl.wrapInContainer) — the AMP ADS port is not exposed on the game
+// host itself, but the executor already execs into the container for logs and
+// rabbitmqctl, so the same path reaches the loopback API with no extra port
+// plumbing. When host is a separate, non-loopback address (issue #284: AMP's
+// Web API on a dedicated control-plane VM, game servers on another host), the
+// wrap is bypassed and the curl runs raw on the game host — wrapping it would
+// misroute the call into the game host's own loopback/container instead of the
+// reachable control-plane VM.
 type ampAPIClient struct {
 	exec      Executor
 	wrap      func(string) string // wraps an in-container shell command
 	user      string
 	pass      string
+	host      string // "" → defaultAmpAPIHost (loopback)
 	port      int
 	sessionID string // cached after the first successful login
 }
 
-func newAMPAPIClient(exec Executor, wrap func(string) string, user, pass string, port int) *ampAPIClient {
-	return &ampAPIClient{exec: exec, wrap: wrap, user: user, pass: pass, port: port}
+func newAMPAPIClient(exec Executor, wrap func(string) string, user, pass, host string, port int) *ampAPIClient {
+	return &ampAPIClient{exec: exec, wrap: wrap, user: user, pass: pass, host: host, port: port}
 }
 
 func (c *ampAPIClient) apiPort() int {
@@ -42,14 +56,58 @@ func (c *ampAPIClient) apiPort() int {
 	return c.port
 }
 
+func (c *ampAPIClient) apiHost() string {
+	if c.host == "" {
+		return defaultAmpAPIHost
+	}
+	return c.host
+}
+
+// endpoint builds the AMP API URL for path. net.JoinHostPort brackets a bare
+// IPv6 host (e.g. "::1" → "[::1]:8081") so the result is always a well-formed
+// authority — a raw "http://::1:8081/..." is ambiguous/unparseable.
 func (c *ampAPIClient) endpoint(path string) string {
-	return fmt.Sprintf("http://127.0.0.1:%d/API/%s", c.apiPort(), path)
+	return fmt.Sprintf("http://%s/API/%s", net.JoinHostPort(c.apiHost(), strconv.Itoa(c.apiPort())), path)
+}
+
+// isLoopbackAPIHost reports whether host resolves to the local machine — the
+// only case where wrapping the AMP API call into the container/host loopback
+// (ampControl.wrapInContainer) is correct. An empty host means "unset", which
+// apiHost() resolves to defaultAmpAPIHost (loopback).
+//
+// Real IPv4/IPv6 addresses (including 127.0.0.0/8 beyond 127.0.0.1, and
+// bracketed IPv6 forms like "[::1]") are checked via net.IP.IsLoopback().
+// "127.1" is a legacy short-form some resolvers (and curl) accept as
+// 127.0.0.1 but net.ParseIP rejects, so it's special-cased. Unrecognised
+// non-loopback hosts (a separate control-plane VM, issue #284) correctly
+// return false and bypass the wrap in post().
+func isLoopbackAPIHost(host string) bool {
+	h := strings.ToLower(strings.TrimSpace(host))
+	h = strings.TrimPrefix(h, "[")
+	h = strings.TrimSuffix(h, "]")
+	switch h {
+	case "", "localhost", "ip6-localhost", "ip6-loopback", "127.1":
+		return true
+	}
+	if ip := net.ParseIP(h); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }
 
 // buildCurl returns an in-container shell command that POSTs payload as JSON to
 // the named AMP API endpoint. The JSON body is base64-piped to curl so
 // operator-supplied values (passwords, server names) never touch the shell
-// command line — eliminating both quoting bugs and shell-injection risk.
+// command line as raw request-body content — eliminating both quoting bugs
+// and shell-injection risk there. The target endpoint URL — which embeds
+// c.apiHost(), an operator-configured value in a split control-plane
+// topology (issue #284) — is itself shell-quoted before being placed on the
+// command line: every operator-supplied value reaching a shell command in
+// this codebase goes through shellQuote (see control_amp.go, control_docker.go,
+// control_kubectl.go, executor_amp.go and executor.go's exec.Command #nosec
+// G702 justification), and the host is no exception. Without it, a host like
+// "10.0.0.5; rm -rf /" would alter the command's structure instead of just
+// failing to resolve.
 func (c *ampAPIClient) buildCurl(path string, payload any) (string, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -60,21 +118,42 @@ func (c *ampAPIClient) buildCurl(path string, payload any) (string, error) {
 		"echo %s | base64 -d | curl -s -m 20 -X POST "+
 			"-H 'Content-Type: application/json' -H 'Accept: application/json' "+
 			"--data-binary @- %s",
-		b64, c.endpoint(path)), nil
+		b64, shellQuote(c.endpoint(path))), nil
 }
 
 // post runs an AMP API call and returns the trimmed response body. Executor
-// failures are wrapped and surface curl's stderr for diagnosis.
+// failures are wrapped and surface curl's stderr for diagnosis; a curl exit-7
+// ("couldn't connect") gets an actionable hint naming the unreachable
+// host:port instead of the bare exit status.
 func (c *ampAPIClient) post(path string, payload any) (string, error) {
 	cmd, err := c.buildCurl(path, payload)
 	if err != nil {
 		return "", err
 	}
-	out, err := c.exec.Exec(c.wrap(cmd))
+	runCmd := cmd
+	if isLoopbackAPIHost(c.host) {
+		runCmd = c.wrap(cmd)
+	}
+	out, err := c.exec.Exec(runCmd)
 	if err != nil {
-		return "", fmt.Errorf("amp api %s: %w (output: %s)", path, err, strings.TrimSpace(out))
+		return "", c.postError(path, err, out)
 	}
 	return strings.TrimSpace(out), nil
+}
+
+// postError formats a post() failure. curl exit status 7 means "couldn't
+// connect" — in a split control-plane topology (issue #284) this almost
+// always means amp_api_host isn't reachable from wherever dune-admin runs, so
+// that case gets a targeted message naming the host:port instead of the bare
+// exit status.
+func (c *ampAPIClient) postError(path string, err error, out string) error {
+	trimmed := strings.TrimSpace(out)
+	if strings.Contains(err.Error(), "exit status 7") {
+		return fmt.Errorf(
+			"amp api %s: could not connect to AMP Web API at %s — it must be reachable from where dune-admin runs (output: %s)",
+			path, net.JoinHostPort(c.apiHost(), strconv.Itoa(c.apiPort())), trimmed)
+	}
+	return fmt.Errorf("amp api %s: %w (output: %s)", path, err, trimmed)
 }
 
 // login authenticates against Core/Login and caches the session ID. AMP returns

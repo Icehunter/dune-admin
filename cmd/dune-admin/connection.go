@@ -376,6 +376,7 @@ func legacyServerFromFlat(ac appConfig) ServerConfig {
 		AmpDataRoot:         ac.AmpDataRoot,
 		AmpAPIUser:          ac.AmpAPIUser,
 		AmpAPIPass:          ac.AmpAPIPass,
+		AmpAPIHost:          ac.AmpAPIHost,
 		AmpAPIPort:          ac.AmpAPIPort,
 		AmpPgBin:            ac.AmpPgBin,
 		AmpPgLib:            ac.AmpPgLib,
@@ -438,6 +439,7 @@ func serverCfgToAppConfig(sc ServerConfig) appConfig {
 	ac.AmpDataRoot = sc.AmpDataRoot
 	ac.AmpAPIUser = sc.AmpAPIUser
 	ac.AmpAPIPass = sc.AmpAPIPass
+	ac.AmpAPIHost = sc.AmpAPIHost
 	ac.AmpAPIPort = sc.AmpAPIPort
 	ac.AmpPgBin = sc.AmpPgBin
 	ac.AmpPgLib = sc.AmpPgLib

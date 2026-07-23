@@ -83,6 +83,7 @@ type ServerConfig struct {
 	AmpDataRoot         string `yaml:"amp_data_root"         json:"amp_data_root"`
 	AmpAPIUser          string `yaml:"amp_api_user"          json:"amp_api_user"`
 	AmpAPIPass          string `yaml:"amp_api_pass"          json:"amp_api_pass"`
+	AmpAPIHost          string `yaml:"amp_api_host"          json:"amp_api_host"`
 	AmpAPIPort          int    `yaml:"amp_api_port"          json:"amp_api_port"`
 	AmpPgBin            string `yaml:"amp_pg_bin"            json:"amp_pg_bin"`
 	AmpPgLib            string `yaml:"amp_pg_lib"            json:"amp_pg_lib"`

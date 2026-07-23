@@ -138,6 +138,7 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 			dataRoot:             cfg.AmpDataRoot,
 			apiUser:              cfg.AmpAPIUser,
 			apiPass:              cfg.AmpAPIPass,
+			apiHost:              cfg.AmpAPIHost,
 			apiPort:              cfg.AmpAPIPort,
 			pgBin:                cfg.AmpPgBin,
 			pgLib:                cfg.AmpPgLib,

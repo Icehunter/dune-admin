@@ -47,7 +47,7 @@ func TestAMPAPILogin_BuildsRequestAndReturnsSession(t *testing.T) {
 		gotCmd = cmd
 		return `{"success":true,"resultReason":"","sessionID":"abc-123"}`, nil
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "s3cr3t!", 0)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "s3cr3t!", "", 0)
 
 	sid, err := c.login()
 	if err != nil {
@@ -94,7 +94,7 @@ func TestAMPAPILogin_HonoursConfiguredPort(t *testing.T) {
 		gotCmd = cmd
 		return `{"success":true,"sessionID":"x"}`, nil
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "u", "p", 9999)
+	c := newAMPAPIClient(exec, identityWrap, "u", "p", "", 9999)
 	if _, err := c.login(); err != nil {
 		t.Fatalf("login: %v", err)
 	}
@@ -103,12 +103,161 @@ func TestAMPAPILogin_HonoursConfiguredPort(t *testing.T) {
 	}
 }
 
+// taggingWrap prefixes a command with a marker so tests can tell whether
+// post() routed a call through the in-container wrap or ran it raw on the
+// host. Unlike identityWrap (used everywhere else to keep asserted commands
+// readable), the wrap/bypass tests need to observe whether wrap was applied
+// at all.
+func taggingWrap(s string) string { return "WRAPPED:" + s }
+
+// ── endpoint host selection (issue #284) ─────────────────────────────────────
+
+func TestAMPAPIEndpoint_DefaultsToLoopbackHost(t *testing.T) {
+	t.Parallel()
+	var gotCmd string
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		gotCmd = cmd
+		return `{"success":true,"sessionID":"x"}`, nil
+	}}
+	c := newAMPAPIClient(exec, identityWrap, "u", "p", "", 0)
+	if _, err := c.login(); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if !strings.Contains(gotCmd, "http://127.0.0.1:8081/API/Core/Login") {
+		t.Errorf("expected default loopback host in endpoint: %q", gotCmd)
+	}
+}
+
+func TestAMPAPIEndpoint_HonoursConfiguredHost(t *testing.T) {
+	t.Parallel()
+	var gotCmd string
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		gotCmd = cmd
+		return `{"success":true,"sessionID":"x"}`, nil
+	}}
+	c := newAMPAPIClient(exec, identityWrap, "u", "p", "10.0.0.5", 8081)
+	if _, err := c.login(); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if !strings.Contains(gotCmd, "http://10.0.0.5:8081/API/Core/Login") {
+		t.Errorf("expected configured host in endpoint: %q", gotCmd)
+	}
+}
+
+// ── wrap/bypass decision (issue #284) ────────────────────────────────────────
+//
+// The AMP ADS port is not exposed on the game host, so a loopback (default)
+// amp_api_host must still be reached via the in-container wrap. A configured
+// non-loopback host is a separate control-plane VM reachable directly from the
+// game host over the network — wrapping that call into the local
+// container/host loopback would misroute it there instead, so it must bypass
+// wrap and run raw via the host executor.
+
+func TestAMPAPIPost_LoopbackHostWrapsIntoContainer(t *testing.T) {
+	t.Parallel()
+	var gotCmd string
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		gotCmd = cmd
+		return `{"success":true,"sessionID":"x"}`, nil
+	}}
+	for _, host := range []string{"", "127.0.0.1", "localhost", "::1"} {
+		c := newAMPAPIClient(exec, taggingWrap, "u", "p", host, 0)
+		if _, err := c.login(); err != nil {
+			t.Fatalf("login (host=%q): %v", host, err)
+		}
+		if !strings.HasPrefix(gotCmd, "WRAPPED:") {
+			t.Errorf("host %q: expected command to be wrapped for in-container exec, got: %q", host, gotCmd)
+		}
+	}
+}
+
+func TestAMPAPIPost_NonLoopbackHostBypassesWrap(t *testing.T) {
+	t.Parallel()
+	var gotCmd string
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		gotCmd = cmd
+		return `{"success":true,"sessionID":"x"}`, nil
+	}}
+	c := newAMPAPIClient(exec, taggingWrap, "u", "p", "10.0.0.5", 8081)
+	if _, err := c.login(); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if strings.HasPrefix(gotCmd, "WRAPPED:") {
+		t.Errorf("non-loopback host must bypass the container wrap, got: %q", gotCmd)
+	}
+	if !strings.Contains(gotCmd, "http://10.0.0.5:8081/API/Core/Login") {
+		t.Errorf("expected raw command to target the configured host: %q", gotCmd)
+	}
+}
+
+// ── curl exit-7 ("couldn't connect") error mapping (issue #284) ─────────────
+
+func TestAMPAPIPost_Exit7MapsToActionableError(t *testing.T) {
+	t.Parallel()
+	exec := &fnExecutor{fn: func(string) (string, error) {
+		return "curl: (7) Failed to connect to 10.0.0.5 port 8081: Connection refused", errors.New("exit status 7")
+	}}
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "10.0.0.5", 8081)
+	_, err := c.login()
+	if err == nil {
+		t.Fatal("expected error when curl cannot connect")
+	}
+	if !strings.Contains(err.Error(), "10.0.0.5:8081") {
+		t.Errorf("error should name the unreachable host:port, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "reachable from where dune-admin runs") {
+		t.Errorf("error should explain the AMP Web API must be reachable from where dune-admin runs, got: %v", err)
+	}
+}
+
+func TestAMPAPIPost_NonExit7ErrorKeepsGenericFormat(t *testing.T) {
+	t.Parallel()
+	exec := &fnExecutor{fn: func(string) (string, error) {
+		return "some other failure", errors.New("exit status 1")
+	}}
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
+	_, err := c.login()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if strings.Contains(err.Error(), "reachable from where dune-admin runs") {
+		t.Errorf("non-exit-7 errors should not get the exit-7 hint, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "exit status 1") {
+		t.Errorf("expected the underlying error preserved, got: %v", err)
+	}
+}
+
+// ── isLoopbackAPIHost ─────────────────────────────────────────────────────────
+
+func TestIsLoopbackAPIHost(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		host string
+		want bool
+	}{
+		{"", true},
+		{"127.0.0.1", true},
+		{"localhost", true},
+		{"LOCALHOST", true},
+		{"::1", true},
+		{"10.0.0.5", false},
+		{"controlplane.example.com", false},
+		{"192.168.0.59", false},
+	}
+	for _, tt := range tests {
+		if got := isLoopbackAPIHost(tt.host); got != tt.want {
+			t.Errorf("isLoopbackAPIHost(%q) = %v, want %v", tt.host, got, tt.want)
+		}
+	}
+}
+
 func TestAMPAPILogin_FailedAuthIsError(t *testing.T) {
 	t.Parallel()
 	exec := &fnExecutor{fn: func(string) (string, error) {
 		return `{"success":false,"resultReason":"Invalid username or password.","sessionID":""}`, nil
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "wrong", 8081)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "wrong", "", 8081)
 	_, err := c.login()
 	if err == nil {
 		t.Fatal("expected error on failed auth")
@@ -123,7 +272,7 @@ func TestAMPAPILogin_ExecErrorIsWrapped(t *testing.T) {
 	exec := &fnExecutor{fn: func(string) (string, error) {
 		return "curl: (7) Failed to connect", errors.New("exit status 7")
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
 	if _, err := c.login(); err == nil {
 		t.Fatal("expected error when exec fails")
 	}
@@ -132,7 +281,7 @@ func TestAMPAPILogin_ExecErrorIsWrapped(t *testing.T) {
 func TestAMPAPILogin_GarbageResponseIsError(t *testing.T) {
 	t.Parallel()
 	exec := &fnExecutor{fn: func(string) (string, error) { return "not json at all", nil }}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
 	if _, err := c.login(); err == nil {
 		t.Fatal("expected error on non-JSON response")
 	}
@@ -158,7 +307,7 @@ func TestAMPAPISetConfig_LogsInThenSetsAndReusesSession(t *testing.T) {
 			return "", nil
 		}
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
 
 	node := "Meta.GenericModule.ConsoleVariables.Dune.GlobalMiningOutputMultiplier"
 	if err := c.setConfig(node, "3.0"); err != nil {
@@ -202,7 +351,7 @@ func TestAMPAPISetConfig_StatusFalseIsError(t *testing.T) {
 		}
 		return `{"Status":false,"Reason":"No such node."}`, nil
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
 	err := c.setConfig("Meta.GenericModule.Nope", "1")
 	if err == nil {
 		t.Fatal("expected error when Status is false")
@@ -228,7 +377,7 @@ func TestAMPAPISetConfig_AcceptsBareBoolResult(t *testing.T) {
 		}
 		return `true`, nil
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
 	if err := c.setConfig("Meta.GenericModule.X", "1"); err != nil {
 		t.Errorf("bare true should be success, got: %v", err)
 	}
@@ -244,7 +393,7 @@ func TestAMPAPISetConfig_LoginFailureAborts(t *testing.T) {
 		setReached = true
 		return `{"Status":true}`, nil
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
 	if err := c.setConfig("Meta.GenericModule.X", "1"); err == nil {
 		t.Fatal("expected error when login fails")
 	}
@@ -276,7 +425,7 @@ func TestAMPAPIGetConfig_ReturnsCurrentValue(t *testing.T) {
 				getCmd = cmd
 				return tt.resp, nil
 			}}
-			c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+			c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
 			got, err := c.getConfig("Meta.GenericModule.X")
 			if err != nil {
 				t.Fatalf("getConfig: %v", err)
@@ -323,7 +472,7 @@ func TestAMPAPISetConfig_RetriesOnSessionExpiry(t *testing.T) {
 			return "", nil
 		}
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
 	if err := c.setConfig("Meta.GenericModule.X", "1"); err != nil {
 		t.Errorf("expected retry to succeed on session expiry, got: %v", err)
 	}
@@ -344,7 +493,7 @@ func TestAMPAPISetConfig_DoesNotRetryNonSessionError(t *testing.T) {
 		setCalls++
 		return `{"Status":false,"Reason":"No such node."}`, nil
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
 	err := c.setConfig("Meta.GenericModule.Bogus", "1")
 	if err == nil {
 		t.Fatal("expected error for no-such-node rejection")
@@ -374,7 +523,7 @@ func TestAMPAPISetConfig_ReloginFailurePropagates(t *testing.T) {
 			return "", nil
 		}
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", 8081)
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
 	err := c.setConfig("Meta.GenericModule.X", "1")
 	if err == nil {
 		t.Fatal("expected error when re-login fails after session expiry")

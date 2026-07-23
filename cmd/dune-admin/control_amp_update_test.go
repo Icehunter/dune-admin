@@ -310,7 +310,7 @@ func TestAMPAPIRunningTaskCount_ParsesAndRetries(t *testing.T) {
 		}
 		return `{"State":75,"RunningTasks":[{"Id":"a"},{"Id":"b"}]}`, nil
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "u", "p", 0)
+	c := newAMPAPIClient(exec, identityWrap, "u", "p", "", 0)
 	n, err := c.runningTaskCount()
 	if err != nil {
 		t.Fatalf("runningTaskCount: %v", err)
@@ -326,7 +326,7 @@ func TestAMPAPIRunningTaskCount_ParsesAndRetries(t *testing.T) {
 		}
 		return `{"State":999,"RunningTasks":[]}`, nil
 	}}
-	cDone := newAMPAPIClient(execDone, identityWrap, "u", "p", 0)
+	cDone := newAMPAPIClient(execDone, identityWrap, "u", "p", "", 0)
 	if n, err := cDone.runningTaskCount(); err != nil || n != 0 {
 		t.Fatalf("empty RunningTasks: n=%d err=%v, want 0/nil", n, err)
 	}
@@ -422,7 +422,7 @@ func TestAMPAPIUpdateApplication_AcceptsRunningTaskAndVoid(t *testing.T) {
 			}
 			return resp, nil
 		}}
-		c := newAMPAPIClient(exec, identityWrap, "u", "p", 0)
+		c := newAMPAPIClient(exec, identityWrap, "u", "p", "", 0)
 		if _, err := c.updateApplication(); err != nil {
 			t.Errorf("resp %q: unexpected error: %v", resp, err)
 		}
@@ -445,7 +445,7 @@ func TestAMPAPIUpdateApplication_RetriesOnSessionExpiry(t *testing.T) {
 		}
 		return `{"Id":"t","Name":"Updating"}`, nil
 	}}
-	c := newAMPAPIClient(exec, identityWrap, "u", "p", 0)
+	c := newAMPAPIClient(exec, identityWrap, "u", "p", "", 0)
 	if _, err := c.updateApplication(); err != nil {
 		t.Fatalf("updateApplication: %v", err)
 	}

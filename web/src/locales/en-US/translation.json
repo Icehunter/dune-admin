@@ -1328,6 +1328,8 @@
       "user": "AMP user",
       "apiUser": "AMP API user",
       "apiPassword": "AMP API password",
+      "apiHost": "AMP API host",
+      "apiHostHint": "Only set this if AMP's Web API runs on a different, reachable host than the game server (split control-plane topology). Defaults to 127.0.0.1.",
       "apiPort": "AMP API port",
       "apiHint": "AMP Web API login. Lets dune-admin manage server settings under AMP so they survive restarts. Default port 8081."
     },

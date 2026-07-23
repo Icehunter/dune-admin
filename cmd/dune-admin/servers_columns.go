@@ -55,6 +55,7 @@ var serverColumnAlters = []string{
 	"ALTER TABLE servers ADD COLUMN amp_data_root TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE servers ADD COLUMN amp_api_user TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE servers ADD COLUMN amp_api_pass TEXT NOT NULL DEFAULT ''",
+	"ALTER TABLE servers ADD COLUMN amp_api_host TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE servers ADD COLUMN amp_api_port INTEGER NOT NULL DEFAULT 0",
 	"ALTER TABLE servers ADD COLUMN amp_pg_bin TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE servers ADD COLUMN amp_pg_lib TEXT NOT NULL DEFAULT ''",
@@ -87,7 +88,7 @@ const serverColumnNames = `ssh_host, ssh_user, ssh_key, ssh_mode, ssh_extra_opts
 	broker_game_addr, broker_admin_addr, broker_tls, broker_user, broker_pass, broker_jwt_secret,
 	broker_exec_prefix, backup_dir, server_ini_dir, default_ini_dir,
 	amp_instance, amp_container, amp_user, amp_log_path, amp_use_container, amp_container_runtime,
-	amp_data_root, amp_api_user, amp_api_pass, amp_api_port, amp_pg_bin, amp_pg_lib, amp_backup_dir,
+	amp_data_root, amp_api_user, amp_api_pass, amp_api_host, amp_api_port, amp_pg_bin, amp_pg_lib, amp_backup_dir,
 	amp_container_stop_timeout, amp_update_auto_restart,
 	director_url, market_bot_enabled, web_interface_host_override, timezone`
 
@@ -102,7 +103,7 @@ func writeServerColumns(db dbExecer, id int, cfg ServerConfig) error {
 		broker_game_addr=?, broker_admin_addr=?, broker_tls=?, broker_user=?, broker_pass=?,
 		broker_jwt_secret=?, broker_exec_prefix=?, backup_dir=?, server_ini_dir=?, default_ini_dir=?,
 		amp_instance=?, amp_container=?, amp_user=?, amp_log_path=?, amp_use_container=?,
-		amp_container_runtime=?, amp_data_root=?, amp_api_user=?, amp_api_pass=?, amp_api_port=?,
+		amp_container_runtime=?, amp_data_root=?, amp_api_user=?, amp_api_pass=?, amp_api_host=?, amp_api_port=?,
 		amp_pg_bin=?, amp_pg_lib=?, amp_backup_dir=?,
 		amp_container_stop_timeout=?, amp_update_auto_restart=?, director_url=?, market_bot_enabled=?,
 		web_interface_host_override=?, timezone=?
@@ -114,7 +115,7 @@ func writeServerColumns(db dbExecer, id int, cfg ServerConfig) error {
 		cfg.BrokerGameAddr, cfg.BrokerAdminAddr, b2i(cfg.BrokerTLS), cfg.BrokerUser, cfg.BrokerPass,
 		cfg.BrokerJWTSecret, cfg.BrokerExecPrefix, cfg.BackupDir, cfg.ServerIniDir, cfg.DefaultIniDir,
 		cfg.AmpInstance, cfg.AmpContainer, cfg.AmpUser, cfg.AmpLogPath, boolPtrToNullInt(cfg.AmpUseContainer),
-		cfg.AmpContainerRuntime, cfg.AmpDataRoot, cfg.AmpAPIUser, cfg.AmpAPIPass, cfg.AmpAPIPort,
+		cfg.AmpContainerRuntime, cfg.AmpDataRoot, cfg.AmpAPIUser, cfg.AmpAPIPass, cfg.AmpAPIHost, cfg.AmpAPIPort,
 		cfg.AmpPgBin, cfg.AmpPgLib, cfg.AmpBackupDir,
 		cfg.AmpContainerStopTimeout, boolPtrToNullInt(cfg.AmpUpdateAutoRestart), cfg.DirectorURL, boolPtrToNullInt(cfg.MarketBotEnabled),
 		cfg.WebInterfaceHostOverride, cfg.Timezone,
@@ -139,7 +140,7 @@ func readServerColumns(db dbRowQueryer, id int) (ServerConfig, error) {
 		&cfg.BrokerGameAddr, &cfg.BrokerAdminAddr, &brokerTLS, &cfg.BrokerUser, &cfg.BrokerPass,
 		&cfg.BrokerJWTSecret, &cfg.BrokerExecPrefix, &cfg.BackupDir, &cfg.ServerIniDir, &cfg.DefaultIniDir,
 		&cfg.AmpInstance, &cfg.AmpContainer, &cfg.AmpUser, &cfg.AmpLogPath, &ampUseContainer,
-		&cfg.AmpContainerRuntime, &cfg.AmpDataRoot, &cfg.AmpAPIUser, &cfg.AmpAPIPass, &cfg.AmpAPIPort,
+		&cfg.AmpContainerRuntime, &cfg.AmpDataRoot, &cfg.AmpAPIUser, &cfg.AmpAPIPass, &cfg.AmpAPIHost, &cfg.AmpAPIPort,
 		&cfg.AmpPgBin, &cfg.AmpPgLib, &cfg.AmpBackupDir,
 		&cfg.AmpContainerStopTimeout, &ampUpdateAutoRestart, &cfg.DirectorURL, &marketBotEnabled,
 		&cfg.WebInterfaceHostOverride, &cfg.Timezone)

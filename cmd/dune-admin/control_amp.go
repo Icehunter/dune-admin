@@ -44,7 +44,8 @@ type ampControl struct {
 	// config (Core/SetConfig) so they survive AMP regenerating the game INIs.
 	apiUser string
 	apiPass string
-	apiPort int // 0 → defaultAmpAPIPort (8081)
+	apiHost string // "" → defaultAmpAPIHost (127.0.0.1); set for a split control-plane topology (issue #284)
+	apiPort int    // 0 → defaultAmpAPIPort (8081)
 
 	// Postgres client tooling inside the container, for #150 DB backups. The
 	// game's PG17 ships a musl pg_dump under pgBin, but its libpq dir lacks the
@@ -326,7 +327,7 @@ func (c *ampControl) updateApplication(exec Executor) (string, error) {
 	if c.apiUser == "" || c.apiPass == "" {
 		return "", fmt.Errorf("amp api credentials not configured — set amp_api_user and amp_api_pass to update the server under AMP")
 	}
-	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiPort)
+	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiHost, c.apiPort)
 	if _, err := client.updateApplication(); err != nil {
 		return "", fmt.Errorf("update server: %w", err)
 	}
@@ -895,7 +896,7 @@ func (c *ampControl) writeServerSettings(_ context.Context, exec Executor, updat
 	if c.apiUser == "" || c.apiPass == "" {
 		return fmt.Errorf("amp api credentials not configured — set amp_api_user and amp_api_pass to manage server settings under AMP")
 	}
-	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiPort)
+	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiHost, c.apiPort)
 	for field, value := range updates {
 		if err := client.setConfig("Meta.GenericModule."+field, value); err != nil {
 			return fmt.Errorf("write server setting %s: %w", field, err)
@@ -918,7 +919,7 @@ func (c *ampControl) readServerSettings(_ context.Context, exec Executor, fields
 	if c.apiUser == "" || c.apiPass == "" {
 		return nil, fmt.Errorf("amp api credentials not configured — set amp_api_user and amp_api_pass to read server settings under AMP")
 	}
-	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiPort)
+	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiHost, c.apiPort)
 	out := make(map[string]string, len(fields))
 	for _, field := range fields {
 		v, err := client.getConfig("Meta.GenericModule." + field)

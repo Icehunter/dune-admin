@@ -17,6 +17,7 @@ const (
 	// AMP defaults mirror the console setup wizard so a minimal AMP server fills
 	// in the standard CubeCoders layout.
 	// defaultAmpAPIPort is defined in amp_api.go (8081).
+	// defaultAmpAPIHost is defined in amp_api.go (127.0.0.1).
 	defaultAmpInstance = "DuneAwakening01"
 	defaultAmpLogPath  = "/AMP/duneawakening/logs"
 	defaultAmpAPIUser  = "admin"
@@ -93,6 +94,9 @@ func applyAmpServerDefaults(cfg *ServerConfig) {
 	if cfg.AmpAPIPass == "" {
 		cfg.AmpAPIPass = defaultAmpAPIPass
 	}
+	if cfg.AmpAPIHost == "" {
+		cfg.AmpAPIHost = defaultAmpAPIHost
+	}
 	if cfg.AmpAPIPort == 0 {
 		cfg.AmpAPIPort = defaultAmpAPIPort
 	}
@@ -165,6 +169,9 @@ func applyAmpFlatDefaults(cfg *appConfig) {
 	}
 	if cfg.AmpAPIPass == "" {
 		cfg.AmpAPIPass = defaultAmpAPIPass
+	}
+	if cfg.AmpAPIHost == "" {
+		cfg.AmpAPIHost = defaultAmpAPIHost
 	}
 	if cfg.AmpAPIPort == 0 {
 		cfg.AmpAPIPort = defaultAmpAPIPort

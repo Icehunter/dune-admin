@@ -6525,11 +6525,24 @@ func validateMapKey(key string) error {
 // is a real dimension, not "unset") returns a clause bound to $2, since $1 is
 // always the map key in every caller. alias lets the same helper serve both
 // the actors alias ("a") and the base-markers totem alias ("t").
+//
+// The comparison goes through COALESCE(dimension_index, 0) rather than a bare
+// `= $2`, matching the COALESCE(..., 0) already used when the column is
+// displayed (mapMarker.DimensionIndex) and by cmdFetchMapDimensions when
+// listing options: a NULL dimension_index is treated as bucket 0 everywhere,
+// consistently. A bare `dimension_index = $2` would silently exclude NULL rows
+// even when $2 = 0, because SQL NULL = 0 is neither true nor false — those
+// rows would still be labelled "dimension 0" on display and would have no
+// dimension option in the selector to reach them, only reappearing under "all
+// dimensions". The game server's own save_actors routine already does
+// `coalesce(in_server_info.dimension_index, 0)` on write, so NULL should be
+// rare in practice (legacy/edge-case rows only) — but the read path must not
+// assume that holds.
 func dimensionFilterSQL(alias string, dimension *int) (string, []any) {
 	if dimension == nil {
 		return "", nil
 	}
-	return fmt.Sprintf(" AND %s.dimension_index = $2", alias), []any{*dimension}
+	return fmt.Sprintf(" AND COALESCE(%s.dimension_index, 0) = $2", alias), []any{*dimension}
 }
 
 // cmdFetchMapMarkers returns every plottable entity (players + vehicles) on the
@@ -6665,14 +6678,20 @@ func cmdFetchBaseMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string,
 // cmdFetchMapDimensions returns the distinct dimension_index values present for
 // the given map's actors, sorted ascending, so the frontend can populate a
 // dimension selector (#274). Always returns a non-nil slice.
+//
+// Groups on COALESCE(dimension_index, 0) rather than filtering NULL rows out,
+// so it agrees with dimensionFilterSQL and the marker queries' display
+// COALESCE: a map with only NULL-dimension actors still reports dimension 0 as
+// a selectable option, instead of omitting the only dimension those actors
+// could ever be filtered into.
 func cmdFetchMapDimensions(ctx context.Context, pool *pgxpool.Pool, mapKey string) ([]int, error) {
 	if err := validateMapKey(mapKey); err != nil {
 		return nil, err
 	}
 	rows, err := pool.Query(ctx, `
-		SELECT DISTINCT dimension_index
+		SELECT DISTINCT COALESCE(dimension_index, 0)
 		FROM dune.actors
-		WHERE map = $1 AND dimension_index IS NOT NULL
+		WHERE map = $1
 		ORDER BY 1`, mapKey)
 	if err != nil {
 		return nil, fmt.Errorf("query map dimensions: %w", err)

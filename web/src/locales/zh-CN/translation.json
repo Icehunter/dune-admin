@@ -1076,6 +1076,7 @@
         "activeTagsLabel": "活跃标签",
         "addCount_one": "添加 ({{count}})",
         "addCount_other": "添加 ({{count}})",
+        "addCustom": "添加自定义标签：\"{{tag}}\"",
         "addTags": "添加标签",
         "filterPlaceholder": "筛选要移除的标签…",
         "noTags": "无标签",

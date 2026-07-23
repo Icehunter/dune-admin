@@ -1106,6 +1106,7 @@
         "addCount_few": "Dodaj ({{count}})",
         "addCount_many": "Dodaj ({{count}})",
         "addCount_other": "Dodaj ({{count}})",
+        "addCustom": "Dodaj niestandardowy tag: \"{{tag}}\"",
         "addTags": "Dodaj tagi",
         "filterPlaceholder": "Filtruj do usunięcia…",
         "noTags": "Brak tagów",

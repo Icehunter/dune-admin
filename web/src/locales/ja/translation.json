@@ -1076,6 +1076,7 @@
         "activeTagsLabel": "アクティブタグ",
         "addCount_one": "追加 ({{count}})",
         "addCount_other": "追加 ({{count}})",
+        "addCustom": "カスタムタグを追加: \"{{tag}}\"",
         "addTags": "タグを追加",
         "filterPlaceholder": "削除するタグをフィルター…",
         "noTags": "タグがありません",

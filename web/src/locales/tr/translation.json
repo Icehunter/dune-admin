@@ -1076,6 +1076,7 @@
         "activeTagsLabel": "Aktif etiketler",
         "addCount_one": "Ekle ({{count}})",
         "addCount_other": "Ekle ({{count}})",
+        "addCustom": "Özel etiket ekle: \"{{tag}}\"",
         "addTags": "Etiket Ekle",
         "filterPlaceholder": "Kaldırmak için filtrele…",
         "noTags": "Etiket yok",

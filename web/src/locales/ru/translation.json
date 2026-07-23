@@ -1106,6 +1106,7 @@
         "addCount_few": "Добавить ({{count}})",
         "addCount_many": "Добавить ({{count}})",
         "addCount_other": "Добавить ({{count}})",
+        "addCustom": "Добавить пользовательский тег: \"{{tag}}\"",
         "addTags": "Добавить теги",
         "filterPlaceholder": "Фильтр для удаления…",
         "noTags": "Нет тегов",

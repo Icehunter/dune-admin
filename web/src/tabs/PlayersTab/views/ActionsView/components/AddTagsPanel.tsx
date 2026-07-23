@@ -6,6 +6,8 @@ import { gameplayTagsSyncAtom } from '../../../../../data/store'
 import { useDebounce } from '../hooks/useDebounce'
 import type { AddTagsPanelProps } from './interfaces'
 
+const normalizeTag = (value: string): string => value.trim().replace(/\s+/g, ' ')
+
 export const AddTagsPanel: React.FC<AddTagsPanelProps> = React.memo(({ tags, pendingTags, onAdd }) => {
   const { t } = useTranslation()
   const [query, setQuery] = React.useState('')
@@ -22,6 +24,41 @@ export const AddTagsPanel: React.FC<AddTagsPanelProps> = React.memo(({ tags, pen
       .slice(0, 100)
   }, [debouncedQuery, tags, pendingTags, allTags])
 
+  const custom = normalizeTag(debouncedQuery)
+  const customLower = custom.toLowerCase()
+  const isKnownTag = (allTags ?? []).some((tg) => tg.toLowerCase() === customLower)
+  const isAlreadyApplied = tags.some((tg) => tg.toLowerCase() === customLower)
+    || pendingTags.some((tg) => tg.toLowerCase() === customLower)
+  const showCustom = custom !== '' && !isKnownTag && !isAlreadyApplied
+  const showDropdown = query.length > 0 && (matches.length > 0 || showCustom)
+
+  const selectOption = (value: string): void => {
+    onAdd(value)
+    setQuery('')
+  }
+
+  const renderOption = (value: string, isCustom: boolean): React.ReactNode => (
+    <div
+      key={isCustom ? `__custom__${value}` : value}
+      className="px-3 py-1.5 text-xs cursor-pointer hover:bg-surface-hover"
+      onMouseDown={(e) => {
+        e.preventDefault()
+        selectOption(value)
+      }}
+    >
+      {isCustom
+        ? <span className="text-accent">{t('players.actions.tags.addCustom', { tag: value })}</span>
+        : <span className="font-mono">{value}</span>}
+    </div>
+  )
+
+  const renderDropdown = (): React.ReactNode => (
+    <div className="absolute z-50 w-full mt-1 max-h-52 overflow-y-auto rounded-[var(--radius)] border border-border bg-surface">
+      {matches.map((m) => renderOption(m, false))}
+      {showCustom ? renderOption(custom, true) : null}
+    </div>
+  )
+
   return (
     <div className="relative">
       <SearchField value={query} onChange={setQuery} variant="secondary" aria-label={t('players.actions.tags.searchPlaceholder')}>
@@ -31,23 +68,7 @@ export const AddTagsPanel: React.FC<AddTagsPanelProps> = React.memo(({ tags, pen
           <SearchField.ClearButton />
         </SearchField.Group>
       </SearchField>
-      {query && matches.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 max-h-52 overflow-y-auto rounded-[var(--radius)] border border-border bg-surface">
-          {matches.map((t) => (
-            <div
-              key={t}
-              className="px-3 py-1.5 text-xs font-mono cursor-pointer hover:bg-surface-hover"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                onAdd(t)
-                setQuery('')
-              }}
-            >
-              {t}
-            </div>
-          ))}
-        </div>
-      )}
+      {showDropdown ? renderDropdown() : null}
     </div>
   )
 })

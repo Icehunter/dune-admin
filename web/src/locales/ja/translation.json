@@ -712,9 +712,19 @@
       "noItemsFound": "アイテムが見つかりません。",
       "rarity": "レアリティ",
       "stock": "在庫",
-      "tier": "ティア"
+      "tier": "ティア",
+      "actions": "Actions"
     },
-    "title": "マーケットボード"
+    "title": "マーケットボード",
+    "disable": {
+      "alreadyDisabled": "Disabled",
+      "ariaLabel": "Disable {{name}} for the market bot",
+      "button": "Disable",
+      "confirmBody": "{{name}} will be blacklisted from the market bot. Its bot listings are removed on the next bot tick — no full market wipe. Player-owned orders are never affected.",
+      "confirmLabel": "Disable",
+      "confirmTitle": "Disable market item?",
+      "success": "{{name}} disabled — bot listings clear on the next tick."
+    }
   },
   "nav": {
     "director": "Director",
@@ -1356,7 +1366,9 @@
       "apiUser": "AMP API ユーザー",
       "apiPassword": "AMP API パスワード",
       "apiPort": "AMP API ポート",
-      "apiHint": "AMP Web API ログイン。dune-admin が AMP 配下のサーバー設定を管理できるようにし、再起動後も保持されます。デフォルトポートは 8081。"
+      "apiHint": "AMP Web API ログイン。dune-admin が AMP 配下のサーバー設定を管理できるようにし、再起動後も保持されます。デフォルトポートは 8081。",
+      "apiHost": "AMP API host",
+      "apiHostHint": "Only set this if AMP's Web API runs on a different, reachable host than the game server (split control-plane topology). Defaults to 127.0.0.1."
     },
     "broker": {
       "adminAddr": "管理者アドレス",

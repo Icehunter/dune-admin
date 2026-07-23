@@ -712,9 +712,19 @@
       "noItemsFound": "Eşya bulunamadı.",
       "rarity": "Nadilik",
       "stock": "Stok",
-      "tier": "Kademe"
+      "tier": "Kademe",
+      "actions": "Actions"
     },
-    "title": "Market Panosu"
+    "title": "Market Panosu",
+    "disable": {
+      "alreadyDisabled": "Disabled",
+      "ariaLabel": "Disable {{name}} for the market bot",
+      "button": "Disable",
+      "confirmBody": "{{name}} will be blacklisted from the market bot. Its bot listings are removed on the next bot tick — no full market wipe. Player-owned orders are never affected.",
+      "confirmLabel": "Disable",
+      "confirmTitle": "Disable market item?",
+      "success": "{{name}} disabled — bot listings clear on the next tick."
+    }
   },
   "nav": {
     "director": "Director",
@@ -1356,7 +1366,9 @@
       "apiUser": "AMP API kullanıcısı",
       "apiPassword": "AMP API parolası",
       "apiPort": "AMP API bağlantı noktası",
-      "apiHint": "AMP Web API girişi. dune-admin'in sunucu ayarlarını AMP altında yönetmesini sağlar, böylece yeniden başlatmalardan sonra da kalıcı olur. Varsayılan bağlantı noktası 8081."
+      "apiHint": "AMP Web API girişi. dune-admin'in sunucu ayarlarını AMP altında yönetmesini sağlar, böylece yeniden başlatmalardan sonra da kalıcı olur. Varsayılan bağlantı noktası 8081.",
+      "apiHost": "AMP API host",
+      "apiHostHint": "Only set this if AMP's Web API runs on a different, reachable host than the game server (split control-plane topology). Defaults to 127.0.0.1."
     },
     "broker": {
       "adminAddr": "Yönetici adresi",

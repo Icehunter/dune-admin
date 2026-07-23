@@ -712,9 +712,19 @@
       "noItemsFound": "未找到物品。",
       "rarity": "稀有度",
       "stock": "库存",
-      "tier": "层级"
+      "tier": "层级",
+      "actions": "Actions"
     },
-    "title": "市场板"
+    "title": "市场板",
+    "disable": {
+      "alreadyDisabled": "Disabled",
+      "ariaLabel": "Disable {{name}} for the market bot",
+      "button": "Disable",
+      "confirmBody": "{{name}} will be blacklisted from the market bot. Its bot listings are removed on the next bot tick — no full market wipe. Player-owned orders are never affected.",
+      "confirmLabel": "Disable",
+      "confirmTitle": "Disable market item?",
+      "success": "{{name}} disabled — bot listings clear on the next tick."
+    }
   },
   "nav": {
     "director": "Director",
@@ -1356,7 +1366,9 @@
       "apiUser": "AMP API 用户",
       "apiPassword": "AMP API 密码",
       "apiPort": "AMP API 端口",
-      "apiHint": "AMP Web API 登录。让 dune-admin 在 AMP 下管理服务器设置，使其在重启后保留。默认端口 8081。"
+      "apiHint": "AMP Web API 登录。让 dune-admin 在 AMP 下管理服务器设置，使其在重启后保留。默认端口 8081。",
+      "apiHost": "AMP API host",
+      "apiHostHint": "Only set this if AMP's Web API runs on a different, reachable host than the game server (split control-plane topology). Defaults to 127.0.0.1."
     },
     "broker": {
       "adminAddr": "管理员地址",

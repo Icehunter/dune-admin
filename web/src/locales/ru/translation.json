@@ -726,9 +726,19 @@
       "noItemsFound": "Предметы не найдены.",
       "rarity": "Редкость",
       "stock": "Запас",
-      "tier": "Уровень"
+      "tier": "Уровень",
+      "actions": "Actions"
     },
-    "title": "Доска рынка"
+    "title": "Доска рынка",
+    "disable": {
+      "alreadyDisabled": "Disabled",
+      "ariaLabel": "Disable {{name}} for the market bot",
+      "button": "Disable",
+      "confirmBody": "{{name}} will be blacklisted from the market bot. Its bot listings are removed on the next bot tick — no full market wipe. Player-owned orders are never affected.",
+      "confirmLabel": "Disable",
+      "confirmTitle": "Disable market item?",
+      "success": "{{name}} disabled — bot listings clear on the next tick."
+    }
   },
   "nav": {
     "director": "Director",
@@ -1398,7 +1408,9 @@
       "apiUser": "Пользователь API AMP",
       "apiPassword": "Пароль API AMP",
       "apiPort": "Порт API AMP",
-      "apiHint": "Вход в веб-API AMP. Позволяет dune-admin управлять настройками сервера в AMP, чтобы они сохранялись после перезапусков. Порт по умолчанию 8081."
+      "apiHint": "Вход в веб-API AMP. Позволяет dune-admin управлять настройками сервера в AMP, чтобы они сохранялись после перезапусков. Порт по умолчанию 8081.",
+      "apiHost": "AMP API host",
+      "apiHostHint": "Only set this if AMP's Web API runs on a different, reachable host than the game server (split control-plane topology). Defaults to 127.0.0.1."
     },
     "broker": {
       "adminAddr": "Адрес администратора",

@@ -726,9 +726,19 @@
       "noItemsFound": "Nie znaleziono przedmiotów.",
       "rarity": "Rzadkość",
       "stock": "Zapas",
-      "tier": "Poziom"
+      "tier": "Poziom",
+      "actions": "Actions"
     },
-    "title": "Tablica rynku"
+    "title": "Tablica rynku",
+    "disable": {
+      "alreadyDisabled": "Disabled",
+      "ariaLabel": "Disable {{name}} for the market bot",
+      "button": "Disable",
+      "confirmBody": "{{name}} will be blacklisted from the market bot. Its bot listings are removed on the next bot tick — no full market wipe. Player-owned orders are never affected.",
+      "confirmLabel": "Disable",
+      "confirmTitle": "Disable market item?",
+      "success": "{{name}} disabled — bot listings clear on the next tick."
+    }
   },
   "nav": {
     "director": "Director",
@@ -1398,7 +1408,9 @@
       "apiUser": "Użytkownik API AMP",
       "apiPassword": "Hasło API AMP",
       "apiPort": "Port API AMP",
-      "apiHint": "Logowanie do interfejsu Web API AMP. Pozwala dune-admin zarządzać ustawieniami serwera w AMP, aby przetrwały ponowne uruchomienia. Domyślny port 8081."
+      "apiHint": "Logowanie do interfejsu Web API AMP. Pozwala dune-admin zarządzać ustawieniami serwera w AMP, aby przetrwały ponowne uruchomienia. Domyślny port 8081.",
+      "apiHost": "AMP API host",
+      "apiHostHint": "Only set this if AMP's Web API runs on a different, reachable host than the game server (split control-plane topology). Defaults to 127.0.0.1."
     },
     "broker": {
       "adminAddr": "Adres administracyjny",

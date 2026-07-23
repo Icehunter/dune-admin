@@ -1091,6 +1091,7 @@
         "addCount_one": "Ajouter ({{count}})",
         "addCount_many": "Ajouter ({{count}})",
         "addCount_other": "Ajouter ({{count}})",
+        "addCustom": "Ajouter une étiquette personnalisée : \"{{tag}}\"",
         "addTags": "Ajouter des étiquettes",
         "filterPlaceholder": "Filtrer pour supprimer…",
         "noTags": "Aucune étiquette",

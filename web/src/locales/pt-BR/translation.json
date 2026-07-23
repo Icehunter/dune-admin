@@ -1091,6 +1091,7 @@
         "addCount_one": "Adicionar ({{count}})",
         "addCount_many": "Adicionar ({{count}})",
         "addCount_other": "Adicionar ({{count}})",
+        "addCustom": "Adicionar tag personalizada: \"{{tag}}\"",
         "addTags": "Adicionar tags",
         "filterPlaceholder": "Filtrar para remover…",
         "noTags": "Sem tags",

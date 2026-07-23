@@ -1076,6 +1076,7 @@
         "activeTagsLabel": "Active tags",
         "addCount_one": "Add ({{count}})",
         "addCount_other": "Add ({{count}})",
+        "addCustom": "Add custom tag: \"{{tag}}\"",
         "addTags": "Add Tags",
         "filterPlaceholder": "Filter to remove…",
         "noTags": "No tags",

@@ -1076,6 +1076,7 @@
         "activeTagsLabel": "Aktive Tags",
         "addCount_one": "Hinzufügen ({{count}})",
         "addCount_other": "Hinzufügen ({{count}})",
+        "addCustom": "Benutzerdefinierten Tag hinzufügen: \"{{tag}}\"",
         "addTags": "Tags hinzufügen",
         "filterPlaceholder": "Zum Entfernen filtern…",
         "noTags": "Keine Tags",

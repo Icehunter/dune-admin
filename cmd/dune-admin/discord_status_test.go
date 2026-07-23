@@ -752,3 +752,114 @@ func TestAggregateMapCounts(t *testing.T) {
 		}
 	})
 }
+
+// TestMapCountsFromLabeled covers the DB-fallback path used when the control
+// plane reports no live per-partition maps (applyDBStats → mapCountsFromLabeled,
+// #254 defect A). Unlike the live path (aggregateMapCounts, via partitionLabel),
+// this used to render the raw `a.map` DB label verbatim — carrying both the
+// provisioning-time "_<N>" partition suffix and the un-prettified internal map
+// key (e.g. "Arrakeen_1", "deepdesert") straight into the embed. The fix routes
+// every label through prettyRegionName (which itself calls
+// stripTrailingNumericSuffix), matching the live path's presentation.
+func TestMapCountsFromLabeled(t *testing.T) {
+	t.Parallel()
+
+	t.Run("single-instance suffix stripped and prettified", func(t *testing.T) {
+		t.Parallel()
+		got := mapCountsFromLabeled([]labeledCount{
+			{Label: "Arrakeen_1", Count: 7},
+		})
+		want := []mapPlayerCount{{Map: "Arrakeen", Players: 7}}
+		if !equalMapPlayerCounts(got, want) {
+			t.Errorf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("hardcoded alias prettified with no suffix present", func(t *testing.T) {
+		t.Parallel()
+		got := mapCountsFromLabeled([]labeledCount{
+			{Label: "deepdesert", Count: 3},
+		})
+		want := []mapPlayerCount{{Map: "Deep Desert", Players: 3}}
+		if !equalMapPlayerCounts(got, want) {
+			t.Errorf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("suffix stripped on a differently-cased alias base", func(t *testing.T) {
+		t.Parallel()
+		got := mapCountsFromLabeled([]labeledCount{
+			{Label: "Harko_2", Count: 5},
+		})
+		want := []mapPlayerCount{{Map: "Harko", Players: 5}}
+		if !equalMapPlayerCounts(got, want) {
+			t.Errorf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("Unknown label passes through unchanged", func(t *testing.T) {
+		t.Parallel()
+		got := mapCountsFromLabeled([]labeledCount{
+			{Label: "Unknown", Count: 2},
+		})
+		want := []mapPlayerCount{{Map: "Unknown", Players: 2}}
+		if !equalMapPlayerCounts(got, want) {
+			t.Errorf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("duplicate labels after prettification are merged, not left as separate rows", func(t *testing.T) {
+		t.Parallel()
+		// Two distinct raw DB labels ("Arrakeen_1", "Arrakeen_2") both prettify to
+		// "Arrakeen" — this is a character/DB-row distribution, not live
+		// partitions, so there is no " #N" disambiguation to fall back on; the
+		// counts must sum into one row rather than emit two identical labels.
+		got := mapCountsFromLabeled([]labeledCount{
+			{Label: "Arrakeen_1", Count: 3},
+			{Label: "Arrakeen_2", Count: 2},
+		})
+		want := []mapPlayerCount{{Map: "Arrakeen", Players: 5}}
+		if !equalMapPlayerCounts(got, want) {
+			t.Errorf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("multiple distinct labels sorted players-desc then label-asc", func(t *testing.T) {
+		t.Parallel()
+		got := mapCountsFromLabeled([]labeledCount{
+			{Label: "Harko_1", Count: 2},
+			{Label: "Arrakeen_1", Count: 9},
+			{Label: "deepdesert", Count: 9},
+		})
+		want := []mapPlayerCount{
+			{Map: "Arrakeen", Players: 9},
+			{Map: "Deep Desert", Players: 9},
+			{Map: "Harko", Players: 2},
+		}
+		if !equalMapPlayerCounts(got, want) {
+			t.Errorf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("empty input yields empty output, no panic", func(t *testing.T) {
+		t.Parallel()
+		got := mapCountsFromLabeled(nil)
+		if len(got) != 0 {
+			t.Errorf("got %+v, want empty", got)
+		}
+	})
+}
+
+// equalMapPlayerCounts compares two mapPlayerCount slices in order (both sides
+// are expected to already be in the function's documented sort order).
+func equalMapPlayerCounts(got, want []mapPlayerCount) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
+}

@@ -709,10 +709,35 @@ func applyUnique24h(ctx context.Context, sdb *sql.DB, serverID int, data *status
 // mapCountsFromLabeled converts the DB by-map distribution into mapPlayerCount.
 // This counts characters per map (not live online) — used only as a fallback
 // when the control plane provides no live per-partition counts.
+//
+// The raw label is a DB-side `a.map` value (serverByMapSQL), not a director/
+// director-sourced Sietch name, so it carries the same provisioning-time
+// "_<N>" partition suffix and un-prettified internal map key that the live
+// path (partitionLabel) already strips via prettyRegionName (#254). Since this
+// is a character-count distribution rather than live per-partition rows, there
+// is no " #N" disambiguation available if two raw labels collide after
+// prettifying (e.g. "Arrakeen_1" and "Arrakeen_2") — those counts are summed
+// into a single row instead of leaking the raw suffix back out.
 func mapCountsFromLabeled(labeled []labeledCount) []mapPlayerCount {
-	out := make([]mapPlayerCount, 0, len(labeled))
+	order := make([]string, 0, len(labeled))
+	totals := make(map[string]int, len(labeled))
 	for _, l := range labeled {
-		out = append(out, mapPlayerCount{Map: l.Label, Players: int(l.Count)})
+		label := prettyRegionName(l.Label)
+		if _, seen := totals[label]; !seen {
+			order = append(order, label)
+		}
+		totals[label] += int(l.Count)
 	}
+
+	out := make([]mapPlayerCount, 0, len(order))
+	for _, label := range order {
+		out = append(out, mapPlayerCount{Map: label, Players: totals[label]})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Players != out[j].Players {
+			return out[i].Players > out[j].Players
+		}
+		return out[i].Map < out[j].Map
+	})
 	return out
 }

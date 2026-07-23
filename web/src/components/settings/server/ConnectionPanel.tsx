@@ -13,6 +13,9 @@ import type { ConnectionPanelProps } from './interfaces'
 // steps show one each.
 export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ cfg, set, setBool, showDb, showBroker }) => {
   const { t } = useTranslation()
+  // Under AMP the broker is reached via broker_exec_prefix (rabbitmqctl through
+  // container exec); the network addr/user/pass fields are legitimately unused.
+  const isAmp = cfg.control === 'amp'
   return (
     <div className="overflow-y-auto flex-1 pr-1 flex flex-col gap-4">
       {showDb && (
@@ -49,12 +52,18 @@ export const ConnectionPanel: React.FC<ConnectionPanelProps> = ({ cfg, set, setB
       {showBroker && (
         <Panel>
           <SectionLabel>{t('settings.sections.rabbitmq')}</SectionLabel>
-          <p className="text-xs text-muted -mt-1">{t('settings.broker.optionalHint')}</p>
+          <p className="text-xs text-muted -mt-1">
+            {isAmp ? t('settings.broker.ampHint') : t('settings.broker.optionalHint')}
+          </p>
           <TwoColumnGrid>
-            <FieldRow label={t('settings.broker.gameAddr')}><TextInput value={cfg.broker_game_addr} onChange={set('broker_game_addr')} placeholder="10.x.x.x:5672" /></FieldRow>
-            <FieldRow label={t('settings.broker.adminAddr')}><TextInput value={cfg.broker_admin_addr} onChange={set('broker_admin_addr')} placeholder="10.x.x.x:5672" /></FieldRow>
-            <FieldRow label={t('settings.broker.user')}><TextInput value={cfg.broker_user} onChange={set('broker_user')} placeholder="dune_cap" /></FieldRow>
-            <FieldRow label={t('settings.broker.password')}><TextInput value={cfg.broker_pass} onChange={set('broker_pass')} type="password" placeholder={MASKED} /></FieldRow>
+            {!isAmp && (
+              <React.Fragment>
+                <FieldRow label={t('settings.broker.gameAddr')}><TextInput value={cfg.broker_game_addr} onChange={set('broker_game_addr')} placeholder="10.x.x.x:5672" /></FieldRow>
+                <FieldRow label={t('settings.broker.adminAddr')}><TextInput value={cfg.broker_admin_addr} onChange={set('broker_admin_addr')} placeholder="10.x.x.x:5672" /></FieldRow>
+                <FieldRow label={t('settings.broker.user')}><TextInput value={cfg.broker_user} onChange={set('broker_user')} placeholder="dune_cap" /></FieldRow>
+                <FieldRow label={t('settings.broker.password')}><TextInput value={cfg.broker_pass} onChange={set('broker_pass')} type="password" placeholder={MASKED} /></FieldRow>
+              </React.Fragment>
+            )}
             <FieldRow label={t('settings.broker.jwtSecret')} hint={t('settings.broker.jwtSecretHint')}>
               <TextInput value={cfg.broker_jwt_secret} onChange={set('broker_jwt_secret')} type="password" placeholder={MASKED} />
             </FieldRow>

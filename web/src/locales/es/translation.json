@@ -1354,6 +1354,7 @@
     },
     "broker": {
       "adminAddr": "Dirección de admin",
+      "ampHint": "Bajo AMP, el broker se alcanza mediante el prefijo de ejecución de abajo (rabbitmqctl a través de exec de contenedor) — la dirección de red, el usuario y la contraseña no se usan.",
       "execPrefix": "Prefijo de ejecución",
       "execPrefixHint": "cuando el broker está dentro de un contenedor",
       "gameAddr": "Dirección del juego",

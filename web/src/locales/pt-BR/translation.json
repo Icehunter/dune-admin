@@ -1354,6 +1354,7 @@
     },
     "broker": {
       "adminAddr": "Endereço de admin",
+      "ampHint": "No AMP, o broker é acessado através do prefixo de execução abaixo (rabbitmqctl via exec do contêiner) — endereço de rede, usuário e senha não são usados.",
       "execPrefix": "Prefixo de execução",
       "execPrefixHint": "quando o broker está dentro de um contêiner",
       "gameAddr": "Endereço do jogo",

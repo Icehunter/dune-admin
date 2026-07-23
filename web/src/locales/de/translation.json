@@ -1333,6 +1333,7 @@
     },
     "broker": {
       "adminAddr": "Admin-Adresse",
+      "ampHint": "Unter AMP wird der Broker über das unten stehende Ausführungspräfix erreicht (rabbitmqctl über Container-Exec) — Netzwerkadresse, Benutzer und Passwort werden nicht verwendet.",
       "execPrefix": "Ausführungspräfix",
       "execPrefixHint": "wenn Broker in einem Container ist",
       "gameAddr": "Spieladresse",

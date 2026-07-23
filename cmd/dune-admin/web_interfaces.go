@@ -19,6 +19,12 @@ import (
 type webInterface struct {
 	Label string `json:"label"`
 	URL   string `json:"url"`
+	// NoProxy opts this entry out of the mesh web proxy: the SPA opens URL
+	// as-is instead of a rewritten proxy port. For operators behind NAT/a
+	// reverse proxy where only fixed published ports are reachable, the
+	// proxy's rewritten URL is unreachable — this restores the pre-v0.42.0
+	// "just open the configured URL" behaviour on a per-entry basis. (#261)
+	NoProxy bool `json:"noProxy,omitempty"`
 	// Target is the raw host:port dune-admin can Dial through the executor to
 	// reach the service (the address before any host rewrite). Set for
 	// control-plane-discovered entries; empty for hand-configured links. Not
@@ -106,7 +112,7 @@ func saveWebInterfaces(list []webInterface) error {
 	}
 	clean := make([]webInterface, len(list))
 	for i, w := range list {
-		clean[i] = webInterface{Label: strings.TrimSpace(w.Label), URL: strings.TrimSpace(w.URL)}
+		clean[i] = webInterface{Label: strings.TrimSpace(w.Label), URL: strings.TrimSpace(w.URL), NoProxy: w.NoProxy}
 	}
 	data, err := json.MarshalIndent(clean, "", "  ")
 	if err != nil {

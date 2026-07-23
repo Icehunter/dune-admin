@@ -65,6 +65,7 @@
     "ifaceSaveFailed": "Не удалось сохранить: {{message}}",
     "ifaceLabel": "Метка",
     "ifaceUrl": "URL (http:// или /путь)",
+    "ifaceNoProxy": "Открыть напрямую (без прокси)",
     "editInterfaces": "Редактировать веб-интерфейсы",
     "removeInterface": "Удалить",
     "addInterface": "Добавить интерфейс",

@@ -65,6 +65,7 @@
     "ifaceSaveFailed": "Zapis nie powiódł się: {{message}}",
     "ifaceLabel": "Etykieta",
     "ifaceUrl": "URL (http:// lub /ścieżka)",
+    "ifaceNoProxy": "Otwórz bezpośrednio (bez proxy)",
     "editInterfaces": "Edytuj interfejsy webowe",
     "removeInterface": "Usuń",
     "addInterface": "Dodaj interfejs",

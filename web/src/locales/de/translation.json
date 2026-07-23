@@ -65,6 +65,7 @@
     "ifaceSaveFailed": "Speichern fehlgeschlagen: {{message}}",
     "ifaceLabel": "Bezeichnung",
     "ifaceUrl": "URL (http:// oder /Pfad)",
+    "ifaceNoProxy": "Direkt öffnen (nicht über Proxy)",
     "editInterfaces": "Web-Oberflächen bearbeiten",
     "removeInterface": "Entfernen",
     "addInterface": "Oberfläche hinzufügen",

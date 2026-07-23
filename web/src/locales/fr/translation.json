@@ -65,6 +65,7 @@
     "ifaceSaveFailed": "Échec de l'enregistrement : {{message}}",
     "ifaceLabel": "Libellé",
     "ifaceUrl": "URL (http:// ou /chemin)",
+    "ifaceNoProxy": "Ouvrir directement (sans proxy)",
     "editInterfaces": "Modifier les interfaces web",
     "removeInterface": "Supprimer",
     "addInterface": "Ajouter une interface",

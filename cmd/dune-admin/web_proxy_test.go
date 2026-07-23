@@ -22,10 +22,11 @@ func TestResolveProxyTargets(t *testing.T) {
 	ifaces := []webInterface{
 		{Label: "File Browser", URL: "http://vm:18888/", Target: "10.0.0.5:18888"},
 		{Label: "Battlegroup Director", URL: "http://vm:31003/", Target: "10.0.0.5:31003"},
-		{Label: "Wiki", URL: "https://wiki.example/"},         // manual absolute root → proxied, port from scheme
-		{Label: "Docs", URL: "https://docs.example/handbook"}, // non-root path → NOT proxied (would be dropped)
-		{Label: "Search", URL: "https://s.example/?q=x"},      // query → NOT proxied
-		{Label: "Local", URL: "/grafana"},                     // same-origin → NOT proxied
+		{Label: "Wiki", URL: "https://wiki.example/"},                  // manual absolute root → proxied, port from scheme
+		{Label: "Docs", URL: "https://docs.example/handbook"},          // non-root path → NOT proxied (would be dropped)
+		{Label: "Search", URL: "https://s.example/?q=x"},               // query → NOT proxied
+		{Label: "Local", URL: "/grafana"},                              // same-origin → NOT proxied
+		{Label: "Panel", URL: "https://panel.example/", NoProxy: true}, // opted out → NOT proxied despite being an otherwise-proxyable root URL
 	}
 	got := resolveProxyTargets(ifaces, 8080)
 	want := []proxyTarget{
@@ -35,6 +36,18 @@ func TestResolveProxyTargets(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got  %+v\nwant %+v", got, want)
+	}
+}
+
+// resolveProxyTargets must skip a NoProxy entry even when it's a discovered
+// entry with a Target set (defensive — the UI can only set NoProxy on
+// hand-configured entries today, but the guard must not be bypassable by Target).
+func TestResolveProxyTargets_NoProxySkipsDiscoveredTarget(t *testing.T) {
+	ifaces := []webInterface{
+		{Label: "Director", Target: "10.0.0.5:31003", NoProxy: true},
+	}
+	if got := resolveProxyTargets(ifaces, 8080); got != nil {
+		t.Errorf("NoProxy with Target set: got %+v, want nil", got)
 	}
 }
 
@@ -67,6 +80,26 @@ func TestWithProxyPorts(t *testing.T) {
 	}
 	if got[1].ProxyPort != 0 || got[1].ProxyScheme != "" {
 		t.Errorf("local = %+v, want proxyPort 0 + empty scheme (not proxied)", got[1])
+	}
+}
+
+// withProxyPorts must attach no port/scheme for a NoProxy entry — even one
+// with an otherwise-proxyable absolute root URL — and must echo NoProxy back
+// so the frontend edit form reflects the persisted flag. (#261)
+func TestWithProxyPorts_NoProxyEntryGetsNoPort(t *testing.T) {
+	ifaces := []webInterface{
+		{Label: "Panel", URL: "https://panel.example/", NoProxy: true},
+	}
+	targets := resolveProxyTargets(ifaces, 8080)
+	got := withProxyPorts(ifaces, targets)
+	if len(got) != 1 {
+		t.Fatalf("got %d entries, want 1", len(got))
+	}
+	if got[0].ProxyPort != 0 || got[0].ProxyScheme != "" {
+		t.Errorf("panel = %+v, want proxyPort 0 + empty scheme (opted out)", got[0])
+	}
+	if !got[0].NoProxy {
+		t.Errorf("panel = %+v, want NoProxy echoed back true", got[0])
 	}
 }
 

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Button, ListBox, Select } from '@heroui/react'
+import { Button, Checkbox, ListBox, Select } from '@heroui/react'
 import { Segment } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../../../dune-ui'
@@ -22,6 +22,40 @@ export const PlayerListControls: React.FC<PlayerListControlsProps> = ({
   factionOptions,
 }): React.ReactElement => {
   const { t } = useTranslation()
+
+  const toggleFaction = (id: number, isSelected: boolean): void => {
+    const next = new Set(factionFilter)
+    if (isSelected) next.add(id)
+    else next.delete(id)
+    onFactionFilterChange(next)
+  }
+
+  // Faction facet is a Checkbox group (frontend.md: "Checkbox (filter/option)
+  // — use Checkbox"), not a Select — RAC's Select is the wrong primitive for
+  // a filter facet and every other selectionMode="multiple" usage in this
+  // codebase is on DataTable/DataGrid row selection, not a dropdown. Renders
+  // nothing until the player list has loaded at least one faction_id.
+  const renderFactionFilter = (): React.ReactNode => {
+    if (factionOptions.length === 0) return null
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="text-[10px] uppercase tracking-wide text-muted">
+          {t('players.filter.faction')}
+        </span>
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          {factionOptions.map((f) => (
+            <Checkbox
+              key={f.id}
+              isSelected={factionFilter.has(f.id)}
+              onChange={(isSelected) => toggleFaction(f.id, isSelected)}
+            >
+              {f.label}
+            </Checkbox>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -81,29 +115,7 @@ export const PlayerListControls: React.FC<PlayerListControlsProps> = ({
         </Segment.Item>
       </Segment>
 
-      <Select
-        aria-label={t('players.filter.faction')}
-        selectionMode="multiple"
-        value={[...factionFilter]}
-        onChange={(keys) => onFactionFilterChange(new Set(keys as number[]))}
-        placeholder={t('players.filter.factionAll')}
-        className="w-full"
-      >
-        <Select.Trigger className="h-8 text-xs">
-          <Select.Value />
-          <Select.Indicator />
-        </Select.Trigger>
-        <Select.Popover>
-          <ListBox selectionMode="multiple">
-            {factionOptions.map((f) => (
-              <ListBox.Item key={f.id} id={f.id} textValue={f.label}>
-                {f.label}
-                <ListBox.ItemIndicator />
-              </ListBox.Item>
-            ))}
-          </ListBox>
-        </Select.Popover>
-      </Select>
+      {renderFactionFilter()}
     </div>
   )
 }

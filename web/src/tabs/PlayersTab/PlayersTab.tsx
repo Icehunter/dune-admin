@@ -2,7 +2,6 @@ import * as React from 'react'
 import { Button, SearchField, Spinner, toast } from '@heroui/react'
 import { Segment } from '@heroui-pro/react'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
 import { api } from '../../api/client'
 import type { Player } from '../../api/client'
 import { Icon, SideNav } from '../../dune-ui'
@@ -17,34 +16,10 @@ import { InventoryView } from './views/InventoryView'
 import { VehiclesView } from './views/VehiclesView'
 import { GiveItemsView } from './views/GiveItemsView'
 import { ActionsView } from './views/ActionsView'
-import { FACTIONS } from './types'
+import { comparePlayers, factionLabel } from './playerListHelpers'
 import type { DetailTab, PlayerSortKey, PlayerStatusFilter, SortDir } from './types'
 
 const POLL_MS = 30_000
-
-// Faction display name for the sort/filter axis — id 0 is "no faction picked
-// yet" (players.detail.unaligned), not the in-game "None" faction (id 3).
-const factionLabel = (factionId: number, t: TFunction): string => {
-  if (factionId === 0) return t('players.detail.unaligned')
-  const known = FACTIONS.find((f) => f.id === factionId)
-  return known ? known.name : String(factionId)
-}
-
-const collate = (a: string, b: string): number =>
-  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
-
-// Sort value per axis (#281): name/class/map sort on their raw string, faction
-// sorts on its display label (not the raw id), id sorts numerically.
-const sortValue = (p: Player, key: PlayerSortKey, t: TFunction): string | number => {
-  switch (key) {
-    case 'id': return p.id
-    case 'faction_id': return factionLabel(p.faction_id, t)
-    case 'class': return p.class
-    case 'map': return p.map
-    case 'name':
-    default: return p.name
-  }
-}
 
 export const PlayersTab: React.FC = () => {
   const { t } = useTranslation()
@@ -113,21 +88,15 @@ export const PlayersTab: React.FC = () => {
     : _byStatus.filter((p) => factionFilter.has(p.faction_id))
 
   // SORT is a single axis + direction, orthogonal to the FILTER facets above
-  // (#281) — no more hard online-first grouping. Non-name axes tie-break on
-  // name so equal-value groups (e.g. same faction) still read alphabetically.
-  const filtered = [..._byFaction].sort((a, b) => {
-    const av = sortValue(a, sortKey, t)
-    const bv = sortValue(b, sortKey, t)
-    let primary = typeof av === 'number' && typeof bv === 'number'
-      ? av - bv
-      : collate(String(av), String(bv))
-    if (primary === 0 && sortKey !== 'name') primary = collate(a.name, b.name)
-    return sortDir === 'asc' ? primary : -primary
-  })
+  // (#281) — no more hard online-first grouping.
+  const unalignedLabel = t('players.detail.unaligned')
+  const filtered = [..._byFaction].sort(
+    (a, b) => comparePlayers(a, b, sortKey, sortDir, unalignedLabel),
+  )
 
   const factionOptions = Array.from(new Set(players.map((p) => p.faction_id)))
     .sort((a, b) => a - b)
-    .map((id) => ({ id, label: factionLabel(id, t) }))
+    .map((id) => ({ id, label: factionLabel(id, unalignedLabel) }))
 
   const navItems = filtered.map((p) => {
     const statusDotColor = p.online_status === 'Online'

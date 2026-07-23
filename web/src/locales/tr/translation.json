@@ -1240,8 +1240,7 @@
       "online": "Online",
       "offline": "Offline",
       "empty": "No players found",
-      "faction": "Filter by faction",
-      "factionAll": "All factions"
+      "faction": "Filter by faction"
     },
     "sort": {
       "label": "Sort by",

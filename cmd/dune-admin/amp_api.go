@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 )
 
@@ -61,27 +63,51 @@ func (c *ampAPIClient) apiHost() string {
 	return c.host
 }
 
+// endpoint builds the AMP API URL for path. net.JoinHostPort brackets a bare
+// IPv6 host (e.g. "::1" → "[::1]:8081") so the result is always a well-formed
+// authority — a raw "http://::1:8081/..." is ambiguous/unparseable.
 func (c *ampAPIClient) endpoint(path string) string {
-	return fmt.Sprintf("http://%s:%d/API/%s", c.apiHost(), c.apiPort(), path)
+	return fmt.Sprintf("http://%s/API/%s", net.JoinHostPort(c.apiHost(), strconv.Itoa(c.apiPort())), path)
 }
 
 // isLoopbackAPIHost reports whether host resolves to the local machine — the
 // only case where wrapping the AMP API call into the container/host loopback
-// (ampControl.wrapInContainer) is correct. An empty host means "unset",
-// which apiHost() resolves to defaultAmpAPIHost (loopback).
+// (ampControl.wrapInContainer) is correct. An empty host means "unset", which
+// apiHost() resolves to defaultAmpAPIHost (loopback).
+//
+// Real IPv4/IPv6 addresses (including 127.0.0.0/8 beyond 127.0.0.1, and
+// bracketed IPv6 forms like "[::1]") are checked via net.IP.IsLoopback().
+// "127.1" is a legacy short-form some resolvers (and curl) accept as
+// 127.0.0.1 but net.ParseIP rejects, so it's special-cased. Unrecognised
+// non-loopback hosts (a separate control-plane VM, issue #284) correctly
+// return false and bypass the wrap in post().
 func isLoopbackAPIHost(host string) bool {
-	switch strings.ToLower(strings.TrimSpace(host)) {
-	case "", "127.0.0.1", "localhost", "::1":
+	h := strings.ToLower(strings.TrimSpace(host))
+	h = strings.TrimPrefix(h, "[")
+	h = strings.TrimSuffix(h, "]")
+	switch h {
+	case "", "localhost", "ip6-localhost", "ip6-loopback", "127.1":
 		return true
-	default:
-		return false
 	}
+	if ip := net.ParseIP(h); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }
 
 // buildCurl returns an in-container shell command that POSTs payload as JSON to
 // the named AMP API endpoint. The JSON body is base64-piped to curl so
 // operator-supplied values (passwords, server names) never touch the shell
-// command line — eliminating both quoting bugs and shell-injection risk.
+// command line as raw request-body content — eliminating both quoting bugs
+// and shell-injection risk there. The target endpoint URL — which embeds
+// c.apiHost(), an operator-configured value in a split control-plane
+// topology (issue #284) — is itself shell-quoted before being placed on the
+// command line: every operator-supplied value reaching a shell command in
+// this codebase goes through shellQuote (see control_amp.go, control_docker.go,
+// control_kubectl.go, executor_amp.go and executor.go's exec.Command #nosec
+// G702 justification), and the host is no exception. Without it, a host like
+// "10.0.0.5; rm -rf /" would alter the command's structure instead of just
+// failing to resolve.
 func (c *ampAPIClient) buildCurl(path string, payload any) (string, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -92,7 +118,7 @@ func (c *ampAPIClient) buildCurl(path string, payload any) (string, error) {
 		"echo %s | base64 -d | curl -s -m 20 -X POST "+
 			"-H 'Content-Type: application/json' -H 'Accept: application/json' "+
 			"--data-binary @- %s",
-		b64, c.endpoint(path)), nil
+		b64, shellQuote(c.endpoint(path))), nil
 }
 
 // post runs an AMP API call and returns the trimmed response body. Executor
@@ -124,8 +150,8 @@ func (c *ampAPIClient) postError(path string, err error, out string) error {
 	trimmed := strings.TrimSpace(out)
 	if strings.Contains(err.Error(), "exit status 7") {
 		return fmt.Errorf(
-			"amp api %s: could not connect to AMP Web API at %s:%d — it must be reachable from where dune-admin runs (output: %s)",
-			path, c.apiHost(), c.apiPort(), trimmed)
+			"amp api %s: could not connect to AMP Web API at %s — it must be reachable from where dune-admin runs (output: %s)",
+			path, net.JoinHostPort(c.apiHost(), strconv.Itoa(c.apiPort())), trimmed)
 	}
 	return fmt.Errorf("amp api %s: %w (output: %s)", path, err, trimmed)
 }

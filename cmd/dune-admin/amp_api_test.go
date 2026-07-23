@@ -241,6 +241,11 @@ func TestIsLoopbackAPIHost(t *testing.T) {
 		{"localhost", true},
 		{"LOCALHOST", true},
 		{"::1", true},
+		{"[::1]", true},
+		{"127.0.0.2", true},
+		{"127.1", true},
+		{"ip6-localhost", true},
+		{"ip6-loopback", true},
 		{"10.0.0.5", false},
 		{"controlplane.example.com", false},
 		{"192.168.0.59", false},
@@ -249,6 +254,43 @@ func TestIsLoopbackAPIHost(t *testing.T) {
 		if got := isLoopbackAPIHost(tt.host); got != tt.want {
 			t.Errorf("isLoopbackAPIHost(%q) = %v, want %v", tt.host, got, tt.want)
 		}
+	}
+}
+
+// ── endpoint URL construction hardening (issue #284 follow-up) ──────────────
+
+// TestAMPAPIEndpoint_BracketsIPv6Host verifies a bare (unbracketed) IPv6
+// amp_api_host produces a well-formed URL — http://[::1]:8081/... rather than
+// the ambiguous, unparseable http://::1:8081/....
+func TestAMPAPIEndpoint_BracketsIPv6Host(t *testing.T) {
+	t.Parallel()
+	c := newAMPAPIClient(&fnExecutor{}, identityWrap, "u", "p", "::1", 8081)
+	got := c.endpoint("Core/Login")
+	want := "http://[::1]:8081/API/Core/Login"
+	if got != want {
+		t.Errorf("endpoint(::1) = %q, want %q", got, want)
+	}
+}
+
+// TestAMPAPIBuildCurl_ShellQuotesHostWithMetacharacters is a regression test
+// for a shell-injection finding in the amp_api_host review: buildCurl used to
+// interpolate the endpoint URL (which embeds the operator-configured host)
+// into the curl command completely unquoted, in violation of the codebase-wide
+// invariant that every operator-supplied value reaching a shell command line
+// goes through shellQuote first (see executor.go's exec.Command #nosec G702
+// justification). A host containing shell metacharacters must not be able to
+// alter the command's structure or inject additional commands.
+func TestAMPAPIBuildCurl_ShellQuotesHostWithMetacharacters(t *testing.T) {
+	t.Parallel()
+	dangerous := "10.0.0.5; touch /tmp/pwned; $(id) `whoami`"
+	c := newAMPAPIClient(&fnExecutor{}, identityWrap, "u", "p", dangerous, 8081)
+	cmd, err := c.buildCurl("Core/Login", map[string]any{})
+	if err != nil {
+		t.Fatalf("buildCurl: %v", err)
+	}
+	wantQuoted := shellQuote(c.endpoint("Core/Login"))
+	if !strings.Contains(cmd, wantQuoted) {
+		t.Errorf("expected curl command to shell-quote the endpoint URL, got: %q (want substring %q)", cmd, wantQuoted)
 	}
 }
 

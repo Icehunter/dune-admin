@@ -5,6 +5,10 @@ export type ActionSection
 
 export type PlayerSortKey = 'id' | 'name' | 'class' | 'map' | 'faction_id'
 
+export type SortDir = 'asc' | 'desc'
+
+export type PlayerStatusFilter = 'all' | 'online' | 'offline'
+
 export type PacksData = {
   packs: Record<string, {
     name: string
@@ -26,12 +30,16 @@ export const ACTION_SECTIONS: { key: ActionSection, label: string }[] = [
   { key: 'experimental', label: 'players.actions.sections.experimental' },
 ]
 
+// Sort-axis menu (#281): `label` is an i18n key, resolved with `t(label as
+// never)` at render time in PlayerListControls — same dynamic-key pattern as
+// ACTION_SECTIONS above. Order here is the dropdown display order — Name
+// first as the primary/default axis, ID last as the least-used one.
 export const PLAYER_COLUMNS: { key: PlayerSortKey, label: string }[] = [
-  { key: 'id', label: 'ID' },
-  { key: 'name', label: 'Name' },
-  { key: 'class', label: 'Class' },
-  { key: 'map', label: 'Map' },
-  { key: 'faction_id', label: 'Faction' },
+  { key: 'name', label: 'players.sort.columns.name' },
+  { key: 'faction_id', label: 'players.sort.columns.faction_id' },
+  { key: 'class', label: 'players.sort.columns.class' },
+  { key: 'map', label: 'players.sort.columns.map' },
+  { key: 'id', label: 'players.sort.columns.id' },
 ]
 
 export const XP_TRACKS = ['Combat', 'Crafting', 'Gathering', 'Exploration', 'Sabotage']

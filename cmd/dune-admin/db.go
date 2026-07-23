@@ -6518,15 +6518,46 @@ func validateMapKey(key string) error {
 	return nil
 }
 
+// dimensionFilterSQL builds the optional dimension_index filter shared by
+// cmdFetchMapMarkers/cmdFetchBaseMarkers (#274). A nil dimension means "all
+// dimensions" — the pre-#274 behaviour, kept for backward compatibility — and
+// returns no clause/args. A non-nil dimension (including the zero value, which
+// is a real dimension, not "unset") returns a clause bound to $2, since $1 is
+// always the map key in every caller. alias lets the same helper serve both
+// the actors alias ("a") and the base-markers totem alias ("t").
+//
+// The comparison goes through COALESCE(dimension_index, 0) rather than a bare
+// `= $2`, matching the COALESCE(..., 0) already used when the column is
+// displayed (mapMarker.DimensionIndex) and by cmdFetchMapDimensions when
+// listing options: a NULL dimension_index is treated as bucket 0 everywhere,
+// consistently. A bare `dimension_index = $2` would silently exclude NULL rows
+// even when $2 = 0, because SQL NULL = 0 is neither true nor false — those
+// rows would still be labelled "dimension 0" on display and would have no
+// dimension option in the selector to reach them, only reappearing under "all
+// dimensions". The game server's own save_actors routine already does
+// `coalesce(in_server_info.dimension_index, 0)` on write, so NULL should be
+// rare in practice (legacy/edge-case rows only) — but the read path must not
+// assume that holds.
+func dimensionFilterSQL(alias string, dimension *int) (string, []any) {
+	if dimension == nil {
+		return "", nil
+	}
+	return fmt.Sprintf(" AND COALESCE(%s.dimension_index, 0) = $2", alias), []any{*dimension}
+}
+
 // cmdFetchMapMarkers returns every plottable entity (players + vehicles) on the
 // given map, reading positions from dune.actors.transform. Bases are added in
-// Phase 2b. The map key is validated, then passed as a bound parameter.
-func cmdFetchMapMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string) ([]mapMarker, error) {
+// Phase 2b. The map key is validated, then passed as a bound parameter. dimension
+// optionally narrows results to a single dimension_index (#274) — nil returns
+// every dimension merged, matching pre-#274 behaviour.
+func cmdFetchMapMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string, dimension *int) ([]mapMarker, error) {
 	if err := validateMapKey(mapKey); err != nil {
 		return nil, err
 	}
 
 	markers := []mapMarker{}
+
+	dimClause, dimArgs := dimensionFilterSQL("a", dimension)
 
 	// Players: position is the player's pawn actor transform.
 	// fls_id must be accounts."user" (hex UUID) — that is what RMQ PlayerId and
@@ -6537,6 +6568,7 @@ func cmdFetchMapMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string) 
 		       COALESCE(NULLIF(ps.character_name, ''), 'Unknown') AS name,
 		       COALESCE(ps.online_status::text, '') AS online_status,
 		       COALESCE(a.partition_id, 0) AS partition_id,
+		       COALESCE(a.dimension_index, 0) AS dimension_index,
 		       COALESCE(ac."user", '') AS fls_id,
 		       ((a.transform).location).x,
 		       ((a.transform).location).y,
@@ -6544,14 +6576,15 @@ func cmdFetchMapMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string) 
 		FROM dune.actors a
 		JOIN dune.player_state ps ON ps.player_pawn_id = a.id
 		LEFT JOIN dune.accounts ac ON ac.id = ps.account_id
-		WHERE a.map = $1 AND a.transform IS NOT NULL`, mapKey)
+		WHERE a.map = $1 AND a.transform IS NOT NULL`+dimClause,
+		append([]any{mapKey}, dimArgs...)...)
 	if err != nil {
 		return nil, fmt.Errorf("query player markers: %w", err)
 	}
 	defer playerRows.Close()
 	for playerRows.Next() {
 		m := mapMarker{Type: "player", Map: mapKey}
-		if err := playerRows.Scan(&m.ID, &m.Name, &m.OnlineStatus, &m.PartitionID, &m.FLSID, &m.X, &m.Y, &m.Z); err != nil {
+		if err := playerRows.Scan(&m.ID, &m.Name, &m.OnlineStatus, &m.PartitionID, &m.DimensionIndex, &m.FLSID, &m.X, &m.Y, &m.Z); err != nil {
 			return nil, fmt.Errorf("scan player marker: %w", err)
 		}
 		markers = append(markers, m)
@@ -6565,19 +6598,21 @@ func cmdFetchMapMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string) 
 		SELECT a.id,
 		       a.class,
 		       COALESCE(a.partition_id, 0) AS partition_id,
+		       COALESCE(a.dimension_index, 0) AS dimension_index,
 		       ((a.transform).location).x,
 		       ((a.transform).location).y,
 		       ((a.transform).location).z
 		FROM dune.vehicles v
 		JOIN dune.actors a ON a.id = v.id
-		WHERE a.map = $1 AND a.transform IS NOT NULL`, mapKey)
+		WHERE a.map = $1 AND a.transform IS NOT NULL`+dimClause,
+		append([]any{mapKey}, dimArgs...)...)
 	if err != nil {
 		return nil, fmt.Errorf("query vehicle markers: %w", err)
 	}
 	defer vehicleRows.Close()
 	for vehicleRows.Next() {
 		m := mapMarker{Type: "vehicle", Map: mapKey}
-		if err := vehicleRows.Scan(&m.ID, &m.Class, &m.PartitionID, &m.X, &m.Y, &m.Z); err != nil {
+		if err := vehicleRows.Scan(&m.ID, &m.Class, &m.PartitionID, &m.DimensionIndex, &m.X, &m.Y, &m.Z); err != nil {
 			return nil, fmt.Errorf("scan vehicle marker: %w", err)
 		}
 		m.Class = shortClass(m.Class)
@@ -6588,7 +6623,7 @@ func cmdFetchMapMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string) 
 		return nil, fmt.Errorf("iterate vehicle markers: %w", err)
 	}
 
-	bases, err := cmdFetchBaseMarkers(ctx, pool, mapKey)
+	bases, err := cmdFetchBaseMarkers(ctx, pool, mapKey, dimension)
 	if err != nil {
 		return nil, err
 	}
@@ -6599,11 +6634,15 @@ func cmdFetchMapMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string) 
 
 // cmdFetchBaseMarkers returns base-totem map markers for the given map. Each
 // building's canonical totem actor (lowest owner_entity_id) is joined to
-// permission_actor for the display name, mirroring cmdListBases.
-func cmdFetchBaseMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string) ([]mapMarker, error) {
+// permission_actor for the display name, mirroring cmdListBases. dimension
+// optionally narrows results to a single dimension_index (#274) — nil returns
+// every dimension.
+func cmdFetchBaseMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string, dimension *int) ([]mapMarker, error) {
+	dimClause, dimArgs := dimensionFilterSQL("t", dimension)
 	rows, err := pool.Query(ctx, `
 		SELECT b.id,
 		       COALESCE(NULLIF(pa.actor_name, ''), 'Base') AS name,
+		       COALESCE(t.dimension_index, 0) AS dimension_index,
 		       ((t.transform).location).x,
 		       ((t.transform).location).y,
 		       ((t.transform).location).z
@@ -6616,7 +6655,8 @@ func cmdFetchBaseMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string)
 		JOIN dune.actor_fgl_entities afe ON afe.entity_id = first_inst.owner_entity_id
 		JOIN dune.actors t ON t.id = afe.actor_id AND t.class ILIKE '%Totem%'
 		LEFT JOIN dune.permission_actor pa ON pa.actor_id = t.id
-		WHERE t.map = $1 AND t.transform IS NOT NULL`, mapKey)
+		WHERE t.map = $1 AND t.transform IS NOT NULL`+dimClause,
+		append([]any{mapKey}, dimArgs...)...)
 	if err != nil {
 		return nil, fmt.Errorf("query base markers: %w", err)
 	}
@@ -6624,7 +6664,7 @@ func cmdFetchBaseMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string)
 	var out []mapMarker
 	for rows.Next() {
 		m := mapMarker{Type: "base", Map: mapKey}
-		if err := rows.Scan(&m.ID, &m.Name, &m.X, &m.Y, &m.Z); err != nil {
+		if err := rows.Scan(&m.ID, &m.Name, &m.DimensionIndex, &m.X, &m.Y, &m.Z); err != nil {
 			return nil, fmt.Errorf("scan base marker: %w", err)
 		}
 		out = append(out, m)
@@ -6633,6 +6673,42 @@ func cmdFetchBaseMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string)
 		return nil, fmt.Errorf("iterate base markers: %w", err)
 	}
 	return out, nil
+}
+
+// cmdFetchMapDimensions returns the distinct dimension_index values present for
+// the given map's actors, sorted ascending, so the frontend can populate a
+// dimension selector (#274). Always returns a non-nil slice.
+//
+// Groups on COALESCE(dimension_index, 0) rather than filtering NULL rows out,
+// so it agrees with dimensionFilterSQL and the marker queries' display
+// COALESCE: a map with only NULL-dimension actors still reports dimension 0 as
+// a selectable option, instead of omitting the only dimension those actors
+// could ever be filtered into.
+func cmdFetchMapDimensions(ctx context.Context, pool *pgxpool.Pool, mapKey string) ([]int, error) {
+	if err := validateMapKey(mapKey); err != nil {
+		return nil, err
+	}
+	rows, err := pool.Query(ctx, `
+		SELECT DISTINCT COALESCE(dimension_index, 0)
+		FROM dune.actors
+		WHERE map = $1
+		ORDER BY 1`, mapKey)
+	if err != nil {
+		return nil, fmt.Errorf("query map dimensions: %w", err)
+	}
+	defer rows.Close()
+	dims := []int{}
+	for rows.Next() {
+		var d int
+		if err := rows.Scan(&d); err != nil {
+			return nil, fmt.Errorf("scan dimension: %w", err)
+		}
+		dims = append(dims, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate map dimensions: %w", err)
+	}
+	return dims, nil
 }
 
 // ── storage container commands ────────────────────────────────────────────────

@@ -491,7 +491,10 @@
     "calibSaveFailed": "保存校准失败: {{message}}",
     "calibRemoveLast": "移除最后一个点",
     "calibReset": "重置为默认",
-    "calibResetFailed": "重置校准失败: {{message}}"
+    "calibResetFailed": "重置校准失败: {{message}}",
+    "dimensionLabel": "维度",
+    "dimensionAll": "所有维度",
+    "dimensionOption": "维度 {{n}}"
   },
   "logs": {
     "antiCheatLabel": "反作弊事件",

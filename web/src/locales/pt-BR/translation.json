@@ -494,7 +494,10 @@
     "calibSaveFailed": "Falha ao salvar a calibração: {{message}}",
     "calibRemoveLast": "Remover último ponto",
     "calibReset": "Redefinir para o padrão",
-    "calibResetFailed": "Falha ao redefinir a calibração: {{message}}"
+    "calibResetFailed": "Falha ao redefinir a calibração: {{message}}",
+    "dimensionLabel": "Dimensão",
+    "dimensionAll": "Todas as dimensões",
+    "dimensionOption": "Dimensão {{n}}"
   },
   "logs": {
     "antiCheatLabel": "Eventos anti-trapaça",

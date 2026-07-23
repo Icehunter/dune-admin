@@ -491,7 +491,10 @@
     "calibSaveFailed": "キャリブレーションの保存に失敗しました: {{message}}",
     "calibRemoveLast": "最後のポイントを削除",
     "calibReset": "デフォルトにリセット",
-    "calibResetFailed": "キャリブレーションのリセットに失敗しました: {{message}}"
+    "calibResetFailed": "キャリブレーションのリセットに失敗しました: {{message}}",
+    "dimensionLabel": "ディメンション",
+    "dimensionAll": "すべてのディメンション",
+    "dimensionOption": "ディメンション {{n}}"
   },
   "logs": {
     "antiCheatLabel": "アンチチートイベント",

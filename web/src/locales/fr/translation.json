@@ -494,7 +494,10 @@
     "calibSaveFailed": "Échec de l’enregistrement du calibrage : {{message}}",
     "calibRemoveLast": "Supprimer le dernier point",
     "calibReset": "Réinitialiser par défaut",
-    "calibResetFailed": "Échec de la réinitialisation du calibrage : {{message}}"
+    "calibResetFailed": "Échec de la réinitialisation du calibrage : {{message}}",
+    "dimensionLabel": "Dimension",
+    "dimensionAll": "Toutes les dimensions",
+    "dimensionOption": "Dimension {{n}}"
   },
   "logs": {
     "antiCheatLabel": "Événements anti-triche",

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 // handleListMaps returns the distinct map names present in dune.actors, for use
@@ -23,15 +24,35 @@ func handleListMaps(w http.ResponseWriter, r *http.Request) {
 	jsonOK(w, maps)
 }
 
+// parseDimensionParam reads the optional ?dimension= query parameter shared by
+// /map/markers and /map/dimensions (#274). Absence (or an empty string) means
+// "all dimensions" and returns (nil, nil) — preserving pre-#274 behaviour for
+// any caller that omits the param. A present value must be a non-negative
+// integer; dimension 0 is a real, distinct selection, not "unset".
+func parseDimensionParam(r *http.Request) (*int, error) {
+	raw := r.URL.Query().Get("dimension")
+	if raw == "" {
+		return nil, nil
+	}
+	d, err := strconv.Atoi(raw)
+	if err != nil || d < 0 {
+		return nil, fmt.Errorf("invalid dimension: %q", raw)
+	}
+	return &d, nil
+}
+
 // handleGetMapMarkers returns the Live Map markers (players + vehicles, plus
 // bases in Phase 2b) for the requested map. The ?map= input is validated before
 // the DB is touched, so bad input fails fast with 400 and a valid map with no DB
-// connection surfaces 503.
+// connection surfaces 503. The optional ?dimension= narrows results to a single
+// dimension_index (#274); omitting it preserves the pre-#274 all-dimensions
+// behaviour.
 //
 // @Summary Live Map markers for a map
 // @Tags map
 // @Produce json
 // @Param map query string true "Map key (HaggaBasin | DeepDesert)"
+// @Param dimension query int false "Dimension index to filter to (omit for all dimensions)"
 // @Success 200 {array} mapMarker
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -43,18 +64,55 @@ func handleGetMapMarkers(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, err, http.StatusBadRequest)
 		return
 	}
+	dimension, err := parseDimensionParam(r)
+	if err != nil {
+		jsonErr(w, err, http.StatusBadRequest)
+		return
+	}
 	db := dbFromCtx(r)
 	if db == nil {
 		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
 		return
 	}
-	markers, err := cmdFetchMapMarkers(r.Context(), db, mapKey)
+	markers, err := cmdFetchMapMarkers(r.Context(), db, mapKey, dimension)
 	if err != nil {
 		componentLog("handlers").Error().Str("map_key", mapKey).Err(err).Msg("fetch map markers failed")
 		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
 		return
 	}
 	jsonOK(w, markers)
+}
+
+// handleGetMapDimensions returns the distinct dimension indices available for
+// the requested map, so the frontend can populate a dimension selector (#274).
+//
+// @Summary Live Map available dimensions for a map
+// @Tags map
+// @Produce json
+// @Param map query string true "Map key (HaggaBasin | DeepDesert)"
+// @Success 200 {array} int
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Failure 503 {object} map[string]string
+// @Router /api/v1/map/dimensions [get]
+func handleGetMapDimensions(w http.ResponseWriter, r *http.Request) {
+	mapKey := r.URL.Query().Get("map")
+	if err := validateMapKey(mapKey); err != nil {
+		jsonErr(w, err, http.StatusBadRequest)
+		return
+	}
+	db := dbFromCtx(r)
+	if db == nil {
+		jsonErr(w, fmt.Errorf("database not connected"), http.StatusServiceUnavailable)
+		return
+	}
+	dims, err := cmdFetchMapDimensions(r.Context(), db, mapKey)
+	if err != nil {
+		componentLog("handlers").Error().Str("map_key", mapKey).Err(err).Msg("fetch map dimensions failed")
+		jsonErr(w, fmt.Errorf("internal error"), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, dims)
 }
 
 func handleGetMapCalibration(w http.ResponseWriter, r *http.Request) {

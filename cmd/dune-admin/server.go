@@ -253,6 +253,7 @@ func buildMux() *http.ServeMux {
 	// ── live map ────────────────────────────────────────────────────────────────
 	handleAPI(mux, "GET /api/v1/maps", capWorldRead, handleListMaps)
 	handleAPI(mux, "GET /api/v1/map/markers", capWorldRead, handleGetMapMarkers)
+	handleAPI(mux, "GET /api/v1/map/dimensions", capWorldRead, handleGetMapDimensions)
 	handleAPI(mux, "GET /api/v1/map/calibration", capWorldRead, handleGetMapCalibration)
 	handleAPI(mux, "PUT /api/v1/map/calibration", capWorldWrite, handlePutMapCalibration)
 	handleAPI(mux, "DELETE /api/v1/map/calibration", capWorldWrite, handleDeleteMapCalibration)

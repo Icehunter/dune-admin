@@ -497,7 +497,10 @@
     "calibSaveFailed": "Nie udało się zapisać kalibracji: {{message}}",
     "calibRemoveLast": "Usuń ostatni punkt",
     "calibReset": "Przywróć domyślne",
-    "calibResetFailed": "Nie udało się zresetować kalibracji: {{message}}"
+    "calibResetFailed": "Nie udało się zresetować kalibracji: {{message}}",
+    "dimensionLabel": "Wymiar",
+    "dimensionAll": "Wszystkie wymiary",
+    "dimensionOption": "Wymiar {{n}}"
   },
   "logs": {
     "antiCheatLabel": "Zdarzenia antycheat",

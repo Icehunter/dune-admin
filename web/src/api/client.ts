@@ -418,6 +418,7 @@ export type MapMarker = {
   class?: string
   map: string
   partition_id: number
+  dimension_index: number
   x: number
   y: number
   z: number
@@ -1368,7 +1369,11 @@ export const api = {
   },
 
   map: {
-    markers: (mapKey: string) => req<MapMarker[]>('GET', `/map/markers?map=${encodeURIComponent(mapKey)}`),
+    markers: (mapKey: string, dimension?: number | null) => {
+      const dimParam = dimension != null ? `&dimension=${dimension}` : ''
+      return req<MapMarker[]>('GET', `/map/markers?map=${encodeURIComponent(mapKey)}${dimParam}`)
+    },
+    dimensions: (mapKey: string) => req<number[]>('GET', `/map/dimensions?map=${encodeURIComponent(mapKey)}`),
     calibration: {
       get: (mapKey: string) => req<MapCalibration>('GET', `/map/calibration?map=${encodeURIComponent(mapKey)}`),
       save: (mapKey: string, c: Omit<MapCalibration, 'map_key'>) =>

@@ -491,7 +491,10 @@
     "calibSaveFailed": "Failed to save calibration: {{message}}",
     "calibRemoveLast": "Remove last point",
     "calibReset": "Reset to default",
-    "calibResetFailed": "Failed to reset calibration: {{message}}"
+    "calibResetFailed": "Failed to reset calibration: {{message}}",
+    "dimensionLabel": "Dimension",
+    "dimensionAll": "All dimensions",
+    "dimensionOption": "Dimension {{n}}"
   },
   "logs": {
     "antiCheatLabel": "Anti-cheat events",

@@ -491,7 +491,10 @@
     "calibSaveFailed": "Kalibrasyon kaydedilemedi: {{message}}",
     "calibRemoveLast": "Son noktayı kaldır",
     "calibReset": "Varsayılana sıfırla",
-    "calibResetFailed": "Kalibrasyon sıfırlanamadı: {{message}}"
+    "calibResetFailed": "Kalibrasyon sıfırlanamadı: {{message}}",
+    "dimensionLabel": "Boyut",
+    "dimensionAll": "Tüm boyutlar",
+    "dimensionOption": "Boyut {{n}}"
   },
   "logs": {
     "antiCheatLabel": "Hile karşıtı olaylar",

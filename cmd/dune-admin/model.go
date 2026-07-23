@@ -165,17 +165,18 @@ type baseRow struct {
 // or (Phase 2b) a base. Position is the location vector of dune.actors.transform.
 // Pixel placement and "last seen" age are computed client-side.
 type mapMarker struct {
-	Type         string  `json:"type"` // "player" | "vehicle" | "base"
-	ID           int64   `json:"id"`
-	Name         string  `json:"name"`
-	Class        string  `json:"class,omitempty"`
-	Map          string  `json:"map"`
-	PartitionID  int64   `json:"partition_id"`
-	X            float64 `json:"x"`
-	Y            float64 `json:"y"`
-	Z            float64 `json:"z"`
-	OnlineStatus string  `json:"online_status,omitempty"`
-	FLSID        string  `json:"fls_id,omitempty"`
+	Type           string  `json:"type"` // "player" | "vehicle" | "base"
+	ID             int64   `json:"id"`
+	Name           string  `json:"name"`
+	Class          string  `json:"class,omitempty"`
+	Map            string  `json:"map"`
+	PartitionID    int64   `json:"partition_id"`
+	DimensionIndex int     `json:"dimension_index"`
+	X              float64 `json:"x"`
+	Y              float64 `json:"y"`
+	Z              float64 `json:"z"`
+	OnlineStatus   string  `json:"online_status,omitempty"`
+	FLSID          string  `json:"fls_id,omitempty"`
 }
 
 // ── message types (used by db.go cmd* functions) ──────────────────────────────

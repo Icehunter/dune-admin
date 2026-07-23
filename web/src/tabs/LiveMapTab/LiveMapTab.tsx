@@ -33,6 +33,12 @@ export const LiveMapTab: React.FC = () => {
   const { can } = usePermissions()
   const canPlayersWrite = can('players:write')
   const [mapKey, setMapKey] = React.useState<string>('HaggaBasin')
+  // #274: which dimension (world instance) of the current map to show. null =
+  // "all dimensions" (pre-#274 behaviour, merges every dimension's markers).
+  // Defaults to the first dimension reported for the map once loaded, so
+  // multi-dimension maps don't merge instances by default.
+  const [dimensions, setDimensions] = React.useState<number[]>([])
+  const [dimension, setDimension] = React.useState<number | null>(null)
   const [markers, setMarkers] = React.useState<MapMarker[]>([])
   const [loading, setLoading] = React.useState(false)
   const [unsupported, setUnsupported] = React.useState(false)
@@ -80,7 +86,7 @@ export const LiveMapTab: React.FC = () => {
     [baseCfg, calibrating, previewBounds, calibOverride, mapKey],
   )
 
-  const load = (key: string): void => {
+  const load = (key: string, dim: number | null): void => {
     if (isDragging.current) return
     const cfg = MAPS.find((m) => m.key === key)
     if (!cfg?.hasLiveData) {
@@ -95,7 +101,7 @@ export const LiveMapTab: React.FC = () => {
         setLoading(true)
         setUnsupported(false)
       })
-      .then(() => api.map.markers(key))
+      .then(() => api.map.markers(key, dim))
       .then((rows) => {
         if (isDragging.current) return
         setMarkers(rows)
@@ -110,12 +116,30 @@ export const LiveMapTab: React.FC = () => {
       .finally(() => { if (!isDragging.current) setLoading(false) })
   }
 
-  const loadCurrent = (): void => load(mapKey)
+  const loadCurrent = (): void => load(mapKey, dimension)
   React.useEffect(() => {
     const id = setTimeout(loadCurrent, 0)
     return () => clearTimeout(id)
-  }, [mapKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mapKey, dimension]) // eslint-disable-line react-hooks/exhaustive-deps
   const { countdown, refresh } = useAutoRefresh(loadCurrent, POLL_MS)
+
+  // #274: fetch the available dimensions for the current map and default the
+  // selection to the first one — merging every dimension's markers is the bug
+  // this issue fixes, so "all dimensions" is opt-in, not the default.
+  React.useEffect(() => {
+    const cfg = MAPS.find((m) => m.key === mapKey)
+    const dimsPromise = cfg?.hasLiveData ? api.map.dimensions(mapKey) : Promise.resolve<number[]>([])
+    Promise.resolve()
+      .then(() => dimsPromise)
+      .then((dims) => {
+        setDimensions(dims)
+        setDimension(dims.length > 0 ? dims[0]! : null)
+      })
+      .catch(() => {
+        setDimensions([])
+        setDimension(null)
+      })
+  }, [mapKey])
 
   React.useEffect(() => {
     const cfg = MAPS.find((m) => m.key === mapKey)
@@ -380,6 +404,38 @@ export const LiveMapTab: React.FC = () => {
             </ListBox>
           </Select.Popover>
         </Select>
+
+        {dimensions.length > 0 && (
+          <Select
+            aria-label={t('liveMap.dimensionLabel')}
+            selectedKey={dimension === null ? 'all' : String(dimension)}
+            onSelectionChange={(k) => {
+              const key = String(k)
+              setDimension(key === 'all' ? null : Number(key))
+            }}
+            className="w-36"
+          >
+            <Select.Trigger>
+              <Icon name="layers" className="size-3.5 text-muted shrink-0 mr-1" />
+              <Select.Value />
+              <Select.Indicator />
+            </Select.Trigger>
+            <Select.Popover>
+              <ListBox>
+                <ListBox.Item key="all" id="all" textValue={t('liveMap.dimensionAll')}>
+                  {t('liveMap.dimensionAll')}
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+                {dimensions.map((d) => (
+                  <ListBox.Item key={d} id={String(d)} textValue={t('liveMap.dimensionOption', { n: d })}>
+                    {t('liveMap.dimensionOption', { n: d })}
+                    <ListBox.ItemIndicator />
+                  </ListBox.Item>
+                ))}
+              </ListBox>
+            </Select.Popover>
+          </Select>
+        )}
 
         <div className="h-4 border-l border-border mx-0.5" />
 

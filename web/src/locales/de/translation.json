@@ -491,7 +491,10 @@
     "calibSaveFailed": "Kalibrierung konnte nicht gespeichert werden: {{message}}",
     "calibRemoveLast": "Letzten Punkt entfernen",
     "calibReset": "Auf Standard zurücksetzen",
-    "calibResetFailed": "Kalibrierung konnte nicht zurückgesetzt werden: {{message}}"
+    "calibResetFailed": "Kalibrierung konnte nicht zurückgesetzt werden: {{message}}",
+    "dimensionLabel": "Dimension",
+    "dimensionAll": "Alle Dimensionen",
+    "dimensionOption": "Dimension {{n}}"
   },
   "logs": {
     "antiCheatLabel": "Anti-Cheat-Ereignisse",

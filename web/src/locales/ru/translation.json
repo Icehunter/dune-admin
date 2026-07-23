@@ -497,7 +497,10 @@
     "calibSaveFailed": "Не удалось сохранить калибровку: {{message}}",
     "calibRemoveLast": "Удалить последнюю точку",
     "calibReset": "Сбросить по умолчанию",
-    "calibResetFailed": "Не удалось сбросить калибровку: {{message}}"
+    "calibResetFailed": "Не удалось сбросить калибровку: {{message}}",
+    "dimensionLabel": "Измерение",
+    "dimensionAll": "Все измерения",
+    "dimensionOption": "Измерение {{n}}"
   },
   "logs": {
     "antiCheatLabel": "События античита",

@@ -413,11 +413,11 @@ export const LiveMapTab: React.FC = () => {
               const key = String(k)
               setDimension(key === 'all' ? null : Number(key))
             }}
-            className="w-36"
+            className="w-48 shrink-0"
           >
             <Select.Trigger>
               <Icon name="layers" className="size-3.5 text-muted shrink-0 mr-1" />
-              <Select.Value />
+              <Select.Value className="whitespace-nowrap" />
               <Select.Indicator />
             </Select.Trigger>
             <Select.Popover>

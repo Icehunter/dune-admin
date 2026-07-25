@@ -2,6 +2,8 @@ basePath: /
 definitions:
   main.ServerConfig:
     properties:
+      amp_api_host:
+        type: string
       amp_api_pass:
         type: string
       amp_api_port:
@@ -14,6 +16,11 @@ definitions:
         type: string
       amp_container_runtime:
         type: string
+      amp_container_stop_timeout:
+        description: |-
+          Container-restart stop timeout (seconds; 0 → built-in default) and whether
+          an AMP update auto-restarts the container when it finishes (nil → true).
+        type: integer
       amp_data_root:
         type: string
       amp_instance:
@@ -25,6 +32,8 @@ definitions:
         type: string
       amp_pg_lib:
         type: string
+      amp_update_auto_restart:
+        type: boolean
       amp_use_container:
         type: boolean
       amp_user:
@@ -117,6 +126,20 @@ definitions:
         type: string
       ssh_user:
         type: string
+      timezone:
+        description: |-
+          Timezone is an IANA tz name (e.g. "America/New_York") applied to all
+          time-aware features for this server (activity charts, scheduled restarts,
+          backups). Empty means host-local time. Schedule-level timezone fields fall
+          back to this when set; this wins over them when non-empty.
+        type: string
+      web_interface_host_override:
+        description: |-
+          WebInterfaceHostOverride, when non-empty, replaces the auto-derived SSH
+          host in discovered Web Interface URLs (issue #234). Useful when the SSH
+          jump host differs from the host that serves the director/file-browser
+          node ports. Leave blank to use the SSH host automatically.
+        type: string
     type: object
   main.activityPoint:
     properties:
@@ -127,6 +150,8 @@ definitions:
     type: object
   main.appConfig:
     properties:
+      amp_api_host:
+        type: string
       amp_api_pass:
         type: string
       amp_api_port:
@@ -136,7 +161,10 @@ definitions:
           AMP Web API credentials — let dune-admin manage server settings under AMP
           by writing them through AMP's own config API (Core/SetConfig), so they
           survive AMP regenerating the game INIs. The API is the instance ADS,
-          reached in-container at 127.0.0.1:<amp_api_port> (default 8081).
+          reached in-container at 127.0.0.1:<amp_api_port> (default 8081). Set
+          amp_api_host when AMP's Web API runs on a different, reachable host than
+          the game server — a split control-plane topology (issue #284) — so the
+          call targets that host directly instead of the game host's own loopback.
         type: string
       amp_backup_dir:
         type: string
@@ -148,6 +176,14 @@ definitions:
           (logs/INI/rabbitmqctl) when AmpUseContainer is true: "podman" (default)
           or "docker". Empty → podman, so existing installs are unaffected.
         type: string
+      amp_container_stop_timeout:
+        description: |-
+          AmpContainerStopTimeout is the seconds `<runtime> restart` waits for a
+          graceful stop before SIGKILL in container mode. 0 → the built-in default
+          (ampContainerStopTimeout). The runtime default of 10s is too short for the
+          game shards + in-container Postgres/RabbitMQ and can leave the container
+          wedged in "stopping" when podman escalates to SIGKILL.
+        type: integer
       amp_data_root:
         type: string
       amp_instance:
@@ -164,6 +200,13 @@ definitions:
         type: string
       amp_pg_lib:
         type: string
+      amp_update_auto_restart:
+        description: |-
+          AmpUpdateAutoRestart controls whether an AMP "update" automatically restarts
+          the container once the SteamCMD update finishes (so it boots on the new
+          files). nil/unset → true. Set false to have update only trigger the update
+          and leave restarting to the operator.
+        type: boolean
       amp_use_container:
         type: boolean
       amp_user:
@@ -427,6 +470,19 @@ definitions:
         type: string
       ssh_user:
         type: string
+      timezone:
+        description: |-
+          Timezone is the server-level IANA tz name (e.g. "America/New_York") used
+          for activity charts, scheduled restarts, and backups. Empty = host-local.
+          When set, it takes precedence over any schedule-level timezone setting.
+        type: string
+      web_interface_host_override:
+        description: |-
+          WebInterfaceHostOverride is an optional per-server host that takes
+          precedence over the SSH host when building auto-discovered Web Interface
+          URLs (issue #234). Useful when the SSH jump host differs from the host
+          that serves the director/file-browser node ports.
+        type: string
       welcome_package_active_version:
         type: string
       welcome_package_enabled:
@@ -527,6 +583,27 @@ definitions:
       id:
         type: string
     type: object
+  main.characterBackup:
+    properties:
+      account_id:
+        type: integer
+      action:
+        type: string
+      character_name:
+        type: string
+      created_at:
+        type: string
+      file_path:
+        type: string
+      fls_id:
+        type: string
+      id:
+        type: integer
+      patches_checksum:
+        type: string
+      reason:
+        type: string
+    type: object
   main.cheatEntry:
     properties:
       character_name:
@@ -546,6 +623,29 @@ definitions:
         type: integer
       player_id:
         type: integer
+    type: object
+  main.dbRestoreStatus:
+    properties:
+      done:
+        type: boolean
+      error:
+        type: string
+      failed:
+        type: boolean
+      file:
+        type: string
+      ignored_errors:
+        type: integer
+      output:
+        type: string
+      running:
+        type: boolean
+      servers_stopped:
+        type: boolean
+      steps:
+        items:
+          $ref: '#/definitions/main.restoreStepState'
+        type: array
     type: object
   main.discordMemberRow:
     properties:
@@ -577,6 +677,25 @@ definitions:
         type: integer
       players_num:
         type: integer
+    type: object
+  main.environmentSummary:
+    properties:
+      active_server_count:
+        type: integer
+      arch:
+        type: string
+      auth_enabled:
+        type: boolean
+      control_plane:
+        type: string
+      go_version:
+        type: string
+      market_bot_enabled:
+        type: boolean
+      os:
+        type: string
+      version:
+        type: string
     type: object
   main.factionRep:
     properties:
@@ -724,6 +843,23 @@ definitions:
       name:
         type: string
     type: object
+  main.intelAuditRow:
+    properties:
+      account_id:
+        type: integer
+      expected_intel:
+        type: integer
+      intel:
+        type: integer
+      level:
+        type: integer
+      name:
+        type: string
+      online:
+        type: boolean
+      pawn_id:
+        type: integer
+    type: object
   main.itemInfo:
     properties:
       durability:
@@ -826,6 +962,8 @@ definitions:
     properties:
       class:
         type: string
+      dimension_index:
+        type: integer
       fls_id:
         type: string
       id:
@@ -905,6 +1043,13 @@ definitions:
       name:
         type: string
       online_status:
+        type: string
+    type: object
+  main.restoreStepState:
+    properties:
+      key:
+        type: string
+      status:
         type: string
     type: object
   main.serverHealth:
@@ -1601,6 +1746,47 @@ paths:
       summary: List battlegroup pods/processes and their namespace
       tags:
       - battlegroup
+  /api/v1/battlegroup/restart-partition:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 'partition: partition index to restart'
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "501":
+          description: Not Implemented
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Restart a single map/partition without cycling the whole Battlegroup
+      tags:
+      - battlegroup
   /api/v1/battlegroup/restore:
     post:
       consumes:
@@ -1655,6 +1841,47 @@ paths:
       summary: Get battlegroup and server status from the control plane
       tags:
       - battlegroup
+  /api/v1/battlepass/claims/reset:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        #293 cleanup. mode "demote": earned claims become baseline
+        (never grantable, block re-earning; granted rows kept as
+        history). mode "purge": delete claims AND seen-markers together
+        so everything re-baselines on the next scan. Both modes also
+        drop pending/exhausted auto-grant ledger rows. account_id 0 or
+        omitted = every account on this server.
+      parameters:
+      - description: mode (demote|purge), account_id?
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reset battlepass claims after an incident
+      tags:
+      - battlepass
   /api/v1/blueprints:
     get:
       produces:
@@ -1815,6 +2042,125 @@ paths:
       summary: Send shutdown broadcast command via RabbitMQ
       tags:
       - broadcast
+  /api/v1/character-backups/{id}:
+    delete:
+      parameters:
+      - description: Backup ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a character backup (record + file)
+      tags:
+      - players
+  /api/v1/character-backups/{id}/download:
+    get:
+      parameters:
+      - description: Backup ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: character-backup-{id}.json attachment
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Download a character backup's raw transfer JSON
+      tags:
+      - players
+  /api/v1/character-backups/{id}/restore:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Backup ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: confirm
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Restore a character from a backup (DESTRUCTIVE — full replace)
+      tags:
+      - players
   /api/v1/chat/whisper:
     post:
       consumes:
@@ -2132,8 +2478,8 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "202":
+          description: Accepted
           schema:
             additionalProperties:
               type: string
@@ -2150,10 +2496,64 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Restore the database from a backup (DESTRUCTIVE — battlegroup must
-        be stopped)
+      summary: Start a database restore job (DESTRUCTIVE — stops running game servers
+        first where supported)
       tags:
       - db-backups
+  /api/v1/db-backups/restore/status:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.dbRestoreStatus'
+      summary: Poll the current restore job's progress for this server
+      tags:
+      - db-backups
+  /api/v1/diagnostics/bundle:
+    get:
+      produces:
+      - application/zip
+      responses: {}
+      summary: Download a redacted diagnostics bundle (zip)
+      tags:
+      - diagnostics
+  /api/v1/diagnostics/environment:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.environmentSummary'
+      summary: dune-admin environment summary
+      tags:
+      - diagnostics
+  /api/v1/diagnostics/logs/stream:
+    get:
+      produces:
+      - text/plain
+      responses: {}
+      summary: Stream dune-admin's own logs (raw) via WebSocket
+      tags:
+      - diagnostics
+  /api/v1/diagnostics/report:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Build a redacted GitHub issue title and body
+      tags:
+      - diagnostics
   /api/v1/director-config:
     get:
       produces:
@@ -2617,6 +3017,44 @@ paths:
       summary: Stream log via WebSocket
       tags:
       - logs
+  /api/v1/map/dimensions:
+    get:
+      parameters:
+      - description: Map key (HaggaBasin | DeepDesert)
+        in: query
+        name: map
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: integer
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Live Map available dimensions for a map
+      tags:
+      - map
   /api/v1/map/markers:
     get:
       parameters:
@@ -2625,6 +3063,10 @@ paths:
         name: map
         required: true
         type: string
+      - description: Dimension index to filter to (omit for all dimensions)
+        in: query
+        name: dimension
+        type: integer
       produces:
       - application/json
       responses:
@@ -2982,6 +3424,78 @@ paths:
       summary: List all players
       tags:
       - players
+  /api/v1/players/{id}/backup:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: character_name, reason
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a full character backup via the native transfer export
+      tags:
+      - players
+  /api/v1/players/{id}/backups:
+    get:
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.characterBackup'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List a player's character backups
+      tags:
+      - players
   /api/v1/players/{id}/char-xp:
     get:
       parameters:
@@ -3077,21 +3591,25 @@ paths:
       summary: Get event log entries for a player
       tags:
       - players
-  /api/v1/players/{id}/export:
+  /api/v1/players/{id}/intel:
     get:
+      description: |-
+        Returns current intel, the character's level, the expected
+        cumulative intel for that level, and the spendable cap.
       parameters:
-      - description: Account ID
+      - description: Player (pawn) ID
         in: path
         name: id
         required: true
         type: integer
       produces:
-      - application/octet-stream
+      - application/json
       responses:
         "200":
-          description: character-{id}.json attachment
+          description: OK
           schema:
-            type: string
+            additionalProperties: true
+            type: object
         "400":
           description: Bad Request
           schema:
@@ -3110,7 +3628,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Export a character's data as a JSON attachment
+      summary: Get a player's current intel points
       tags:
       - players
   /api/v1/players/{id}/inventory:
@@ -4259,6 +4777,29 @@ paths:
       summary: Grant max level on a specialization track for a player
       tags:
       - players
+  /api/v1/players/intel-audit:
+    get:
+      description: |-
+        Cleanup audit for the #293 battlepass mass-grant: every row is a
+        character holding more intel than its level should have earned.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/main.intelAuditRow'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List characters whose intel exceeds the expected value for their level
+      tags:
+      - players
   /api/v1/players/item/{id}:
     delete:
       parameters:
@@ -4289,6 +4830,45 @@ paths:
               type: string
             type: object
       summary: Delete a specific inventory item by item ID
+      tags:
+      - players
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: stack_size, quality
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Edit an existing inventory item's stack size and quality grade
       tags:
       - players
   /api/v1/players/journey/complete:
@@ -4853,6 +5433,44 @@ paths:
               type: string
             type: object
       summary: Set a player's tier within a faction
+      tags:
+      - players
+  /api/v1/players/set-intel:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Clamped to [0, cap]. May reduce the balance — the cleanup path
+        for over-granted intel. The player must be offline.
+      parameters:
+      - description: player_id, amount
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Set a player's intel points to an explicit value
       tags:
       - players
   /api/v1/players/set-skill-module:

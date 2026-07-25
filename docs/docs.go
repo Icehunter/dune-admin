@@ -766,6 +766,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/battlegroup/restart-partition": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "battlegroup"
+                ],
+                "summary": "Restart a single map/partition without cycling the whole Battlegroup",
+                "parameters": [
+                    {
+                        "description": "partition: partition index to restart",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "501": {
+                        "description": "Not Implemented",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/battlegroup/restore": {
             "post": {
                 "consumes": [
@@ -839,6 +902,59 @@ const docTemplate = `{
                     },
                     "503": {
                         "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/battlepass/claims/reset": {
+            "post": {
+                "description": "#293 cleanup. mode \"demote\": earned claims become baseline\n(never grantable, block re-earning; granted rows kept as\nhistory). mode \"purge\": delete claims AND seen-markers together\nso everything re-baselines on the next scan. Both modes also\ndrop pending/exhausted auto-grant ledger rows. account_id 0 or\nomitted = every account on this server.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "battlepass"
+                ],
+                "summary": "Reset battlepass claims after an incident",
+                "parameters": [
+                    {
+                        "description": "mode (demote|purge), account_id?",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1084,6 +1200,187 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/character-backups/{id}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Delete a character backup (record + file)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Backup ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/character-backups/{id}/download": {
+            "get": {
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Download a character backup's raw transfer JSON",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Backup ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "character-backup-{id}.json attachment",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/character-backups/{id}/restore": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Restore a character from a backup (DESTRUCTIVE — full replace)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Backup ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "confirm",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1577,10 +1874,10 @@ const docTemplate = `{
                 "tags": [
                     "db-backups"
                 ],
-                "summary": "Restore the database from a backup (DESTRUCTIVE — battlegroup must be stopped)",
+                "summary": "Start a database restore job (DESTRUCTIVE — stops running game servers first where supported)",
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "202": {
+                        "description": "Accepted",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1599,6 +1896,90 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/db-backups/restore/status": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "db-backups"
+                ],
+                "summary": "Poll the current restore job's progress for this server",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.dbRestoreStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/diagnostics/bundle": {
+            "get": {
+                "produces": [
+                    "application/zip"
+                ],
+                "tags": [
+                    "diagnostics"
+                ],
+                "summary": "Download a redacted diagnostics bundle (zip)",
+                "responses": {}
+            }
+        },
+        "/api/v1/diagnostics/environment": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "diagnostics"
+                ],
+                "summary": "dune-admin environment summary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.environmentSummary"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/diagnostics/logs/stream": {
+            "get": {
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "diagnostics"
+                ],
+                "summary": "Stream dune-admin's own logs (raw) via WebSocket",
+                "responses": {}
+            }
+        },
+        "/api/v1/diagnostics/report": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "diagnostics"
+                ],
+                "summary": "Build a redacted GitHub issue title and body",
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2316,6 +2697,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/map/dimensions": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "map"
+                ],
+                "summary": "Live Map available dimensions for a map",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Map key (HaggaBasin | DeepDesert)",
+                        "name": "map",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/map/markers": {
             "get": {
                 "produces": [
@@ -2332,6 +2771,12 @@ const docTemplate = `{
                         "name": "map",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Dimension index to filter to (omit for all dimensions)",
+                        "name": "dimension",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4247,7 +4692,98 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/players/intel-audit": {
+            "get": {
+                "description": "Cleanup audit for the #293 battlepass mass-grant: every row is a\ncharacter holding more intel than its level should have earned.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "List characters whose intel exceeds the expected value for their level",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.intelAuditRow"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/players/item/{id}": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Edit an existing inventory item's stack size and quality grade",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Item ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "stack_size, quality",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "produces": [
                     "application/json"
@@ -5166,6 +5702,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/players/set-intel": {
+            "post": {
+                "description": "Clamped to [0, cap]. May reduce the balance — the cleanup path\nfor over-granted intel. The player must be offline.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Set a player's intel points to an explicit value",
+                "parameters": [
+                    {
+                        "description": "player_id, amount",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/players/set-skill-module": {
             "post": {
                 "consumes": [
@@ -5700,6 +6291,116 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/players/{id}/backup": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "Create a full character backup via the native transfer export",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "character_name, reason",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/players/{id}/backups": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "players"
+                ],
+                "summary": "List a player's character backups",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.characterBackup"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/players/{id}/char-xp": {
             "get": {
                 "produces": [
@@ -5845,19 +6546,20 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/players/{id}/export": {
+        "/api/v1/players/{id}/intel": {
             "get": {
+                "description": "Returns current intel, the character's level, the expected\ncumulative intel for that level, and the spendable cap.",
                 "produces": [
-                    "application/octet-stream"
+                    "application/json"
                 ],
                 "tags": [
                     "players"
                 ],
-                "summary": "Export a character's data as a JSON attachment",
+                "summary": "Get a player's current intel points",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Account ID",
+                        "description": "Player (pawn) ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -5865,9 +6567,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "character-{id}.json attachment",
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -7415,6 +8118,9 @@ const docTemplate = `{
         "main.ServerConfig": {
             "type": "object",
             "properties": {
+                "amp_api_host": {
+                    "type": "string"
+                },
                 "amp_api_pass": {
                     "type": "string"
                 },
@@ -7433,6 +8139,10 @@ const docTemplate = `{
                 "amp_container_runtime": {
                     "type": "string"
                 },
+                "amp_container_stop_timeout": {
+                    "description": "Container-restart stop timeout (seconds; 0 → built-in default) and whether\nan AMP update auto-restarts the container when it finishes (nil → true).",
+                    "type": "integer"
+                },
                 "amp_data_root": {
                     "type": "string"
                 },
@@ -7448,6 +8158,9 @@ const docTemplate = `{
                 },
                 "amp_pg_lib": {
                     "type": "string"
+                },
+                "amp_update_auto_restart": {
+                    "type": "boolean"
                 },
                 "amp_use_container": {
                     "type": "boolean"
@@ -7572,6 +8285,14 @@ const docTemplate = `{
                 },
                 "ssh_user": {
                     "type": "string"
+                },
+                "timezone": {
+                    "description": "Timezone is an IANA tz name (e.g. \"America/New_York\") applied to all\ntime-aware features for this server (activity charts, scheduled restarts,\nbackups). Empty means host-local time. Schedule-level timezone fields fall\nback to this when set; this wins over them when non-empty.",
+                    "type": "string"
+                },
+                "web_interface_host_override": {
+                    "description": "WebInterfaceHostOverride, when non-empty, replaces the auto-derived SSH\nhost in discovered Web Interface URLs (issue #234). Useful when the SSH\njump host differs from the host that serves the director/file-browser\nnode ports. Leave blank to use the SSH host automatically.",
+                    "type": "string"
                 }
             }
         },
@@ -7589,6 +8310,9 @@ const docTemplate = `{
         "main.appConfig": {
             "type": "object",
             "properties": {
+                "amp_api_host": {
+                    "type": "string"
+                },
                 "amp_api_pass": {
                     "type": "string"
                 },
@@ -7596,7 +8320,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "amp_api_user": {
-                    "description": "AMP Web API credentials — let dune-admin manage server settings under AMP\nby writing them through AMP's own config API (Core/SetConfig), so they\nsurvive AMP regenerating the game INIs. The API is the instance ADS,\nreached in-container at 127.0.0.1:\u003camp_api_port\u003e (default 8081).",
+                    "description": "AMP Web API credentials — let dune-admin manage server settings under AMP\nby writing them through AMP's own config API (Core/SetConfig), so they\nsurvive AMP regenerating the game INIs. The API is the instance ADS,\nreached in-container at 127.0.0.1:\u003camp_api_port\u003e (default 8081). Set\namp_api_host when AMP's Web API runs on a different, reachable host than\nthe game server — a split control-plane topology (issue #284) — so the\ncall targets that host directly instead of the game host's own loopback.",
                     "type": "string"
                 },
                 "amp_backup_dir": {
@@ -7608,6 +8332,10 @@ const docTemplate = `{
                 "amp_container_runtime": {
                     "description": "AmpContainerRuntime selects the container CLI used for in-container ops\n(logs/INI/rabbitmqctl) when AmpUseContainer is true: \"podman\" (default)\nor \"docker\". Empty → podman, so existing installs are unaffected.",
                     "type": "string"
+                },
+                "amp_container_stop_timeout": {
+                    "description": "AmpContainerStopTimeout is the seconds ` + "`" + `\u003cruntime\u003e restart` + "`" + ` waits for a\ngraceful stop before SIGKILL in container mode. 0 → the built-in default\n(ampContainerStopTimeout). The runtime default of 10s is too short for the\ngame shards + in-container Postgres/RabbitMQ and can leave the container\nwedged in \"stopping\" when podman escalates to SIGKILL.",
+                    "type": "integer"
                 },
                 "amp_data_root": {
                     "type": "string"
@@ -7625,6 +8353,10 @@ const docTemplate = `{
                 },
                 "amp_pg_lib": {
                     "type": "string"
+                },
+                "amp_update_auto_restart": {
+                    "description": "AmpUpdateAutoRestart controls whether an AMP \"update\" automatically restarts\nthe container once the SteamCMD update finishes (so it boots on the new\nfiles). nil/unset → true. Set false to have update only trigger the update\nand leave restarting to the operator.",
+                    "type": "boolean"
                 },
                 "amp_use_container": {
                     "type": "boolean"
@@ -7899,6 +8631,14 @@ const docTemplate = `{
                 "ssh_user": {
                     "type": "string"
                 },
+                "timezone": {
+                    "description": "Timezone is the server-level IANA tz name (e.g. \"America/New_York\") used\nfor activity charts, scheduled restarts, and backups. Empty = host-local.\nWhen set, it takes precedence over any schedule-level timezone setting.",
+                    "type": "string"
+                },
+                "web_interface_host_override": {
+                    "description": "WebInterfaceHostOverride is an optional per-server host that takes\nprecedence over the SSH host when building auto-discovered Web Interface\nURLs (issue #234). Useful when the SSH jump host differs from the host\nthat serves the director/file-browser node ports.",
+                    "type": "string"
+                },
                 "welcome_package_active_version": {
                     "type": "string"
                 },
@@ -8046,6 +8786,38 @@ const docTemplate = `{
                 }
             }
         },
+        "main.characterBackup": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "integer"
+                },
+                "action": {
+                    "type": "string"
+                },
+                "character_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "file_path": {
+                    "type": "string"
+                },
+                "fls_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "patches_checksum": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
         "main.cheatEntry": {
             "type": "object",
             "properties": {
@@ -8074,6 +8846,41 @@ const docTemplate = `{
                 },
                 "player_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "main.dbRestoreStatus": {
+            "type": "object",
+            "properties": {
+                "done": {
+                    "type": "boolean"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "failed": {
+                    "type": "boolean"
+                },
+                "file": {
+                    "type": "string"
+                },
+                "ignored_errors": {
+                    "type": "integer"
+                },
+                "output": {
+                    "type": "string"
+                },
+                "running": {
+                    "type": "boolean"
+                },
+                "servers_stopped": {
+                    "type": "boolean"
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.restoreStepState"
+                    }
                 }
             }
         },
@@ -8122,6 +8929,35 @@ const docTemplate = `{
                 },
                 "players_num": {
                     "type": "integer"
+                }
+            }
+        },
+        "main.environmentSummary": {
+            "type": "object",
+            "properties": {
+                "active_server_count": {
+                    "type": "integer"
+                },
+                "arch": {
+                    "type": "string"
+                },
+                "auth_enabled": {
+                    "type": "boolean"
+                },
+                "control_plane": {
+                    "type": "string"
+                },
+                "go_version": {
+                    "type": "string"
+                },
+                "market_bot_enabled": {
+                    "type": "boolean"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
@@ -8349,6 +9185,32 @@ const docTemplate = `{
                 }
             }
         },
+        "main.intelAuditRow": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "integer"
+                },
+                "expected_intel": {
+                    "type": "integer"
+                },
+                "intel": {
+                    "type": "integer"
+                },
+                "level": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "online": {
+                    "type": "boolean"
+                },
+                "pawn_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "main.itemInfo": {
             "type": "object",
             "properties": {
@@ -8506,6 +9368,9 @@ const docTemplate = `{
                 "class": {
                     "type": "string"
                 },
+                "dimension_index": {
+                    "type": "integer"
+                },
                 "fls_id": {
                     "type": "string"
                 },
@@ -8620,6 +9485,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "online_status": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.restoreStepState": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }

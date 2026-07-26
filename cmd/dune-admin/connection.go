@@ -358,6 +358,7 @@ func legacyServerFromFlat(ac appConfig) ServerConfig {
 		DefaultIniDir: ac.DefaultIniDir,
 		// docker-specific container names
 		DockerGameserver:  ac.DockerGameserver,
+		DockerGameservers: ac.DockerGameservers,
 		DockerBrokerGame:  ac.DockerBrokerGame,
 		DockerBrokerAdmin: ac.DockerBrokerAdmin,
 		DockerDB:          ac.DockerDB,
@@ -413,6 +414,7 @@ func serverCfgToAppConfig(sc ServerConfig) appConfig {
 	ac.Control = sc.Control
 	ac.ControlNamespace = sc.ControlNamespace
 	ac.DockerGameserver = sc.DockerGameserver
+	ac.DockerGameservers = sc.DockerGameservers
 	ac.DockerBrokerGame = sc.DockerBrokerGame
 	ac.DockerBrokerAdmin = sc.DockerBrokerAdmin
 	ac.DockerDB = sc.DockerDB

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Toast, toast } from '@heroui/react'
 import { AppLayout } from '@heroui-pro/react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useAtom, useSetAtom } from 'jotai'
 import { useStatus } from '../../hooks/useStatus'

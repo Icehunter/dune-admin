@@ -1252,10 +1252,13 @@
         "class": "クラス",
         "location": "場所",
         "name": "名前",
+        "owner": "所有者",
         "type": "タイプ"
       },
+      "granted": "許可",
       "noVehiclesFound": "乗り物が見つかりません",
       "recovered": "回収済み",
+      "unknownOwner": "不明",
       "vehiclesLabel": "乗り物"
     },
     "filter": {

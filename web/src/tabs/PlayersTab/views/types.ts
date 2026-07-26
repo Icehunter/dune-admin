@@ -8,4 +8,4 @@ export type StagedItem = { template: string, qty: number, quality: number, _key:
 
 export type { GivePack }
 
-export type VehicleKey = 'class' | 'location' | 'chassis' | 'name' | 'type' | 'actions'
+export type VehicleKey = 'class' | 'location' | 'owner' | 'chassis' | 'name' | 'type' | 'actions'

@@ -240,13 +240,30 @@ type msgItemTemplates struct {
 }
 
 type vehicleRow struct {
-	ID                int64   `json:"id"`
-	Class             string  `json:"class"`
-	Map               string  `json:"map"`
-	ChassisDurability float64 `json:"chassis_durability"`
-	VehicleName       string  `json:"vehicle_name"`
-	IsRecovered       bool    `json:"is_recovered"`
-	IsBackup          bool    `json:"is_backup"`
+	ID    int64  `json:"id"`
+	Class string `json:"class"`
+	Map   string `json:"map"`
+	// Partition and Dimension locate the vehicle on a multi-sietch server; the
+	// map name alone is ambiguous (#313). Location is the display form.
+	Partition int64  `json:"partition"`
+	Dimension int    `json:"dimension"`
+	Location  string `json:"location"`
+	// OwnerName is the rank-1 holder. AccessRank is the *viewing* player's rank,
+	// so a vehicle merely shared with them is distinguishable from their own.
+	OwnerName   string `json:"owner_name"`
+	AccessRank  int    `json:"access_rank"`
+	AccessLabel string `json:"access_label"`
+	IsOwner     bool   `json:"is_owner"`
+	// ChassisCurrent is the chassis module's absolute durability. ChassisMax is
+	// 0 unless the part has decayed (the game only records a max once it does),
+	// so ChassisPct is only meaningful when HasChassisPct is set.
+	ChassisCurrent float64 `json:"chassis_current"`
+	ChassisMax     float64 `json:"chassis_max"`
+	ChassisPct     float64 `json:"chassis_pct"`
+	HasChassisPct  bool    `json:"has_chassis_pct"`
+	VehicleName    string  `json:"vehicle_name"`
+	IsRecovered    bool    `json:"is_recovered"`
+	IsBackup       bool    `json:"is_backup"`
 }
 
 type cheatEntry struct {

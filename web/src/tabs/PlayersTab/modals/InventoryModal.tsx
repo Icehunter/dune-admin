@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../../api/client'
 import type { InventoryItem, VehicleRow } from '../../../api/client'
 import { DataTable, Icon, LoadingState, Panel, SectionLabel, type Column } from '../../../dune-ui'
+import { VehicleChassisCell } from '../components/VehicleChassisCell'
+import { VehicleOwnerCell } from '../components/VehicleOwnerCell'
 import { EditItemModal } from './EditItemModal'
 import type { InventoryModalProps } from './interfaces'
 import type { ItemKey, VehicleKey } from './types'
@@ -29,6 +31,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, on
   const VEHICLE_COLUMNS: Column<VehicleKey>[] = [
     { key: 'class', label: t('players.vehicles.columns.class'), isRowHeader: true },
     { key: 'location', label: t('players.vehicles.columns.location') },
+    { key: 'owner', label: t('players.vehicles.columns.owner') },
     { key: 'chassis', label: t('players.vehicles.columns.chassis') },
     { key: 'name', label: t('players.vehicles.columns.name') },
     { key: 'type', label: t('players.vehicles.columns.type'), sortable: false },
@@ -212,12 +215,13 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, on
                           className="max-h-[180px]"
                           columns={VEHICLE_COLUMNS}
                           rows={vehicles}
-                          rowId={(v) => `${v.id}-${v.is_backup ? 'b' : 'a'}`}
+                          rowId={(v) => String(v.id)}
                           initialSort={{ column: 'class', direction: 'ascending' }}
                           sortValue={(v, k) => {
                             if (k === 'class') return v.class
-                            if (k === 'location') return v.map ?? ''
-                            if (k === 'chassis') return v.chassis_durability
+                            if (k === 'location') return v.location ?? ''
+                            if (k === 'owner') return v.owner_name ?? ''
+                            if (k === 'chassis') return v.chassis_current
                             if (k === 'name') return v.vehicle_name ?? ''
                             return ''
                           }}
@@ -234,14 +238,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({ player, open, on
                           renderCell={(v, key) => {
                             switch (key) {
                               case 'class': return <span className="font-semibold">{v.class}</span>
-                              case 'location': return <span className="text-muted">{v.map || '–'}</span>
-                              case 'chassis':
-                                return (
-                                  <span className={v.chassis_durability < 0.3 ? 'text-danger' : 'text-muted'}>
-                                    {Math.round(v.chassis_durability * 100)}
-                                    %
-                                  </span>
-                                )
+                              case 'location': return <span className="text-muted">{v.location || '–'}</span>
+                              case 'owner': return <VehicleOwnerCell vehicle={v} />
+                              case 'chassis': return <VehicleChassisCell vehicle={v} />
                               case 'name': return <span className="text-muted">{v.vehicle_name || '–'}</span>
                               case 'type':
                                 return renderVehicleTypeChips(v)

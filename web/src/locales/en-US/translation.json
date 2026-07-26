@@ -1252,10 +1252,14 @@
         "class": "Class",
         "location": "Location",
         "name": "Name",
+        "owner": "Owner",
         "type": "Type"
       },
+      "granted": "Granted",
       "noVehiclesFound": "No vehicles found",
+      "owner": "Owner",
       "recovered": "Recovered",
+      "unknownOwner": "Unknown",
       "vehiclesLabel": "Vehicles"
     },
     "filter": {

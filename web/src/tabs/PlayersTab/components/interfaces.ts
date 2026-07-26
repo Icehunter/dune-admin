@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { Player, SessionRecord, StatSnapshot } from '../../../api/client'
+import type { Player, SessionRecord, StatSnapshot, VehicleRow } from '../../../api/client'
 import type { PlayerSortKey, PlayerStatusFilter, SortDir } from '../types'
 
 export interface PlayerCardProps {
@@ -66,4 +66,12 @@ export interface PlayerListControlsProps {
   factionFilter: Set<number>
   onFactionFilterChange: (factions: Set<number>) => void
   factionOptions: PlayerFactionOption[]
+}
+
+export interface VehicleChassisCellProps {
+  vehicle: VehicleRow
+}
+
+export interface VehicleOwnerCellProps {
+  vehicle: VehicleRow
 }

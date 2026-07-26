@@ -1286,10 +1286,13 @@
         "class": "Класс",
         "location": "Местоположение",
         "name": "Название",
+        "owner": "Владелец",
         "type": "Тип"
       },
+      "granted": "Предоставлен",
       "noVehiclesFound": "Транспорт не найден",
       "recovered": "Восстановлен",
+      "unknownOwner": "Неизвестно",
       "vehiclesLabel": "Транспорт"
     },
     "filter": {

@@ -1252,10 +1252,13 @@
         "class": "等级",
         "location": "位置",
         "name": "名称",
+        "owner": "所有者",
         "type": "类型"
       },
+      "granted": "已授权",
       "noVehiclesFound": "未找到载具",
       "recovered": "已恢复",
+      "unknownOwner": "未知",
       "vehiclesLabel": "载具"
     },
     "filter": {

@@ -13,7 +13,9 @@ import type { VehicleChassisCellProps } from './interfaces'
  * displayed "100%" (#313).
  */
 export const VehicleChassisCell: React.FC<VehicleChassisCellProps> = ({ vehicle }): React.ReactElement => {
-  if (vehicle.chassis_current <= 0) {
+  // A zero reading is only "no data" when there is no maximum either. With a
+  // maximum present, 0 is a real destroyed chassis and must not be hidden.
+  if (vehicle.chassis_current <= 0 && !vehicle.has_chassis_pct) {
     return <span className="text-muted">—</span>
   }
   const worn = vehicle.has_chassis_pct && vehicle.chassis_pct < 30

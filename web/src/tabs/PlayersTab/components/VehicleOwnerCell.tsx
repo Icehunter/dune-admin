@@ -13,7 +13,10 @@ import type { VehicleOwnerCellProps } from './interfaces'
 export const VehicleOwnerCell: React.FC<VehicleOwnerCellProps> = ({ vehicle }): React.ReactElement => {
   const { t } = useTranslation()
   const name = vehicle.owner_name || t('players.vehicles.unknownOwner')
-  if (vehicle.is_owner) {
+  // Key off access_label, not !is_owner: an orphaned backup row carries rank 0
+  // and no owner, and labelling that "Granted" would be a claim about access
+  // that nothing supports.
+  if (vehicle.access_label !== 'granted') {
     return <span className="text-muted">{name}</span>
   }
   return (

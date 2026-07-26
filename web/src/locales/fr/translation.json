@@ -1269,10 +1269,13 @@
         "class": "Classe",
         "location": "Emplacement",
         "name": "Nom",
+        "owner": "Propriétaire",
         "type": "Type"
       },
+      "granted": "Accordé",
       "noVehiclesFound": "Aucun véhicule trouvé",
       "recovered": "Récupéré",
+      "unknownOwner": "Inconnu",
       "vehiclesLabel": "Véhicules"
     },
     "filter": {

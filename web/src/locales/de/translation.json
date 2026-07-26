@@ -1252,10 +1252,13 @@
         "class": "Klasse",
         "location": "Ort",
         "name": "Name",
+        "owner": "Besitzer",
         "type": "Typ"
       },
+      "granted": "Freigegeben",
       "noVehiclesFound": "Keine Fahrzeuge gefunden",
       "recovered": "Wiederhergestellt",
+      "unknownOwner": "Unbekannt",
       "vehiclesLabel": "Fahrzeuge"
     },
     "filter": {

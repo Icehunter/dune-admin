@@ -1286,10 +1286,13 @@
         "class": "Klasa",
         "location": "Lokalizacja",
         "name": "Nazwa",
+        "owner": "Właściciel",
         "type": "Typ"
       },
+      "granted": "Przyznany",
       "noVehiclesFound": "Nie znaleziono pojazdów",
       "recovered": "Odzyskano",
+      "unknownOwner": "Nieznany",
       "vehiclesLabel": "Pojazdy"
     },
     "filter": {

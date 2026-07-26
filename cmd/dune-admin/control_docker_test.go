@@ -414,3 +414,87 @@ func TestDetectDirectorContainer(t *testing.T) {
 		t.Errorf("director = %q, want empty for no containers", got)
 	}
 }
+
+// handlers_servers_health.go does an exact `st.Phase == "Running"` comparison,
+// so the battlegroup phase is a case-sensitive enum. AMP returns "Running";
+// docker must match or a healthy install reports as down.
+func TestDockerGetStatus_PhaseIsCanonicalCase(t *testing.T) {
+	cases := []struct {
+		name string
+		ps   string
+		want string
+	}{
+		{"all running", issue311DockerPS, "Running"},
+		{
+			"all stopped",
+			"dune-server-overmap\tseabass-server:1\texited\n",
+			"Stopped",
+		},
+		{
+			"some running",
+			"dune-server-overmap\tseabass-server:1\trunning\n" +
+				"dune-server-survival-1\tseabass-server:1\texited\n",
+			"Running",
+		},
+		{"no containers", "", "Unknown"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &dockerControl{}
+			st, err := c.GetStatus(context.Background(), dockerScript(tc.ps, nil))
+			if err != nil {
+				t.Fatalf("GetStatus: %v", err)
+			}
+			if st.Phase != tc.want {
+				t.Errorf("Phase = %q, want %q", st.Phase, tc.want)
+			}
+		})
+	}
+}
+
+// docker inspect exits non-zero when ANY named container is missing. Because
+// the inspect is batched, a single stale name in docker_gameservers would
+// otherwise wipe partition/port metadata for every valid container too.
+func TestDockerDiscover_MissingContainerKeepsOthersIntact(t *testing.T) {
+	var inspectCmd string
+	exec := &dialingExecutor{&fnExecutor{fn: func(cmd string) (string, error) {
+		switch {
+		case strings.Contains(cmd, "docker ps"):
+			return issue311DockerPS, nil
+		case strings.Contains(cmd, "docker inspect"):
+			inspectCmd = cmd
+			return dockerInspectOutput(cmd, map[string]string{
+				"dune-server-overmap": `["-PartitionIndex=2","-Port=7777"]`,
+			}), nil
+		}
+		return "", nil
+	}}}
+
+	c := &dockerControl{gameservers: []string{"dune-server-overmap", "ghost-container"}}
+	got, err := c.discoverGameContainers(exec)
+	if err != nil {
+		t.Fatalf("discoverGameContainers: %v", err)
+	}
+	// The stale name is still reported as a row so the operator can see it.
+	assertNames(t, got, "dune-server-overmap", "ghost-container")
+
+	// ...but it must not be handed to docker inspect.
+	if strings.Contains(inspectCmd, "ghost-container") {
+		t.Errorf("inspect command included the unknown container: %s", inspectCmd)
+	}
+	if got[0].partition != 2 || got[0].port != 7777 {
+		t.Errorf("valid container lost its metadata: partition=%d port=%d", got[0].partition, got[0].port)
+	}
+}
+
+// Even when docker inspect reports a failure, whatever it did print must still
+// be used rather than discarded wholesale.
+func TestDockerInspectArgs_UsesPartialOutputOnError(t *testing.T) {
+	exec := &fnExecutor{fn: func(_ string) (string, error) {
+		return "/dune-server-overmap\t[\"-PartitionIndex=4\"]\n", fmt.Errorf("exit status 1")
+	}}
+	got := inspectContainerArgs(exec, []string{"dune-server-overmap", "missing"})
+	if !strings.Contains(got["dune-server-overmap"], "-PartitionIndex=4") {
+		t.Errorf("partial inspect output was discarded: %#v", got)
+	}
+}

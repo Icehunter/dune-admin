@@ -152,11 +152,16 @@ func (c *dockerControl) discoverGameContainers(exec Executor) ([]dockerGameConta
 		selected = selectGameContainers(entries)
 	}
 
-	names := make([]string, 0, len(selected))
+	// Only inspect containers docker actually knows about. A stale name in
+	// docker_gameservers makes `docker inspect` fail for the whole batch, which
+	// would strip partition/port metadata from the valid containers too.
+	known := make([]string, 0, len(selected))
 	for _, e := range selected {
-		names = append(names, e.name)
+		if _, ok := stateByName[e.name]; ok {
+			known = append(known, e.name)
+		}
 	}
-	argsByName := inspectContainerArgs(exec, names)
+	argsByName := inspectContainerArgs(exec, known)
 
 	containers := make([]dockerGameContainer, 0, len(selected))
 	for _, e := range selected {
@@ -182,7 +187,9 @@ func (c *dockerControl) discoverGameContainers(exec Executor) ([]dockerGameConta
 // on a timer and, under an SSH executor, every Exec opens a fresh session — so a
 // per-container inspect would cost N round trips per refresh.
 //
-// Returns an empty map on failure; callers treat args as best-effort.
+// Args are best-effort: whatever docker managed to print is used even when the
+// call reports an error, since docker inspect exits non-zero if any one name is
+// unresolvable while still emitting the containers it did find.
 func inspectContainerArgs(exec Executor, names []string) map[string]string {
 	if len(names) == 0 {
 		return map[string]string{}
@@ -192,11 +199,8 @@ func inspectContainerArgs(exec Executor, names []string) map[string]string {
 		quoted = append(quoted, shellQuote(n))
 	}
 	// #nosec G204 -- every container name is shell-quoted; names come from docker ps or operator config.
-	out, err := exec.Exec(fmt.Sprintf(
+	out, _ := exec.Exec(fmt.Sprintf(
 		"docker inspect --format '{{.Name}}\t{{json .Args}}' %s 2>/dev/null", strings.Join(quoted, " ")))
-	if err != nil {
-		return map[string]string{}
-	}
 	argsByName := make(map[string]string, len(names))
 	for _, line := range splitLines(out) {
 		name, args, found := strings.Cut(strings.TrimSpace(line), "\t")
@@ -276,14 +280,19 @@ func dockerPhaseLabel(state string) string {
 	return strings.ToUpper(state[:1]) + state[1:]
 }
 
+// dockerAggregatePhase reports the battlegroup-level phase.
+//
+// The casing is load-bearing: handlers_servers_health.go compares
+// `st.Phase == "Running"` exactly, and ampControl emits "Running". Returning
+// docker's own lowercase state here made a healthy install report as down.
 func dockerAggregatePhase(total, running int) string {
 	switch {
 	case total == 0:
-		return "unknown"
+		return "Unknown"
 	case running == 0:
-		return "stopped"
+		return "Stopped"
 	default:
-		return "running"
+		return "Running"
 	}
 }
 

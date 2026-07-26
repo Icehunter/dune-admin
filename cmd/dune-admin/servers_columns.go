@@ -3,7 +3,26 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 )
+
+// joinContainerList / splitContainerList persist a container-name list in a
+// single TEXT column. Container names cannot contain commas, so a plain join is
+// unambiguous. An empty column yields a nil slice, which keeps docker
+// auto-detection enabled rather than pinning an empty set (#311).
+func joinContainerList(names []string) string {
+	return strings.Join(names, ",")
+}
+
+func splitContainerList(s string) []string {
+	var out []string
+	for part := range strings.SplitSeq(s, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
 
 // servers_columns.go stores each per-server ServerConfig as typed columns on the
 // servers table. The ServerConfig struct and its json/yaml tags are unchanged;
@@ -29,6 +48,8 @@ var serverColumnAlters = []string{
 	"ALTER TABLE servers ADD COLUMN control TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE servers ADD COLUMN control_namespace TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE servers ADD COLUMN docker_gameserver TEXT NOT NULL DEFAULT ''",
+	// Comma-joined list — the servers table is typed columns, not JSON.
+	"ALTER TABLE servers ADD COLUMN docker_gameservers TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE servers ADD COLUMN docker_broker_game TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE servers ADD COLUMN docker_broker_admin TEXT NOT NULL DEFAULT ''",
 	"ALTER TABLE servers ADD COLUMN docker_db TEXT NOT NULL DEFAULT ''",
@@ -83,7 +104,7 @@ func initServersColumnsSchema(db *sql.DB) error {
 // UPDATE writer and the SELECT reader. ID/Name/LegacyID are excluded by design.
 const serverColumnNames = `ssh_host, ssh_user, ssh_key, ssh_mode, ssh_extra_opts, auto_discover,
 	db_host, db_port, db_user, db_pass, db_name, db_schema, control, control_namespace,
-	docker_gameserver, docker_broker_game, docker_broker_admin, docker_db,
+	docker_gameserver, docker_gameservers, docker_broker_game, docker_broker_admin, docker_db,
 	cmd_start, cmd_stop, cmd_restart, cmd_status,
 	broker_game_addr, broker_admin_addr, broker_tls, broker_user, broker_pass, broker_jwt_secret,
 	broker_exec_prefix, backup_dir, server_ini_dir, default_ini_dir,
@@ -98,7 +119,7 @@ func writeServerColumns(db dbExecer, id int, cfg ServerConfig) error {
 	_, err := db.Exec(`UPDATE servers SET
 		ssh_host=?, ssh_user=?, ssh_key=?, ssh_mode=?, ssh_extra_opts=?, auto_discover=?,
 		db_host=?, db_port=?, db_user=?, db_pass=?, db_name=?, db_schema=?, control=?, control_namespace=?,
-		docker_gameserver=?, docker_broker_game=?, docker_broker_admin=?, docker_db=?,
+		docker_gameserver=?, docker_gameservers=?, docker_broker_game=?, docker_broker_admin=?, docker_db=?,
 		cmd_start=?, cmd_stop=?, cmd_restart=?, cmd_status=?,
 		broker_game_addr=?, broker_admin_addr=?, broker_tls=?, broker_user=?, broker_pass=?,
 		broker_jwt_secret=?, broker_exec_prefix=?, backup_dir=?, server_ini_dir=?, default_ini_dir=?,
@@ -110,7 +131,8 @@ func writeServerColumns(db dbExecer, id int, cfg ServerConfig) error {
 		WHERE id=?`,
 		cfg.SSHHost, cfg.SSHUser, cfg.SSHKey, cfg.SSHMode, cfg.SSHExtraOpts, b2i(cfg.AutoDiscover),
 		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPass, cfg.DBName, cfg.DBSchema, cfg.Control,
-		cfg.ControlNamespace, cfg.DockerGameserver, cfg.DockerBrokerGame, cfg.DockerBrokerAdmin,
+		cfg.ControlNamespace, cfg.DockerGameserver, joinContainerList(cfg.DockerGameservers),
+		cfg.DockerBrokerGame, cfg.DockerBrokerAdmin,
 		cfg.DockerDB, cfg.CmdStart, cfg.CmdStop, cfg.CmdRestart, cfg.CmdStatus,
 		cfg.BrokerGameAddr, cfg.BrokerAdminAddr, b2i(cfg.BrokerTLS), cfg.BrokerUser, cfg.BrokerPass,
 		cfg.BrokerJWTSecret, cfg.BrokerExecPrefix, cfg.BackupDir, cfg.ServerIniDir, cfg.DefaultIniDir,
@@ -131,11 +153,12 @@ func writeServerColumns(db dbExecer, id int, cfg ServerConfig) error {
 func readServerColumns(db dbRowQueryer, id int) (ServerConfig, error) {
 	var cfg ServerConfig
 	var autoDiscover, brokerTLS int
+	var dockerGameservers string
 	var ampUseContainer, marketBotEnabled, ampUpdateAutoRestart sql.NullInt64
 	err := db.QueryRow(`SELECT `+serverColumnNames+` FROM servers WHERE id=?`, id).Scan(
 		&cfg.SSHHost, &cfg.SSHUser, &cfg.SSHKey, &cfg.SSHMode, &cfg.SSHExtraOpts, &autoDiscover,
 		&cfg.DBHost, &cfg.DBPort, &cfg.DBUser, &cfg.DBPass, &cfg.DBName, &cfg.DBSchema, &cfg.Control,
-		&cfg.ControlNamespace, &cfg.DockerGameserver, &cfg.DockerBrokerGame, &cfg.DockerBrokerAdmin,
+		&cfg.ControlNamespace, &cfg.DockerGameserver, &dockerGameservers, &cfg.DockerBrokerGame, &cfg.DockerBrokerAdmin,
 		&cfg.DockerDB, &cfg.CmdStart, &cfg.CmdStop, &cfg.CmdRestart, &cfg.CmdStatus,
 		&cfg.BrokerGameAddr, &cfg.BrokerAdminAddr, &brokerTLS, &cfg.BrokerUser, &cfg.BrokerPass,
 		&cfg.BrokerJWTSecret, &cfg.BrokerExecPrefix, &cfg.BackupDir, &cfg.ServerIniDir, &cfg.DefaultIniDir,
@@ -150,6 +173,7 @@ func readServerColumns(db dbRowQueryer, id int) (ServerConfig, error) {
 	cfg.ID = id
 	cfg.AutoDiscover = autoDiscover != 0
 	cfg.BrokerTLS = brokerTLS != 0
+	cfg.DockerGameservers = splitContainerList(dockerGameservers)
 	cfg.AmpUseContainer = nullIntToBoolPtr(ampUseContainer)
 	cfg.AmpUpdateAutoRestart = nullIntToBoolPtr(ampUpdateAutoRestart)
 	cfg.MarketBotEnabled = nullIntToBoolPtr(marketBotEnabled)

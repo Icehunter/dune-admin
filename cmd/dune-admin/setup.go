@@ -339,23 +339,122 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 
 // ── docker setup flow ─────────────────────────────────────────────────────────
 
-func runDockerSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
-	fmt.Println("Docker container names:")
-	cfg.DockerGameserver = ask("Game server container name", "dune-gameserver")
-	cfg.DockerBrokerGame = ask("mq-game broker container name (optional)", "")
-	cfg.DockerBrokerAdmin = ask("mq-admin broker container name (optional)", "")
+// defaultGameserverSelection returns the 1-based, comma-separated indices of the
+// auto-detected game-server containers, for use as the prompt default.
+func defaultGameserverSelection(entries []dockerPSEntry) string {
+	game := selectGameContainers(entries)
+	isGame := make(map[string]bool, len(game))
+	for _, g := range game {
+		isGame[g.name] = true
+	}
+	var idx []string
+	for i, e := range entries {
+		if isGame[e.name] {
+			idx = append(idx, strconv.Itoa(i+1))
+		}
+	}
+	return strings.Join(idx, ",")
+}
+
+// parseIndexSelection maps a comma-separated 1-based index list onto container
+// names. Out-of-range entries, junk, and duplicates are dropped rather than
+// aborting setup.
+func parseIndexSelection(input string, entries []dockerPSEntry) []string {
+	var names []string
+	seen := map[string]bool{}
+	for part := range strings.SplitSeq(input, ",") {
+		i, err := strconv.Atoi(strings.TrimSpace(part))
+		if err != nil || i < 1 || i > len(entries) {
+			continue
+		}
+		if name := entries[i-1].name; !seen[name] {
+			seen[name] = true
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// detectBrokerContainers picks the RabbitMQ game/admin brokers out of a listing.
+func detectBrokerContainers(entries []dockerPSEntry) (game, admin string) {
+	for _, e := range entries {
+		if !strings.Contains(imageRepoBase(e.image), "rabbitmq") {
+			continue
+		}
+		switch {
+		case strings.Contains(e.name, "game") && game == "":
+			game = e.name
+		case strings.Contains(e.name, "admin") && admin == "":
+			admin = e.name
+		}
+	}
+	return game, admin
+}
+
+// detectDirectorContainer finds the Battlegroup Director container, whose API
+// supplies per-partition player counts and dimension labels.
+func detectDirectorContainer(entries []dockerPSEntry) string {
+	for _, e := range entries {
+		if strings.Contains(imageRepoBase(e.image), "director") {
+			return e.name
+		}
+	}
+	return ""
+}
+
+// setupDockerContainers discovers the container layout and lets the operator
+// confirm which containers are game servers. A Dune install runs one game-server
+// container per map/partition, so asking for a single name (as this wizard used
+// to) leaves the install half-working (#311).
+func setupDockerContainers(ask func(string, string) string, ok, fail func(string), cfg *appConfig, exec Executor) {
+	entries, err := listDockerContainers(exec)
+	if err != nil || len(entries) == 0 {
+		fail("Could not list Docker containers")
+		fmt.Println("  Make sure Docker is running and this user can run `docker ps`.")
+		fmt.Println("  Falling back to manual entry.")
+		cfg.DockerGameservers = splitContainerList(
+			ask("Game server container names (comma-separated)", "dune-gameserver"))
+		cfg.DockerBrokerGame = ask("mq-game broker container name (optional)", "")
+		cfg.DockerBrokerAdmin = ask("mq-admin broker container name (optional)", "")
+		return
+	}
+
+	fmt.Println("Containers found:")
+	for i, e := range entries {
+		fmt.Printf("    [%d] %-32s %s\n", i+1, e.name, e.state)
+	}
 	fmt.Println()
 
-	// Test docker access
-	exec := &localExecutor{}
-	out, err := exec.Exec(fmt.Sprintf("docker inspect --format '{{.State.Status}}' %s 2>&1", cfg.DockerGameserver))
-	if err != nil {
-		fail(fmt.Sprintf("docker inspect failed: %s", out))
-		fmt.Println("  Make sure Docker is running and the container name is correct.")
-		fmt.Println("  Continuing anyway...")
+	def := defaultGameserverSelection(entries)
+	if def == "" {
+		fmt.Println("  Could not auto-detect the game-server containers.")
 	} else {
-		ok(fmt.Sprintf("Container %s is %s", cfg.DockerGameserver, strings.TrimSpace(out)))
+		fmt.Println("  Auto-detected game servers: " + strings.Join(parseIndexSelection(def, entries), ", "))
 	}
+	cfg.DockerGameservers = parseIndexSelection(
+		ask("Which containers are game servers? (comma-separated numbers)", def), entries)
+	if len(cfg.DockerGameservers) == 0 {
+		fail("No game-server containers selected — status and restart will not work")
+	} else {
+		ok(fmt.Sprintf("Game servers: %s", strings.Join(cfg.DockerGameservers, ", ")))
+	}
+
+	brokerGame, brokerAdmin := detectBrokerContainers(entries)
+	cfg.DockerBrokerGame = ask("mq-game broker container name (optional)", brokerGame)
+	cfg.DockerBrokerAdmin = ask("mq-admin broker container name (optional)", brokerAdmin)
+
+	// The Director supplies player counts, queue depth, and dimension labels for
+	// each partition — the columns that stay blank without it.
+	directorDefault := ""
+	if detectDirectorContainer(entries) != "" {
+		directorDefault = "http://127.0.0.1:11717"
+	}
+	cfg.DirectorURL = ask("Battlegroup Director URL (optional)", directorDefault)
+}
+
+func runDockerSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
+	exec := &localExecutor{}
+	setupDockerContainers(ask, ok, fail, cfg, exec)
 	fmt.Println()
 
 	fmt.Println("Database connection:")

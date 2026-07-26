@@ -113,7 +113,7 @@ func (c *ampControl) GetStatus(ctx context.Context, exec Executor) (*Battlegroup
 	// Battlegroup Director knows each partition's dimensionIndex and label, so
 	// enrich rows from there. Best-effort: a missing/unreachable director just
 	// leaves Dimension at zero.
-	dirMeta, err := c.fetchDirectorPartitions(ctx, exec)
+	dirMeta, err := fetchDirectorPartitions(ctx, exec, c.directorURL)
 	if err != nil {
 		componentLog("control_amp").Warn().Err(err).Msg("director enrichment unavailable")
 	}
@@ -170,11 +170,14 @@ type partitionMeta struct {
 // endpoint and returns a map of partitionId → metadata. It returns nil (no
 // error) when no director URL is configured; transport, status, and decode
 // failures are returned as errors so the caller can log them and continue.
-func (c *ampControl) fetchDirectorPartitions(ctx context.Context, exec Executor) (map[int]partitionMeta, error) {
-	if c.directorURL == "" {
+//
+// Shared by the amp and docker planes — both run N game-server partitions that
+// the director knows the dimension, label, and player counts for.
+func fetchDirectorPartitions(ctx context.Context, exec Executor, directorURL string) (map[int]partitionMeta, error) {
+	if directorURL == "" {
 		return nil, nil
 	}
-	endpoint := strings.TrimRight(c.directorURL, "/") + "/v0/battlegroup"
+	endpoint := strings.TrimRight(directorURL, "/") + "/v0/battlegroup"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("build director request: %w", err)

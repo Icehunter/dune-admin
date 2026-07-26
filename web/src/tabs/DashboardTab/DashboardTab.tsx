@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { Button, Chip, Skeleton, Spinner, toast } from '@heroui/react'
 import { Icon, Panel, PageHeader, LoadingState } from '../../dune-ui'
 import { api } from '../../api/client'

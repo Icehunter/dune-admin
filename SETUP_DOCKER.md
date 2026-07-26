@@ -78,8 +78,8 @@ docker_gameservers:
   - dune-server-deepdesert-1-8
   - dune-server-survival-1
 
-docker_broker_game: dune-mq-game      # optional — for broker command path
-docker_broker_admin: dune-mq-admin    # optional — for broker command path
+docker_broker_game: dune-rmq-game      # optional — for broker command path
+docker_broker_admin: dune-rmq-admin    # optional — for broker command path
 
 # Optional — fills in players, queue depth, and dimension labels per partition:
 director_url: http://127.0.0.1:11717
@@ -94,8 +94,8 @@ db_schema: dune
 
 # Optional:
 backup_dir: /backups
-broker_game_addr: dune-mq-game:5672   # defaults to docker_broker_game container DNS if omitted
-broker_admin_addr: dune-mq-admin:5672
+broker_game_addr: dune-rmq-game:5672   # defaults to docker_broker_game container DNS if omitted
+broker_admin_addr: dune-rmq-admin:5672
 broker_tls: false
 listen_addr: :8080
 scrip_currency: 1
@@ -115,10 +115,10 @@ services:
     container_name: dune-server-survival-1   # ← auto-detected game server
   database:
     container_name: dune-db
-  mq-game:
-    container_name: dune-mq-game             # ← docker_broker_game
-  mq-admin:
-    container_name: dune-mq-admin            # ← docker_broker_admin
+  rmq-game:
+    container_name: dune-rmq-game            # ← docker_broker_game
+  rmq-admin:
+    container_name: dune-rmq-admin           # ← docker_broker_admin
 ```
 
 The legacy singular `docker_gameserver` key still works and is treated as a

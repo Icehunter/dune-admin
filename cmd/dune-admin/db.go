@@ -58,11 +58,11 @@ func invalidateAllJourneyCache() {
 
 // ── data fetch commands ───────────────────────────────────────────────────────
 
-func cmdFetchPlayers(pool *pgxpool.Pool) Msg {
-	if pool == nil {
-		return msgPlayers{err: fmt.Errorf("not connected")}
-	}
-	rows, err := pool.Query(context.Background(), `
+// fetchPlayersSQL lists one row per LIVING player character. It is rooted on
+// dune.actors (the pawn) but binds each pawn to its OWN dune.player_state row
+// via playerStateByPawnJoin — see that helper for why resolving per account
+// listed deleted characters.
+var fetchPlayersSQL = `
 		SELECT a.id,
 		       COALESCE(a.owner_account_id, 0),
 		       COALESCE(ps.character_name, convert_from(e.encrypted_funcom_id, 'UTF8'), ''),
@@ -72,11 +72,17 @@ func cmdFetchPlayers(pool *pgxpool.Pool) Msg {
 		       COALESCE(a.map, ''),
 		       COALESCE(af.faction_id, 0),
 		       COALESCE(ps.online_status::text, 'Offline')
-		FROM dune.actors a`+playerStateCanonicalJoin+`
+		FROM dune.actors a` + playerStateByPawnJoin + `
 		LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
-		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id`+factionByAccountJoin+`
+		LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id` + factionByAccountJoin + `
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
-		ORDER BY a.id`, gmIdentityAccountID)
+		ORDER BY a.id`
+
+func cmdFetchPlayers(pool *pgxpool.Pool) Msg {
+	if pool == nil {
+		return msgPlayers{err: fmt.Errorf("not connected")}
+	}
+	rows, err := pool.Query(context.Background(), fetchPlayersSQL, gmIdentityAccountID)
 	if err != nil {
 		return msgPlayers{err: err}
 	}
@@ -194,6 +200,64 @@ func playerStateCanonicalJoinOn(actorAlias, psAlias string) string {
 // actor as "a"; this exposes the usual "ps" columns.
 var playerStateCanonicalJoin = playerStateCanonicalJoinOn("a", "ps")
 
+// playerStateByPawnJoinOn is the pawn-keyed counterpart of
+// playerStateCanonicalJoinOn, for queries rooted on the character actor.
+//
+// Deleting a character does not remove its actor rows: measured on a live
+// server, a character whose encrypted_player_state row reads
+// character_state = 'Deleted' still had all three of its actor rows
+// (Controller/State/Pawn) in dune.actors — e.g. account 656 with a deleted
+// character 6 (actors 1708/1709/1710) alongside its live character 84. Note
+// this is NOT what db-routines' dune.delete_account does (that one deletes
+// the actor rows outright); the surviving rows come from the in-game
+// character delete/re-create path, whichever routine the game uses for it.
+//
+// An actors-rooted query that resolves player_state per ACCOUNT therefore
+// emits a row for every dead pawn too, and — because the per-account LATERAL
+// picks the account's most-recently-active row — the dead pawn borrows the
+// LIVING character's name, controller id, faction and online status. On a
+// live server that showed 61 rows for 51 characters, three of them looking
+// like exact duplicates of a real player and seven nameless.
+//
+// Binding the pawn to its own character row fixes both: dune.player_state
+// only exposes live characters (measured: it returns exactly one row for the
+// account above), so a deleted character's pawn matches nothing and the
+// INNER join drops it — no 'Deleted' predicate of our own needed. The
+// canonical most-recently-active ordering is kept because the game's schema
+// migration dropped the unique constraint on account_id (#290), so even a
+// pawn-keyed match is not guaranteed unique. Aliases are compile-time
+// literals, never input.
+//
+// Trade-off: a pawn actor that exists before its player_state row references
+// it (the mirror image of the orphaning race documented on
+// restoreCharacterBackupParams.cleanupOrphanActors) now drops out of the
+// list until the state row catches up, where the per-account join used to
+// show it nameless. Listing nothing beats listing it under another
+// character's name.
+func playerStateByPawnJoinOn(actorAlias, psAlias string) string {
+	return fmt.Sprintf(`
+		JOIN LATERAL (
+			SELECT * FROM dune.player_state %[2]s2
+			WHERE %[2]s2.player_pawn_id = %[1]s.id
+			ORDER BY %[2]s2.last_login_time DESC NULLS LAST, %[2]s2.id DESC
+			LIMIT 1
+		) %[2]s ON true`, actorAlias, psAlias)
+}
+
+// playerStateByPawnJoin is the common "a"/"ps" form of
+// playerStateByPawnJoinOn.
+var playerStateByPawnJoin = playerStateByPawnJoinOn("a", "ps")
+
+// livingCharacterFilter is the aggregate-query counterpart of
+// playerStateByPawnJoin: the same "this pawn still has a living character
+// row" predicate, as an EXISTS rather than a join, for queries that count or
+// group over character actors and never read a player_state column. Without
+// it the Players dashboard keeps reporting deleted characters in its
+// population, per-map and economy figures. The outer query must alias the
+// character actor as "a".
+const livingCharacterFilter = `
+		AND EXISTS (SELECT 1 FROM dune.player_state lps WHERE lps.player_pawn_id = a.id)`
+
 const (
 	// factionByAccountJoin resolves a player's faction by ACCOUNT. Faction is
 	// stored on the PlayerController actor, NOT the PlayerCharacter, so joining
@@ -211,7 +275,7 @@ const (
 	serverByMapSQL = `
 		SELECT COALESCE(NULLIF(a.map, ''), 'Unknown') AS label, COUNT(*) AS count
 		FROM dune.actors a
-		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
+		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1` + livingCharacterFilter + `
 		GROUP BY label
 		ORDER BY count DESC, label`
 
@@ -232,7 +296,7 @@ const (
 		FROM dune.actors a
 		JOIN dune.actor_fgl_entities afe ON afe.actor_id = a.id AND afe.slot_name = 'DuneCharacter'
 		JOIN dune.fgl_entities fe ON fe.entity_id = afe.entity_id
-		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
+		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1` + livingCharacterFilter
 
 	// Per-player (faction, char XP) for the per-faction average level (#130 ext).
 	// Same DuneCharacter XP source as serverCharXPSQL, joined to faction (LEFT
@@ -245,7 +309,7 @@ const (
 		JOIN dune.actor_fgl_entities afe ON afe.actor_id = a.id AND afe.slot_name = 'DuneCharacter'
 		JOIN dune.fgl_entities fe ON fe.entity_id = afe.entity_id` + factionByAccountJoin + `
 		LEFT JOIN dune.factions f ON f.id = af.faction_id
-		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
+		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1` + livingCharacterFilter
 )
 
 // Vars (not consts) because they embed playerStateCanonicalJoin, which is
@@ -261,7 +325,7 @@ var (
 		SELECT
 			COUNT(*) AS total,
 			COALESCE(SUM(CASE WHEN ps.online_status = 'Online' THEN 1 ELSE 0 END), 0) AS online
-		FROM dune.actors a` + playerStateCanonicalJoin + `
+		FROM dune.actors a` + playerStateByPawnJoin + `
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
 
 	// Players + economy grouped by faction. LEFT JOINs so characters with no
@@ -277,7 +341,7 @@ var (
 			COALESCE(SUM(CASE WHEN vcb.currency_id =  dune.get_solaris_id() THEN vcb.balance ELSE 0 END), 0) AS solaris,
 			COALESCE(SUM(CASE WHEN vcb.currency_id <> dune.get_solaris_id() THEN vcb.balance ELSE 0 END), 0) AS scrip
 		FROM dune.actors a` + factionByAccountJoin + `
-		LEFT JOIN dune.factions f ON f.id = af.faction_id` + playerStateCanonicalJoin + `
+		LEFT JOIN dune.factions f ON f.id = af.faction_id` + playerStateByPawnJoin + `
 		LEFT JOIN dune.player_virtual_currency_balances vcb ON vcb.player_controller_id = ps.player_controller_id
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1
 		GROUP BY faction
@@ -369,7 +433,7 @@ const serverAccountFactionSQL = `
 	SELECT a.owner_account_id, COALESCE(f.name, 'Unaligned')
 	FROM dune.actors a` + factionByAccountJoin + `
 	LEFT JOIN dune.factions f ON f.id = af.faction_id
-	WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1`
+	WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1` + livingCharacterFilter
 
 // cmdFetchAccountFactions returns account_id -> current faction name.
 func cmdFetchAccountFactions(ctx context.Context, pool *pgxpool.Pool) (map[int64]string, error) {
@@ -1737,7 +1801,7 @@ var findPlayersByNameSQL = `
 	       COALESCE(a.map, ''),
 	       COALESCE(af.faction_id, 0),
 	       COALESCE(ps.online_status::text, 'Offline')
-	FROM dune.actors a` + playerStateCanonicalJoin + `
+	FROM dune.actors a` + playerStateByPawnJoin + `
 	LEFT JOIN dune.encrypted_accounts e ON e.id = a.owner_account_id
 	LEFT JOIN dune.accounts ac ON ac.id = a.owner_account_id` + factionByAccountJoin + `
 	WHERE ps.character_name ILIKE '%' || $1 || '%'

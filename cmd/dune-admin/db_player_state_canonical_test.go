@@ -42,8 +42,12 @@ func TestPlayerStateFanOutQueriesUseCanonicalJoin(t *testing.T) {
 		"guildMembersSQL":          guildMembersSQL,
 		"guildInvitesSQL":          guildInvitesSQL,
 	}
+	// "JOIN LATERAL" and not "LEFT JOIN LATERAL": the pawn-keyed variant that
+	// drops soft-deleted characters is an INNER lateral (see
+	// db_players_ghost_rows_test.go). Both satisfy the #290 invariant — one
+	// bounded row per actor under the canonical ordering, never a bare join.
 	for name, sql := range queries {
-		if !strings.Contains(sql, "LEFT JOIN LATERAL") {
+		if !strings.Contains(sql, "JOIN LATERAL") {
 			t.Errorf("%s must use the canonical LATERAL join", name)
 		}
 		if !strings.Contains(sql, canonicalOrderFragment) {

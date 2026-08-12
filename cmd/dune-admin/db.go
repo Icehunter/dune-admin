@@ -287,8 +287,6 @@ const (
 			COALESCE(SUM(CASE WHEN currency_id <> dune.get_solaris_id() THEN balance ELSE 0 END), 0) AS scrip
 		FROM dune.player_virtual_currency_balances`
 
-	// Players + economy grouped by faction. LEFT JOINs so characters with no
-	// dune.player_faction row fall into "Unaligned"; COUNT(DISTINCT a.id) stays
 	// Cumulative character XP per player (DuneCharacter FLevelComponent), fed
 	// through xpToLevel to compute the server's average character level.
 	serverCharXPSQL = `
@@ -312,15 +310,16 @@ const (
 		WHERE a.class ILIKE '%PlayerCharacter%' AND a.owner_account_id <> $1` + livingCharacterFilter
 )
 
-// Vars (not consts) because they embed playerStateCanonicalJoin, which is
-// built by playerStateCanonicalJoinOn at init.
+// Vars (not consts) because they embed playerStateByPawnJoin, which is built
+// by playerStateByPawnJoinOn at init.
 var (
 	// Population counts. The seeded GM identity ($1) is excluded — it is not a
 	// real player. online_status compares against the enum literal (see
 	// cmdFetchOnlineAccountIDs), summed via CASE to match existing query style.
-	// Uses playerStateCanonicalJoin (#290) so a duplicate player_state row
-	// can't inflate the total/online counts the same way it fanned out
-	// cmdFetchPlayers's list.
+	// Uses playerStateByPawnJoin, so deleted characters' surviving pawns stay
+	// out of the counts and — via the canonical ordering it keeps (#290) — a
+	// duplicate player_state row can't inflate the total/online counts the
+	// same way it fanned out cmdFetchPlayers's list.
 	serverCountsSQL = `
 		SELECT
 			COUNT(*) AS total,
@@ -1788,9 +1787,11 @@ func cmdGiveCurrencyCtx(ctx context.Context, db *pgxpool.Pool, controllerID, amo
 	return balance, nil
 }
 
-// findPlayersByNameSQL uses the canonical player_state join (#290) so an
-// account with duplicate state rows can't make a unique character name look
-// ambiguous to the Discord command that consumes this lookup.
+// findPlayersByNameSQL resolves player_state by pawn, so a deleted character
+// can't match the search under the living character's name. The canonical
+// ordering it keeps (#290) means an account with duplicate state rows still
+// can't make a unique character name look ambiguous to the Discord command
+// that consumes this lookup.
 var findPlayersByNameSQL = `
 	SELECT a.id,
 	       COALESCE(a.owner_account_id, 0),

@@ -50,15 +50,28 @@ type ControlPlane interface {
 }
 
 // partitionRestarter is the optional control-plane capability for restarting a
-// single map/partition without cycling the whole Battlegroup. Only the kubectl
-// control plane implements it, via Funcom's ServerRestart CRD (serverrestarts.
+// single map/partition without cycling the whole Battlegroup.
+//
+// kubectl implements it via Funcom's ServerRestart CRD (serverrestarts.
 // igw.funcom.com) — a dedicated per-pod restart primitive distinct from the
-// whole-CRD "spec.stop" patch ExecCommand("restart") uses. AMP and docker/local
-// run every partition's process inside one shared container, so there is no
-// narrower unit to restart there (see .claude/rules/amp.md) — those planes
-// simply don't implement this interface, and handlers type-assert for it.
+// whole-CRD "spec.stop" patch ExecCommand("restart") uses. docker implements it
+// by restarting the one container serving that partition (#311).
+//
+// AMP and local run every partition's process inside one shared container, so
+// there is no narrower unit to restart there (see .claude/rules/amp.md) — those
+// planes don't implement this interface, and handlers type-assert for it.
 type partitionRestarter interface {
 	RestartPartition(ctx context.Context, exec Executor, partition int) (string, error)
+}
+
+// supportsPartitionRestart reports whether the active plane can restart a single
+// partition. handleStatus surfaces this so the UI can show or hide the per-map
+// restart action without re-deriving the answer from the plane's name: docker
+// grew the capability in #311 while the Battlegroup tab still tested for
+// "kubectl", leaving the button hidden on a plane that supported it.
+func supportsPartitionRestart(ctrl ControlPlane) bool {
+	_, ok := ctrl.(partitionRestarter)
+	return ok
 }
 
 // ── Types shared across control plane implementations ─────────────────────────
@@ -114,8 +127,10 @@ func newControlPlane(name string, cfg appConfig) ControlPlane {
 	case "docker":
 		return &dockerControl{
 			gameserver:  cfg.DockerGameserver,
+			gameservers: cfg.DockerGameservers,
 			brokerGame:  cfg.DockerBrokerGame,
 			brokerAdmin: cfg.DockerBrokerAdmin,
+			directorURL: cfg.DirectorURL,
 		}
 	case "amp":
 		user := cfg.AmpUser

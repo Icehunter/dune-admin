@@ -339,23 +339,172 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 
 // ── docker setup flow ─────────────────────────────────────────────────────────
 
-func runDockerSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
-	fmt.Println("Docker container names:")
-	cfg.DockerGameserver = ask("Game server container name", "dune-gameserver")
-	cfg.DockerBrokerGame = ask("mq-game broker container name (optional)", "")
-	cfg.DockerBrokerAdmin = ask("mq-admin broker container name (optional)", "")
+// defaultGameserverSelection returns the 1-based, comma-separated indices of the
+// auto-detected game-server containers, for use as the prompt default.
+func defaultGameserverSelection(entries []dockerPSEntry) string {
+	game := selectGameContainers(entries)
+	isGame := make(map[string]bool, len(game))
+	for _, g := range game {
+		isGame[g.name] = true
+	}
+	var idx []string
+	for i, e := range entries {
+		if isGame[e.name] {
+			idx = append(idx, strconv.Itoa(i+1))
+		}
+	}
+	return strings.Join(idx, ",")
+}
+
+// parseIndexSelection maps a comma-separated 1-based index list onto container
+// names. Out-of-range entries, junk, and duplicates are dropped rather than
+// aborting setup.
+func parseIndexSelection(input string, entries []dockerPSEntry) []string {
+	var names []string
+	seen := map[string]bool{}
+	for part := range strings.SplitSeq(input, ",") {
+		i, err := strconv.Atoi(strings.TrimSpace(part))
+		if err != nil || i < 1 || i > len(entries) {
+			continue
+		}
+		if name := entries[i-1].name; !seen[name] {
+			seen[name] = true
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// dockerGameserverChoice is the outcome of the wizard's game-server prompt.
+//
+// Pinning is deliberately opt-in. The wizard used to write the auto-detected
+// names straight into docker_gameservers, which froze the layout at setup time:
+// an explicit list short-circuits runtime discovery, so a map server started
+// afterwards never appeared on the panel (#311). Leaving the list empty keeps
+// image-based discovery in charge on every poll.
+type dockerGameserverChoice struct {
+	pinned   []string // written to docker_gameservers; empty means auto-detect
+	detected []string // what discovery finds today, for the confirmation line
+}
+
+// autoDetect reports whether discovery stays in charge at runtime.
+func (c dockerGameserverChoice) autoDetect() bool { return len(c.pinned) == 0 }
+
+// usable reports whether the panel will find game servers. Nothing pinned and
+// nothing detectable means status and restart have nothing to act on.
+func (c dockerGameserverChoice) usable() bool {
+	return len(c.pinned) > 0 || len(c.detected) > 0
+}
+
+// resolveDockerGameservers turns the operator's answer into that choice. Junk
+// and out-of-range indices resolve to auto-detect rather than to an empty pin,
+// so a typo can't leave the panel permanently blank.
+func resolveDockerGameservers(answer string, entries []dockerPSEntry) dockerGameserverChoice {
+	var detected []string
+	for _, e := range selectGameContainers(entries) {
+		detected = append(detected, e.name)
+	}
+	return dockerGameserverChoice{
+		pinned:   parseIndexSelection(answer, entries),
+		detected: detected,
+	}
+}
+
+// detectBrokerContainers picks the RabbitMQ game/admin brokers out of a listing.
+func detectBrokerContainers(entries []dockerPSEntry) (game, admin string) {
+	for _, e := range entries {
+		if !strings.Contains(imageRepoBase(e.image), "rabbitmq") {
+			continue
+		}
+		switch {
+		case strings.Contains(e.name, "game") && game == "":
+			game = e.name
+		case strings.Contains(e.name, "admin") && admin == "":
+			admin = e.name
+		}
+	}
+	return game, admin
+}
+
+// detectDirectorContainer finds the Battlegroup Director container, whose API
+// supplies per-partition player counts and dimension labels.
+func detectDirectorContainer(entries []dockerPSEntry) string {
+	for _, e := range entries {
+		if strings.Contains(imageRepoBase(e.image), "director") {
+			return e.name
+		}
+	}
+	return ""
+}
+
+// askGameservers offers the detected game servers and lets the operator pin a
+// different set. Accepting the default pins nothing, so discovery re-runs on
+// every poll and map servers started after setup show up on their own (#311).
+func askGameservers(ask func(string, string) string, ok, fail func(string), cfg *appConfig, entries []dockerPSEntry) {
+	detected := resolveDockerGameservers("", entries).detected
+	if len(detected) == 0 {
+		fmt.Println("  Could not auto-detect the game-server containers.")
+	} else {
+		fmt.Println("  Auto-detected game servers: " + strings.Join(detected, ", "))
+		fmt.Println("  Leave blank to re-detect on every poll — new map servers appear automatically.")
+	}
+	// Default is blank: pinning is the exception, not the norm.
+	choice := resolveDockerGameservers(
+		ask("Pin specific game-server containers? (comma-separated numbers, blank = auto-detect)", ""),
+		entries)
+	cfg.DockerGameservers = choice.pinned
+
+	switch {
+	case !choice.usable():
+		fail("No game-server containers detected or pinned — status and restart will not work")
+	case choice.autoDetect():
+		ok(fmt.Sprintf("Game servers: auto-detect (%s)", strings.Join(choice.detected, ", ")))
+	default:
+		ok(fmt.Sprintf("Game servers pinned: %s", strings.Join(choice.pinned, ", ")))
+	}
+}
+
+// setupDockerContainers discovers the container layout and lets the operator
+// confirm which containers are game servers. A Dune install runs one game-server
+// container per map/partition, so asking for a single name (as this wizard used
+// to) leaves the install half-working (#311).
+func setupDockerContainers(ask func(string, string) string, ok, fail func(string), cfg *appConfig, exec Executor) {
+	entries, err := listDockerContainers(exec)
+	if err != nil || len(entries) == 0 {
+		fail("Could not list Docker containers")
+		fmt.Println("  Make sure Docker is running and this user can run `docker ps`.")
+		fmt.Println("  Falling back to manual entry.")
+		cfg.DockerGameservers = splitContainerList(
+			ask("Game server container names (comma-separated)", "dune-gameserver"))
+		cfg.DockerBrokerGame = ask("mq-game broker container name (optional)", "")
+		cfg.DockerBrokerAdmin = ask("mq-admin broker container name (optional)", "")
+		return
+	}
+
+	fmt.Println("Containers found:")
+	for i, e := range entries {
+		fmt.Printf("    [%d] %-32s %s\n", i+1, e.name, e.state)
+	}
 	fmt.Println()
 
-	// Test docker access
-	exec := &localExecutor{}
-	out, err := exec.Exec(fmt.Sprintf("docker inspect --format '{{.State.Status}}' %s 2>&1", cfg.DockerGameserver))
-	if err != nil {
-		fail(fmt.Sprintf("docker inspect failed: %s", out))
-		fmt.Println("  Make sure Docker is running and the container name is correct.")
-		fmt.Println("  Continuing anyway...")
-	} else {
-		ok(fmt.Sprintf("Container %s is %s", cfg.DockerGameserver, strings.TrimSpace(out)))
+	askGameservers(ask, ok, fail, cfg, entries)
+
+	brokerGame, brokerAdmin := detectBrokerContainers(entries)
+	cfg.DockerBrokerGame = ask("mq-game broker container name (optional)", brokerGame)
+	cfg.DockerBrokerAdmin = ask("mq-admin broker container name (optional)", brokerAdmin)
+
+	// The Director supplies player counts, queue depth, and dimension labels for
+	// each partition — the columns that stay blank without it.
+	directorDefault := ""
+	if detectDirectorContainer(entries) != "" {
+		directorDefault = "http://127.0.0.1:11717"
 	}
+	cfg.DirectorURL = ask("Battlegroup Director URL (optional)", directorDefault)
+}
+
+func runDockerSetup(ask func(string, string) string, ok, fail func(string), cfg *appConfig) {
+	exec := &localExecutor{}
+	setupDockerContainers(ask, ok, fail, cfg, exec)
 	fmt.Println()
 
 	fmt.Println("Database connection:")

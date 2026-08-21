@@ -175,10 +175,12 @@ export const BattlegroupTab: React.FC = () => {
   // .backup). docker/local would surface an erroring button, so hide it (#169).
   const backupSupported = connStatus?.control === 'amp' || connStatus?.control === 'kubectl'
 
-  // Per-partition restart only exists on kubectl today, via Funcom's
-  // ServerRestart CRD (#185) — AMP/docker/local run every partition inside
-  // one shared container/process group with no narrower restart unit.
-  const partitionRestartSupported = connStatus?.control === 'kubectl'
+  // Ask the backend rather than testing the plane name. kubectl restarts a
+  // partition through Funcom's ServerRestart CRD (#185) and docker restarts the
+  // one container serving it (#311); AMP and local run every partition inside a
+  // shared container with no narrower unit. This used to be a hardcoded
+  // 'kubectl' check, which hid the button on docker after it gained support.
+  const partitionRestartSupported = connStatus?.supports_partition_restart === true
 
   return (
     <div className="flex flex-col h-full gap-3 min-h-0">

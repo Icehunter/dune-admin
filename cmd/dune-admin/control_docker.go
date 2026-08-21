@@ -7,102 +7,401 @@ import (
 )
 
 // dockerControl implements ControlPlane using the Docker CLI.
-// It requires configured container names and expects the Docker socket to be
-// accessible by the executor (locally or via SSH to a Docker host).
+// It expects the Docker socket to be accessible by the executor (locally or via
+// SSH to a Docker host).
+//
+// A Dune install runs ONE game-server container per map/partition (see #311) —
+// e.g. dune-server-overmap, dune-server-deepdesert-1-8, dune-server-survival-1.
+// Sibling containers on the same compose stack (gateway, text-router, brokers)
+// are not game servers. The container set is therefore discovered per call
+// rather than pinned to a single configured name.
 type dockerControl struct {
-	gameserver  string // container name for the game server
-	brokerGame  string // container name for mq-game broker
-	brokerAdmin string // container name for mq-admin broker
+	// gameserver is the legacy singular docker_gameserver key. It is honoured
+	// for back-compat when gameservers is empty.
+	gameserver  string
+	gameservers []string // explicit docker_gameservers override
+	brokerGame  string   // container name for mq-game broker
+	brokerAdmin string   // container name for mq-admin broker
+	directorURL string   // optional Battlegroup Director for partition metadata
 }
+
+// dockerGameContainer is one discovered game-server container.
+type dockerGameContainer struct {
+	name      string
+	state     string // docker ps state: running / exited / created / …
+	partition int    // -PartitionIndex= from the container args (0 if absent)
+	port      int    // -Port= from the container args (0 if absent)
+	mapName   string // container name minus the dune-server- prefix
+}
+
+const (
+	// dockerGameImageBase is the image repository basename shared by every
+	// game-server container. Matching on this rather than the container name is
+	// what separates the real game servers from seabass-server-gateway and
+	// seabass-server-text-router, which sit on the same stack.
+	dockerGameImageBase = "seabass-server"
+	// dockerGameNamePrefix is the container-name fallback used when no image
+	// matches (retagged or privately-built images).
+	dockerGameNamePrefix = "dune-server-"
+)
 
 func (c *dockerControl) Name() string { return "docker" }
 
-func (c *dockerControl) GetStatus(_ context.Context, exec Executor) (*BattlegroupStatus, error) {
-	if c.gameserver == "" {
-		return nil, errNotSupported("docker", "GetStatus (docker_gameserver not configured)")
-	}
-	out, err := exec.Exec(fmt.Sprintf(
-		"docker inspect --format '{{.State.Status}}' %s 2>&1", c.gameserver))
-	if err != nil {
-		return nil, fmt.Errorf("docker inspect: %w", err)
-	}
-	status := strings.TrimSpace(out)
-	return &BattlegroupStatus{
-		Name:    c.gameserver,
-		Title:   c.gameserver,
-		Phase:   status,
-		Servers: []ServerRow{},
-	}, nil
+// dockerPSEntry is one row of `docker ps` output.
+type dockerPSEntry struct {
+	name  string
+	image string
+	state string
 }
 
-func (c *dockerControl) ExecCommand(_ context.Context, exec Executor, cmd string) (string, error) {
-	if c.gameserver == "" {
-		return "", errNotSupported("docker", "ExecCommand (docker_gameserver not configured)")
-	}
-	var dockerCmd string
-	switch cmd {
-	case "start":
-		dockerCmd = fmt.Sprintf("docker start %s 2>&1", c.gameserver)
-	case "stop":
-		dockerCmd = fmt.Sprintf("docker stop %s 2>&1", c.gameserver)
-	case "restart":
-		dockerCmd = fmt.Sprintf("docker restart %s 2>&1", c.gameserver)
-	default:
-		return "", fmt.Errorf("docker control does not support %q", cmd)
-	}
-	out, err := exec.Exec(dockerCmd)
+// listDockerContainers returns every container on the host, running or not.
+func listDockerContainers(exec Executor) ([]dockerPSEntry, error) {
+	out, err := exec.Exec("docker ps -a --format '{{.Names}}\\t{{.Image}}\\t{{.State}}' 2>&1")
 	if err != nil {
-		return out, fmt.Errorf("docker %s: %w — %s", cmd, err, out)
+		return nil, fmt.Errorf("docker ps: %w", err)
 	}
-	return out, nil
-}
-
-func (c *dockerControl) ListProcesses(_ context.Context, exec Executor) ([]ProcessInfo, string, error) {
-	out, err := exec.Exec("docker ps --format '{{.Names}}\\t{{.Status}}' 2>&1")
-	if err != nil {
-		return nil, "", fmt.Errorf("docker ps: %w", err)
-	}
-	var procs []ProcessInfo
+	var entries []dockerPSEntry
 	for _, line := range splitLines(out) {
-		parts := strings.SplitN(line, "\t", 2)
+		parts := strings.Split(strings.TrimSpace(line), "\t")
 		if len(parts) < 1 || parts[0] == "" {
 			continue
 		}
-		status := ""
-		if len(parts) == 2 {
-			status = parts[1]
+		e := dockerPSEntry{name: parts[0]}
+		if len(parts) > 1 {
+			e.image = parts[1]
 		}
-		procs = append(procs, ProcessInfo{Name: parts[0], Status: status})
+		if len(parts) > 2 {
+			e.state = parts[2]
+		}
+		entries = append(entries, e)
+	}
+	return entries, nil
+}
+
+// imageRepoBase strips the digest, tag, and registry path from an image
+// reference, leaving the bare repository name. A registry port (host:5000/img)
+// must not be mistaken for a tag, so the tag is only cut after the last slash.
+func imageRepoBase(image string) string {
+	name := image
+	if at := strings.Index(name, "@"); at >= 0 {
+		name = name[:at]
+	}
+	lastSlash := strings.LastIndex(name, "/")
+	if colon := strings.LastIndex(name, ":"); colon > lastSlash {
+		name = name[:colon]
+	}
+	if slash := strings.LastIndex(name, "/"); slash >= 0 {
+		name = name[slash+1:]
+	}
+	return name
+}
+
+// selectGameContainers picks the game-server containers out of a full container
+// listing: by image first, falling back to the name prefix.
+func selectGameContainers(entries []dockerPSEntry) []dockerPSEntry {
+	var byImage []dockerPSEntry
+	for _, e := range entries {
+		if imageRepoBase(e.image) == dockerGameImageBase {
+			byImage = append(byImage, e)
+		}
+	}
+	if len(byImage) > 0 {
+		return byImage
+	}
+	var byName []dockerPSEntry
+	for _, e := range entries {
+		if strings.HasPrefix(e.name, dockerGameNamePrefix) {
+			byName = append(byName, e)
+		}
+	}
+	return byName
+}
+
+// configuredNames returns the explicitly configured container list, honouring
+// the legacy singular key. Empty means "auto-detect".
+func (c *dockerControl) configuredNames() []string {
+	if len(c.gameservers) > 0 {
+		return c.gameservers
+	}
+	if c.gameserver != "" {
+		return []string{c.gameserver}
+	}
+	return nil
+}
+
+// discoverGameContainers resolves the game-server container set and decorates
+// each with its partition index and port.
+func (c *dockerControl) discoverGameContainers(exec Executor) ([]dockerGameContainer, error) {
+	entries, err := listDockerContainers(exec)
+	if err != nil {
+		return nil, err
+	}
+	stateByName := make(map[string]string, len(entries))
+	for _, e := range entries {
+		stateByName[e.name] = e.state
+	}
+
+	var selected []dockerPSEntry
+	if names := c.configuredNames(); len(names) > 0 {
+		// Explicit config wins outright — a configured container that is not in
+		// the listing is still reported (as not-running) rather than dropped.
+		for _, n := range names {
+			selected = append(selected, dockerPSEntry{name: n, state: stateByName[n]})
+		}
+	} else {
+		selected = selectGameContainers(entries)
+	}
+
+	// Only inspect containers docker actually knows about. A stale name in
+	// docker_gameservers makes `docker inspect` fail for the whole batch, which
+	// would strip partition/port metadata from the valid containers too.
+	known := make([]string, 0, len(selected))
+	for _, e := range selected {
+		if _, ok := stateByName[e.name]; ok {
+			known = append(known, e.name)
+		}
+	}
+	argsByName := inspectContainerArgs(exec, known)
+
+	containers := make([]dockerGameContainer, 0, len(selected))
+	for _, e := range selected {
+		ct := dockerGameContainer{
+			name:    e.name,
+			state:   e.state,
+			mapName: strings.TrimPrefix(e.name, dockerGameNamePrefix),
+		}
+		// The game server carries the same -PartitionIndex/-Port flags under
+		// every control plane, so the AMP regexes and parser apply verbatim.
+		// Best-effort: a container that exposes neither still yields a usable
+		// row, which is what keeps the server table populated (#311).
+		ct.partition = parseAMPArgInt(ampPartRe, argsByName[e.name])
+		ct.port = parseAMPArgInt(ampPortRe, argsByName[e.name])
+		containers = append(containers, ct)
+	}
+	return containers, nil
+}
+
+// inspectContainerArgs returns each container's process args keyed by name.
+//
+// This is deliberately ONE docker call for all containers: GetStatus is polled
+// on a timer and, under an SSH executor, every Exec opens a fresh session — so a
+// per-container inspect would cost N round trips per refresh.
+//
+// Args are best-effort: whatever docker managed to print is used even when the
+// call reports an error, since docker inspect exits non-zero if any one name is
+// unresolvable while still emitting the containers it did find.
+func inspectContainerArgs(exec Executor, names []string) map[string]string {
+	if len(names) == 0 {
+		return map[string]string{}
+	}
+	quoted := make([]string, 0, len(names))
+	for _, n := range names {
+		quoted = append(quoted, shellQuote(n))
+	}
+	// #nosec G204 -- every container name is shell-quoted; names come from docker ps or operator config.
+	out, _ := exec.Exec(fmt.Sprintf(
+		"docker inspect --format '{{.Name}}\t{{json .Args}}' %s 2>/dev/null", strings.Join(quoted, " ")))
+	argsByName := make(map[string]string, len(names))
+	for _, line := range splitLines(out) {
+		name, args, found := strings.Cut(strings.TrimSpace(line), "\t")
+		if !found {
+			continue
+		}
+		// docker renders .Name with a leading slash.
+		argsByName[strings.TrimPrefix(name, "/")] = args
+	}
+	return argsByName
+}
+
+func (c *dockerControl) GetStatus(ctx context.Context, exec Executor) (*BattlegroupStatus, error) {
+	containers, err := c.discoverGameContainers(exec)
+	if err != nil {
+		return nil, err
+	}
+	// Best-effort enrichment, exactly as ampControl does: a missing or
+	// unreachable director leaves the player/dimension columns at zero rather
+	// than failing the whole status call.
+	dirMeta, err := fetchDirectorPartitions(ctx, exec, c.directorURL)
+	if err != nil {
+		componentLog("control_docker").Warn().Err(err).Msg("director enrichment unavailable")
+	}
+
+	servers := make([]ServerRow, 0, len(containers))
+	running := 0
+	for _, ct := range containers {
+		if ct.state == "running" {
+			running++
+		}
+		row := ServerRow{
+			Map:       ct.mapName,
+			Partition: ct.partition,
+			Phase:     dockerPhaseLabel(ct.state),
+			Ready:     ct.state == "running",
+			Port:      ct.port,
+		}
+		if meta, ok := dirMeta[ct.partition]; ok {
+			row.Dimension = meta.dimension
+			row.Players = meta.players
+			row.PlayerHardCap = meta.playerHardCap
+			row.Queue = meta.queue
+			if meta.label != "" {
+				row.Sietch = meta.label
+			}
+		}
+		servers = append(servers, row)
+	}
+
+	dbPhase := "Disconnected"
+	if globalDB != nil {
+		dbPhase = "Connected"
+	}
+	return &BattlegroupStatus{
+		Name:     c.statusName(containers),
+		Title:    "Docker Managed",
+		Phase:    dockerAggregatePhase(len(containers), running),
+		Database: dbPhase,
+		Servers:  servers,
+	}, nil
+}
+
+// statusName labels the battlegroup: the container name when there is exactly
+// one, otherwise the plane name.
+func (c *dockerControl) statusName(containers []dockerGameContainer) string {
+	if len(containers) == 1 {
+		return containers[0].name
+	}
+	return "docker"
+}
+
+func dockerPhaseLabel(state string) string {
+	if state == "" {
+		return "Unknown"
+	}
+	return strings.ToUpper(state[:1]) + state[1:]
+}
+
+// dockerAggregatePhase reports the battlegroup-level phase.
+//
+// The casing is load-bearing: handlers_servers_health.go compares
+// `st.Phase == "Running"` exactly, and ampControl emits "Running". Returning
+// docker's own lowercase state here made a healthy install report as down.
+func dockerAggregatePhase(total, running int) string {
+	switch {
+	case total == 0:
+		return "Unknown"
+	case running == 0:
+		return "Stopped"
+	default:
+		return "Running"
+	}
+}
+
+// ExecCommand applies a lifecycle verb to EVERY game container. Acting on only
+// one leaves the other partitions running (#311), so a failure on one container
+// is recorded but does not abort the rest.
+func (c *dockerControl) ExecCommand(_ context.Context, exec Executor, cmd string) (string, error) {
+	switch cmd {
+	case "start", "stop", "restart":
+	default:
+		return "", fmt.Errorf("docker control does not support %q", cmd)
+	}
+	containers, err := c.discoverGameContainers(exec)
+	if err != nil {
+		return "", err
+	}
+	if len(containers) == 0 {
+		return "", errNotSupported("docker", "ExecCommand (no game server containers found)")
+	}
+
+	var out strings.Builder
+	var failures []string
+	for _, ct := range containers {
+		// #nosec G204 -- container name is shell-quoted; it comes from docker ps or operator config.
+		o, err := exec.Exec(fmt.Sprintf("docker %s %s 2>&1", cmd, shellQuote(ct.name)))
+		fmt.Fprintf(&out, "%s: %s\n", ct.name, strings.TrimSpace(o))
+		if err != nil {
+			failures = append(failures, fmt.Sprintf("%s (%v)", ct.name, err))
+		}
+	}
+	if len(failures) > 0 {
+		return out.String(), fmt.Errorf("docker %s failed for %s", cmd, strings.Join(failures, ", "))
+	}
+	return out.String(), nil
+}
+
+// RestartPartition cycles the single container serving a partition. Unlike AMP,
+// where every partition shares one container, docker runs one container each —
+// so a narrower restart unit genuinely exists here.
+func (c *dockerControl) RestartPartition(_ context.Context, exec Executor, partition int) (string, error) {
+	containers, err := c.discoverGameContainers(exec)
+	if err != nil {
+		return "", err
+	}
+	for _, ct := range containers {
+		if ct.partition != partition {
+			continue
+		}
+		// #nosec G204 -- container name is shell-quoted; it comes from docker ps or operator config.
+		out, err := exec.Exec(fmt.Sprintf("docker restart %s 2>&1", shellQuote(ct.name)))
+		if err != nil {
+			return out, fmt.Errorf("docker restart %s: %w — %s", ct.name, err, strings.TrimSpace(out))
+		}
+		return out, nil
+	}
+	return "", fmt.Errorf("docker control: no container found for partition %d", partition)
+}
+
+// firstContainer returns a container to read install-wide values from. The
+// ServiceAuthToken and the packaged default INIs are identical across
+// partitions, so any game container will do.
+func (c *dockerControl) firstContainer(exec Executor) (string, error) {
+	containers, err := c.discoverGameContainers(exec)
+	if err != nil {
+		return "", err
+	}
+	if len(containers) == 0 {
+		return "", errNotSupported("docker", "no game server containers found")
+	}
+	return containers[0].name, nil
+}
+
+func (c *dockerControl) ListProcesses(_ context.Context, exec Executor) ([]ProcessInfo, string, error) {
+	entries, err := listDockerContainers(exec)
+	if err != nil {
+		return nil, "", err
+	}
+	var procs []ProcessInfo
+	for _, e := range entries {
+		procs = append(procs, ProcessInfo{Name: e.name, Status: e.state})
 	}
 	return procs, "docker", nil
 }
 
 func (c *dockerControl) ListLogSources(_ context.Context, exec Executor) ([]LogSource, error) {
-	out, err := exec.Exec("docker ps --format '{{.Names}}' 2>&1")
+	entries, err := listDockerContainers(exec)
 	if err != nil {
-		return nil, fmt.Errorf("docker ps: %w", err)
+		return nil, err
 	}
 	var sources []LogSource
-	for _, line := range splitLines(out) {
-		name := strings.TrimSpace(line)
-		if name != "" {
-			sources = append(sources, LogSource{Namespace: "docker", Name: name})
-		}
+	for _, e := range entries {
+		sources = append(sources, LogSource{Namespace: "docker", Name: e.name})
 	}
 	return sources, nil
 }
 
 func (c *dockerControl) StreamLog(_ context.Context, exec Executor, _, name string) (<-chan string, func(), error) {
-	return exec.Stream(fmt.Sprintf("docker logs -f %s 2>&1", name))
+	return exec.Stream(fmt.Sprintf("docker logs -f %s 2>&1", shellQuote(name)))
 }
 
 func (c *dockerControl) CaptureJWT(_ context.Context, exec Executor) (string, string, error) {
-	if c.gameserver == "" {
-		return "", "", errNotSupported("docker", "CaptureJWT (docker_gameserver not configured)")
+	container, err := c.firstContainer(exec)
+	if err != nil {
+		return "", "", err
 	}
+	// #nosec G204 -- container name is shell-quoted; it comes from docker ps or operator config.
 	existingToken, err := exec.Exec(fmt.Sprintf(
 		"docker exec %s env 2>/dev/null | grep FuncomLiveServices__ServiceAuthToken | cut -d= -f2-",
-		c.gameserver))
+		shellQuote(container)))
 	if err != nil || strings.TrimSpace(existingToken) == "" {
 		return "", "", fmt.Errorf("read ServiceAuthToken from container: %w", err)
 	}
@@ -115,7 +414,7 @@ func (c *dockerControl) EvalOnGameBroker(_ context.Context, exec Executor, expr 
 	}
 	out, err := exec.Exec(fmt.Sprintf(
 		"docker exec %s rabbitmqctl eval %s 2>&1",
-		c.brokerGame, shellQuote(expr)))
+		shellQuote(c.brokerGame), shellQuote(expr)))
 	if err != nil {
 		return "", fmt.Errorf("rabbitmqctl eval: %w (output: %s)", err, strings.TrimSpace(out))
 	}
@@ -123,12 +422,14 @@ func (c *dockerControl) EvalOnGameBroker(_ context.Context, exec Executor, expr 
 }
 
 func (c *dockerControl) ReadDefaultINI(_ context.Context, exec Executor, filename string) string {
-	if c.gameserver == "" {
+	container, err := c.firstContainer(exec)
+	if err != nil {
 		return ""
 	}
+	// #nosec G204 -- container name and filename are shell-quoted.
 	pathOut, err := exec.Exec(fmt.Sprintf(
 		"docker exec %s find / -name %s -not -path '*/Saved/*' -not -path '*/proc/*' -not -path '*/sys/*' -not -path '*/dev/*' 2>/dev/null | head -1",
-		c.gameserver, shellQuote(filename)))
+		shellQuote(container), shellQuote(filename)))
 	if err != nil {
 		return ""
 	}
@@ -136,7 +437,8 @@ func (c *dockerControl) ReadDefaultINI(_ context.Context, exec Executor, filenam
 	if p == "" {
 		return ""
 	}
-	content, err := exec.Exec(fmt.Sprintf("docker exec %s cat %s 2>/dev/null", c.gameserver, shellQuote(p)))
+	// #nosec G204 -- container name and path are shell-quoted.
+	content, err := exec.Exec(fmt.Sprintf("docker exec %s cat %s 2>/dev/null", shellQuote(container), shellQuote(p)))
 	if err != nil {
 		return ""
 	}

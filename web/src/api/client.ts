@@ -304,6 +304,11 @@ export type Status = {
   build_time?: string
   director_url?: string
   listen_addr?: string
+  /** True when the active control plane can restart a single partition. The
+   *  backend reports its own capability assertion so the UI never has to
+   *  re-derive it from the plane name — docker gained per-map restart in #311
+   *  while a hardcoded 'kubectl' check kept the button hidden. */
+  supports_partition_restart?: boolean
   shutdown_pending?: boolean // a broadcast restart/stop is armed on the backend
   shutdown_at?: number // Unix seconds the armed action fires (0 when none)
   needs_setup?: boolean // true when no config exists or DB password is unset

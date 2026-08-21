@@ -124,3 +124,44 @@ func TestServerColumns_PointerBoolNilStaysNil(t *testing.T) {
 // (migrateServersColumns / readServerColumns) was removed; servers are now
 // written to typed columns directly via the servers store (covered by
 // TestServerColumnsRoundTrip above).
+
+// The servers table stores DockerGameservers comma-joined (typed columns, not
+// JSON), so the split/join pair must round-trip cleanly — including the empty
+// case, which must yield a nil slice so auto-detection stays enabled (#311).
+func TestContainerListRoundTrip(t *testing.T) {
+	cases := []struct {
+		name string
+		in   []string
+		want string
+	}{
+		{"empty", nil, ""},
+		{"single", []string{"dune-server-overmap"}, "dune-server-overmap"},
+		{"multiple", []string{"dune-server-overmap", "dune-server-survival-1"},
+			"dune-server-overmap,dune-server-survival-1"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := joinContainerList(tc.in)
+			if got != tc.want {
+				t.Fatalf("joinContainerList = %q, want %q", got, tc.want)
+			}
+			back := splitContainerList(got)
+			if len(back) != len(tc.in) {
+				t.Fatalf("round-trip = %v, want %v", back, tc.in)
+			}
+			for i := range back {
+				if back[i] != tc.in[i] {
+					t.Errorf("round-trip[%d] = %q, want %q", i, back[i], tc.in[i])
+				}
+			}
+		})
+	}
+}
+
+// Hand-edited config should survive stray whitespace and empty entries.
+func TestSplitContainerList_TrimsAndDropsBlanks(t *testing.T) {
+	got := splitContainerList(" a , ,b ,")
+	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Errorf("splitContainerList = %v, want [a b]", got)
+	}
+}

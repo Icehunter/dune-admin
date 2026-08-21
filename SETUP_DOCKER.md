@@ -72,11 +72,16 @@ the Director URL from the same listing.
 control: docker
 
 # Container names — must match exactly what `docker ps` shows.
-# Omit docker_gameservers entirely to let dune-admin auto-detect them:
-docker_gameservers:
-  - dune-server-overmap
-  - dune-server-deepdesert-1-8
-  - dune-server-survival-1
+#
+# Leave docker_gameservers out (the setup wizard's default). Game servers are
+# then detected from the `seabass-server` image on every status poll, so a map
+# server started later shows up on its own. Pinning the list freezes it at the
+# containers named here and new map servers stay invisible — set it only when
+# detection picks the wrong containers:
+# docker_gameservers:
+#   - dune-server-overmap
+#   - dune-server-deepdesert-1-8
+#   - dune-server-survival-1
 
 docker_broker_game: dune-rmq-game      # optional — for broker command path
 docker_broker_admin: dune-rmq-admin    # optional — for broker command path
@@ -146,9 +151,11 @@ one-entry list, so existing single-container configs keep running unchanged.
 
 **A non-game container shows up as a game server** — set `docker_gameservers` explicitly; the explicit list always wins over auto-detection.
 
+**A newly started map server does not appear** — `docker_gameservers` is pinned in config.yaml. Remove the key so detection runs on every poll.
+
 **Players / queue / dimension columns are empty** — set `director_url` (the `dune-director` container publishes port `11717`).
 
-**"docker inspect failed"** — the container name is wrong or Docker is not running. Check with `docker ps` and update `docker_gameservers` in config.yaml.
+**"docker inspect failed"** — a pinned container name is wrong or Docker is not running. Check with `docker ps`, then correct or remove `docker_gameservers` in config.yaml.
 
 **DB connection fails** — verify `db_host` matches the container's DNS name or IP. Inside a compose network, use the service/container name directly (e.g. `database`). Outside the network, use the host IP and a mapped port.
 

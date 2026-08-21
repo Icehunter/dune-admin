@@ -64,6 +64,16 @@ type partitionRestarter interface {
 	RestartPartition(ctx context.Context, exec Executor, partition int) (string, error)
 }
 
+// supportsPartitionRestart reports whether the active plane can restart a single
+// partition. handleStatus surfaces this so the UI can show or hide the per-map
+// restart action without re-deriving the answer from the plane's name: docker
+// grew the capability in #311 while the Battlegroup tab still tested for
+// "kubectl", leaving the button hidden on a plane that supported it.
+func supportsPartitionRestart(ctrl ControlPlane) bool {
+	_, ok := ctrl.(partitionRestarter)
+	return ok
+}
+
 // ── Types shared across control plane implementations ─────────────────────────
 
 type BattlegroupStatus struct {

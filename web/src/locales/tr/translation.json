@@ -1252,10 +1252,13 @@
         "class": "Sınıf",
         "location": "Konum",
         "name": "Ad",
+        "owner": "Sahip",
         "type": "Tür"
       },
+      "granted": "Verildi",
       "noVehiclesFound": "Araç bulunamadı",
       "recovered": "Kurtarıldı",
+      "unknownOwner": "Bilinmiyor",
       "vehiclesLabel": "Araçlar"
     },
     "filter": {

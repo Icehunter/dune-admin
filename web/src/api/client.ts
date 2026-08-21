@@ -590,7 +590,18 @@ export type VehicleRow = {
   id: number
   class: string
   map: string
-  chassis_durability: number
+  partition: number
+  dimension: number
+  location: string
+  owner_name: string
+  access_rank: number
+  access_label: string
+  is_owner: boolean
+  /** Absolute chassis durability. chassis_pct is only meaningful when has_chassis_pct is true. */
+  chassis_current: number
+  chassis_max: number
+  chassis_pct: number
+  has_chassis_pct: boolean
   vehicle_name: string
   is_recovered: boolean
   is_backup: boolean

@@ -7,7 +7,7 @@ export type StagedItem = { template: string, qty: number, quality: number, _key:
 export type LocationKey = 'name' | 'x' | 'y' | 'z' | 'actions'
 
 export type ItemKey = 'template' | 'stack' | 'quality' | 'durability' | 'actions'
-export type VehicleKey = 'class' | 'location' | 'chassis' | 'name' | 'type' | 'actions'
+export type VehicleKey = 'class' | 'location' | 'owner' | 'chassis' | 'name' | 'type' | 'actions'
 
 export type PackDiff = { added: number, updated: number, removed: number, isDirty: boolean }
 

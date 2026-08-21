@@ -5967,41 +5967,17 @@ func cmdGetPlayerVehicles(pool *pgxpool.Pool, controllerID int64) Cmd {
 			return msgVehicles{err: err}
 		}
 		// #nosec G201 -- keyCol is a fixed internal allowlist (character_id|account_id)
-		rows, err := pool.Query(context.Background(), fmt.Sprintf(`
-			SELECT pa.actor_id, a.class, COALESCE(a.map, ''),
-			       COALESCE(rv.chassis_durability::float8, 1.0),
-			       COALESCE(pa.actor_name, rv.vehicle_name, ''),
-			       (rv.vehicle_id IS NOT NULL) AS is_recovered,
-			       false AS is_backup
-			FROM dune.permission_actor pa
-			JOIN dune.permission_actor_rank par ON par.permission_actor_id = pa.actor_id
-			JOIN dune.actors a ON a.id = pa.actor_id
-			LEFT JOIN dune.recovered_vehicles rv ON rv.vehicle_id = pa.actor_id AND rv.%[1]s = $2
-			WHERE par.player_id = $1 AND pa.actor_type = 2
-
-			UNION ALL
-
-			SELECT a.id, a.class, '' AS map,
-			       1.0 AS chassis_durability,
-			       '' AS vehicle_name,
-			       false AS is_recovered,
-			       true AS is_backup
-			FROM dune.backup_vehicles bv
-			JOIN dune.actors a ON a.id = bv.vehicle_id
-			WHERE bv.%[1]s = $2
-
-			ORDER BY class`, keyCol), controllerID, keyVal)
+		rows, err := pool.Query(context.Background(), fmt.Sprintf(vehiclesQuery, keyCol), controllerID, keyVal)
 		if err != nil {
 			return msgVehicles{err: err}
 		}
 		defer rows.Close()
 		var out []vehicleRow
 		for rows.Next() {
-			var r vehicleRow
-			if err := rows.Scan(&r.ID, &r.Class, &r.Map, &r.ChassisDurability, &r.VehicleName, &r.IsRecovered, &r.IsBackup); err != nil {
+			r, ok := scanVehicleRow(rows)
+			if !ok {
 				continue
 			}
-			r.Class = shortClass(r.Class)
 			out = append(out, r)
 		}
 		if err := rows.Err(); err != nil {

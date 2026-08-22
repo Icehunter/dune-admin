@@ -32,6 +32,11 @@ type dockerGameContainer struct {
 	partition int    // -PartitionIndex= from the container args (0 if absent)
 	port      int    // -Port= from the container args (0 if absent)
 	mapName   string // container name minus the dune-server- prefix
+	// known is false for a name in docker_gameservers that docker has no record
+	// of. Such a row is still listed so the operator sees the stale entry, but
+	// it has no args to parse and so no partition identity — it must stay out
+	// of the collision math and out of partition-keyed restarts.
+	known bool
 }
 
 const (
@@ -180,10 +185,12 @@ func (c *dockerControl) discoverGameContainers(exec Executor) ([]dockerGameConta
 
 	containers := make([]dockerGameContainer, 0, len(selected))
 	for _, e := range selected {
+		_, seen := stateByName[e.name]
 		ct := dockerGameContainer{
 			name:    e.name,
 			state:   e.state,
 			mapName: strings.TrimPrefix(e.name, dockerGameNamePrefix),
+			known:   seen,
 		}
 		// The game server carries the same -PartitionIndex/-Port flags under
 		// every control plane, so the AMP regexes and parser apply verbatim.
@@ -376,6 +383,9 @@ func (c *dockerControl) RestartPartition(_ context.Context, exec Executor, targe
 func uniquePartitions(containers []dockerGameContainer) map[int]bool {
 	counts := make(map[int]int, len(containers))
 	for _, ct := range containers {
+		if !ct.known {
+			continue
+		}
 		counts[ct.partition]++
 	}
 	unique := make(map[int]bool, len(counts))
@@ -404,7 +414,9 @@ func resolveRestartContainer(containers []dockerGameContainer, target restartTar
 
 	var matches []dockerGameContainer
 	for _, ct := range containers {
-		if ct.partition == target.Partition {
+		// A container docker has no record of would fail `docker restart`
+		// anyway, and choosing it over a real one is strictly worse.
+		if ct.known && ct.partition == target.Partition {
 			matches = append(matches, ct)
 		}
 	}

@@ -250,3 +250,70 @@ func TestDockerGetStatus_EnrichesWhenPartitionsAreUnique(t *testing.T) {
 		t.Fatal("no row reported partition 2")
 	}
 }
+
+// A name in docker_gameservers that docker does not know about is deliberately
+// still listed, so the operator sees the stale entry rather than wondering
+// where their container went. But it has no args to parse, so it lands on
+// partition 0 — and if it counts toward the collision math it manufactures a
+// false ambiguity that suppresses enrichment for a real partition-0 container
+// and can be matched by a partition-keyed restart.
+//
+// A container docker cannot see has no partition identity. It stays in the
+// table; it stays out of the arithmetic.
+func TestDockerGetStatus_StaleConfiguredNameDoesNotFakeACollision(t *testing.T) {
+	t.Parallel()
+	dir := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(w, `{"servers":[{"partition":{"partitionId":0,"dimensionIndex":4,"label":"Hagga Basin"},
+			"numPlayersInGame":37,"numPlayersInQueue":9}]}`)
+	}))
+	defer dir.Close()
+
+	ps := "dune-server-overmap\tregistry.funcom.com/funcom/self-hosting/seabass-server:2048594-0-shipping\trunning\n"
+	c := &dockerControl{
+		// "dune-server-gone" was removed since setup pinned it.
+		gameservers: []string{"dune-server-overmap", "dune-server-gone"},
+		directorURL: dir.URL,
+	}
+	st, err := c.GetStatus(context.Background(), dockerScript(ps, map[string]string{
+		"dune-server-overmap": `["-PartitionIndex=0"]`,
+	}))
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	if len(st.Servers) != 2 {
+		t.Fatalf("got %d rows, want 2 — the stale name must stay visible", len(st.Servers))
+	}
+	var overmap *ServerRow
+	for i := range st.Servers {
+		if st.Servers[i].Map == "overmap" {
+			overmap = &st.Servers[i]
+		}
+	}
+	if overmap == nil {
+		t.Fatal("no overmap row")
+	}
+	// Partition 0 is unique among containers docker can actually see.
+	if overmap.Players != 37 || overmap.Dimension != 4 || overmap.Sietch != "Hagga Basin" {
+		t.Fatalf("overmap lost its enrichment to a phantom collision: %+v", *overmap)
+	}
+}
+
+// The same phantom must not be restartable by partition — `docker restart` on a
+// container that does not exist is a guaranteed failure, and picking it over a
+// real container is worse than picking nothing.
+func TestDockerRestartTarget_StaleConfiguredNameIsNotAPartitionMatch(t *testing.T) {
+	t.Parallel()
+	ps := "dune-server-overmap\tregistry.funcom.com/funcom/self-hosting/seabass-server:2048594-0-shipping\trunning\n"
+	var ran []string
+	exec := recordingDockerExec(ps, map[string]string{
+		"dune-server-overmap": `["-PartitionIndex=0"]`,
+	}, &ran)
+	c := &dockerControl{gameservers: []string{"dune-server-gone", "dune-server-overmap"}}
+
+	if _, err := c.RestartPartition(context.Background(), exec, restartTarget{Partition: 0}); err != nil {
+		t.Fatalf("RestartPartition: %v", err)
+	}
+	if len(ran) != 1 || !strings.Contains(ran[0], "dune-server-overmap") {
+		t.Fatalf("restarted %v, want only the container docker knows about", ran)
+	}
+}

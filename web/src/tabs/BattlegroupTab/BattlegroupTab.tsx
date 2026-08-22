@@ -139,7 +139,7 @@ export const BattlegroupTab: React.FC = () => {
     setCmdOutput(null)
     setCmdDone(false)
     try {
-      const res = await api.battlegroup.restartPartition(server.partition)
+      const res = await api.battlegroup.restartPartition(server.partition, server.map)
       setCmdOutput(res.output || t('battlegroup.noOutput'))
       setCmdDone(true)
       toast.success(t('battlegroup.restartPartition.success', { map: server.map }))

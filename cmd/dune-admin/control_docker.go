@@ -32,6 +32,11 @@ type dockerGameContainer struct {
 	partition int    // -PartitionIndex= from the container args (0 if absent)
 	port      int    // -Port= from the container args (0 if absent)
 	mapName   string // container name minus the dune-server- prefix
+	// known is false for a name in docker_gameservers that docker has no record
+	// of. Such a row is still listed so the operator sees the stale entry, but
+	// it has no args to parse and so no partition identity — it must stay out
+	// of the collision math and out of partition-keyed restarts.
+	known bool
 }
 
 const (
@@ -110,11 +115,26 @@ func selectGameContainers(entries []dockerPSEntry) []dockerPSEntry {
 	}
 	var byName []dockerPSEntry
 	for _, e := range entries {
-		if strings.HasPrefix(e.name, dockerGameNamePrefix) {
+		if strings.HasPrefix(e.name, dockerGameNamePrefix) && !isDockerSupportContainer(e.name) {
 			byName = append(byName, e)
 		}
 	}
 	return byName
+}
+
+// dockerSupportSuffixes name the containers that share the game servers' name
+// prefix but are not game servers. The image match excludes them for free
+// (their repos are seabass-server-gateway / -text-router); the prefix fallback
+// has to do it explicitly or a retagged install picks up the gateway.
+var dockerSupportSuffixes = []string{"gateway", "text-router", "router", "autoscaler", "director"}
+
+func isDockerSupportContainer(name string) bool {
+	for _, suffix := range dockerSupportSuffixes {
+		if strings.HasSuffix(name, "-"+suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 // configuredNames returns the explicitly configured container list, honouring
@@ -165,10 +185,12 @@ func (c *dockerControl) discoverGameContainers(exec Executor) ([]dockerGameConta
 
 	containers := make([]dockerGameContainer, 0, len(selected))
 	for _, e := range selected {
+		_, seen := stateByName[e.name]
 		ct := dockerGameContainer{
 			name:    e.name,
 			state:   e.state,
 			mapName: strings.TrimPrefix(e.name, dockerGameNamePrefix),
+			known:   seen,
 		}
 		// The game server carries the same -PartitionIndex/-Port flags under
 		// every control plane, so the AMP regexes and parser apply verbatim.
@@ -226,6 +248,12 @@ func (c *dockerControl) GetStatus(ctx context.Context, exec Executor) (*Battlegr
 		componentLog("control_docker").Warn().Err(err).Msg("director enrichment unavailable")
 	}
 
+	// Director metadata is keyed by partition, so it can only be trusted where
+	// the partition identifies exactly one container. Containers whose args
+	// carry no -PartitionIndex all parse to 0, and enriching each of them from
+	// dirMeta[0] would show every map the same players, dimension and label.
+	unique := uniquePartitions(containers)
+
 	servers := make([]ServerRow, 0, len(containers))
 	running := 0
 	for _, ct := range containers {
@@ -239,7 +267,7 @@ func (c *dockerControl) GetStatus(ctx context.Context, exec Executor) (*Battlegr
 			Ready:     ct.state == "running",
 			Port:      ct.port,
 		}
-		if meta, ok := dirMeta[ct.partition]; ok {
+		if meta, ok := dirMeta[ct.partition]; ok && unique[ct.partition] {
 			row.Dimension = meta.dimension
 			row.Players = meta.players
 			row.PlayerHardCap = meta.playerHardCap
@@ -332,23 +360,104 @@ func (c *dockerControl) ExecCommand(_ context.Context, exec Executor, cmd string
 // RestartPartition cycles the single container serving a partition. Unlike AMP,
 // where every partition shares one container, docker runs one container each —
 // so a narrower restart unit genuinely exists here.
-func (c *dockerControl) RestartPartition(_ context.Context, exec Executor, partition int) (string, error) {
+func (c *dockerControl) RestartPartition(_ context.Context, exec Executor, target restartTarget) (string, error) {
 	containers, err := c.discoverGameContainers(exec)
 	if err != nil {
 		return "", err
 	}
+	ct, err := resolveRestartContainer(containers, target)
+	if err != nil {
+		return "", err
+	}
+	// #nosec G204 -- container name is shell-quoted; it comes from docker ps or operator config.
+	out, err := exec.Exec(fmt.Sprintf("docker restart %s 2>&1", shellQuote(ct.name)))
+	if err != nil {
+		return out, fmt.Errorf("docker restart %s: %w — %s", ct.name, err, strings.TrimSpace(out))
+	}
+	return out, nil
+}
+
+// uniquePartitions reports which partition indices identify exactly one
+// container. Anything claimed by two or more is not a usable key — see
+// restartTarget for why the index can collapse to 0.
+func uniquePartitions(containers []dockerGameContainer) map[int]bool {
+	counts := make(map[int]int, len(containers))
 	for _, ct := range containers {
-		if ct.partition != partition {
+		if !ct.known {
 			continue
 		}
-		// #nosec G204 -- container name is shell-quoted; it comes from docker ps or operator config.
-		out, err := exec.Exec(fmt.Sprintf("docker restart %s 2>&1", shellQuote(ct.name)))
-		if err != nil {
-			return out, fmt.Errorf("docker restart %s: %w — %s", ct.name, err, strings.TrimSpace(out))
-		}
-		return out, nil
+		counts[ct.partition]++
 	}
-	return "", fmt.Errorf("docker control: no container found for partition %d", partition)
+	unique := make(map[int]bool, len(counts))
+	for partition, n := range counts {
+		unique[partition] = n == 1
+	}
+	return unique
+}
+
+// resolveRestartContainer picks the one container a restart target names.
+//
+// The map is tried first because it is the row's own identity. Falling back to
+// the partition keeps working for installs whose args carry -PartitionIndex,
+// but when several containers report the same index the request is refused
+// rather than guessed: restarting an arbitrary map is worse than telling the
+// operator which rows collide.
+func resolveRestartContainer(containers []dockerGameContainer, target restartTarget) (dockerGameContainer, error) {
+	if target.Map != "" {
+		return resolveByMap(containers, target.Map)
+	}
+	return resolveByPartition(containers, target.Partition)
+}
+
+// resolveByMap matches the row's own identity: the container name on docker,
+// or the map label derived from it.
+func resolveByMap(containers []dockerGameContainer, mapName string) (dockerGameContainer, error) {
+	for _, ct := range containers {
+		if ct.mapName != mapName && ct.name != mapName {
+			continue
+		}
+		// The row exists but docker has no record of the container behind it —
+		// a stale docker_gameservers entry, or one removed since the page last
+		// refreshed. That is the correctable case, not a server fault, so it
+		// must not shell out and surface as a 500.
+		if !ct.known {
+			return dockerGameContainer{}, fmt.Errorf(
+				"docker control: container %q for map %q is not in docker ps: %w",
+				ct.name, mapName, errRestartTargetUnknown)
+		}
+		return ct, nil
+	}
+	return dockerGameContainer{}, fmt.Errorf(
+		"docker control: no container found for map %q: %w", mapName, errRestartTargetUnknown)
+}
+
+// resolveByPartition keeps working for installs whose args carry
+// -PartitionIndex. A partition claimed by several containers is refused rather
+// than guessed: restarting an arbitrary map is worse than naming the collision.
+func resolveByPartition(containers []dockerGameContainer, partition int) (dockerGameContainer, error) {
+	var matches []dockerGameContainer
+	for _, ct := range containers {
+		// A container docker has no record of would fail `docker restart`
+		// anyway, and choosing it over a real one is strictly worse.
+		if ct.known && ct.partition == partition {
+			matches = append(matches, ct)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return dockerGameContainer{}, fmt.Errorf(
+			"docker control: no container found for partition %d: %w", partition, errRestartTargetUnknown)
+	case 1:
+		return matches[0], nil
+	}
+	names := make([]string, 0, len(matches))
+	for _, ct := range matches {
+		names = append(names, ct.name)
+	}
+	return dockerGameContainer{}, fmt.Errorf(
+		"docker control: %d containers report partition %d (%s); "+
+			"these containers expose no -PartitionIndex, so the map must be supplied: %w",
+		len(matches), partition, strings.Join(names, ", "), errRestartTargetAmbiguous)
 }
 
 // firstContainer returns a container to read install-wide values from. The
@@ -362,6 +471,16 @@ func (c *dockerControl) firstContainer(exec Executor) (string, error) {
 	if len(containers) == 0 {
 		return "", errNotSupported("docker", "no game server containers found")
 	}
+	// Discovery lists with `docker ps -a`, so the first entry can be a stopped
+	// container while another map is up. Both callers docker exec into the
+	// result, which fails against a stopped container for no good reason.
+	for _, ct := range containers {
+		if ct.state == "running" {
+			return ct.name, nil
+		}
+	}
+	// Nothing running: return the first anyway and let docker's own error
+	// surface, rather than inventing a different one here.
 	return containers[0].name, nil
 }
 

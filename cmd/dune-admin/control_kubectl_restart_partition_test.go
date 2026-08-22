@@ -213,7 +213,7 @@ func TestKubectlControl_RestartPartition_Success(t *testing.T) {
 	}}
 
 	c := &kubectlControl{namespace: "funcom-seabass-mybg"}
-	out, err := c.RestartPartition(context.Background(), exec, 1)
+	out, err := c.RestartPartition(context.Background(), exec, restartTarget{Partition: 1})
 	if err != nil {
 		t.Fatalf("RestartPartition: %v", err)
 	}
@@ -249,7 +249,7 @@ func TestKubectlControl_RestartPartition_ServerSetNotFound(t *testing.T) {
 		return "", nil
 	}}
 	c := &kubectlControl{namespace: "funcom-seabass-mybg"}
-	if _, err := c.RestartPartition(context.Background(), exec, 99); err == nil {
+	if _, err := c.RestartPartition(context.Background(), exec, restartTarget{Partition: 99}); err == nil {
 		t.Fatal("expected error for a partition with no matching ServerSet")
 	}
 	if applied {
@@ -273,7 +273,7 @@ func TestKubectlControl_RestartPartition_ApplyError(t *testing.T) {
 		}
 	}}
 	c := &kubectlControl{namespace: "funcom-seabass-mybg"}
-	out, err := c.RestartPartition(context.Background(), exec, 1)
+	out, err := c.RestartPartition(context.Background(), exec, restartTarget{Partition: 1})
 	if err == nil {
 		t.Fatal("expected error when apply fails")
 	}

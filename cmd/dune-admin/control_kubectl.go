@@ -278,7 +278,10 @@ const serverRestartAPIVersion = "igw.funcom.com/v1"
 // object had ever been created on the reference cluster at the time this was
 // written, so the apply behavior itself (recreation timing, whether the
 // object is cleaned up afterward) is unverified against a live cluster.
-func (c *kubectlControl) RestartPartition(_ context.Context, exec Executor, partition int) (string, error) {
+func (c *kubectlControl) RestartPartition(_ context.Context, exec Executor, target restartTarget) (string, error) {
+	// Pods are 1:1 with partitions here, so the partition index is a reliable
+	// key and target.Map is not needed.
+	partition := target.Partition
 	kctl := kubectlCLI(exec)
 	ns := c.namespace
 

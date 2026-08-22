@@ -97,8 +97,18 @@ definitions:
       docker_db:
         type: string
       docker_gameserver:
-        description: docker-specific container names.
+        description: |-
+          DockerGameserver is the legacy singular key, honoured as a one-entry list
+          when DockerGameservers is empty.
         type: string
+      docker_gameservers:
+        description: |-
+          DockerGameservers lists every game-server container (one per
+          map/partition, see #311) and overrides runtime auto-detection. Leave it
+          empty to re-detect on every status poll.
+        items:
+          type: string
+        type: array
       id:
         description: |-
           ID is the DB-assigned numeric server id (exposed as a JSON number). It is
@@ -405,8 +415,18 @@ definitions:
       docker_db:
         type: string
       docker_gameserver:
-        description: docker-specific — container names
+        description: |-
+          DockerGameserver is the legacy singular key, honoured as a one-entry list
+          when DockerGameservers is empty.
         type: string
+      docker_gameservers:
+        description: |-
+          DockerGameservers lists every game-server container (one per
+          map/partition, see #311) and overrides runtime auto-detection. Leave it
+          empty to re-detect on every status poll.
+        items:
+          type: string
+        type: array
       events_enabled:
         description: |-
           ── Live events engine ─────────────────────────────────────────────────
@@ -1045,6 +1065,13 @@ definitions:
       online_status:
         type: string
     type: object
+  main.restartTarget:
+    properties:
+      map:
+        type: string
+      partition:
+        type: integer
+    type: object
   main.restoreStepState:
     properties:
       key:
@@ -1153,18 +1180,48 @@ definitions:
     type: object
   main.vehicleRow:
     properties:
-      chassis_durability:
+      access_label:
+        type: string
+      access_rank:
+        type: integer
+      chassis_current:
+        description: |-
+          ChassisCurrent is the chassis module's absolute durability. ChassisMax is
+          0 unless the part has decayed (the game only records a max once it does),
+          so ChassisPct is only meaningful when HasChassisPct is set.
+        type: number
+      chassis_max:
+        type: number
+      chassis_pct:
         type: number
       class:
         type: string
+      dimension:
+        type: integer
+      has_chassis_pct:
+        type: boolean
       id:
         type: integer
       is_backup:
         type: boolean
+      is_owner:
+        type: boolean
       is_recovered:
         type: boolean
+      location:
+        type: string
       map:
         type: string
+      owner_name:
+        description: |-
+          OwnerName is the rank-1 holder. AccessRank is the *viewing* player's rank,
+          so a vehicle merely shared with them is distinguishable from their own.
+        type: string
+      partition:
+        description: |-
+          Partition and Dimension locate the vehicle on a multi-sietch server; the
+          map name alone is ambiguous (#313). Location is the display form.
+        type: integer
       vehicle_name:
         type: string
     type: object
@@ -1751,12 +1808,13 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: 'partition: partition index to restart'
+      - description: partition index, plus the map name that disambiguates it when
+          several rows report the same index
         in: body
         name: body
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/main.restartTarget'
       produces:
       - application/json
       responses:
@@ -1768,6 +1826,24 @@ paths:
             type: object
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: no server matches the target (e.g. a stale row)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: several containers claim the partition; supply the map
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string

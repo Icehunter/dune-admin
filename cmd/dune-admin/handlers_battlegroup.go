@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -131,9 +132,12 @@ func handleBGExec(w http.ResponseWriter, r *http.Request) {
 // @Tags battlegroup
 // @Accept json
 // @Produce json
-// @Param body body object true "partition: partition index to restart"
+// @Param body body restartTarget true "partition index, plus the map name that disambiguates it when several rows report the same index"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string "no server matches the target (e.g. a stale row)"
+// @Failure 409 {object} map[string]string "several containers claim the partition; supply the map"
+// @Failure 500 {object} map[string]string
 // @Failure 501 {object} map[string]string
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/battlegroup/restart-partition [post]
@@ -148,9 +152,9 @@ func handleBGRestartPartition(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("%s control plane does not support per-partition restart", ctrl.Name()), http.StatusNotImplemented)
 		return
 	}
-	var req struct {
-		Partition int `json:"partition"`
-	}
+	// Map accompanies the partition because the index is not a reliable key on
+	// every plane — see restartTarget.
+	var req restartTarget
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
@@ -159,9 +163,19 @@ func handleBGRestartPartition(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid partition %d", req.Partition), 400)
 		return
 	}
-	out, err := restarter.RestartPartition(r.Context(), executorFromCtx(r), req.Partition)
+	out, err := restarter.RestartPartition(r.Context(), executorFromCtx(r), req)
 	if err != nil {
-		jsonErr(w, fmt.Errorf("restart partition %d: %w — output: %s", req.Partition, err, out), 500)
+		// A target the operator can correct is not a server fault: a stale row
+		// or a partition several containers claim needs a different message,
+		// and a different status, from a restart that genuinely failed.
+		status := http.StatusInternalServerError
+		switch {
+		case errors.Is(err, errRestartTargetUnknown):
+			status = http.StatusNotFound
+		case errors.Is(err, errRestartTargetAmbiguous):
+			status = http.StatusConflict
+		}
+		jsonErr(w, fmt.Errorf("restart partition %d: %w — output: %s", req.Partition, err, out), status)
 		return
 	}
 	// Same cache-drop as the whole-battlegroup lifecycle commands — a

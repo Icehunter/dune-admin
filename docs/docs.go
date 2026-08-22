@@ -780,12 +780,12 @@ const docTemplate = `{
                 "summary": "Restart a single map/partition without cycling the whole Battlegroup",
                 "parameters": [
                     {
-                        "description": "partition: partition index to restart",
+                        "description": "partition index, plus the map name that disambiguates it when several rows report the same index",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/main.restartTarget"
                         }
                     }
                 ],
@@ -801,6 +801,33 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "no server matches the target (e.g. a stale row)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "several containers claim the partition; supply the map",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -8253,8 +8280,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "docker_gameserver": {
-                    "description": "docker-specific container names.",
+                    "description": "DockerGameserver is the legacy singular key, honoured as a one-entry list\nwhen DockerGameservers is empty.",
                     "type": "string"
+                },
+                "docker_gameservers": {
+                    "description": "DockerGameservers lists every game-server container (one per\nmap/partition, see #311) and overrides runtime auto-detection. Leave it\nempty to re-detect on every status poll.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "id": {
                     "description": "ID is the DB-assigned numeric server id (exposed as a JSON number). It is\nNOT read from YAML — legacy config.yaml stored string ids, captured by\nLegacyID below for the one-time import remap.",
@@ -8559,8 +8593,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "docker_gameserver": {
-                    "description": "docker-specific — container names",
+                    "description": "DockerGameserver is the legacy singular key, honoured as a one-entry list\nwhen DockerGameservers is empty.",
                     "type": "string"
+                },
+                "docker_gameservers": {
+                    "description": "DockerGameservers lists every game-server container (one per\nmap/partition, see #311) and overrides runtime auto-detection. Leave it\nempty to re-detect on every status poll.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "events_enabled": {
                     "description": "── Live events engine ─────────────────────────────────────────────────\nEventsEnabled starts the background polling engine. Per-event poll_seconds\nand jitter_seconds are configured on each event definition.",
@@ -9489,6 +9530,17 @@ const docTemplate = `{
                 }
             }
         },
+        "main.restartTarget": {
+            "type": "object",
+            "properties": {
+                "map": {
+                    "type": "string"
+                },
+                "partition": {
+                    "type": "integer"
+                }
+            }
+        },
         "main.restoreStepState": {
             "type": "object",
             "properties": {
@@ -9655,11 +9707,30 @@ const docTemplate = `{
         "main.vehicleRow": {
             "type": "object",
             "properties": {
-                "chassis_durability": {
+                "access_label": {
+                    "type": "string"
+                },
+                "access_rank": {
+                    "type": "integer"
+                },
+                "chassis_current": {
+                    "description": "ChassisCurrent is the chassis module's absolute durability. ChassisMax is\n0 unless the part has decayed (the game only records a max once it does),\nso ChassisPct is only meaningful when HasChassisPct is set.",
+                    "type": "number"
+                },
+                "chassis_max": {
+                    "type": "number"
+                },
+                "chassis_pct": {
                     "type": "number"
                 },
                 "class": {
                     "type": "string"
+                },
+                "dimension": {
+                    "type": "integer"
+                },
+                "has_chassis_pct": {
+                    "type": "boolean"
                 },
                 "id": {
                     "type": "integer"
@@ -9667,11 +9738,25 @@ const docTemplate = `{
                 "is_backup": {
                     "type": "boolean"
                 },
+                "is_owner": {
+                    "type": "boolean"
+                },
                 "is_recovered": {
                     "type": "boolean"
                 },
+                "location": {
+                    "type": "string"
+                },
                 "map": {
                     "type": "string"
+                },
+                "owner_name": {
+                    "description": "OwnerName is the rank-1 holder. AccessRank is the *viewing* player's rank,\nso a vehicle merely shared with them is distinguishable from their own.",
+                    "type": "string"
+                },
+                "partition": {
+                    "description": "Partition and Dimension locate the vehicle on a multi-sietch server; the\nmap name alone is ambiguous (#313). Location is the display form.",
+                    "type": "integer"
                 },
                 "vehicle_name": {
                     "type": "string"

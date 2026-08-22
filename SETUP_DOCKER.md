@@ -13,7 +13,7 @@ dune-admin
 
 | Requirement | Notes |
 |-------------|-------|
-| **Go 1.26+** | `brew install go` or <https://go.dev/dl/> |
+| **Go 1.26.6+** | `brew install go` or <https://go.dev/dl/> |
 | **Docker CLI** | Must be in `$PATH` |
 | **Docker access** | The user running dune-admin must be able to run `docker` (i.e. in the `docker` group or running as root) |
 
@@ -152,6 +152,8 @@ one-entry list, so existing single-container configs keep running unchanged.
 **A non-game container shows up as a game server** — set `docker_gameservers` explicitly; the explicit list always wins over auto-detection.
 
 **A newly started map server does not appear** — `docker_gameservers` is pinned in config.yaml. Remove the key so detection runs on every poll.
+
+**"ambiguous restart target" when restarting a single map** — several of your game containers report the same partition index, which happens when their process args carry no `-PartitionIndex`. The panel sends the map name alongside the partition and normally resolves this on its own; seeing this error means the request reached the backend without one. Restarting the whole Battlegroup still works.
 
 **Players / queue / dimension columns are empty** — set `director_url` (the `dune-director` container publishes port `11717`).
 

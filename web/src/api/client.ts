@@ -1222,7 +1222,11 @@ export const api = {
       return res.json()
     },
     restore: (file: string) => req<{ ok: string }>('POST', '/battlegroup/restore', { file }),
-    restartPartition: (partition: number) => req<BGOutput>('POST', '/battlegroup/restart-partition', { partition }),
+    /** `map` accompanies the partition because the index is not a reliable key
+     *  on every control plane: a docker container whose args carry no
+     *  -PartitionIndex parses to 0, so several rows can report the same
+     *  partition and the backend would otherwise restart the wrong one. */
+    restartPartition: (partition: number, map: string) => req<BGOutput>('POST', '/battlegroup/restart-partition', { partition, map }),
   },
 
   players: {

@@ -339,23 +339,6 @@ func runKubectlSetup(ask func(string, string) string, ok, fail func(string), cfg
 
 // ── docker setup flow ─────────────────────────────────────────────────────────
 
-// defaultGameserverSelection returns the 1-based, comma-separated indices of the
-// auto-detected game-server containers, for use as the prompt default.
-func defaultGameserverSelection(entries []dockerPSEntry) string {
-	game := selectGameContainers(entries)
-	isGame := make(map[string]bool, len(game))
-	for _, g := range game {
-		isGame[g.name] = true
-	}
-	var idx []string
-	for i, e := range entries {
-		if isGame[e.name] {
-			idx = append(idx, strconv.Itoa(i+1))
-		}
-	}
-	return strings.Join(idx, ",")
-}
-
 // parseIndexSelection maps a comma-separated 1-based index list onto container
 // names. Out-of-range entries, junk, and duplicates are dropped rather than
 // aborting setup.

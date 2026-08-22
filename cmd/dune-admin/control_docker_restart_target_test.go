@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -315,5 +316,28 @@ func TestDockerRestartTarget_StaleConfiguredNameIsNotAPartitionMatch(t *testing.
 	}
 	if len(ran) != 1 || !strings.Contains(ran[0], "dune-server-overmap") {
 		t.Fatalf("restarted %v, want only the container docker knows about", ran)
+	}
+}
+
+// Restarting a row whose container docker no longer has is the stale-row case
+// errRestartTargetUnknown exists for, so it must answer 404 rather than
+// attempting `docker restart` and surfacing docker's failure as a 500.
+func TestDockerRestartTarget_StaleMapIsUnknownNotAServerError(t *testing.T) {
+	t.Parallel()
+	ps := "dune-server-overmap\tregistry.funcom.com/funcom/self-hosting/seabass-server:2048594-0-shipping\trunning\n"
+	var ran []string
+	exec := recordingDockerExec(ps, nil, &ran)
+	c := &dockerControl{gameservers: []string{"dune-server-overmap", "dune-server-gone"}}
+
+	_, err := c.RestartPartition(context.Background(), exec, restartTarget{Map: "gone"})
+	if !errors.Is(err, errRestartTargetUnknown) {
+		t.Fatalf("err = %v, want errRestartTargetUnknown so the handler answers 404", err)
+	}
+	if len(ran) != 0 {
+		t.Fatalf("must not shell out for a container docker has no record of, ran: %v", ran)
+	}
+	// The operator needs to know the name is stale, not just absent.
+	if !strings.Contains(err.Error(), "dune-server-gone") {
+		t.Fatalf("error = %q, want it to name the stale container", err)
 	}
 }

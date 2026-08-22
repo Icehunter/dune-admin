@@ -404,37 +404,60 @@ func uniquePartitions(containers []dockerGameContainer) map[int]bool {
 // operator which rows collide.
 func resolveRestartContainer(containers []dockerGameContainer, target restartTarget) (dockerGameContainer, error) {
 	if target.Map != "" {
-		for _, ct := range containers {
-			if ct.mapName == target.Map || ct.name == target.Map {
-				return ct, nil
-			}
-		}
-		return dockerGameContainer{}, fmt.Errorf("docker control: no container found for map %q: %w", target.Map, errRestartTargetUnknown)
+		return resolveByMap(containers, target.Map)
 	}
+	return resolveByPartition(containers, target.Partition)
+}
 
+// resolveByMap matches the row's own identity: the container name on docker,
+// or the map label derived from it.
+func resolveByMap(containers []dockerGameContainer, mapName string) (dockerGameContainer, error) {
+	for _, ct := range containers {
+		if ct.mapName != mapName && ct.name != mapName {
+			continue
+		}
+		// The row exists but docker has no record of the container behind it —
+		// a stale docker_gameservers entry, or one removed since the page last
+		// refreshed. That is the correctable case, not a server fault, so it
+		// must not shell out and surface as a 500.
+		if !ct.known {
+			return dockerGameContainer{}, fmt.Errorf(
+				"docker control: container %q for map %q is not in docker ps: %w",
+				ct.name, mapName, errRestartTargetUnknown)
+		}
+		return ct, nil
+	}
+	return dockerGameContainer{}, fmt.Errorf(
+		"docker control: no container found for map %q: %w", mapName, errRestartTargetUnknown)
+}
+
+// resolveByPartition keeps working for installs whose args carry
+// -PartitionIndex. A partition claimed by several containers is refused rather
+// than guessed: restarting an arbitrary map is worse than naming the collision.
+func resolveByPartition(containers []dockerGameContainer, partition int) (dockerGameContainer, error) {
 	var matches []dockerGameContainer
 	for _, ct := range containers {
 		// A container docker has no record of would fail `docker restart`
 		// anyway, and choosing it over a real one is strictly worse.
-		if ct.known && ct.partition == target.Partition {
+		if ct.known && ct.partition == partition {
 			matches = append(matches, ct)
 		}
 	}
 	switch len(matches) {
 	case 0:
-		return dockerGameContainer{}, fmt.Errorf("docker control: no container found for partition %d: %w", target.Partition, errRestartTargetUnknown)
+		return dockerGameContainer{}, fmt.Errorf(
+			"docker control: no container found for partition %d: %w", partition, errRestartTargetUnknown)
 	case 1:
 		return matches[0], nil
-	default:
-		var names []string
-		for _, ct := range matches {
-			names = append(names, ct.name)
-		}
-		return dockerGameContainer{}, fmt.Errorf(
-			"docker control: %d containers report partition %d (%s); "+
-				"these containers expose no -PartitionIndex, so the map must be supplied: %w",
-			len(matches), target.Partition, strings.Join(names, ", "), errRestartTargetAmbiguous)
 	}
+	names := make([]string, 0, len(matches))
+	for _, ct := range matches {
+		names = append(names, ct.name)
+	}
+	return dockerGameContainer{}, fmt.Errorf(
+		"docker control: %d containers report partition %d (%s); "+
+			"these containers expose no -PartitionIndex, so the map must be supplied: %w",
+		len(matches), partition, strings.Join(names, ", "), errRestartTargetAmbiguous)
 }
 
 // firstContainer returns a container to read install-wide values from. The

@@ -241,6 +241,12 @@ func (c *dockerControl) GetStatus(ctx context.Context, exec Executor) (*Battlegr
 		componentLog("control_docker").Warn().Err(err).Msg("director enrichment unavailable")
 	}
 
+	// Director metadata is keyed by partition, so it can only be trusted where
+	// the partition identifies exactly one container. Containers whose args
+	// carry no -PartitionIndex all parse to 0, and enriching each of them from
+	// dirMeta[0] would show every map the same players, dimension and label.
+	unique := uniquePartitions(containers)
+
 	servers := make([]ServerRow, 0, len(containers))
 	running := 0
 	for _, ct := range containers {
@@ -254,7 +260,7 @@ func (c *dockerControl) GetStatus(ctx context.Context, exec Executor) (*Battlegr
 			Ready:     ct.state == "running",
 			Port:      ct.port,
 		}
-		if meta, ok := dirMeta[ct.partition]; ok {
+		if meta, ok := dirMeta[ct.partition]; ok && unique[ct.partition] {
 			row.Dimension = meta.dimension
 			row.Players = meta.players
 			row.PlayerHardCap = meta.playerHardCap
@@ -362,6 +368,21 @@ func (c *dockerControl) RestartPartition(_ context.Context, exec Executor, targe
 		return out, fmt.Errorf("docker restart %s: %w — %s", ct.name, err, strings.TrimSpace(out))
 	}
 	return out, nil
+}
+
+// uniquePartitions reports which partition indices identify exactly one
+// container. Anything claimed by two or more is not a usable key — see
+// restartTarget for why the index can collapse to 0.
+func uniquePartitions(containers []dockerGameContainer) map[int]bool {
+	counts := make(map[int]int, len(containers))
+	for _, ct := range containers {
+		counts[ct.partition]++
+	}
+	unique := make(map[int]bool, len(counts))
+	for partition, n := range counts {
+		unique[partition] = n == 1
+	}
+	return unique
 }
 
 // resolveRestartContainer picks the one container a restart target names.

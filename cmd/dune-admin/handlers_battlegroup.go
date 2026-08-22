@@ -131,9 +131,10 @@ func handleBGExec(w http.ResponseWriter, r *http.Request) {
 // @Tags battlegroup
 // @Accept json
 // @Produce json
-// @Param body body object true "partition: partition index to restart"
+// @Param body body restartTarget true "partition index, plus the map name that disambiguates it when several rows report the same index"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Failure 501 {object} map[string]string
 // @Failure 503 {object} map[string]string
 // @Router /api/v1/battlegroup/restart-partition [post]

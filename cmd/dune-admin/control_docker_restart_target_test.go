@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -179,5 +182,71 @@ func TestDockerSelectGameContainers_PrefixFallbackExcludesSupportContainers(t *t
 	want := []string{"dune-server-overmap", "dune-server-survival-1"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("prefix fallback selected %v, want %v", got, want)
+	}
+}
+
+// Director metadata is keyed by partition, so the partition-0 collapse hits
+// GetStatus too: every row would take partition 0's players, dimension and
+// label and display them as its own. Refusing the restart but still showing
+// three maps with identical, wrong player counts fixes half the bug.
+//
+// Enrichment is applied only where the partition identifies exactly one
+// container. A blank column is honest; a fabricated one is not.
+func TestDockerGetStatus_SkipsDirectorEnrichmentWhenPartitionsCollide(t *testing.T) {
+	t.Parallel()
+	dir := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(w, `{"servers":[{"partition":{"partitionId":0,"dimensionIndex":4,"label":"Hagga Basin"},
+			"numPlayersInGame":37,"numPlayersInQueue":9}]}`)
+	}))
+	defer dir.Close()
+
+	// No -PartitionIndex in any container's args, so all three parse to 0.
+	c := &dockerControl{directorURL: dir.URL}
+	st, err := c.GetStatus(context.Background(), dockerScript(dockerPSNoPartitionArgs, nil))
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	if len(st.Servers) != 3 {
+		t.Fatalf("got %d rows, want 3", len(st.Servers))
+	}
+	for _, row := range st.Servers {
+		if row.Players != 0 || row.Dimension != 0 || row.Queue != 0 || row.Sietch != "" {
+			t.Errorf("row %q got enriched from an ambiguous partition: %+v", row.Map, row)
+		}
+	}
+}
+
+// The normal path must keep enriching: unique partitions still get their
+// players, dimension and label.
+func TestDockerGetStatus_EnrichesWhenPartitionsAreUnique(t *testing.T) {
+	t.Parallel()
+	dir := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(w, `{"servers":[{"partition":{"partitionId":2,"dimensionIndex":4,"label":"Hagga Basin"},
+			"numPlayersInGame":37,"numPlayersInQueue":9}]}`)
+	}))
+	defer dir.Close()
+
+	args := map[string]string{
+		"dune-server-overmap":        `["-PartitionIndex=1"]`,
+		"dune-server-survival-1":     `["-PartitionIndex=2"]`,
+		"dune-server-deepdesert-1-8": `["-PartitionIndex=3"]`,
+	}
+	c := &dockerControl{directorURL: dir.URL}
+	st, err := c.GetStatus(context.Background(), dockerScript(dockerPSNoPartitionArgs, args))
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	var found bool
+	for _, row := range st.Servers {
+		if row.Partition != 2 {
+			continue
+		}
+		found = true
+		if row.Players != 37 || row.Dimension != 4 || row.Queue != 9 || row.Sietch != "Hagga Basin" {
+			t.Fatalf("partition 2 row not enriched: %+v", row)
+		}
+	}
+	if !found {
+		t.Fatal("no row reported partition 2")
 	}
 }

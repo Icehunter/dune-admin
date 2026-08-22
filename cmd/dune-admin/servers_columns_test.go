@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -29,6 +30,9 @@ func TestServerColumnsRoundTrip(t *testing.T) {
 		AmpAPIPort:       8081,
 		AmpUseContainer:  boolPtr(true),
 		MarketBotEnabled: boolPtr(false),
+		// Stored comma-joined in a TEXT column rather than as JSON, so a
+		// mismatched SELECT/Scan or write placeholder would only show up here.
+		DockerGameservers: []string{"dune-server-overmap", "dune-server-survival-1"},
 	}
 
 	id, err := s.insertServer(cfg, 0)
@@ -70,6 +74,9 @@ func assertServerEqual(t *testing.T, ctx string, got, want ServerConfig, id int)
 	if got.DBHost != want.DBHost || got.DBPort != want.DBPort || got.DBName != want.DBName {
 		t.Errorf("%s: db = %q/%d/%q, want %q/%d/%q", ctx, got.DBHost, got.DBPort, got.DBName,
 			want.DBHost, want.DBPort, want.DBName)
+	}
+	if strings.Join(got.DockerGameservers, ",") != strings.Join(want.DockerGameservers, ",") {
+		t.Errorf("%s: DockerGameservers = %v, want %v", ctx, got.DockerGameservers, want.DockerGameservers)
 	}
 	if got.Control != want.Control {
 		t.Errorf("%s: Control = %q, want %q", ctx, got.Control, want.Control)

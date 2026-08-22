@@ -15,14 +15,16 @@ import (
 type partitionRestartControl struct {
 	stubControlPlane
 	gotPartition int
+	gotMap       string
 	out          string
 	err          error
 }
 
 func (p *partitionRestartControl) Name() string { return "kubectl" }
 
-func (p *partitionRestartControl) RestartPartition(_ context.Context, _ Executor, partition int) (string, error) {
-	p.gotPartition = partition
+func (p *partitionRestartControl) RestartPartition(_ context.Context, _ Executor, target restartTarget) (string, error) {
+	p.gotPartition = target.Partition
+	p.gotMap = target.Map
 	return p.out, p.err
 }
 
@@ -99,12 +101,17 @@ func TestHandleBGRestartPartition_Success(t *testing.T) {
 	ctrl := &partitionRestartControl{out: "serverrestart.igw.funcom.com/dune-admin-restart-abc created"}
 	globalControl = ctrl
 
-	rr := postRestartPartition(t, `{"partition":3}`)
+	rr := postRestartPartition(t, `{"partition":3,"map":"overmap"}`)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", rr.Code, rr.Body.String())
 	}
 	if ctrl.gotPartition != 3 {
 		t.Fatalf("gotPartition = %d, want 3", ctrl.gotPartition)
+	}
+	// The map has to reach the plane: it is what disambiguates rows that all
+	// report the same partition index (see restartTarget).
+	if ctrl.gotMap != "overmap" {
+		t.Fatalf("gotMap = %q, want %q", ctrl.gotMap, "overmap")
 	}
 	var resp map[string]string
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {

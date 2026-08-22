@@ -15,7 +15,7 @@ your machine
 
 | Requirement | Notes |
 |-------------|-------|
-| **Go 1.26+** | `brew install go` or <https://go.dev/dl/> |
+| **Go 1.26.6+** | `brew install go` or <https://go.dev/dl/> |
 | **SSH key** | Private key authorised on the VM |
 | **VM access** | Port 22 reachable; SSH user needs passwordless `sudo kubectl` |
 

@@ -315,7 +315,7 @@ Then run the setup wizard:
 ./dune-admin -setup
 ```
 
-Prerequisites: Go 1.26+, Node 20.19+ or 22.12+, pnpm 10.28+, `make`.
+Prerequisites: Go 1.26.6+, Node 20.19+ or 22.12+, pnpm 10.28+, `make`.
 
 > **Windows note:** `make build` works from PowerShell or `cmd.exe` as long as
 > [GNU Make](https://gnuwin32.sourceforge.net/packages/make.htm) is installed (e.g.

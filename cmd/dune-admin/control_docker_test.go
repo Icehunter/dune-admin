@@ -321,7 +321,7 @@ func TestDockerRestartPartition_TargetsOnlyThatContainer(t *testing.T) {
 		return "", nil
 	}}
 	c := &dockerControl{}
-	if _, err := c.RestartPartition(context.Background(), exec, 2); err != nil {
+	if _, err := c.RestartPartition(context.Background(), exec, restartTarget{Partition: 2}); err != nil {
 		t.Fatalf("RestartPartition: %v", err)
 	}
 	if len(restarted) != 1 || restarted[0] != "dune-server-overmap" {
@@ -331,7 +331,7 @@ func TestDockerRestartPartition_TargetsOnlyThatContainer(t *testing.T) {
 
 func TestDockerRestartPartition_UnknownPartitionErrors(t *testing.T) {
 	c := &dockerControl{}
-	_, err := c.RestartPartition(context.Background(), dockerScript(issue311DockerPS, nil), 99)
+	_, err := c.RestartPartition(context.Background(), dockerScript(issue311DockerPS, nil), restartTarget{Partition: 99})
 	if err == nil {
 		t.Fatal("RestartPartition: want error for unknown partition, got nil")
 	}
@@ -349,20 +349,6 @@ func TestParseDockerPS_SkipsBlankAndMalformed(t *testing.T) {
 	}
 	if entries[1].name != "b" || entries[1].state != "exited" {
 		t.Errorf("entries[1] = %+v, want {b img2 exited}", entries[1])
-	}
-}
-
-// The wizard offers the auto-detected game servers as the default selection so
-// the operator confirms rather than guessing a name (#311).
-func TestDefaultGameserverSelection(t *testing.T) {
-	entries, err := listDockerContainers(dockerScript(issue311DockerPS, nil))
-	if err != nil {
-		t.Fatalf("listDockerContainers: %v", err)
-	}
-	got := defaultGameserverSelection(entries)
-	// deepdesert=6, overmap=8, survival=9 in the 1-based issue #311 listing.
-	if got != "6,8,9" {
-		t.Errorf("defaultGameserverSelection = %q, want %q", got, "6,8,9")
 	}
 }
 

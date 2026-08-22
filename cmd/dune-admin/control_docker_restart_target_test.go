@@ -1,0 +1,183 @@
+package main
+
+import (
+	"context"
+	"strings"
+	"testing"
+)
+
+// A docker install whose game-server args carry no -PartitionIndex parses every
+// container to partition 0 (parseAMPArgInt returns 0 on a miss). A
+// partition-keyed restart then matches the first container in the list and
+// restarts the wrong map, silently. That was latent while the Battlegroup tab
+// hid the per-map button on docker; unhiding it made it reachable.
+//
+// The target now carries the map, which on docker is the container identity, so
+// the row the operator clicked is the container that cycles.
+
+// dockerPSNoPartitionArgs is the reporter's layout with args that expose a port
+// but no partition index — the case that collapses every row to 0.
+const dockerPSNoPartitionArgs = "dune-server-deepdesert-1-8\tregistry.funcom.com/funcom/self-hosting/seabass-server:2048594-0-shipping\trunning\n" +
+	"dune-server-overmap\tregistry.funcom.com/funcom/self-hosting/seabass-server:2048594-0-shipping\trunning\n" +
+	"dune-server-survival-1\tregistry.funcom.com/funcom/self-hosting/seabass-server:2048594-0-shipping\trunning\n"
+
+// recordingDockerExec is dockerScript plus a record of every container name a
+// `docker restart` was issued against, so a test can assert that exactly one
+// container cycled — and which.
+func recordingDockerExec(psOut string, args map[string]string, ran *[]string) *dialingExecutor {
+	script := dockerScript(psOut, args)
+	inner := script.fn
+	return &dialingExecutor{&fnExecutor{fn: func(cmd string) (string, error) {
+		if strings.Contains(cmd, "docker restart") {
+			for _, line := range strings.Split(psOut, "\n") {
+				name, _, found := strings.Cut(strings.TrimSpace(line), "\t")
+				if found && name != "" && strings.Contains(cmd, name) {
+					*ran = append(*ran, cmd)
+				}
+			}
+			return "", nil
+		}
+		return inner(cmd)
+	}}}
+}
+
+// TestDockerRestartTarget_MapWinsOverAmbiguousPartition — with three rows all
+// parsing to partition 0, the map must decide which container restarts.
+func TestDockerRestartTarget_MapWinsOverAmbiguousPartition(t *testing.T) {
+	t.Parallel()
+	var ran []string
+	exec := recordingDockerExec(dockerPSNoPartitionArgs, nil, &ran)
+	c := &dockerControl{}
+
+	// Every row reports partition 0; only the map separates them.
+	if _, err := c.RestartPartition(context.Background(), exec,
+		restartTarget{Partition: 0, Map: "overmap"}); err != nil {
+		t.Fatalf("RestartPartition: %v", err)
+	}
+
+	if len(ran) != 1 {
+		t.Fatalf("restarted %d containers, want exactly 1: %v", len(ran), ran)
+	}
+	if !strings.Contains(ran[0], "dune-server-overmap") {
+		t.Fatalf("restarted %q, want the container for the overmap row", ran[0])
+	}
+}
+
+// TestDockerRestartTarget_AmbiguousPartitionWithoutMapErrors — refusing beats
+// guessing. Restarting an arbitrary map is worse than saying which rows collide.
+func TestDockerRestartTarget_AmbiguousPartitionWithoutMapErrors(t *testing.T) {
+	t.Parallel()
+	var ran []string
+	exec := recordingDockerExec(dockerPSNoPartitionArgs, nil, &ran)
+	c := &dockerControl{}
+
+	_, err := c.RestartPartition(context.Background(), exec, restartTarget{Partition: 0})
+	if err == nil {
+		t.Fatal("want an error when three containers share partition 0 and no map is given")
+	}
+	if len(ran) != 0 {
+		t.Fatalf("nothing may be restarted when the target is ambiguous, ran: %v", ran)
+	}
+	// The message has to name the collision, or the operator cannot act on it.
+	if !strings.Contains(err.Error(), "ambiguous") {
+		t.Fatalf("error = %q, want it to say the target is ambiguous", err)
+	}
+}
+
+// TestDockerRestartTarget_PartitionStillWorksWhenUnique — the normal path,
+// where args do carry -PartitionIndex, must be unchanged.
+func TestDockerRestartTarget_PartitionStillWorksWhenUnique(t *testing.T) {
+	t.Parallel()
+	var ran []string
+	args := map[string]string{
+		"dune-server-overmap":        "-PartitionIndex=1 -Port=7777",
+		"dune-server-survival-1":     "-PartitionIndex=2 -Port=7778",
+		"dune-server-deepdesert-1-8": "-PartitionIndex=3 -Port=7779",
+	}
+	exec := recordingDockerExec(dockerPSNoPartitionArgs, args, &ran)
+	c := &dockerControl{}
+
+	if _, err := c.RestartPartition(context.Background(), exec, restartTarget{Partition: 2}); err != nil {
+		t.Fatalf("RestartPartition: %v", err)
+	}
+	if len(ran) != 1 || !strings.Contains(ran[0], "dune-server-survival-1") {
+		t.Fatalf("restarted %v, want only dune-server-survival-1", ran)
+	}
+}
+
+// TestDockerRestartTarget_UnknownMapErrors — a map that matches nothing must
+// not silently fall through to a partition match.
+func TestDockerRestartTarget_UnknownMapErrors(t *testing.T) {
+	t.Parallel()
+	var ran []string
+	exec := recordingDockerExec(dockerPSNoPartitionArgs, nil, &ran)
+	c := &dockerControl{}
+
+	if _, err := c.RestartPartition(context.Background(), exec,
+		restartTarget{Partition: 0, Map: "arrakeen"}); err == nil {
+		t.Fatal("want an error for a map with no matching container")
+	}
+	if len(ran) != 0 {
+		t.Fatalf("nothing may be restarted for an unknown map, ran: %v", ran)
+	}
+}
+
+// firstContainer feeds CaptureJWT and ReadDefaultINI, which docker exec into
+// the container. Discovery lists with `docker ps -a`, so the first entry can be
+// exited while another map is up — and exec'ing a stopped container fails for
+// no reason. Prefer a running one.
+func TestDockerFirstContainer_PrefersRunningContainer(t *testing.T) {
+	t.Parallel()
+	ps := "dune-server-deepdesert-1-8\tregistry.funcom.com/funcom/self-hosting/seabass-server:2048594-0-shipping\texited\n" +
+		"dune-server-overmap\tregistry.funcom.com/funcom/self-hosting/seabass-server:2048594-0-shipping\trunning\n"
+	c := &dockerControl{}
+
+	got, err := c.firstContainer(dockerScript(ps, nil))
+	if err != nil {
+		t.Fatalf("firstContainer: %v", err)
+	}
+	if got != "dune-server-overmap" {
+		t.Fatalf("firstContainer = %q, want the running container", got)
+	}
+}
+
+// All stopped is still a usable answer: the caller's docker exec will fail with
+// docker's own message, which beats inventing one here.
+func TestDockerFirstContainer_FallsBackWhenNoneRunning(t *testing.T) {
+	t.Parallel()
+	ps := "dune-server-overmap\tregistry.funcom.com/funcom/self-hosting/seabass-server:2048594-0-shipping\texited\n"
+	c := &dockerControl{}
+
+	got, err := c.firstContainer(dockerScript(ps, nil))
+	if err != nil {
+		t.Fatalf("firstContainer: %v", err)
+	}
+	if got != "dune-server-overmap" {
+		t.Fatalf("firstContainer = %q, want the only container even though it is stopped", got)
+	}
+}
+
+// The name-prefix fallback only runs when no image matches seabass-server
+// (retagged or privately built images). It must carry the same exclusions the
+// image match gives for free, or it sweeps in the gateway and text-router —
+// which is exactly why detection keys off the image in the first place.
+func TestDockerSelectGameContainers_PrefixFallbackExcludesSupportContainers(t *testing.T) {
+	t.Parallel()
+	ps := "dune-server-gateway\tmyregistry/private-gateway:1\trunning\n" +
+		"dune-server-overmap\tmyregistry/private-dune:1\trunning\n" +
+		"dune-server-survival-1\tmyregistry/private-dune:1\trunning\n" +
+		"dune-server-text-router\tmyregistry/private-text-router:1\trunning\n"
+	entries, err := listDockerContainers(dockerScript(ps, nil))
+	if err != nil {
+		t.Fatalf("listDockerContainers: %v", err)
+	}
+
+	var got []string
+	for _, e := range selectGameContainers(entries) {
+		got = append(got, e.name)
+	}
+	want := []string{"dune-server-overmap", "dune-server-survival-1"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("prefix fallback selected %v, want %v", got, want)
+	}
+}

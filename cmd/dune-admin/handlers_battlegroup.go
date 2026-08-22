@@ -148,9 +148,9 @@ func handleBGRestartPartition(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("%s control plane does not support per-partition restart", ctrl.Name()), http.StatusNotImplemented)
 		return
 	}
-	var req struct {
-		Partition int `json:"partition"`
-	}
+	// Map accompanies the partition because the index is not a reliable key on
+	// every plane — see restartTarget.
+	var req restartTarget
 	if err := decode(r, &req); err != nil {
 		jsonErr(w, err, 400)
 		return
@@ -159,7 +159,7 @@ func handleBGRestartPartition(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, fmt.Errorf("invalid partition %d", req.Partition), 400)
 		return
 	}
-	out, err := restarter.RestartPartition(r.Context(), executorFromCtx(r), req.Partition)
+	out, err := restarter.RestartPartition(r.Context(), executorFromCtx(r), req)
 	if err != nil {
 		jsonErr(w, fmt.Errorf("restart partition %d: %w — output: %s", req.Partition, err, out), 500)
 		return

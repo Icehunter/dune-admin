@@ -60,8 +60,22 @@ type ControlPlane interface {
 // AMP and local run every partition's process inside one shared container, so
 // there is no narrower unit to restart there (see .claude/rules/amp.md) — those
 // planes don't implement this interface, and handlers type-assert for it.
+// restartTarget identifies the server row the operator asked to restart.
+//
+// Partition alone is not a reliable key. On docker the index is parsed out of
+// the container's process args, and a container that exposes no
+// -PartitionIndex parses to 0 — so on an install whose args differ from AMP's,
+// every row reports partition 0 and a partition-keyed lookup restarts whichever
+// container happens to sort first. Map carries the row's own identity (the
+// container name on docker) and disambiguates. kubectl pods are 1:1 with
+// partitions, so it keeps using Partition and ignores Map.
+type restartTarget struct {
+	Partition int    `json:"partition"`
+	Map       string `json:"map"`
+}
+
 type partitionRestarter interface {
-	RestartPartition(ctx context.Context, exec Executor, partition int) (string, error)
+	RestartPartition(ctx context.Context, exec Executor, target restartTarget) (string, error)
 }
 
 // supportsPartitionRestart reports whether the active plane can restart a single

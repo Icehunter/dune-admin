@@ -14,7 +14,7 @@ dune-admin (same machine)
 
 | Requirement | Notes |
 |-------------|-------|
-| **Go 1.26+** | `brew install go` or <https://go.dev/dl/> |
+| **Go 1.26.6+** | `brew install go` or <https://go.dev/dl/> |
 | **PostgreSQL reachable** | `db_host` must be accessible from where dune-admin runs |
 | **Shell commands** | Optional — only needed for start/stop/restart/status in the Battlegroup tab |
 

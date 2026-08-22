@@ -1830,6 +1830,18 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "404":
+          description: no server matches the target (e.g. a stale row)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: several containers claim the partition; supply the map
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:

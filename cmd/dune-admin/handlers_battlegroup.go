@@ -135,6 +135,8 @@ func handleBGExec(w http.ResponseWriter, r *http.Request) {
 // @Param body body restartTarget true "partition index, plus the map name that disambiguates it when several rows report the same index"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string "no server matches the target (e.g. a stale row)"
+// @Failure 409 {object} map[string]string "several containers claim the partition; supply the map"
 // @Failure 500 {object} map[string]string
 // @Failure 501 {object} map[string]string
 // @Failure 503 {object} map[string]string

@@ -808,6 +808,24 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "404": {
+                        "description": "no server matches the target (e.g. a stale row)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "several containers claim the partition; supply the map",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {

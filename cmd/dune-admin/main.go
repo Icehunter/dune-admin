@@ -138,15 +138,16 @@ type appConfig struct {
 	// kubectl-specific
 	ControlNamespace string `yaml:"control_namespace" json:"control_namespace"`
 
-	// docker-specific — container names. DockerGameservers lists every
-	// game-server container (one per map/partition, see #311); it overrides
-	// runtime auto-detection. DockerGameserver is the legacy singular key,
-	// honoured when the list is empty.
+	// DockerGameservers lists every game-server container (one per
+	// map/partition, see #311) and overrides runtime auto-detection. Leave it
+	// empty to re-detect on every status poll.
 	DockerGameservers []string `yaml:"docker_gameservers" json:"docker_gameservers"`
-	DockerGameserver  string   `yaml:"docker_gameserver"  json:"docker_gameserver"`
-	DockerBrokerGame  string   `yaml:"docker_broker_game"  json:"docker_broker_game"`
-	DockerBrokerAdmin string   `yaml:"docker_broker_admin" json:"docker_broker_admin"`
-	DockerDB          string   `yaml:"docker_db"           json:"docker_db"`
+	// DockerGameserver is the legacy singular key, honoured as a one-entry list
+	// when DockerGameservers is empty.
+	DockerGameserver  string `yaml:"docker_gameserver"  json:"docker_gameserver"`
+	DockerBrokerGame  string `yaml:"docker_broker_game"  json:"docker_broker_game"`
+	DockerBrokerAdmin string `yaml:"docker_broker_admin" json:"docker_broker_admin"`
+	DockerDB          string `yaml:"docker_db"           json:"docker_db"`
 
 	// local-specific — configurable shell commands
 	CmdStart   string `yaml:"cmd_start"   json:"cmd_start"`

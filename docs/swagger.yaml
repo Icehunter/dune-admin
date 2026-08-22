@@ -97,12 +97,15 @@ definitions:
       docker_db:
         type: string
       docker_gameserver:
+        description: |-
+          DockerGameserver is the legacy singular key, honoured as a one-entry list
+          when DockerGameservers is empty.
         type: string
       docker_gameservers:
         description: |-
-          docker-specific container names. DockerGameservers lists every
-          game-server container (one per map/partition, see #311) and overrides
-          auto-detection; DockerGameserver is the legacy singular key.
+          DockerGameservers lists every game-server container (one per
+          map/partition, see #311) and overrides runtime auto-detection. Leave it
+          empty to re-detect on every status poll.
         items:
           type: string
         type: array
@@ -412,13 +415,15 @@ definitions:
       docker_db:
         type: string
       docker_gameserver:
+        description: |-
+          DockerGameserver is the legacy singular key, honoured as a one-entry list
+          when DockerGameservers is empty.
         type: string
       docker_gameservers:
         description: |-
-          docker-specific — container names. DockerGameservers lists every
-          game-server container (one per map/partition, see #311); it overrides
-          runtime auto-detection. DockerGameserver is the legacy singular key,
-          honoured when the list is empty.
+          DockerGameservers lists every game-server container (one per
+          map/partition, see #311) and overrides runtime auto-detection. Leave it
+          empty to re-detect on every status poll.
         items:
           type: string
         type: array

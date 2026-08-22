@@ -8262,10 +8262,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "docker_gameserver": {
+                    "description": "DockerGameserver is the legacy singular key, honoured as a one-entry list\nwhen DockerGameservers is empty.",
                     "type": "string"
                 },
                 "docker_gameservers": {
-                    "description": "docker-specific container names. DockerGameservers lists every\ngame-server container (one per map/partition, see #311) and overrides\nauto-detection; DockerGameserver is the legacy singular key.",
+                    "description": "DockerGameservers lists every game-server container (one per\nmap/partition, see #311) and overrides runtime auto-detection. Leave it\nempty to re-detect on every status poll.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -8574,10 +8575,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "docker_gameserver": {
+                    "description": "DockerGameserver is the legacy singular key, honoured as a one-entry list\nwhen DockerGameservers is empty.",
                     "type": "string"
                 },
                 "docker_gameservers": {
-                    "description": "docker-specific — container names. DockerGameservers lists every\ngame-server container (one per map/partition, see #311); it overrides\nruntime auto-detection. DockerGameserver is the legacy singular key,\nhonoured when the list is empty.",
+                    "description": "DockerGameservers lists every game-server container (one per\nmap/partition, see #311) and overrides runtime auto-detection. Leave it\nempty to re-detect on every status poll.",
                     "type": "array",
                     "items": {
                         "type": "string"

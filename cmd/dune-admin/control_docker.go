@@ -399,7 +399,7 @@ func resolveRestartContainer(containers []dockerGameContainer, target restartTar
 				return ct, nil
 			}
 		}
-		return dockerGameContainer{}, fmt.Errorf("docker control: no container found for map %q", target.Map)
+		return dockerGameContainer{}, fmt.Errorf("docker control: no container found for map %q: %w", target.Map, errRestartTargetUnknown)
 	}
 
 	var matches []dockerGameContainer
@@ -410,7 +410,7 @@ func resolveRestartContainer(containers []dockerGameContainer, target restartTar
 	}
 	switch len(matches) {
 	case 0:
-		return dockerGameContainer{}, fmt.Errorf("docker control: no container found for partition %d", target.Partition)
+		return dockerGameContainer{}, fmt.Errorf("docker control: no container found for partition %d: %w", target.Partition, errRestartTargetUnknown)
 	case 1:
 		return matches[0], nil
 	default:
@@ -419,9 +419,9 @@ func resolveRestartContainer(containers []dockerGameContainer, target restartTar
 			names = append(names, ct.name)
 		}
 		return dockerGameContainer{}, fmt.Errorf(
-			"docker control: ambiguous restart target — %d containers report partition %d (%s); "+
-				"these containers expose no -PartitionIndex, so the map must be supplied",
-			len(matches), target.Partition, strings.Join(names, ", "))
+			"docker control: %d containers report partition %d (%s); "+
+				"these containers expose no -PartitionIndex, so the map must be supplied: %w",
+			len(matches), target.Partition, strings.Join(names, ", "), errRestartTargetAmbiguous)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -130,5 +131,32 @@ func TestHandleBGRestartPartition_ControlPlaneError(t *testing.T) {
 	rr := postRestartPartition(t, `{"partition":5}`)
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d", rr.Code, http.StatusInternalServerError)
+	}
+}
+
+// A restart target the operator can correct — a map that matches no container,
+// or a partition several containers claim — is not a server fault. Returning
+// 500 for all of them leaves the UI unable to tell "your click was stale,
+// refresh" from "the restart itself broke".
+func TestHandleBGRestartPartition_TargetErrorsMapToClientStatus(t *testing.T) {
+	cases := []struct {
+		name       string
+		err        error
+		wantStatus int
+	}{
+		{"unknown target", fmt.Errorf("no container found for map %q: %w", "arrakeen", errRestartTargetUnknown), http.StatusNotFound},
+		{"ambiguous target", fmt.Errorf("3 containers report partition 0: %w", errRestartTargetAmbiguous), http.StatusConflict},
+		{"genuine failure", errors.New("docker daemon unreachable"), http.StatusInternalServerError},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			saveRestartPartitionGlobals(t)
+			globalControl = &partitionRestartControl{err: tc.err}
+
+			rr := postRestartPartition(t, `{"partition":0,"map":"arrakeen"}`)
+			if rr.Code != tc.wantStatus {
+				t.Fatalf("status = %d, want %d (body %s)", rr.Code, tc.wantStatus, rr.Body.String())
+			}
+		})
 	}
 }

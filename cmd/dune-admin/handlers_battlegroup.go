@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -162,7 +163,17 @@ func handleBGRestartPartition(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := restarter.RestartPartition(r.Context(), executorFromCtx(r), req)
 	if err != nil {
-		jsonErr(w, fmt.Errorf("restart partition %d: %w — output: %s", req.Partition, err, out), 500)
+		// A target the operator can correct is not a server fault: a stale row
+		// or a partition several containers claim needs a different message,
+		// and a different status, from a restart that genuinely failed.
+		status := http.StatusInternalServerError
+		switch {
+		case errors.Is(err, errRestartTargetUnknown):
+			status = http.StatusNotFound
+		case errors.Is(err, errRestartTargetAmbiguous):
+			status = http.StatusConflict
+		}
+		jsonErr(w, fmt.Errorf("restart partition %d: %w — output: %s", req.Partition, err, out), status)
 		return
 	}
 	// Same cache-drop as the whole-battlegroup lifecycle commands — a

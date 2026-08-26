@@ -590,12 +590,33 @@ func resolveKeyPath() string {
 //  3. built-in default carried in flagAddr (":8080" from the flag definition)
 func effectiveListenAddr(flagAddr string, explicit bool, dbAddr string) string {
 	if explicit {
-		return flagAddr
+		return normalizeListenAddr(flagAddr)
 	}
 	if dbAddr != "" {
-		return dbAddr
+		return normalizeListenAddr(dbAddr)
 	}
-	return flagAddr
+	return normalizeListenAddr(flagAddr)
+}
+
+// normalizeListenAddr turns a bare port number into a net.Listen-shaped
+// address. "18080" fails at bind time with "listen tcp: address 18080:
+// missing port in address" — a Go net package error message, not an obvious
+// config mistake — and the setup wizard's own default is displayed as
+// ":8080", so typing just the digits is an easy slip (#325).
+//
+// Only an all-digit string is unambiguous. A bare host ("127.0.0.1") is a
+// different mistake, and prepending ":" would corrupt it into something that
+// looks like a port; that one is left for net.Listen's own error.
+func normalizeListenAddr(addr string) string {
+	if addr == "" {
+		return addr
+	}
+	for _, r := range addr {
+		if r < '0' || r > '9' {
+			return addr
+		}
+	}
+	return ":" + addr
 }
 
 // resolveListenAddr returns the address to bind the HTTP server to.

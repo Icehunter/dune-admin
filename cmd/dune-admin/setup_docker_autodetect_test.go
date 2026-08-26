@@ -145,3 +145,33 @@ func TestSetupDockerContainers_DefaultAnswerLeavesConfigEmpty(t *testing.T) {
 		t.Fatal("director container is present in the listing, so its URL must be defaulted")
 	}
 }
+
+// dune-docker (the stock install these defaults target) hardens Postgres to
+// 127.0.0.1-only and issues one base password, "dune", visible in its own web
+// UI — confirmed stable "since start of the dune-docker project" (#325). The
+// wizard asked for it with no default at all, so every operator had to already
+// know it or go find it.
+func TestRunDockerSetupDBPrompts_DefaultsPasswordForStockInstall(t *testing.T) {
+	t.Parallel()
+	var cfg appConfig
+	ask := func(_, def string) string { return def } // operator presses Enter throughout
+	runDockerSetupDBPrompts(ask, &cfg)
+
+	if cfg.DBPass != "dune" {
+		t.Errorf("DBPass default = %q, want %q", cfg.DBPass, "dune")
+	}
+	// The password default must still be visible and overridable, not silently
+	// applied: ask() shows it in brackets and only takes it on an empty answer.
+	overridden := ""
+	askOverride := func(label, def string) string {
+		if label == "DB password" {
+			return "custom-secret"
+		}
+		return def
+	}
+	runDockerSetupDBPrompts(askOverride, &cfg)
+	overridden = cfg.DBPass
+	if overridden != "custom-secret" {
+		t.Errorf("DBPass with an explicit answer = %q, want the operator's own value", overridden)
+	}
+}

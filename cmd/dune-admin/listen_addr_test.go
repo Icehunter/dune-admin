@@ -123,3 +123,60 @@ func TestResolveListenAddr(t *testing.T) {
 		}
 	})
 }
+
+// A bare port number ("18080") is a Go net.Listen error, not a config we
+// should hand to the HTTP server: reported by @wofnull on #325 — typing the
+// setup wizard's own displayed default port without its leading colon
+// produces "listen tcp: address 18080: missing port in address" and the
+// process exits. The wizard prompts for "HTTP listen address" but shows only
+// the port in its default (":8080" reads as "8080" at a glance), so the
+// mistake is easy to make.
+func TestNormalizeListenAddr(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"bare port gets a colon", "18080", ":18080"},
+		{"already has a colon, unchanged", ":18080", ":18080"},
+		{"host:port, unchanged", "0.0.0.0:8080", "0.0.0.0:8080"},
+		{"empty, unchanged", "", ""},
+		// A host with no port is a different mistake; prepending ":" would
+		// turn it into a nonsensical ":127.0.0.1". Only an all-digit string is
+		// unambiguously a bare port.
+		{"host with no port, left alone", "127.0.0.1", "127.0.0.1"},
+		{"non-numeric junk, left alone", "abc", "abc"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := normalizeListenAddr(tt.in); got != tt.want {
+				t.Errorf("normalizeListenAddr(%q) = %q; want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// effectiveListenAddr is the one choke point every source (CLI flag, DB value,
+// setup-wizard-persisted config) funnels through before startServer binds, so
+// normalizing there catches a bare port regardless of where it came from.
+func TestEffectiveListenAddr_NormalizesBarePort(t *testing.T) {
+	tests := []struct {
+		name     string
+		flagAddr string
+		explicit bool
+		dbAddr   string
+		want     string
+	}{
+		{"explicit flag, bare port", "18080", true, "", ":18080"},
+		{"DB value, bare port", ":8080", false, "18080", ":18080"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := effectiveListenAddr(tt.flagAddr, tt.explicit, tt.dbAddr)
+			if got != tt.want {
+				t.Errorf("effectiveListenAddr(%q, %v, %q) = %q; want %q",
+					tt.flagAddr, tt.explicit, tt.dbAddr, got, tt.want)
+			}
+		})
+	}
+}

@@ -486,15 +486,21 @@ func setupDockerContainers(ask func(string, string) string, ok, fail func(string
 }
 
 // runDockerSetupDBPrompts collects the DB connection fields for a docker
-// install. DBPass defaults to "dune" — dune-docker (the stock install this
-// wizard targets) hardens Postgres to 127.0.0.1-only and issues that one base
-// password, confirmed stable since the project's start (#325). It stays a
-// confirmable default like the others: ask() shows it in brackets and only
-// applies it on an empty answer.
+// install. DBHost keeps its existing default: "database" fits a dune-admin
+// instance running inside the same compose network, and an operator on the
+// host (dune-admin's normal placement, per SETUP_DOCKER.md) overrides it with
+// an IP either way, same as @wofnull did in #325.
+//
+// DBPass defaults to "dune" — dune-docker itself hardens Postgres to
+// 127.0.0.1-only and issues that one base password, confirmed stable since
+// the project's start (#325). It stays a confirmable default like the
+// others: ask() shows it in brackets and only applies it on an empty answer.
 func runDockerSetupDBPrompts(ask func(string, string) string, cfg *appConfig) {
 	cfg.DBHost = ask("DB host (Docker DNS or IP)", "database")
 	cfg.DBPort = dbPort
-	portStr := ask(fmt.Sprintf("DB port [%d]", dbPort), fmt.Sprintf("%d", dbPort))
+	// The label is plain — ask() already renders the default in brackets, and
+	// a "[%d]" baked into the label too used to print "DB port [15432] [15432]:".
+	portStr := ask("DB port", fmt.Sprintf("%d", dbPort))
 	_, _ = fmt.Sscanf(portStr, "%d", &cfg.DBPort)
 	cfg.DBUser = ask("DB user", envOr("DB_USER", "dune"))
 	cfg.DBPass = ask("DB password", "dune")

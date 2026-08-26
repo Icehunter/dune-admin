@@ -175,3 +175,24 @@ func TestRunDockerSetupDBPrompts_DefaultsPasswordForStockInstall(t *testing.T) {
 		t.Errorf("DBPass with an explicit answer = %q, want the operator's own value", overridden)
 	}
 }
+
+// The port prompt's own label used to embed "[%d]", and ask() wraps every
+// label's default in brackets too, so the wizard rendered "DB port [15432]
+// [15432]:" — a duplicated default a Copilot review on #327 caught. The label
+// passed to ask() must be plain; the bracketed default is ask()'s job alone.
+func TestRunDockerSetupDBPrompts_PortLabelHasNoDuplicatedBracket(t *testing.T) {
+	t.Parallel()
+	var gotLabel string
+	ask := func(label, def string) string {
+		if strings.Contains(label, "port") || strings.Contains(label, "Port") {
+			gotLabel = label
+		}
+		return def
+	}
+	var cfg appConfig
+	runDockerSetupDBPrompts(ask, &cfg)
+
+	if strings.Contains(gotLabel, "[") {
+		t.Fatalf("port prompt label = %q, want no brackets — ask() adds the default's brackets itself", gotLabel)
+	}
+}

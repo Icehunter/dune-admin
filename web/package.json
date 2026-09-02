@@ -27,7 +27,7 @@
     "@lezer/highlight": "^1.2.3",
     "@number-flow/react": "^0.6.2",
     "@tailwindcss/vite": "^4.3.3",
-    "@tiptap/core": "^3.28.0",
+    "@tiptap/core": "^3.30.4",
     "@tiptap/extension-link": "^3.28.0",
     "@tiptap/extension-underline": "^3.28.0",
     "@tiptap/extensions": "^3.28.0",

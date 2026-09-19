@@ -580,7 +580,7 @@ func TestDispatchSelfService(t *testing.T) {
 	cfg := makeTestDiscordCfg()
 	viewer := discordMember{UserID: "u1", Roles: []string{"viewer-role"}}
 	player := playerInfo{ID: 99, AccountID: 200, Name: "Narisa", Map: "Hagga Basin"}
-	currency := []currencyRow{{PlayerID: 99, CurrencyID: 0, Balance: 5000}}
+	currency := []currencyRow{{PlayerID: 99, CurrencyID: virtualWalletSolaris, Balance: 5000}}
 	inv := []itemInfo{{TemplateID: "SpiceFiber", Name: "Spice Fiber", StackSize: 10}}
 
 	notRegisteredDeps := discordDeps{

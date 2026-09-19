@@ -29,6 +29,7 @@ const vehiclesQuery = `
 	       COALESCE(ops.character_name, ''),
 	       COALESCE(ch.cur, 0),
 	       COALESCE(ch.maxd, 0),
+	       COALESCE(ch.tpl, ''),
 	       (rv.vehicle_id IS NOT NULL) AS is_recovered,
 	       (bv.vehicle_id IS NOT NULL) AS is_backup
 	FROM dune.permission_actor pa
@@ -43,7 +44,8 @@ const vehiclesQuery = `
 	LEFT JOIN dune.player_state ops ON ops.player_controller_id = opar.player_id
 	LEFT JOIN LATERAL (
 	    SELECT (m.stats->'FVehicleModuleDurabilityStats'->1->>'CurrentDurability')::float8 AS cur,
-	           (m.stats->'FVehicleModuleDurabilityStats'->1->>'DecayedMaxDurability')::float8 AS maxd
+	           (m.stats->'FVehicleModuleDurabilityStats'->1->>'DecayedMaxDurability')::float8 AS maxd,
+	           m.template_id AS tpl
 	    FROM dune.vehicle_modules m
 	    WHERE m.vehicle_id = pa.actor_id AND m.template_id ILIKE '%%Chassis%%'
 	    LIMIT 1
@@ -54,7 +56,7 @@ const vehiclesQuery = `
 
 	-- A backup whose vehicle actor is gone is the only remaining trace of it,
 	-- so it still has to be listed.
-	SELECT bv.vehicle_id, COALESCE(a.class, ''), '', 0, 0, '', 0, '', 0, 0, false, true
+	SELECT bv.vehicle_id, COALESCE(a.class, ''), '', 0, 0, '', 0, '', 0, 0, '', false, true
 	FROM dune.backup_vehicles bv
 	LEFT JOIN dune.actors a ON a.id = bv.vehicle_id
 	WHERE bv.%[1]s = $2
@@ -64,15 +66,37 @@ const vehiclesQuery = `
 
 	ORDER BY 2`
 
+// resolveChassisMax returns the chassis module's durability ceiling.
+//
+// The game only writes DecayedMaxDurability once a part has actually decayed —
+// measured on a live 1.5.3 server, 12 of 13 chassis modules carried a
+// CurrentDurability but no max at all. Treating that absence as "unknown" left
+// the condition column blank for almost every vehicle (#329). It is not
+// unknown: a part that has never decayed still has its template's base
+// durability as the ceiling, which item-data.json records for every chassis
+// template in use. Falling back to it yields a real percentage.
+//
+// Returns 0 only when no ceiling can be sourced at all, so callers can still
+// distinguish "no data" from a genuine reading rather than showing a made-up one.
+func resolveChassisMax(decayedMax float64, templateID string, lookup func(string) (itemRule, bool)) float64 {
+	if decayedMax > 0 {
+		return decayedMax
+	}
+	if r, ok := lookup(templateID); ok && r.MaxDurability != nil && *r.MaxDurability > 0 {
+		return *r.MaxDurability
+	}
+	return 0
+}
+
 // scanVehicleRow maps one result row into a vehicleRow, applying the display
 // rules. A row that fails to scan is skipped rather than failing the request.
 func scanVehicleRow(rows pgx.Rows) (vehicleRow, bool) {
 	var r vehicleRow
-	var rawName string
+	var rawName, chassisTemplate string
 	if err := rows.Scan(
 		&r.ID, &r.Class, &r.Map, &r.Partition, &r.Dimension, &rawName,
 		&r.AccessRank, &r.OwnerName, &r.ChassisCurrent, &r.ChassisMax,
-		&r.IsRecovered, &r.IsBackup,
+		&chassisTemplate, &r.IsRecovered, &r.IsBackup,
 	); err != nil {
 		return vehicleRow{}, false
 	}
@@ -81,6 +105,7 @@ func scanVehicleRow(rows pgx.Rows) (vehicleRow, bool) {
 	r.Location = formatVehicleLocation(r.Map, r.Partition, r.Dimension)
 	r.IsOwner = vehicleIsOwner(r.AccessRank)
 	r.AccessLabel = vehicleAccessLabel(r.AccessRank)
+	r.ChassisMax = resolveChassisMax(r.ChassisMax, chassisTemplate, itemRuleLookup)
 	r.ChassisPct, r.HasChassisPct = chassisConditionPct(r.ChassisCurrent, r.ChassisMax)
 	return r, true
 }
@@ -119,6 +144,13 @@ func splitCamelCase(s string) string {
 	return b.String()
 }
 
+// deletedVehicleClassLabel stands in for a vehicle whose actor row is gone. The
+// backup arm of vehiclesQuery still lists such a vehicle — the backup is the only
+// remaining trace of it — but COALESCEs its class to the empty string. Class is
+// the table's row header and that arm supplies no map, owner or name either, so
+// the row rendered completely blank (#329). Naming it keeps the row meaningful.
+const deletedVehicleClassLabel = "Deleted Vehicle"
+
 // vehicleClassLabel turns an Unreal class path into something readable.
 //
 // The path's object name repeats the package name
@@ -129,6 +161,9 @@ func splitCamelCase(s string) string {
 // Scoped to vehicles rather than changing shortClass, which three other call
 // sites depend on.
 func vehicleClassLabel(raw string) string {
+	if strings.TrimSpace(raw) == "" {
+		return deletedVehicleClassLabel
+	}
 	s := shortClass(raw)
 	if pkg, obj, found := strings.Cut(s, "."); found && pkg == obj {
 		s = obj

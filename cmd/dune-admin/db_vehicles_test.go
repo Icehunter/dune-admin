@@ -169,7 +169,10 @@ func TestVehicleClassLabel(t *testing.T) {
 		// genuinely different pair is left joined, though the rest of the
 		// cleanup still applies.
 		{"package differs from object", "BP_Thing.BP_Other_C", "Thing.BP Other"},
-		{"empty", "", ""},
+		// An absent class means the vehicle's actor row is gone and only its
+		// backup remains. It used to render as an empty string, which made the
+		// whole row blank in the table (#329); it is now named instead.
+		{"empty", "", deletedVehicleClassLabel},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

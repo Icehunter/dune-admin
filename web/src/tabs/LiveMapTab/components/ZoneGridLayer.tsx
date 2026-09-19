@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useMap } from 'react-leaflet'
-import { DD_COLS, DD_ROWS } from '../constants'
-import { worldToLatLng } from '../utils'
+import { DD_COLS } from '../constants'
+import { ddRowLabel, worldToLatLng } from '../utils'
 import type { ZoneGridLayerProps } from '../interfaces'
 
 export const ZoneGridLayer: React.FC<ZoneGridLayerProps> = ({ effCfg }) => {
@@ -59,7 +59,9 @@ export const ZoneGridLayer: React.FC<ZoneGridLayerProps> = ({ effCfg }) => {
         const [lat, lng] = worldToLatLng(cx, cy, effCfg)
         const pt = map.latLngToContainerPoint([lat, lng])
         if (pt.x < -20 || pt.x > mapSize.x + 20 || pt.y < -20 || pt.y > mapSize.y + 20) continue
-        const label = `${DD_ROWS[ri]}${DD_COLS[ci]}`
+        // ddRowLabel, not DD_ROWS[ri]: row A is the highest world Y band, and
+        // this loop walks from the lowest upward (#310, #213).
+        const label = `${ddRowLabel(ri)}${DD_COLS[ci]}`
         ctx.fillText(label, pt.x, pt.y)
       }
     }

@@ -206,7 +206,14 @@ const MAPS: MapCfg[] = [
     tileId: 'deepdesert_1-40f176fc4cce018dff08f3cd66b52f08',
     depthFile: 'deepdesert-depth.webp',
     hasLiveData: true,
-    minX: -1300000, maxX: 1200000, minY: -1300000, maxY: 1200000,
+    // flipY matches HaggaBasin and Arrakeen: the game's +Y runs north, and the
+    // map image has north at the top, so world Y has to be inverted to place a
+    // marker. Its absence here drew every Deep Desert marker mirrored top to
+    // bottom — a character standing in sector A6 appeared in I6 (#310, #213).
+    // Verified against a live server: pawn at world y=1077150 (near maxY) was in
+    // sector A6 in game. Paired with ddRowLabel, which reverses the row letters
+    // so the A row still renders at the bottom of the screen, where it belongs.
+    minX: -1300000, maxX: 1200000, minY: -1300000, maxY: 1200000, flipY: true,
   },
   {
     key: 'Arrakeen', label: 'Arrakeen', image: 'arrakeen.webp', spawnFile: 'arrakeen',

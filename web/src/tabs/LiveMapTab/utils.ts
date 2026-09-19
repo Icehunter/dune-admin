@@ -1,6 +1,6 @@
 import { atomWithStorage } from 'jotai/utils'
 import type { Bounds, CalibPoint } from './types'
-import { TYPE_MERGE_KEY, IMG_W, IMG_H, HEATMAP_TO_FILTER } from './constants'
+import { TYPE_MERGE_KEY, IMG_W, IMG_H, HEATMAP_TO_FILTER, DD_ROWS, DD_COLS } from './constants'
 
 const MAP_BASE = ((import.meta.env.VITE_CDN_BASE_URL as string) ?? 'https://assets.dune.layout.tools').replace(/\/$/, '')
 
@@ -20,6 +20,28 @@ export const clamp01 = (v: number): number => {
   if (v < 0) return 0
   if (v > 1) return 1
   return v
+}
+
+// Deep Desert is divided into a 9x9 lettered grid. Row A is the HIGHEST world Y
+// band, not the lowest — confirmed against a live server, where a character in
+// sector A6 stood at world y=1077150, close to maxY. ZoneGridLayer walks its rows
+// from low world Y upward, so the letters have to be read back to front; combined
+// with DeepDesert's flipY that puts the A row along the bottom of the screen,
+// which is where the in-game map shows it (#310, #213).
+export const ddRowLabel = (rowIndex: number): string =>
+  DD_ROWS[DD_ROWS.length - 1 - rowIndex]
+
+// deepDesertSector names the grid cell a world point falls in, e.g. "A6". Points
+// outside the configured bounds clamp to the nearest cell rather than producing a
+// sector that does not exist.
+export const deepDesertSector = (x: number, y: number, cfg: Bounds): string => {
+  const cell = (v: number, lo: number, hi: number): number => {
+    const idx = Math.floor(clamp01((v - lo) / (hi - lo)) * DD_ROWS.length)
+    return Math.min(idx, DD_ROWS.length - 1)
+  }
+  const ci = cell(x, cfg.minX, cfg.maxX)
+  const ri = cell(y, cfg.minY, cfg.maxY)
+  return `${ddRowLabel(ri)}${DD_COLS[ci]}`
 }
 
 export const worldToLatLng = (x: number, y: number, cfg: Bounds): [number, number] => {

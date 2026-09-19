@@ -76,9 +76,12 @@ type itemInfo struct {
 }
 
 type currencyRow struct {
-	PlayerID   int64 `json:"player_id"`
-	CurrencyID int16 `json:"currency_id"`
-	Balance    int64 `json:"balance"`
+	PlayerID int64 `json:"player_id"`
+	// CurrencyID is the currency_id column rendered as text: a VirtualWalletType
+	// label ("Solaris"/"HouseCredit") on game build 1.5.3 and later, or the old
+	// smallint on earlier servers. Selected as ::text so one scan path covers both.
+	CurrencyID string `json:"currency_id"`
+	Balance    int64  `json:"balance"`
 }
 
 type factionRep struct {
@@ -195,9 +198,9 @@ type msgCurrency struct {
 	err  error
 }
 type msgFactions struct {
-	rows            []factionRep
-	scripCurrencyID int16
-	err             error
+	rows          []factionRep
+	scripCurrency string
+	err           error
 }
 type msgSpecs struct {
 	rows []specTrack

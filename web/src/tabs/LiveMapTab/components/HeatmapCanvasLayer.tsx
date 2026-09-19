@@ -26,12 +26,18 @@ export const HeatmapCanvasLayer: React.FC<HeatmapCanvasLayerProps> = ({
     if (!ctx) return
     ctx.clearRect(0, 0, mapSize.x, mapSize.y)
 
-    const [tlLat, tlLng] = worldToLatLng(bounds.minX, bounds.maxY, effCfg)
-    const [brLat, brLng] = worldToLatLng(bounds.maxX, bounds.minY, effCfg)
-    const tl = map.latLngToContainerPoint([tlLat, tlLng])
-    const br = map.latLngToContainerPoint([brLat, brLng])
-    const dw = br.x - tl.x
-    const dh = br.y - tl.y
+    const [aLat, aLng] = worldToLatLng(bounds.minX, bounds.maxY, effCfg)
+    const [bLat, bLng] = worldToLatLng(bounds.maxX, bounds.minY, effCfg)
+    const a = map.latLngToContainerPoint([aLat, aLng])
+    const b2 = map.latLngToContainerPoint([bLat, bLng])
+    // Normalise the rect rather than assuming a is the top-left corner. Which
+    // world corner lands top-left depends on the map's flipX/flipY, and a
+    // negative width or height would make drawImage mirror the overlay. These
+    // heatmap images are rendered to line up with the map picture, which does not
+    // move, so they must keep their orientation whatever the axis flips are.
+    const tl = { x: Math.min(a.x, b2.x), y: Math.min(a.y, b2.y) }
+    const dw = Math.abs(b2.x - a.x)
+    const dh = Math.abs(b2.y - a.y)
 
     ctx.globalAlpha = 0.65
     for (const type of types) {

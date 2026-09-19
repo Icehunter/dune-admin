@@ -279,12 +279,15 @@ const (
 		GROUP BY label
 		ORDER BY count DESC, label`
 
-	// Economy totals across all balances. Solaris is identified by the game's
-	// own dune.get_solaris_id(); everything else is treated as scrip.
+	// Economy totals across all balances. Game 1.5.3 dropped
+	// dune.get_solaris_id() and retyped currency_id to the VirtualWalletType
+	// enum, so Solaris is matched on the column's rendered text — which works
+	// against both that enum and the older smallint column. See
+	// currency_schema.go. Everything that is not Solaris is treated as scrip.
 	serverEconomySQL = `
 		SELECT
-			COALESCE(SUM(CASE WHEN currency_id =  dune.get_solaris_id() THEN balance ELSE 0 END), 0) AS solaris,
-			COALESCE(SUM(CASE WHEN currency_id <> dune.get_solaris_id() THEN balance ELSE 0 END), 0) AS scrip
+			COALESCE(SUM(CASE WHEN ` + solarisTextPredicate + ` THEN balance ELSE 0 END), 0) AS solaris,
+			COALESCE(SUM(CASE WHEN NOT (` + solarisTextPredicate + `) THEN balance ELSE 0 END), 0) AS scrip
 		FROM dune.player_virtual_currency_balances`
 
 	// Cumulative character XP per player (DuneCharacter FLevelComponent), fed
@@ -337,8 +340,8 @@ var (
 		SELECT
 			COALESCE(f.name, 'Unaligned') AS faction,
 			COUNT(DISTINCT a.id) AS players,
-			COALESCE(SUM(CASE WHEN vcb.currency_id =  dune.get_solaris_id() THEN vcb.balance ELSE 0 END), 0) AS solaris,
-			COALESCE(SUM(CASE WHEN vcb.currency_id <> dune.get_solaris_id() THEN vcb.balance ELSE 0 END), 0) AS scrip
+			COALESCE(SUM(CASE WHEN ` + solarisTextPredicateFor("vcb") + ` THEN vcb.balance ELSE 0 END), 0) AS solaris,
+			COALESCE(SUM(CASE WHEN NOT (` + solarisTextPredicateFor("vcb") + `) THEN vcb.balance ELSE 0 END), 0) AS scrip
 		FROM dune.actors a` + factionByAccountJoin + `
 		LEFT JOIN dune.factions f ON f.id = af.faction_id` + playerStateByPawnJoin + `
 		LEFT JOIN dune.player_virtual_currency_balances vcb ON vcb.player_controller_id = ps.player_controller_id
@@ -640,8 +643,17 @@ func guildRoleSetProc(newRole int16) string {
 	return "demote_guild_member"
 }
 
-func cmdEditGuildDescription(ctx context.Context, pool *pgxpool.Pool, guildID int64, desc string) error {
-	if _, err := pool.Exec(ctx, `SELECT dune.edit_guild_description($1, $2)`, guildID, desc); err != nil {
+// cmdEditGuildDescription rewrites a guild's description. dune.edit_guild_description
+// gained a third, non-defaulted in_edited_by_player_id parameter (it records the
+// editor in guilds.guild_description_edited_by), and the old two-argument overload
+// was dropped — calling it that way failed with "function does not exist". The
+// panel edits as the seeded GM persona rather than as any real player, so the GM
+// controller actor is the attribution. Takes pgExecutor so the emitted SQL is
+// unit-testable without a database.
+func cmdEditGuildDescription(ctx context.Context, db pgExecutor, guildID int64, desc string) error {
+	if _, err := db.Exec(ctx,
+		`SELECT dune.edit_guild_description($1, $2, $3)`,
+		guildID, desc, gmSeedSpec().ControllerID); err != nil {
 		return fmt.Errorf("edit guild %d description: %w", guildID, err)
 	}
 	return nil
@@ -1033,7 +1045,7 @@ func cmdFetchCurrency(pool *pgxpool.Pool) Msg {
 		return msgCurrency{err: fmt.Errorf("not connected")}
 	}
 	rows, err := pool.Query(context.Background(), `
-		SELECT player_controller_id, currency_id, balance
+		SELECT player_controller_id, currency_id::text, balance
 		FROM dune.player_virtual_currency_balances
 		ORDER BY player_controller_id, currency_id`)
 	if err != nil {
@@ -1060,7 +1072,7 @@ func cmdFetchFactions(pool *pgxpool.Pool) Msg {
 		return msgFactions{err: fmt.Errorf("not connected")}
 	}
 	ctx := context.Background()
-	scripID, err := resolveScripCurrencyID(ctx, pool)
+	scripLabel, err := resolveScripCurrencyLabel(ctx, pool)
 	if err != nil {
 		return msgFactions{err: err}
 	}
@@ -1071,8 +1083,8 @@ func cmdFetchFactions(pool *pgxpool.Pool) Msg {
 		JOIN dune.factions f ON f.id = pfr.faction_id
 		LEFT JOIN dune.player_virtual_currency_balances vcb
 			ON vcb.player_controller_id = pfr.actor_id
-			AND vcb.currency_id = $1::smallint
-		ORDER BY pfr.actor_id, pfr.faction_id`, scripID)
+			AND vcb.currency_id::text = $1
+		ORDER BY pfr.actor_id, pfr.faction_id`, scripLabel)
 	if err != nil {
 		return msgFactions{err: err}
 	}
@@ -1089,7 +1101,7 @@ func cmdFetchFactions(pool *pgxpool.Pool) Msg {
 	if err := rows.Err(); err != nil {
 		return msgFactions{err: err}
 	}
-	return msgFactions{rows: out, scripCurrencyID: scripID}
+	return msgFactions{rows: out, scripCurrency: scripLabel}
 }
 
 func cmdFetchSpecs(pool *pgxpool.Pool) Msg {
@@ -1740,7 +1752,7 @@ func cmdGiveCurrency(pool *pgxpool.Pool, playerID int64, amount int64) Cmd {
 		_, err := pool.Exec(ctx, `
 			SELECT dune.adjust_player_virtual_currency_balance(
 				$1::bigint,
-				dune.get_solaris_id(),
+				`+solarisCurrencyArg+`,
 				$2::bigint
 			)`,
 			playerID, amount)
@@ -1750,7 +1762,7 @@ func cmdGiveCurrency(pool *pgxpool.Pool, playerID int64, amount int64) Cmd {
 		var balance int64
 		_ = pool.QueryRow(ctx, `
 			SELECT balance FROM dune.player_virtual_currency_balances
-			WHERE player_controller_id = $1::bigint AND currency_id = dune.get_solaris_id()`,
+			WHERE player_controller_id = $1::bigint AND `+solarisTextPredicate,
 			playerID).Scan(&balance)
 		return msgMutate{ok: fmt.Sprintf(
 			"Added %d Solaris to player %d — new balance %d",
@@ -1771,7 +1783,7 @@ func cmdGiveCurrencyCtx(ctx context.Context, db *pgxpool.Pool, controllerID, amo
 	_, err := db.Exec(ctx, `
 		SELECT dune.adjust_player_virtual_currency_balance(
 			$1::bigint,
-			dune.get_solaris_id(),
+			`+solarisCurrencyArg+`,
 			$2::bigint
 		)`, controllerID, amount)
 	if err != nil {
@@ -1780,7 +1792,7 @@ func cmdGiveCurrencyCtx(ctx context.Context, db *pgxpool.Pool, controllerID, amo
 	var balance int64
 	if err := db.QueryRow(ctx, `
 		SELECT balance FROM dune.player_virtual_currency_balances
-		WHERE player_controller_id = $1::bigint AND currency_id = dune.get_solaris_id()`,
+		WHERE player_controller_id = $1::bigint AND `+solarisTextPredicate,
 		controllerID).Scan(&balance); err != nil {
 		return 0, fmt.Errorf("read new balance player=%d: %w", controllerID, err)
 	}
@@ -1858,24 +1870,24 @@ func cmdGiveLandsraadScrip(pool *pgxpool.Pool, actorID int64, delta int32) Cmd {
 		if actorID == 0 {
 			return msgMutate{err: fmt.Errorf("player ID required")}
 		}
-		currencyID, err := resolveScripCurrencyID(ctx, pool)
+		currency, err := resolveScripCurrencyLabel(ctx, pool)
 		if err != nil {
 			return msgMutate{err: err}
 		}
 		_, err = pool.Exec(ctx, `
-			SELECT dune.adjust_player_virtual_currency_balance($1::bigint, $2::smallint, $3::bigint)`,
-			actorID, currencyID, int64(delta))
+			SELECT dune.adjust_player_virtual_currency_balance($1::bigint, $2::dune.virtualwallettype, $3::bigint)`,
+			actorID, currency, int64(delta))
 		if err != nil {
 			return msgMutate{err: err}
 		}
 		var balance int64
 		_ = pool.QueryRow(ctx, `
 			SELECT balance FROM dune.player_virtual_currency_balances
-			WHERE player_controller_id = $1::bigint AND currency_id = $2::smallint`,
-			actorID, currencyID).Scan(&balance)
+			WHERE player_controller_id = $1::bigint AND currency_id::text = $2`,
+			actorID, currency).Scan(&balance)
 		return msgMutate{ok: fmt.Sprintf(
-			"Added %d scrips (currency %d) to player %d — new balance %d",
-			delta, currencyID, actorID, balance)}
+			"Added %d scrips (%s) to player %d — new balance %d",
+			delta, currency, actorID, balance)}
 	}
 }
 
@@ -2459,6 +2471,7 @@ const (
 	gmIdentityHexID         string = "DA5EBA11DA5EBA11" // accounts."user" (AMQP user_id)
 	gmIdentityFuncomID      string = "GM#0001"          // chat id (m_FuncomIdFrom)
 	gmIdentityCharacterName string = "GM"               // in-game display name
+	gmIdentityPlatformID    string = "dune-admin"       // accounts.platform_id (encrypted at rest)
 )
 
 // errGMNotProvisioned signals that the GM/Server chat persona has not been seeded
@@ -2561,10 +2574,21 @@ func gmSeedSpec() gmSeed {
 // The accounts and actors inserts keep ON CONFLICT DO NOTHING — they use explicit
 // synthetic ids as the PK, so the conflict target is still valid.
 func seedGMIdentity(ctx context.Context, db pgExecutor, s gmSeed) error {
+	// Game 1.5.3 replaced encrypted_accounts.platform_id (TEXT) with
+	// encrypted_platform_id (Bytea), so the old column list failed the whole seed
+	// on startup with `column "platform_id" ... does not exist` (#333).
+	//
+	// The platform id is migrated to the new column, not dropped: it goes through
+	// dune.encrypt_user_data() exactly as the game's own DDL does it (see
+	// user_data_encryption_setup.sql, which encrypts encrypted_platform_id
+	// alongside encrypted_funcom_id). The dune.accounts view decrypts it back out
+	// as platform_id, so anything reading the view still sees the value.
 	if _, err := db.Exec(ctx, `
-		INSERT INTO dune.encrypted_accounts (id, "user", encrypted_funcom_id, takeoverable, platform_id, platform_name)
-		VALUES ($1, $2, dune.encrypt_user_data($3), false, 'dune-admin', 'DuneAdmin')
-		ON CONFLICT DO NOTHING`, s.AccountID, s.HexID, s.FuncomID); err != nil {
+		INSERT INTO dune.encrypted_accounts
+			(id, "user", encrypted_funcom_id, takeoverable, encrypted_platform_id, platform_name)
+		VALUES ($1, $2, dune.encrypt_user_data($3), false, dune.encrypt_user_data($4), 'DuneAdmin')
+		ON CONFLICT DO NOTHING`,
+		s.AccountID, s.HexID, s.FuncomID, gmIdentityPlatformID); err != nil {
 		return fmt.Errorf("seed gm account: %w", err)
 	}
 
@@ -2666,7 +2690,12 @@ func cmdGrantReturningPlayerAward(pool *pgxpool.Pool, accountID int64) Cmd {
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("reset returning player timestamps: %w", err)}
 		}
-		_, err = pool.Exec(ctx, `SELECT dune.update_returning_player_status($1, 0)`, rawID)
+		// The second parameter is an Interval ("minimum returning-player time"),
+		// and a zero minimum is what makes the award trigger immediately. It was
+		// passed as the bare integer 0, which Postgres cannot cast to interval,
+		// so the call failed function resolution every time.
+		_, err = pool.Exec(ctx,
+			`SELECT dune.update_returning_player_status($1, INTERVAL '0 seconds')`, rawID)
 		if err != nil {
 			return msgMutate{err: fmt.Errorf("update_returning_player_status: %w", err)}
 		}
@@ -2885,48 +2914,53 @@ func resolveItemVolume(ctx context.Context, pool *pgxpool.Pool, template string)
 	return 0, nil // unknown volume — treat as zero (no space consumed)
 }
 
-func formatCurrencyIDs(ids []int16) string {
-	parts := make([]string, 0, len(ids))
-	for _, id := range ids {
-		parts = append(parts, fmt.Sprintf("%d", id))
-	}
-	return strings.Join(parts, ", ")
+func formatCurrencyLabels(labels []string) string {
+	return strings.Join(labels, ", ")
 }
 
-func resolveScripCurrencyID(ctx context.Context, pool *pgxpool.Pool) (int16, error) {
+// resolveScripCurrencyLabel returns the currency_id of the scrip currency as
+// the text dune-admin compares against — the VirtualWalletType label on 1.5.3
+// servers ("HouseCredit"), or the rendered smallint on older ones.
+//
+// The -scripcurrency flag and the ScripCurrency config key still carry the
+// pre-1.5.3 numeric id, so a configured value is mapped through
+// virtualWalletLabel rather than being sent to the database as an integer,
+// which the 1.5.3 enum column would reject. Only a negative configured value
+// falls through to probing the data.
+func resolveScripCurrencyLabel(ctx context.Context, pool *pgxpool.Pool) (string, error) {
 	if scripCurrencyID >= 0 {
-		return int16(scripCurrencyID), nil
+		return virtualWalletLabel(scripCurrencyID), nil
 	}
 	rows, err := pool.Query(ctx, `
-		SELECT currency_id, COALESCE(SUM(balance), 0) AS total
+		SELECT currency_id::text, COALESCE(SUM(balance), 0) AS total
 		FROM dune.player_virtual_currency_balances
-		WHERE currency_id <> dune.get_solaris_id()
+		WHERE NOT (`+solarisTextPredicate+`)
 		GROUP BY currency_id
 		ORDER BY total DESC, currency_id`)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	defer rows.Close()
 
-	var ids []int16
+	var labels []string
 	for rows.Next() {
-		var id int16
+		var label string
 		var total int64
-		if err := rows.Scan(&id, &total); err != nil {
+		if err := rows.Scan(&label, &total); err != nil {
 			continue
 		}
-		ids = append(ids, id)
+		labels = append(labels, label)
 	}
 	if rows.Err() != nil {
-		return 0, rows.Err()
+		return "", rows.Err()
 	}
-	if len(ids) == 1 {
-		return ids[0], nil
+	if len(labels) == 1 {
+		return labels[0], nil
 	}
-	if len(ids) == 0 {
-		return 0, fmt.Errorf("no non-solaris currency rows found; pass -scripcurrency")
+	if len(labels) == 0 {
+		return "", fmt.Errorf("no non-solaris currency rows found; pass -scripcurrency")
 	}
-	return 0, fmt.Errorf("multiple non-solaris currency IDs found (%s); pass -scripcurrency", formatCurrencyIDs(ids))
+	return "", fmt.Errorf("multiple non-solaris currency IDs found (%s); pass -scripcurrency", formatCurrencyLabels(labels))
 }
 
 // factionDataEntry mirrors one element of
@@ -6427,8 +6461,11 @@ func cmdTeleportPlayer(pool *pgxpool.Pool, flsID string, locationName string) Cm
 			JOIN dune.player_state ps ON ps.account_id = e.id
 			JOIN dune.actors a ON a.id = ps.player_pawn_id
 			WHERE convert_from(e.encrypted_funcom_id, 'UTF8') = $1`, flsID).Scan(&partitionID); scanErr != nil || partitionID == 0 {
+			// world_partition's primary key is partition_id; it has no "id"
+			// column, and this error is discarded, so selecting "id" left
+			// partitionID at 0 instead of resolving a fallback partition.
 			_ = pool.QueryRow(ctx,
-				`SELECT id FROM dune.world_partition WHERE blocked = false LIMIT 1`).Scan(&partitionID)
+				`SELECT partition_id FROM dune.world_partition WHERE blocked = false LIMIT 1`).Scan(&partitionID)
 		}
 		if _, execErr := pool.Exec(ctx, `
 			SELECT dune.admin_move_offline_player_to_partition($1::text, $2::bigint, ROW($3::float8,$4::float8,$5::float8)::dune.Vector)`,
@@ -6495,7 +6532,8 @@ func cmdTeleportPlayerToCoords(pool *pgxpool.Pool, flsID string, partitionID int
 		if partitionID == 0 {
 			// Fall back to any non-blocked partition (handles offline/no-actor state).
 			_ = pool.QueryRow(ctx,
-				`SELECT id FROM dune.world_partition WHERE blocked = false ORDER BY id LIMIT 1`,
+				// See above: the key column is partition_id, not id.
+				`SELECT partition_id FROM dune.world_partition WHERE blocked = false ORDER BY partition_id LIMIT 1`,
 			).Scan(&partitionID)
 		}
 		if partitionID == 0 {
@@ -7061,7 +7099,7 @@ func cmdFetchPlayerPgStats(ctx context.Context, pool *pgxpool.Pool, accountID in
 
 	// Current currency balances via player_controller_id.
 	rows, err := pool.Query(ctx, `
-		SELECT pvc.currency_id, pvc.balance
+		SELECT pvc.currency_id::text, pvc.balance
 		FROM dune.player_virtual_currency_balances pvc
 		JOIN dune.player_state ps ON ps.player_controller_id = pvc.player_controller_id
 		WHERE ps.account_id = $1
@@ -7071,15 +7109,18 @@ func cmdFetchPlayerPgStats(ctx context.Context, pool *pgxpool.Pool, accountID in
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var cid int16
+		// currency_id is the VirtualWalletType enum on 1.5.3 and a smallint on
+		// older servers, so it is read as text and classified in Go. Scanning it
+		// straight into an int16 is what broke the whole Players tab on 1.5.3
+		// ("failed to load stats", #334).
+		var currency string
 		var bal int64
-		if err := rows.Scan(&cid, &bal); err != nil {
+		if err := rows.Scan(&currency, &bal); err != nil {
 			return stats, fmt.Errorf("scan currency: %w", err)
 		}
-		switch cid {
-		case 0:
+		if currencyIsSolaris(currency) {
 			stats.SolarisBal = bal
-		case 1:
+		} else {
 			stats.ScripBal = bal
 		}
 	}
@@ -7364,7 +7405,7 @@ func fetchSolarisBalance(ctx context.Context, pool *pgxpool.Pool, accountID int6
 		SELECT pvc.balance
 		FROM dune.player_virtual_currency_balances pvc
 		JOIN dune.player_state ps ON ps.player_controller_id = pvc.player_controller_id
-		WHERE ps.account_id = $1 AND pvc.currency_id = 0
+		WHERE ps.account_id = $1 AND `+solarisTextPredicateFor("pvc")+`
 	`, accountID).Scan(&walletBal)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("fetch solaris snapshot for account %d: %w", accountID, err)
@@ -7472,7 +7513,7 @@ func cmdReadLegacyDiscordLinks(ctx context.Context, db *pgxpool.Pool) ([]legacyU
 // identified by their player_controller_id.
 func cmdFetchPlayerCurrencyCtx(ctx context.Context, db *pgxpool.Pool, controllerID int64) ([]currencyRow, error) {
 	rows, err := db.Query(ctx, `
-		SELECT player_controller_id, currency_id, balance
+		SELECT player_controller_id, currency_id::text, balance
 		FROM dune.player_virtual_currency_balances
 		WHERE player_controller_id = $1
 		ORDER BY currency_id`, controllerID)

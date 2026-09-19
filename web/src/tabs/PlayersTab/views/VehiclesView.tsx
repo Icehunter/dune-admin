@@ -42,12 +42,21 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({ player }) => {
       .finally(() => setLoading(false))
   }, [player.controller_id])
 
-  const renderVehicleTypeChips = (v: VehicleRow): React.ReactNode => (
-    <div className="flex gap-1">
-      {v.is_backup ? <Chip size="sm" color="accent" variant="soft">{t('players.vehicles.backup')}</Chip> : null}
-      {v.is_recovered ? <Chip size="sm" color="warning" variant="soft">{t('players.vehicles.recovered')}</Chip> : null}
-    </div>
-  )
+  // Type flags a vehicle as a backup and/or recovered. An ordinary vehicle is
+  // neither, which used to render an empty div — the column looked broken rather
+  // than deliberately blank (#329). Fall back to the same em-dash the Location
+  // and Name columns use for "nothing to show".
+  const renderVehicleTypeChips = (v: VehicleRow): React.ReactNode => {
+    if (!v.is_backup && !v.is_recovered) {
+      return <span className="text-muted">—</span>
+    }
+    return (
+      <div className="flex gap-1">
+        {v.is_backup ? <Chip size="sm" color="accent" variant="soft">{t('players.vehicles.backup')}</Chip> : null}
+        {v.is_recovered ? <Chip size="sm" color="warning" variant="soft">{t('players.vehicles.recovered')}</Chip> : null}
+      </div>
+    )
+  }
 
   if (loading) {
     return <LoadingState size="md" />

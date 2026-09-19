@@ -446,7 +446,7 @@ func handleDiscordMyBalance(ctx context.Context, userID string, deps discordDeps
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "💰 **%s** — Balances\n", p.Name)
 	for _, r := range rows {
-		fmt.Fprintf(&sb, "• %s: **%d**\n", currencyLabel(int64(r.CurrencyID)), r.Balance)
+		fmt.Fprintf(&sb, "• %s: **%d**\n", currencyLabel(r.CurrencyID), r.Balance)
 	}
 	return discordReply{Content: strings.TrimRight(sb.String(), "\n"), Ephemeral: true}
 }
@@ -500,13 +500,21 @@ func formatInventoryMessage(p playerInfo, items []itemInfo) string {
 	return strings.TrimRight(sb.String(), "\n")
 }
 
-// currencyLabel returns a human-readable name for a currency ID.
-// Solaris is always ID 0 in Dune Awakening.
-func currencyLabel(id int64) string {
-	if id == 0 {
-		return "Solaris"
+// currencyLabel returns a human-readable name for a currency_id as the database
+// rendered it. Game 1.5.3 retyped the column to the VirtualWalletType enum,
+// whose labels are already readable; older servers render the smallint, where 0
+// was Solaris and 1 was the currency 1.5.3 named HouseCredit.
+func currencyLabel(currency string) string {
+	switch currency {
+	case "0", virtualWalletSolaris:
+		return virtualWalletSolaris
+	case "1", virtualWalletHouseCredit:
+		return virtualWalletHouseCredit
+	case "":
+		return "Unknown"
+	default:
+		return currency
 	}
-	return fmt.Sprintf("Currency #%d", id)
 }
 
 // formatPlayerLookup returns a human-readable summary of a player for Discord.

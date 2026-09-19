@@ -373,7 +373,12 @@ export type InventoryItem = {
 }
 export type CurrencyRow = {
   player_id: number
-  currency_id: number
+  /**
+   * Game build 1.5.3 retyped currency_id to the VirtualWalletType enum, so this
+   * is now a label ("Solaris" | "HouseCredit") rather than a numeric id. Older
+   * servers send the stringified smallint ("0" | "1").
+   */
+  currency_id: string
   balance: number
 }
 export type FactionRep = {

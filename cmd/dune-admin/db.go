@@ -6383,18 +6383,41 @@ func cmdFetchEventLog(pool *pgxpool.Pool, actorID int64) Cmd {
 	}
 }
 
+// playerDungeonsSQL lists a player's dungeon completions.
+//
+// dune.dungeon_completion_players.player_id holds the PlayerController actor,
+// not the character pawn — confirmed on a live server, where every row's actor
+// class was BP_DunePlayerController_C. The UI passes playerInfo.ID, which is the
+// pawn, so the lookup matched nothing and the History tab showed no dungeon
+// records at all (#318).
+//
+// The controller is resolved here rather than at the call site because both ids
+// are in play across this API (the vehicles endpoint is keyed by controller id,
+// the stats endpoints by account id). COALESCE falls back to the supplied value,
+// so passing a controller id directly still works.
+const playerDungeonsSQL = `
+	WITH target AS (
+		SELECT COALESCE(
+			(SELECT ps.player_controller_id
+			   FROM dune.player_state ps
+			  WHERE ps.player_pawn_id = $1::bigint
+			  LIMIT 1),
+			$1::bigint
+		) AS controller_id
+	)
+	SELECT dc.dungeon_id, dc.difficulty::text, dc.duration_ms, dc.players_num, dc.completion_id
+	FROM dune.dungeon_completion_players dcp
+	JOIN dune.dungeon_completion dc ON dc.completion_id = dcp.completion_id
+	WHERE dcp.player_id = (SELECT controller_id FROM target)
+	ORDER BY dc.completion_id DESC
+	LIMIT 100`
+
 func cmdFetchPlayerDungeons(pool *pgxpool.Pool, playerID int64) Cmd {
 	return func() Msg {
 		if pool == nil {
 			return msgDungeons{err: fmt.Errorf("not connected")}
 		}
-		rows, err := pool.Query(context.Background(), `
-			SELECT dc.dungeon_id, dc.difficulty::text, dc.duration_ms, dc.players_num, dc.completion_id
-			FROM dune.dungeon_completion_players dcp
-			JOIN dune.dungeon_completion dc ON dc.completion_id = dcp.completion_id
-			WHERE dcp.player_id = $1::bigint
-			ORDER BY dc.completion_id DESC
-			LIMIT 100`, playerID)
+		rows, err := pool.Query(context.Background(), playerDungeonsSQL, playerID)
 		if err != nil {
 			return msgDungeons{err: err}
 		}

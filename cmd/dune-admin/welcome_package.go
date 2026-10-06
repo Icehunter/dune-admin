@@ -47,6 +47,10 @@ type welcomeAccount struct {
 	// region join/leave broadcast (#167) to target everyone in the same region.
 	// Empty when unknown.
 	Region string
+	// Dimension is the player's dune.actors.dimension_index: which copy of the
+	// map they are on (a multi-sietch server runs one per dimension). NULL
+	// reads as 0.
+	Dimension int
 }
 
 // welcomeScanDeps are injected so the scan loop is unit-testable without a DB.
@@ -492,14 +496,15 @@ func runWelcomePackageGrants(ctx context.Context, rt welcomePackageRuntime, onli
 	}
 }
 
-// sendWelcomeMapChat publishes one map-chat message to the given region's channel.
-// Uses the seeded GM persona as the sender (the same identity used for whispers).
-func sendWelcomeMapChat(ctx context.Context, region, _ string, message string) error {
+// sendWelcomeMapChat publishes one map-chat message to the channel for the given
+// region and dimension. Uses the seeded GM persona as the sender (the same
+// identity used for whispers).
+func sendWelcomeMapChat(ctx context.Context, region string, dimension int, _ string, message string) error {
 	gm, err := cmdGetGMIdentity(ctx)
 	if err != nil {
 		return fmt.Errorf("region map chat: gm identity: %w", err)
 	}
-	return rmqSendMapChat(region, 0, gm.FuncomID, gm.HexID, message)
+	return rmqSendMapChat(region, dimension, gm.FuncomID, gm.HexID, message)
 }
 
 // sendWelcomeWhisper sends a welcome whisper to a player via the existing GM

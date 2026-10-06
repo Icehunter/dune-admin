@@ -1631,7 +1631,7 @@ func cmdListWelcomeOnlineAccounts(ctx context.Context, pool *pgxpool.Pool) ([]we
 	rows, err := pool.Query(ctx, `
 		SELECT ps.account_id, ps.player_pawn_id,
 		       COALESCE(ac."user", ''), COALESCE(ps.character_name, ''),
-		       COALESCE(a.map, '')
+		       COALESCE(a.map, ''), COALESCE(a.dimension_index, 0)
 		FROM dune.player_state ps
 		JOIN dune.actors a ON a.id = ps.player_pawn_id
 		JOIN dune.accounts ac ON ac.id = a.owner_account_id
@@ -1644,7 +1644,7 @@ func cmdListWelcomeOnlineAccounts(ctx context.Context, pool *pgxpool.Pool) ([]we
 	out := make([]welcomeAccount, 0)
 	for rows.Next() {
 		var acc welcomeAccount
-		if err := rows.Scan(&acc.AccountID, &acc.PawnID, &acc.FlsID, &acc.CharacterName, &acc.Region); err != nil {
+		if err := rows.Scan(&acc.AccountID, &acc.PawnID, &acc.FlsID, &acc.CharacterName, &acc.Region, &acc.Dimension); err != nil {
 			return nil, fmt.Errorf("scan welcome account: %w", err)
 		}
 		out = append(out, acc)

@@ -32,7 +32,11 @@ type regionBroadcastConfig struct {
 // regionAnnouncement is one rendered notice bound to a region: every online
 // player in that region should receive `text`.
 type regionAnnouncement struct {
-	region       string
+	region string
+	// dimension is the map copy the event happened in. A multi-sietch server
+	// runs one copy of a map per dimension, and map chat is routed per
+	// dimension ({map}.{dimension}), so announcements stay on their own copy.
+	dimension    int
 	text         string
 	sourcePlayer string
 }
@@ -121,6 +125,7 @@ func appendAnnouncements(out []regionAnnouncement, accts []welcomeAccount, enabl
 		}
 		out = append(out, regionAnnouncement{
 			region:       acc.Region,
+			dimension:    acc.Dimension,
 			text:         renderRegionAnnouncement(template, acc.CharacterName, acc.Region),
 			sourcePlayer: sourcePlayer,
 		})
@@ -133,24 +138,25 @@ func appendAnnouncements(out []regionAnnouncement, accts []welcomeAccount, enabl
 // tests inject a fake.
 type regionChatSender func(ctx context.Context, accountID int64, sourcePlayer, message string) error
 
-// regionMapSender publishes one map-chat message to a region channel. One call
-// reaches all subscribers of that region — no per-player loop needed.
-type regionMapSender func(ctx context.Context, region, sourcePlayer, message string) error
+// regionMapSender publishes one map-chat message to a region's channel for one
+// dimension. One call reaches all subscribers of that map copy, with no
+// per-player loop.
+type regionMapSender func(ctx context.Context, region string, dimension int, sourcePlayer, message string) error
 
 // runMapChatBroadcastOnJoinLeave publishes one map-chat message per join/leave
 // event. Unlike the whisper path it does not enumerate online players — one
 // publish to chat.map/{region}.{dim} reaches all subscribers of that region.
 func runMapChatBroadcastOnJoinLeave(ctx context.Context, joins, leaves []welcomeAccount, cfg regionBroadcastConfig, send regionMapSender) {
 	for _, ann := range regionAnnouncementsFor(joins, leaves, cfg) {
-		if err := send(ctx, ann.region, ann.sourcePlayer, ann.text); err != nil {
-			componentLog("region_broadcast").Warn().Err(err).Str("region", ann.region).Msg("map chat send failed")
+		if err := send(ctx, ann.region, ann.dimension, ann.sourcePlayer, ann.text); err != nil {
+			componentLog("region_broadcast").Warn().Err(err).Str("region", ann.region).Int("dimension", ann.dimension).Msg("map chat send failed")
 		}
 	}
 }
 
 // runRegionBroadcastOnJoinLeave whispers each announcement (built from the
 // join/leave events under cfg) to every player in `online` who is currently in
-// the announcement's region. Send failures are logged, never fatal, so one bad
+// the announcement's region and dimension. Send failures are logged, never fatal, so one bad
 // recipient can't suppress the rest.
 func runRegionBroadcastOnJoinLeave(ctx context.Context, joins, leaves, online []welcomeAccount, cfg regionBroadcastConfig, send regionChatSender) {
 	anns := regionAnnouncementsFor(joins, leaves, cfg)
@@ -159,7 +165,7 @@ func runRegionBroadcastOnJoinLeave(ctx context.Context, joins, leaves, online []
 	}
 	for _, ann := range anns {
 		for _, player := range online {
-			if player.Region != ann.region {
+			if player.Region != ann.region || player.Dimension != ann.dimension {
 				continue
 			}
 			if err := send(ctx, player.AccountID, ann.sourcePlayer, ann.text); err != nil {

@@ -196,24 +196,75 @@ func TestRunRegionBroadcastOnJoinLeave_SenderErrorDoesNotPanic(t *testing.T) {
 
 // ── map chat broadcast tests ─────────────────────────────────────────────────
 
-// fakeMapSender records map chat publishes: one per announcement, keyed on region.
+// fakeMapSender records map chat publishes: one per announcement, keyed on
+// region and dimension.
 type fakeMapSender struct {
 	sent []struct {
-		region  string
-		message string
+		region    string
+		dimension int
+		message   string
 	}
 	err error
 }
 
-func (f *fakeMapSender) send(_ context.Context, region, _ string, message string) error {
+func (f *fakeMapSender) send(_ context.Context, region string, dimension int, _ string, message string) error {
 	if f.err != nil {
 		return f.err
 	}
 	f.sent = append(f.sent, struct {
-		region  string
-		message string
-	}{region, message})
+		region    string
+		dimension int
+		message   string
+	}{region, dimension, message})
 	return nil
+}
+
+// #320: a multi-sietch server runs several copies of a map, one per dimension.
+// Map chat is routed as {map}.{dimension}, so a join must be announced only on
+// the joining player's own dimension, not on dimension 0 (or every copy).
+func TestRunMapChatBroadcastOnJoinLeave_TargetsPlayersDimension(t *testing.T) {
+	t.Parallel()
+	joins := []welcomeAccount{
+		{AccountID: 1, CharacterName: "Paul", Region: "HaggaBasin", Dimension: 1},
+		{AccountID: 2, CharacterName: "Chani", Region: "DeepDesert_1", Dimension: 3},
+	}
+	cfg := regionBroadcastConfig{joinEnabled: true, joinTemplate: "{player} arrived"}
+	sender := &fakeMapSender{}
+	runMapChatBroadcastOnJoinLeave(context.Background(), joins, nil, cfg, sender.send)
+
+	if len(sender.sent) != 2 {
+		t.Fatalf("want 2 publishes, got %+v", sender.sent)
+	}
+	got := map[string]int{}
+	for _, s := range sender.sent {
+		got[s.region] = s.dimension
+	}
+	if got["HaggaBasin"] != 1 || got["DeepDesert_1"] != 3 {
+		t.Errorf("published dimensions = %v, want HaggaBasin→1, DeepDesert_1→3", got)
+	}
+}
+
+// #320, whisper channel: only players on the same map AND dimension hear it.
+func TestRunRegionBroadcastOnJoinLeave_ScopedToDimension(t *testing.T) {
+	t.Parallel()
+	online := []welcomeAccount{
+		{AccountID: 1, CharacterName: "Paul", Region: "HaggaBasin", Dimension: 1},
+		{AccountID: 2, CharacterName: "Jessica", Region: "HaggaBasin", Dimension: 1},
+		{AccountID: 3, CharacterName: "Gurney", Region: "HaggaBasin", Dimension: 0},
+	}
+	joins := []welcomeAccount{{AccountID: 1, CharacterName: "Paul", Region: "HaggaBasin", Dimension: 1}}
+	cfg := regionBroadcastConfig{joinEnabled: true, joinTemplate: "{player} arrived"}
+	sender := &fakeChatSender{}
+	runRegionBroadcastOnJoinLeave(context.Background(), joins, nil, online, cfg, sender.send)
+
+	var got []int64
+	for _, s := range sender.sent {
+		got = append(got, s.accountID)
+	}
+	sort.Slice(got, func(i, j int) bool { return got[i] < got[j] })
+	if len(got) != 2 || got[0] != 1 || got[1] != 2 {
+		t.Fatalf("want whispers to accts [1 2] (dimension 1 only), got %v", got)
+	}
 }
 
 // TestRunMapChatBroadcastOnJoinLeave_PublishesOncePerEvent verifies that map chat

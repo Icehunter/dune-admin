@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -330,7 +332,7 @@ func (c *ampControl) updateApplication(exec Executor) (string, error) {
 	if c.apiUser == "" || c.apiPass == "" {
 		return "", fmt.Errorf("amp api credentials not configured — set amp_api_user and amp_api_pass to update the server under AMP")
 	}
-	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiHost, c.apiPort)
+	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiHost, c.resolveAPIPort(exec))
 	if _, err := client.updateApplication(); err != nil {
 		return "", fmt.Errorf("update server: %w", err)
 	}
@@ -899,7 +901,7 @@ func (c *ampControl) writeServerSettings(_ context.Context, exec Executor, updat
 	if c.apiUser == "" || c.apiPass == "" {
 		return fmt.Errorf("amp api credentials not configured — set amp_api_user and amp_api_pass to manage server settings under AMP")
 	}
-	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiHost, c.apiPort)
+	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiHost, c.resolveAPIPort(exec))
 	for field, value := range updates {
 		if err := client.setConfig("Meta.GenericModule."+field, value); err != nil {
 			return fmt.Errorf("write server setting %s: %w", field, err)
@@ -922,7 +924,7 @@ func (c *ampControl) readServerSettings(_ context.Context, exec Executor, fields
 	if c.apiUser == "" || c.apiPass == "" {
 		return nil, fmt.Errorf("amp api credentials not configured — set amp_api_user and amp_api_pass to read server settings under AMP")
 	}
-	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiHost, c.apiPort)
+	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiHost, c.resolveAPIPort(exec))
 	out := make(map[string]string, len(fields))
 	for _, field := range fields {
 		v, err := client.getConfig("Meta.GenericModule." + field)
@@ -962,6 +964,99 @@ func (c *ampControl) readINIFile(exec Executor, path string) (string, error) {
 		return "", fmt.Errorf("read ini %s as %s: %w", path, c.ampUser, err)
 	}
 	return out, nil
+}
+
+// resolveAPIPort returns the port for the AMP instance Web API. AMP gives each
+// instance its own port, so the 8081 default only holds when Dune is the first
+// instance on the host. Pointing at the wrong port still logs in (ADS SSO works
+// on every instance) but every Dune node then fails with "No such node" (#340).
+//
+// When the API is on loopback, the instance's own Webserver.Port from its
+// AMPConfig.conf wins over amp_api_port: server records store 8081 from the
+// defaults fill, so a stored port can't be told apart from the default, and the
+// instance config is where the API actually listens. A remote amp_api_host
+// (#284) uses amp_api_port as-is. Returns 0 (the client default) when neither
+// source gives a port.
+func (c *ampControl) resolveAPIPort(exec Executor) int {
+	if !isLoopbackHost(c.apiHost) {
+		return c.apiPort
+	}
+	if port := c.instanceWebserverPort(exec); port != 0 {
+		return port
+	}
+	componentLog("control_amp").Warn().Int("port", c.apiPort).
+		Msg("could not read the instance's Webserver.Port from AMPConfig.conf; using amp_api_port")
+	return c.apiPort
+}
+
+// instanceWebserverPort reads Webserver.Port from the instance's AMPConfig.conf.
+// In container mode it reads the copy under the /AMP mount through the
+// already-granted `<runtime> exec`, since the host copy under the amp user's
+// home is unreadable when dune-admin runs as its own user. It then tries the
+// host path. Returns 0 when neither yields a port.
+func (c *ampControl) instanceWebserverPort(exec Executor) int {
+	if c.instance == "" {
+		return 0
+	}
+	if c.useContainer && c.container != "" {
+		inContainer := path.Dir(c.ampDataRoot()) + "/AMPConfig.conf"
+		if conf, err := exec.Exec(c.wrapInContainer("cat " + shellQuote(inContainer))); err == nil {
+			if port := parseAMPWebserverPort(conf); port != 0 {
+				return port
+			}
+		}
+	}
+	conf, err := c.readHostFileAsAmp(exec, c.ampInstanceConfigPath())
+	if err != nil {
+		return 0
+	}
+	return parseAMPWebserverPort(conf)
+}
+
+// isLoopbackHost reports whether host is empty (the loopback default) or a
+// loopback name/address.
+func isLoopbackHost(host string) bool {
+	if host == "" || strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(strings.Trim(host, "[]"))
+	return ip != nil && ip.IsLoopback()
+}
+
+// ampInstanceConfigPath returns the host path of the instance's AMPConfig.conf.
+// It is derived from the configured server_ini_dir when that sits under the
+// instance directory, else from the conventional /home/<ampUser>/.ampdata
+// layout. Returns "" when no instance is configured.
+func (c *ampControl) ampInstanceConfigPath() string {
+	if c.instance == "" {
+		return ""
+	}
+	marker := "/instances/" + c.instance + "/"
+	if i := strings.Index(filepath.ToSlash(c.iniDir), marker); i > 0 {
+		return filepath.ToSlash(c.iniDir)[:i+len(marker)] + "AMPConfig.conf"
+	}
+	user := c.ampUser
+	if user == "" {
+		user = "amp"
+	}
+	return fmt.Sprintf("/home/%s/.ampdata/instances/%s/AMPConfig.conf", user, c.instance)
+}
+
+// parseAMPWebserverPort extracts Webserver.Port from AMPConfig.conf content.
+// Returns 0 when the key is absent or not a valid port.
+func parseAMPWebserverPort(conf string) int {
+	for _, line := range strings.Split(conf, "\n") {
+		key, val, ok := strings.Cut(strings.TrimSpace(line), "=")
+		if !ok || strings.TrimSpace(key) != "Webserver.Port" {
+			continue
+		}
+		port, err := strconv.Atoi(strings.TrimSpace(val))
+		if err != nil || port < 1 || port > 65535 {
+			return 0
+		}
+		return port
+	}
+	return 0
 }
 
 // readHostFileAsAmp reads a host file that may be owned by the amp user (often

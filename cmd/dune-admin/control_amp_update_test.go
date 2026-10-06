@@ -36,6 +36,8 @@ func TestAmpExecCommand_UpdateCallsUpdateApplication(t *testing.T) {
 	logins := 0
 	exec := &fnExecutor{fn: func(cmd string) (string, error) {
 		switch {
+		case strings.Contains(cmd, "AMPConfig.conf"):
+			return "", nil // no instance config → default API port
 		case strings.Contains(cmd, "Core/Login"):
 			logins++
 			return `{"success":true,"sessionID":"sess"}`, nil
@@ -122,6 +124,8 @@ func TestAmpExecCommand_UpdateAutoRestartDisabled(t *testing.T) {
 	t.Parallel()
 	exec := &fnExecutor{fn: func(cmd string) (string, error) {
 		switch {
+		case strings.Contains(cmd, "AMPConfig.conf"):
+			return "", nil // no instance config → default API port
 		case strings.Contains(cmd, "Core/Login"):
 			return `{"success":true,"sessionID":"sess"}`, nil
 		case strings.Contains(cmd, "Core/UpdateApplication"):

@@ -152,3 +152,68 @@ func TestDimensionFilterSQL_NullRowsMatchDimensionZero(t *testing.T) {
 		t.Errorf("dimension=nil (all dimensions): got ids %v, want [1 2 3]", got)
 	}
 }
+
+// TestMapDimensionsSQL_OnlyPlottableActors is the #339 regression. Listing
+// DISTINCT dimension_index over every actor on the map surfaced dimensions that
+// only hold actors the live map never draws (props, items, instance content),
+// so the selector offered "Dimension 3/11/116/392" with nothing in them. The
+// options must come from the same rows the markers do: players, vehicles and
+// base totems with a transform.
+func TestMapDimensionsSQL_OnlyPlottableActors(t *testing.T) {
+	t.Parallel()
+
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("open in-memory db: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	db.SetMaxOpenConns(1) // keep the ATTACHed schema on one connection
+
+	for _, stmt := range []string{
+		`ATTACH DATABASE ':memory:' AS dune`,
+		`CREATE TABLE dune.actors (id INTEGER, map TEXT, class TEXT, dimension_index INTEGER, transform TEXT)`,
+		`CREATE TABLE dune.player_state (player_pawn_id INTEGER)`,
+		`CREATE TABLE dune.vehicles (id INTEGER)`,
+		`CREATE TABLE dune.buildings (id INTEGER)`,
+		`CREATE TABLE dune.building_instances (building_id INTEGER, owner_entity_id INTEGER)`,
+		`CREATE TABLE dune.actor_fgl_entities (entity_id INTEGER, actor_id INTEGER)`,
+		`INSERT INTO dune.actors VALUES
+			(1, 'HaggaBasin', 'BP_Player', 0, 'xf'),        -- player, dim 0
+			(2, 'HaggaBasin', 'BP_Sandbike', 1, 'xf'),      -- vehicle, dim 1
+			(3, 'HaggaBasin', 'BP_BaseTotem', NULL, 'xf'),  -- base totem, NULL → dim 0
+			(4, 'HaggaBasin', 'BP_Prop', 3, 'xf'),          -- not plottable
+			(5, 'HaggaBasin', 'BP_Item', 392, NULL),        -- not plottable
+			(6, 'HaggaBasin', 'BP_Player', 20, NULL),       -- player without transform
+			(7, 'Arrakeen', 'BP_Player', 5, 'xf'),          -- other map
+			(8, 'HaggaBasin', 'BP_Wall', 11, 'xf')          -- building piece, not the totem`,
+		`INSERT INTO dune.player_state VALUES (1), (6), (7)`,
+		`INSERT INTO dune.vehicles VALUES (2)`,
+		`INSERT INTO dune.buildings VALUES (100)`,
+		`INSERT INTO dune.building_instances VALUES (100, 50), (100, 51)`,
+		`INSERT INTO dune.actor_fgl_entities VALUES (50, 3), (51, 8)`,
+	} {
+		if _, err := db.Exec(stmt); err != nil {
+			t.Fatalf("setup %q: %v", stmt, err)
+		}
+	}
+
+	rows, err := db.Query(mapDimensionsSQL, "HaggaBasin")
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var dims []int
+	for rows.Next() {
+		var d int
+		if err := rows.Scan(&d); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		dims = append(dims, d)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows: %v", err)
+	}
+	if !reflect.DeepEqual(dims, []int{0, 1}) {
+		t.Errorf("dimensions = %v, want [0 1] (only dimensions with players, vehicles or base totems)", dims)
+	}
+}

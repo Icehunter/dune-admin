@@ -6777,24 +6777,49 @@ func cmdFetchBaseMarkers(ctx context.Context, pool *pgxpool.Pool, mapKey string,
 	return out, nil
 }
 
-// cmdFetchMapDimensions returns the distinct dimension_index values present for
-// the given map's actors, sorted ascending, so the frontend can populate a
-// dimension selector (#274). Always returns a non-nil slice.
+// mapDimensionsSQL lists the dimensions that hold something the live map can
+// draw: players, vehicles and base totems with a transform, the same rows
+// cmdFetchMapMarkers and cmdFetchBaseMarkers plot. Every other actor on the map
+// (props, items, instance content) is excluded; counting those offered
+// dimensions with nothing in them (#339).
 //
-// Groups on COALESCE(dimension_index, 0) rather than filtering NULL rows out,
-// so it agrees with dimensionFilterSQL and the marker queries' display
-// COALESCE: a map with only NULL-dimension actors still reports dimension 0 as
-// a selectable option, instead of omitting the only dimension those actors
-// could ever be filtered into.
+// Each branch groups on COALESCE(dimension_index, 0) so it agrees with
+// dimensionFilterSQL and the marker queries' display COALESCE: NULL-dimension
+// actors land in dimension 0. The totem match uses LOWER(...) LIKE rather than
+// ILIKE so the query also runs on SQLite in tests; the result is the same.
+const mapDimensionsSQL = `
+	SELECT dim FROM (
+		SELECT COALESCE(a.dimension_index, 0) AS dim
+		FROM dune.actors a
+		JOIN dune.player_state ps ON ps.player_pawn_id = a.id
+		WHERE a.map = $1 AND a.transform IS NOT NULL
+		UNION
+		SELECT COALESCE(a.dimension_index, 0)
+		FROM dune.vehicles v
+		JOIN dune.actors a ON a.id = v.id
+		WHERE a.map = $1 AND a.transform IS NOT NULL
+		UNION
+		SELECT COALESCE(t.dimension_index, 0)
+		FROM dune.buildings b
+		JOIN (
+		    SELECT building_id, MIN(owner_entity_id) AS owner_entity_id
+		    FROM dune.building_instances
+		    GROUP BY building_id
+		) first_inst ON first_inst.building_id = b.id
+		JOIN dune.actor_fgl_entities afe ON afe.entity_id = first_inst.owner_entity_id
+		JOIN dune.actors t ON t.id = afe.actor_id AND LOWER(t.class) LIKE '%totem%'
+		WHERE t.map = $1 AND t.transform IS NOT NULL
+	) dims
+	ORDER BY dim`
+
+// cmdFetchMapDimensions returns the dimensions with plottable markers on the
+// given map, sorted ascending, so the frontend can populate a dimension
+// selector (#274). Always returns a non-nil slice.
 func cmdFetchMapDimensions(ctx context.Context, pool *pgxpool.Pool, mapKey string) ([]int, error) {
 	if err := validateMapKey(mapKey); err != nil {
 		return nil, err
 	}
-	rows, err := pool.Query(ctx, `
-		SELECT DISTINCT COALESCE(dimension_index, 0)
-		FROM dune.actors
-		WHERE map = $1
-		ORDER BY 1`, mapKey)
+	rows, err := pool.Query(ctx, mapDimensionsSQL, mapKey)
 	if err != nil {
 		return nil, fmt.Errorf("query map dimensions: %w", err)
 	}

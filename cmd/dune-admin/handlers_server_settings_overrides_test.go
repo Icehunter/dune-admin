@@ -80,7 +80,7 @@ func TestBuildLayerSources_OverridesWin(t *testing.T) {
 	gameIni := map[string]map[string]string{secBuilding: {"m_MaxLandclaim": "100"}}
 	overridesIni := map[string]map[string]string{secBuilding: {"m_MaxLandclaim": "250"}}
 
-	layers := buildLayerSources(nil, nil, nil, gameIni, overridesIni)
+	layers := buildLayerSources(nil, nil, nil, gameIni, nil, overridesIni)
 
 	s := &ServerSetting{Section: secBuilding, Key: "m_MaxLandclaim", Type: string(settingInt)}
 	applySettingLayers(s, layers)

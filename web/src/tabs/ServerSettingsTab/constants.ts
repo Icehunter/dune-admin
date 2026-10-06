@@ -4,6 +4,8 @@
 // backend emits (curated category names + discovered INI short-section names).
 const ADVANCED_CATEGORIES = new Set([
   'Multipliers', 'World & Combat', 'Persistence & Building', 'Server Identity',
+  // Server customization (UserServerCustomSettings.ini, #336).
+  'Crafting & Harvesting', 'Combat & Progression', 'Survival', 'Building & Landsraad',
   'SandwormSettings', 'SandStormConfig', 'CoriolisSubsystem', 'TaxationSettings',
   'CraftingSettings', 'SpiceHarvestingSystem', 'DewHarvestSettings',
   'SecurityZonesSubsystem', 'GuildSettings', 'DuneVehicleSettings',
@@ -15,6 +17,8 @@ const ADVANCED_CATEGORIES = new Set([
 // Display order for categories; any not listed (Expert) sort after, alphabetically.
 const CATEGORY_ORDER = [
   'Multipliers', 'World & Combat', 'Persistence & Building', 'Server Identity',
+  // Server customization (UserServerCustomSettings.ini, #336).
+  'Crafting & Harvesting', 'Combat & Progression', 'Survival', 'Building & Landsraad',
   'SandwormSettings', 'SandStormConfig', 'CoriolisSubsystem', 'TaxationSettings',
   'CraftingSettings', 'SpiceHarvestingSystem', 'DewHarvestSettings',
   'SecurityZonesSubsystem', 'GuildSettings', 'DuneVehicleSettings',
@@ -51,6 +55,10 @@ const CATEGORY_ICONS: Record<string, string> = {
   'World & Combat': 'swords',
   'Persistence & Building': 'hammer',
   'Server Identity': 'tag',
+  'Crafting & Harvesting': 'pickaxe',
+  'Combat & Progression': 'trending-up',
+  'Survival': 'heart-pulse',
+  'Building & Landsraad': 'landmark',
   'SandwormSettings': 'worm',
   'SandStormConfig': 'wind',
   'CoriolisSubsystem': 'tornado',
@@ -96,6 +104,7 @@ const SOURCE_FILE: Record<string, string> = {
   defaultEngine: 'DefaultEngine.ini',
   userGame: 'UserGame.ini',
   userEngine: 'UserEngine.ini',
+  userCustom: 'UserServerCustomSettings.ini',
   userGameOverrides: 'UserOverrides.ini',
   // AMP-managed curated settings: read back from AMP's live config (#173).
   amp: 'AMP config',
@@ -106,11 +115,12 @@ const LAYER_STYLE: Record<string, { cls: string }> = {
   defaultEngine: { cls: 'text-muted/60' },
   userEngine: { cls: 'text-foreground/70' },
   userGame: { cls: 'text-foreground/70' },
+  userCustom: { cls: 'text-foreground/70' },
   userGameOverrides: { cls: 'text-warning' },
   amp: { cls: 'text-warning' },
 }
 
-const SOURCE_PRIORITY = ['defaultGame', 'defaultEngine', 'userEngine', 'userGame', 'userGameOverrides', 'amp'] as const
+const SOURCE_PRIORITY = ['defaultGame', 'defaultEngine', 'userEngine', 'userGame', 'userCustom', 'userGameOverrides', 'amp'] as const
 
 // userSourcesFor returns the set of layer sources that represent a genuine
 // operator override for the active control plane (#262 sub-bug B).
@@ -125,7 +135,7 @@ const SOURCE_PRIORITY = ['defaultGame', 'defaultEngine', 'userEngine', 'userGame
 const userSourcesFor = (control: string): Set<string> =>
   control === 'amp'
     ? new Set(['userGameOverrides', 'amp'])
-    : new Set(['userGame', 'userEngine', 'userGameOverrides', 'amp'])
+    : new Set(['userGame', 'userEngine', 'userCustom', 'userGameOverrides', 'amp'])
 
 export {
   CATEGORY_ORDER, CATEGORY_ICONS, CATEGORY_LABELS, ADVANCED_CATEGORIES, COMMON_KEYS,

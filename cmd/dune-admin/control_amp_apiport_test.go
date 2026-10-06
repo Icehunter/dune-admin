@@ -198,7 +198,7 @@ func TestAmpReadServerSettings_UsesInstancePort(t *testing.T) {
 			return `{"success":true,"sessionID":"sess"}`, nil
 		case strings.Contains(cmd, "Core/GetConfig"):
 			apiCmds = append(apiCmds, cmd)
-			return `{"CurrentValue":"3.0"}`, nil
+			return `[{"Node":"Meta.GenericModule.ConsoleVariables.Dune.GlobalMiningOutputMultiplier","CurrentValue":"3.0"}]`, nil
 		}
 		t.Fatalf("unexpected cmd: %q", cmd)
 		return "", nil

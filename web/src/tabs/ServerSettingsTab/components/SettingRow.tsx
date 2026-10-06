@@ -81,26 +81,45 @@ export const SettingRow: React.FC<SettingRowProps> = ({
                   </Select.Popover>
                 </Select>
               )
-            : item.type === 'string'
+            : item.type === 'enum'
               ? (
-                  <FieldInput
-                    ariaLabel={item.label}
-                    value={display}
-                    onChange={onChange}
-                    className="w-full font-mono"
-                  />
+                  <Select selectedKey={display} onSelectionChange={(k) => onChange(String(k))} className="w-full" aria-label={item.label}>
+                    <Select.Trigger className="h-7 text-xs">
+                      <Select.Value />
+                      <Select.Indicator />
+                    </Select.Trigger>
+                    <Select.Popover>
+                      <ListBox>
+                        {(item.options ?? []).map((opt: string) => (
+                          <ListBox.Item key={opt} id={opt} textValue={opt}>
+                            {opt}
+                            <ListBox.ItemIndicator />
+                          </ListBox.Item>
+                        ))}
+                      </ListBox>
+                    </Select.Popover>
+                  </Select>
                 )
-              : (
-                  <NumberInput
-                    ariaLabel={item.key}
-                    step={item.type === 'float' ? 0.01 : 1}
-                    value={Number(display) || 0}
-                    onChange={(v: number) => onChange(String(v))}
-                    showButtons={false}
-                    className="w-full"
-                    formatOptions={item.type === 'float' ? { minimumFractionDigits: 1 } : undefined}
-                  />
-                )}
+              : item.type === 'string'
+                ? (
+                    <FieldInput
+                      ariaLabel={item.label}
+                      value={display}
+                      onChange={onChange}
+                      className="w-full font-mono"
+                    />
+                  )
+                : (
+                    <NumberInput
+                      ariaLabel={item.key}
+                      step={item.type === 'float' ? 0.01 : 1}
+                      value={Number(display) || 0}
+                      onChange={(v: number) => onChange(String(v))}
+                      showButtons={false}
+                      className="w-full"
+                      formatOptions={item.type === 'float' ? { minimumFractionDigits: 1 } : undefined}
+                    />
+                  )}
         </div>
         <div className="w-8 flex justify-center shrink-0">
           {userSources.has(item.source) && (

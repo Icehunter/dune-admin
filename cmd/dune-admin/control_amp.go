@@ -911,12 +911,12 @@ func (c *ampControl) writeServerSettings(_ context.Context, exec Executor, updat
 }
 
 // readServerSettings reads the current value of each curated FieldName back from
-// AMP's live config (Core/GetConfig on node "Meta.GenericModule.<FieldName>").
+// AMP's live config (Core/GetConfigs on nodes "Meta.GenericModule.<FieldName>").
 // AMP — not the INI files — is the source of truth for these settings, so this
 // lets the read path reflect values saved through the AMP API immediately,
 // without waiting for AMP to regenerate UserEngine.ini / UserGame.ini on the
-// next game restart. Implements serverSettingsReader. The session is reused
-// across fields (login happens once on the first GetConfig).
+// next game restart. Implements serverSettingsReader. All fields go out in one
+// call; a field AMP doesn't return is left out of the result.
 func (c *ampControl) readServerSettings(_ context.Context, exec Executor, fields []string) (map[string]string, error) {
 	if len(fields) == 0 {
 		return map[string]string{}, nil
@@ -925,15 +925,48 @@ func (c *ampControl) readServerSettings(_ context.Context, exec Executor, fields
 		return nil, fmt.Errorf("amp api credentials not configured — set amp_api_user and amp_api_pass to read server settings under AMP")
 	}
 	client := newAMPAPIClient(exec, c.wrapInContainer, c.apiUser, c.apiPass, c.apiHost, c.resolveAPIPort(exec))
+	nodes := make([]string, len(fields))
+	for i, field := range fields {
+		nodes[i] = "Meta.GenericModule." + field
+	}
+	values, err := readConfigsSkippingCustom(client, nodes)
+	if err != nil {
+		return nil, fmt.Errorf("read server settings: %w", err)
+	}
 	out := make(map[string]string, len(fields))
-	for _, field := range fields {
-		v, err := client.getConfig("Meta.GenericModule." + field)
-		if err != nil {
-			return nil, fmt.Errorf("read server setting %s: %w", field, err)
+	for i, field := range fields {
+		if v, ok := values[nodes[i]]; ok {
+			out[field] = v
 		}
-		out[field] = v
 	}
 	return out, nil
+}
+
+// readConfigsSkippingCustom reads nodes in one batch. AMP fails the whole batch
+// on any unknown node, and instances on a Dune template older than 1.5 have no
+// UserServerCustomSettings nodes, so on failure it retries once without those
+// nodes; the older curated settings still read back.
+func readConfigsSkippingCustom(client *ampAPIClient, nodes []string) (map[string]string, error) {
+	values, err := client.getConfigs(nodes)
+	if err == nil {
+		return values, nil
+	}
+	older := make([]string, 0, len(nodes))
+	for _, n := range nodes {
+		if !strings.Contains(n, secCustom+".") {
+			older = append(older, n)
+		}
+	}
+	if len(older) == len(nodes) || len(older) == 0 {
+		return nil, err
+	}
+	values, retryErr := client.getConfigs(older)
+	if retryErr != nil {
+		return nil, err
+	}
+	componentLog("control_amp").Warn().Err(err).
+		Msg("AMP has no UserServerCustomSettings nodes (Dune template older than 1.5?); reading the other settings only")
+	return values, nil
 }
 
 // ── INI discovery ─────────────────────────────────────────────────────────────

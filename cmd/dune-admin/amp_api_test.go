@@ -444,18 +444,19 @@ func TestAMPAPISetConfig_LoginFailureAborts(t *testing.T) {
 	}
 }
 
-// ── getConfig ────────────────────────────────────────────────────────────────
+// ── getConfigs ───────────────────────────────────────────────────────────────
 
-func TestAMPAPIGetConfig_ReturnsCurrentValue(t *testing.T) {
+func TestAMPAPIGetConfigs_ReturnsCurrentValues(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
 		resp string
 		want string
 	}{
-		{"string value", `{"CurrentValue":"3.000000","Node":"x"}`, "3.000000"},
-		{"numeric value", `{"CurrentValue":42}`, "42"},
-		{"bool value", `{"CurrentValue":true}`, "true"},
+		{"string value", `[{"CurrentValue":"3.000000","Node":"Meta.GenericModule.X"}]`, "3.000000"},
+		{"numeric value", `[{"Node":"Meta.GenericModule.X","CurrentValue":42}]`, "42"},
+		{"bool value", `[{"Node":"Meta.GenericModule.X","CurrentValue":true}]`, "true"},
+		{"noise around array", "warning\n[{\"Node\":\"Meta.GenericModule.X\",\"CurrentValue\":\"a\"}]\n", "a"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -468,25 +469,39 @@ func TestAMPAPIGetConfig_ReturnsCurrentValue(t *testing.T) {
 				return tt.resp, nil
 			}}
 			c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
-			got, err := c.getConfig("Meta.GenericModule.X")
+			got, err := c.getConfigs([]string{"Meta.GenericModule.X", "Meta.GenericModule.Y"})
 			if err != nil {
-				t.Fatalf("getConfig: %v", err)
+				t.Fatalf("getConfigs: %v", err)
 			}
-			if got != tt.want {
-				t.Errorf("CurrentValue = %q, want %q", got, tt.want)
+			if got["Meta.GenericModule.X"] != tt.want {
+				t.Errorf("CurrentValue = %q, want %q", got["Meta.GenericModule.X"], tt.want)
 			}
-			if !strings.Contains(getCmd, "/API/Core/GetConfig") {
-				t.Errorf("missing GetConfig endpoint: %q", getCmd)
+			if !strings.Contains(getCmd, "/API/Core/GetConfigs") {
+				t.Errorf("missing GetConfigs endpoint: %q", getCmd)
 			}
 			var payload struct {
-				Node      string `json:"node"`
-				SessionID string `json:"SESSIONID"`
+				Nodes     []string `json:"nodes"`
+				SessionID string   `json:"SESSIONID"`
 			}
 			decodePipedPayload(t, getCmd, &payload)
-			if payload.Node != "Meta.GenericModule.X" || payload.SessionID != "s" {
-				t.Errorf("getConfig payload = %+v, want node X + session s", payload)
+			if len(payload.Nodes) != 2 || payload.Nodes[0] != "Meta.GenericModule.X" || payload.SessionID != "s" {
+				t.Errorf("getConfigs payload = %+v, want nodes [X Y] + session s", payload)
 			}
 		})
+	}
+}
+
+func TestAMPAPIGetConfigs_DecodeErrorPropagates(t *testing.T) {
+	t.Parallel()
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		if strings.Contains(cmd, "Core/Login") {
+			return `{"success":true,"sessionID":"s"}`, nil
+		}
+		return `{"Title":"Unauthorized Access"}`, nil
+	}}
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
+	if _, err := c.getConfigs([]string{"Meta.GenericModule.X"}); err == nil {
+		t.Fatal("expected a non-array response to fail decoding")
 	}
 }
 
@@ -572,5 +587,23 @@ func TestAMPAPISetConfig_ReloginFailurePropagates(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "account locked") {
 		t.Errorf("error should surface re-login reason, got: %v", err)
+	}
+}
+
+// AMP's .NET error bodies are objects whose stack traces can contain "[]"
+// (e.g. "GetConfigs(System.String[] nodes)"). That must surface as an error,
+// not decode as an empty array.
+func TestAMPAPIGetConfigs_ErrorObjectWithBracketsIsAnError(t *testing.T) {
+	t.Parallel()
+	exec := &fnExecutor{fn: func(cmd string) (string, error) {
+		if strings.Contains(cmd, "Core/Login") {
+			return `{"success":true,"sessionID":"s"}`, nil
+		}
+		return `{"Title":"ArgumentException","Message":"No such node","StackTrace":"at GetConfigs(String[] nodes)"}`, nil
+	}}
+	c := newAMPAPIClient(exec, identityWrap, "admin", "pw", "", 8081)
+	_, err := c.getConfigs([]string{"Meta.GenericModule.X"})
+	if err == nil || !strings.Contains(err.Error(), "No such node") {
+		t.Fatalf("err = %v, want an error carrying AMP's message", err)
 	}
 }

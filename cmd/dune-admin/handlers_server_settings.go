@@ -24,6 +24,8 @@ const (
 	settingInt    settingType = "int"
 	settingBool   settingType = "bool"
 	settingString settingType = "string"
+	// settingEnum is a string restricted to settingDef.Options.
+	settingEnum settingType = "enum"
 )
 
 type settingDef struct {
@@ -38,6 +40,8 @@ type settingDef struct {
 	Label       string
 	Description string
 	Category    string
+	// Options lists the allowed values for a settingEnum; nil otherwise.
+	Options []string
 }
 
 type ServerSetting struct {
@@ -56,6 +60,8 @@ type ServerSetting struct {
 	// discovered ones. Its presence marks a setting as AMP-managed (written via
 	// the AMP API under the AMP control plane) so the UI can label it.
 	FieldName string `json:"field_name,omitempty"`
+	// Options lists the allowed values for an "enum" setting.
+	Options []string `json:"options,omitempty"`
 }
 
 // SettingLayer records one file's contribution to a setting's value,
@@ -98,7 +104,13 @@ const (
 	secPvP         = "/Script/DuneSandbox.PvpPveSettings"
 	secSecurity    = "/Script/DuneSandbox.SecurityZonesSubsystem"
 	secDurab       = "/DeteriorationSystem.ItemDeteriorationConstants"
+	// secCustom is the Dune Awakening 1.5 server customization section. It lives
+	// in its own file, UserServerCustomSettings.ini, next to UserGame.ini.
+	secCustom = "/Script/DuneSandbox.UserServerCustomSettings"
 )
+
+// userCustomSettingsFile is the INI file that holds secCustom.
+const userCustomSettingsFile = "UserServerCustomSettings.ini"
 
 // Curated categories. AMP groups these under Subcategories; we use flat
 // categories the frontend renders as collapsible groups.
@@ -107,6 +119,12 @@ const (
 	catWorldCombat    = "World & Combat"
 	catPersistence    = "Persistence & Building"
 	catServerIdentity = "Server Identity"
+
+	// UserServerCustomSettings categories, named after AMP's subcategories.
+	catCraftingHarvesting = "Crafting & Harvesting"
+	catCombatProgression  = "Combat & Progression"
+	catSurvival           = "Survival"
+	catBuildingLandsraad  = "Building & Landsraad"
 )
 
 // fieldNameToSectionKey decomposes an AMP FieldName into its INI (section, key).
@@ -147,6 +165,20 @@ func gameSetting(fieldName string, typ settingType, def, label, category, desc s
 		Description: desc,
 		Category:    category,
 	}
+}
+
+// enumSetting builds a curated settingDef whose value must be one of options.
+func enumSetting(fieldName, def, label, category, desc string, options ...string) settingDef {
+	d := gameSetting(fieldName, settingEnum, def, label, category, desc)
+	d.Options = options
+	return d
+}
+
+// customSetting builds a curated UserServerCustomSettings.ini setting from its
+// key. The game only applies these values when DifficultyLevel=Custom, which
+// the INI write path sets alongside them.
+func customSetting(key string, typ settingType, def, label, category, desc string) settingDef {
+	return gameSetting(secCustom+"."+key, typ, def, label, category, desc)
 }
 
 // serverSettingsSchema is the curated, evidence-validated set of gameplay
@@ -211,6 +243,91 @@ var serverSettingsSchema = []settingDef{
 		"In-game Server Name", catServerIdentity, "Name shown to players in the in-game server browser and UI."),
 	gameSetting("ConsoleVariables.Bgd.ServerLoginPassword", settingString, "",
 		"Server Login Password", catServerIdentity, "Optional. Players must enter this password to join. Leave blank to disable."),
+
+	// Server customization (UserServerCustomSettings.ini, Dune Awakening 1.5,
+	// #336). Labels, ranges and categories follow AMP's Dune template. Values
+	// apply on the next server start.
+	customSetting("CraftingTimeMultiplier", settingFloat, "1.0", "Crafting & Refining Time", catCraftingHarvesting,
+		"Multiplier on crafting and refining time. 0 = instant, 1 = normal, up to 5."),
+	customSetting("CraftingCost", settingFloat, "1.0", "Crafting Cost", catCraftingHarvesting,
+		"Multiplier on crafting material costs. 0 removes crafting costs; up to 10."),
+	customSetting("BuildingCostMultiplier", settingFloat, "1.0", "Building Cost", catCraftingHarvesting,
+		"Multiplier on building material costs. 0 removes building costs; up to 10."),
+	customSetting("InventoryVolumeMultiplier", settingFloat, "1.0", "Inventory Volume", catCraftingHarvesting,
+		"Higher = players carry more. 0.1 to 10."),
+	customSetting("WaterExtractionRate", settingFloat, "1.0", "Water Extraction Time", catCraftingHarvesting,
+		"Lower = water extraction takes longer. 0.1 to 10."),
+	customSetting("ResourceRespawnSpeed", settingFloat, "1.0", "Resource Respawn Speed", catCraftingHarvesting,
+		"Higher = resource nodes respawn sooner. 0.1 to 10."),
+	customSetting("LootRespawnSpeed", settingFloat, "1.0", "Loot Respawn Time", catCraftingHarvesting,
+		"Higher = loot containers take longer to respawn. 0.1 to 10."),
+	customSetting("FuelBurnTimeMultiplier", settingFloat, "1.0", "Fuel Burn Time", catCraftingHarvesting,
+		"Multiplier on fuel burn time per fuel cell. 0 removes fuel burn; up to 10."),
+
+	customSetting("PlayerDamageToPlayer", settingFloat, "1.0", "Player Damage to Players", catCombatProgression,
+		"0.1 to 10."),
+	customSetting("PlayerDamageToNPC", settingFloat, "1.0", "Player Damage to NPCs", catCombatProgression,
+		"0.1 to 10."),
+	customSetting("PlayerDamageToVehicle", settingFloat, "1.0", "Player Damage to Vehicles", catCombatProgression,
+		"0.1 to 10."),
+	customSetting("PVPDamageStructures", settingFloat, "1.0", "PvP Damage to Unshielded Bases", catCombatProgression,
+		"How much damage players deal to unshielded bases. 0 = structures take no PvP damage; up to 10."),
+	customSetting("NPCHealth", settingFloat, "1.0", "NPC Health", catCombatProgression,
+		"0.1 to 10."),
+	customSetting("NPCDamageToPlayer", settingFloat, "1.0", "NPC Damage to Players", catCombatProgression,
+		"0.1 to 10."),
+	customSetting("NPCDamageToNPC", settingFloat, "1.0", "NPC Damage to NPCs", catCombatProgression,
+		"0.1 to 10."),
+	customSetting("NPCRespawnMultiplier", settingFloat, "1.0", "NPC Respawn Speed", catCombatProgression,
+		"Higher = NPCs respawn sooner. 0.1 to 10."),
+	customSetting("PlayerShieldDamageAbsorptionMultiplier", settingFloat, "1.0", "Player Shield Strength", catCombatProgression,
+		"Higher = player shields last longer. 0.1 to 10."),
+	customSetting("NPCShieldDamageAbsorptionMultiplier", settingFloat, "1.0", "NPC Shield Strength", catCombatProgression,
+		"Higher = NPC shields last longer. 0.1 to 10."),
+	customSetting("PlayerStaminaDrain", settingFloat, "1.0", "Stamina Drain", catCombatProgression,
+		"Higher = stamina drains faster. 0.1 to 10."),
+	customSetting("GlobalXpMultiplier", settingFloat, "1.0", "Global XP", catCombatProgression,
+		"0 = no XP; up to 10."),
+	customSetting("CombatXp", settingFloat, "1.0", "Combat XP", catCombatProgression,
+		"0 = no combat XP; up to 10."),
+	customSetting("GatheringXp", settingFloat, "1.0", "Gathering XP", catCombatProgression,
+		"0 = no gathering XP; up to 10."),
+	customSetting("MissionXp", settingFloat, "1.0", "Mission XP", catCombatProgression,
+		"0 = no mission XP; up to 10."),
+	customSetting("IntelPointsGainMultiplier", settingFloat, "1.0", "Intel Points Gain", catCombatProgression,
+		"0 = no Intel Points; up to 10."),
+	customSetting("ItemDurabilityDrainMultiplier", settingFloat, "1.0", "Item Durability Drain", catCombatProgression,
+		"0 = items never wear out; up to 10."),
+	customSetting("bEnableItemMaxDurabilityLoss", settingBool, "True", "Item Max Durability Loss", catCombatProgression,
+		"Whether repairs permanently reduce an item's maximum durability."),
+
+	customSetting("HeatBuildupRate", settingFloat, "1.0", "Heat Buildup", catSurvival,
+		"0 disables heat buildup; up to 10."),
+	customSetting("ThirstMultiplier", settingFloat, "1.0", "Thirst", catSurvival,
+		"0 disables thirst; up to 10."),
+	enumSetting(secCustom+".DropEquipmentOnDeath", "Default", "Drop on Death", catSurvival,
+		"What a player drops when they die.", "Default", "All", "Backpack", "None"),
+	enumSetting(secCustom+".SandwormConsequences", "All", "Sandworm Consequences", catSurvival,
+		"What a player loses when eaten by a sandworm.", "Default", "All", "Backpack", "None"),
+	enumSetting(secCustom+".PlayerDeathLootRule", "DependsOnSecurityZone", "Death Loot Access", catSurvival,
+		"Who may loot a dead player's drop.", "DependsOnSecurityZone", "AlwaysAllowOtherPlayers", "NeverAllowOtherPlayers"),
+	customSetting("bAllowDynamicBuildingDamage", settingBool, "True", "Environmental Building Damage", catSurvival,
+		"Whether buildings take damage from sandstorms, decay and other environmental sources."),
+
+	customSetting("BuildingPieceLimitMultiplier", settingFloat, "1.0", "Building Piece Limit", catBuildingLandsraad,
+		"Multiplier on the per-base building piece limit. 0.1 to 10."),
+	customSetting("bBuildingInfiniteStability", settingBool, "False", "Infinite Building Stability", catBuildingLandsraad,
+		"Ignore structural stability when building."),
+	customSetting("BaseBackupToolTimeRestriction", settingFloat, "16.0", "Base Backup Window (hours)", catBuildingLandsraad,
+		"How long after a base was built or last backed up its sub-fief console can still be backed up."),
+	customSetting("LandsraadContributionMultiplier", settingFloat, "1.0", "Landsraad Contribution", catBuildingLandsraad,
+		"0 = no Landsraad contribution; up to 10."),
+	customSetting("LandsraadSpecializationXpMultiplier", settingFloat, "1.0", "Landsraad Specialization XP", catBuildingLandsraad,
+		"0 = no specialization XP from the Landsraad; up to 10."),
+	customSetting("LandsraadFactionStandingMultiplier", settingFloat, "1.0", "Landsraad Faction Standing", catBuildingLandsraad,
+		"0 = faction standing never changes; up to 10."),
+	customSetting("bLandsraadDisableDecreeRerollLimit", settingBool, "False", "Unlimited Decree Rerolls", catBuildingLandsraad,
+		"Remove the limit on Landsraad decree rerolls."),
 }
 
 // ── INI helpers ───────────────────────────────────────────────────────────────
@@ -410,6 +527,25 @@ func normalizeValue(t settingType, raw string) (string, error) {
 		return strconv.FormatFloat(f, 'f', 6, 64), nil
 	}
 	return raw, nil
+}
+
+// normalizeSettingValue validates and canonicalises raw for a curated setting,
+// additionally matching enum values case-insensitively against the setting's
+// options and returning the canonical option.
+func normalizeSettingValue(def settingDef, raw string) (string, error) {
+	norm, err := normalizeValue(def.Type, raw)
+	if err != nil {
+		return "", err
+	}
+	if def.Type != settingEnum {
+		return norm, nil
+	}
+	for _, opt := range def.Options {
+		if strings.EqualFold(opt, norm) {
+			return opt, nil
+		}
+	}
+	return "", fmt.Errorf("invalid value %q (allowed: %s)", norm, strings.Join(def.Options, ", "))
 }
 
 // shortSectionName strips the script/module prefix: "/Script/DuneSandbox.BuildingSettings" → "BuildingSettings".
@@ -855,15 +991,18 @@ func buildLayerSources(
 	defaultGameIni,
 	engineIni,
 	gameIni,
+	customIni,
 	gameOverridesIni map[string]map[string]string,
 ) []layerSource {
 	// Ordered low → high priority. userGameOverrides is highest: AMP appends
 	// UserOverrides.ini after UserGame.ini at boot, so its keys win at runtime.
+	// userCustom (UserServerCustomSettings.ini) holds its own section only.
 	return []layerSource{
 		{name: "defaultEngine", ini: defaultEngineIni},
 		{name: "defaultGame", ini: defaultGameIni},
 		{name: "userEngine", ini: engineIni},
 		{name: "userGame", ini: gameIni},
+		{name: "userCustom", ini: customIni},
 		{name: "userGameOverrides", ini: gameOverridesIni},
 	}
 }
@@ -898,6 +1037,7 @@ func buildSchemaSettings(layerSources []layerSource) []ServerSetting {
 			Category:    def.Category,
 			Current:     def.Default,
 			FieldName:   def.FieldName,
+			Options:     def.Options,
 		}
 		applySettingLayers(&s, layerSources)
 		settings = append(settings, s)
@@ -1021,6 +1161,7 @@ func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
 
 	gameContent := readINIContent(dir+"/UserGame.ini", ctrl, exec)
 	engineContent := readINIContent(dir+"/UserEngine.ini", ctrl, exec)
+	customContent := readINIContent(dir+"/"+userCustomSettingsFile, ctrl, exec)
 	defaultGameContent := readDefaultINIContent(dir, "DefaultGame.ini", ctrl, exec)
 	defaultEngineContent := readDefaultINIContent(dir, "DefaultEngine.ini", ctrl, exec)
 
@@ -1039,7 +1180,7 @@ func handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
 	defaultEngineIni := parseINI(defaultEngineContent)
 	gameOverridesIni := parseINI(overridesContent)
 
-	layerSources := buildLayerSources(defaultEngineIni, defaultGameIni, engineIni, gameIni, gameOverridesIni)
+	layerSources := buildLayerSources(defaultEngineIni, defaultGameIni, engineIni, gameIni, parseINI(customContent), gameOverridesIni)
 	schemaKeys := serverSettingsSchemaKeys()
 	settings := buildSchemaSettings(layerSources)
 	discovered := discoverUnknownSettings(layerSources, schemaKeys)
@@ -1555,7 +1696,7 @@ func normalizeServerSettingsUpdates(
 
 		def, known := schemaMap[update.Section+"|"+update.Key]
 		if known {
-			norm, err := normalizeValue(def.Type, update.Value)
+			norm, err := normalizeSettingValue(def, update.Value)
 			if err != nil {
 				return normalizedServerSettingUpdates{}, fmt.Errorf("invalid value for %s: %w", update.Key, err)
 			}
@@ -1609,36 +1750,91 @@ func buildUpdatedINIContent(path string, updates map[string]map[string]string, c
 // It returns an HTTP status code alongside any error: 409 when a managed-marker
 // conflict would risk data loss, 500 on write failure, 0 on success.
 func applyServerSettingsToINI(dir string, updates map[string]map[string]string, ctrl ControlPlane, exec Executor) (int, error) {
-	// Route each section to UserGame.ini or UserEngine.ini based on which default
-	// file declares it (ConsoleVariables is always engine-scoped).
+	// The server customization section has its own file; split it off first.
+	customUpdates, updates := splitCustomSettingsUpdates(updates)
+	if _, ownsSettings := ctrl.(serverSettingsWriter); ownsSettings && len(customUpdates) > 0 {
+		// The control plane (AMP) regenerates UserServerCustomSettings.ini from
+		// its own config, so a direct edit would be lost on the next start.
+		return 400, fmt.Errorf("%s is managed by the control plane; only the curated settings can be changed here", userCustomSettingsFile)
+	}
+
+	// Route each remaining section to UserGame.ini or UserEngine.ini based on
+	// which default file declares it (ConsoleVariables is always engine-scoped).
 	defaultEngineIni := parseINI(readDefaultINIContent(dir, "DefaultEngine.ini", ctrl, exec))
 	gameUpdates, engineUpdates := splitServerSettingsUpdatesByFile(defaultEngineIni, updates)
 
 	// Game settings route to UserOverrides.ini under AMP (leaving AMP's
 	// dashboard-managed UserGame.ini untouched) and to UserGame.ini otherwise.
-	gamePath := gameWritePath(dir, ctrl)
-	gameName := pathpkg.Base(gamePath)
-	gameBody, err := buildUpdatedINIContent(gamePath, gameUpdates, ctrl, exec)
-	if err != nil {
-		return 409, fmt.Errorf("%s: %w", gameName, err)
+	writes := []struct {
+		path    string
+		updates map[string]map[string]string
+	}{
+		{gameWritePath(dir, ctrl), gameUpdates},
+		{dir + "/UserEngine.ini", engineUpdates},
+		{dir + "/" + userCustomSettingsFile, sectionUpdates(secCustom, customUpdates)},
 	}
-	if len(gameUpdates) > 0 {
-		if err := writeINIContent(gamePath, gameBody, exec); err != nil {
-			return 500, fmt.Errorf("write %s: %w", gameName, err)
-		}
-	}
-
-	enginePath := dir + "/UserEngine.ini"
-	engineBody, err := buildUpdatedINIContent(enginePath, engineUpdates, ctrl, exec)
-	if err != nil {
-		return 409, fmt.Errorf("UserEngine.ini: %w", err)
-	}
-	if len(engineUpdates) > 0 {
-		if err := writeINIContent(enginePath, engineBody, exec); err != nil {
-			return 500, fmt.Errorf("write UserEngine.ini: %w", err)
+	for _, w := range writes {
+		if status, err := writeINIUpdates(w.path, w.updates, ctrl, exec); err != nil {
+			return status, err
 		}
 	}
 	return 0, nil
+}
+
+// writeINIUpdates merges updates into the INI file at path. A no-op when there
+// are no updates. Returns 409 on a managed-marker conflict and 500 on a failed
+// write, alongside the error.
+func writeINIUpdates(path string, updates map[string]map[string]string, ctrl ControlPlane, exec Executor) (int, error) {
+	if len(updates) == 0 {
+		return 0, nil
+	}
+	name := pathpkg.Base(path)
+	body, err := buildUpdatedINIContent(path, updates, ctrl, exec)
+	if err != nil {
+		return 409, fmt.Errorf("%s: %w", name, err)
+	}
+	if err := writeINIContent(path, body, exec); err != nil {
+		return 500, fmt.Errorf("write %s: %w", name, err)
+	}
+	return 0, nil
+}
+
+// splitCustomSettingsUpdates removes the secCustom section from updates and
+// returns its key→value pairs. When the update sets at least one value and
+// doesn't name DifficultyLevel itself, DifficultyLevel=Custom is added: the
+// game ignores the customization values under any other difficulty preset.
+// Deletes alone leave the difficulty as it is. custom is nil when updates has
+// no secCustom section.
+func splitCustomSettingsUpdates(updates map[string]map[string]string) (custom map[string]string, rest map[string]map[string]string) {
+	kvs, ok := updates[secCustom]
+	if !ok {
+		return nil, updates
+	}
+	rest = make(map[string]map[string]string, len(updates)-1)
+	for sec, v := range updates {
+		if sec != secCustom {
+			rest[sec] = v
+		}
+	}
+	custom = make(map[string]string, len(kvs)+1)
+	setsValue := false
+	for k, v := range kvs {
+		custom[k] = v
+		setsValue = setsValue || v != ""
+	}
+	if _, explicit := kvs["DifficultyLevel"]; !explicit && setsValue {
+		custom["DifficultyLevel"] = "Custom"
+	}
+	return custom, rest
+}
+
+// sectionUpdates wraps key→value pairs as a single-section update map; nil when
+// there are none.
+func sectionUpdates(section string, kvs map[string]string) map[string]map[string]string {
+	if len(kvs) == 0 {
+		return nil
+	}
+	return map[string]map[string]string{section: kvs}
 }
 
 // @Summary Apply one or more server setting changes

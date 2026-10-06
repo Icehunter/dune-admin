@@ -328,26 +328,66 @@ func (c *ampAPIClient) getStatusRunningTasks() (int, error) {
 	return len(result.RunningTasks), nil
 }
 
-// getConfig reads a single AMP config node's current value.
-func (c *ampAPIClient) getConfig(node string) (string, error) {
+// getConfigs reads several AMP config nodes in one Core/GetConfigs call and
+// returns node→current value. Each call is a remote exec (ssh + container exec
+// + curl), so batching keeps the settings page fast. AMP fails the whole call
+// if any node is unknown.
+func (c *ampAPIClient) getConfigs(nodes []string) (map[string]string, error) {
 	sid, err := c.ensureSession()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	resp, err := c.post("Core/GetConfig", map[string]any{
-		"node":      node,
+	resp, err := c.post("Core/GetConfigs", map[string]any{
+		"nodes":     nodes,
 		"SESSIONID": sid,
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	var result struct {
+	if err := ampErrorObject(resp); err != nil {
+		return nil, fmt.Errorf("amp api GetConfigs: %w", err)
+	}
+	var specs []struct {
+		Node         string          `json:"Node"`
 		CurrentValue json.RawMessage `json:"CurrentValue"`
 	}
-	if err := json.Unmarshal([]byte(extractJSONObject(resp)), &result); err != nil {
-		return "", fmt.Errorf("amp api GetConfig %s: decode response: %w (output: %s)", node, err, resp)
+	if err := json.Unmarshal([]byte(extractJSONArray(resp)), &specs); err != nil {
+		return nil, fmt.Errorf("amp api GetConfigs: decode response: %w (output: %s)", err, resp)
 	}
-	return jsonScalarToString(result.CurrentValue), nil
+	out := make(map[string]string, len(specs))
+	for _, s := range specs {
+		out[s.Node] = jsonScalarToString(s.CurrentValue)
+	}
+	return out, nil
+}
+
+// ampErrorObject reports a JSON-object response to a call that returns an
+// array as an error. AMP answers failures with a .NET exception object
+// ({"Title":…,"Message":…,"StackTrace":…}) whose stack trace can contain "[]",
+// which extractJSONArray would otherwise read as an empty result.
+func ampErrorObject(resp string) error {
+	trimmed := strings.TrimSpace(resp)
+	if !strings.HasPrefix(trimmed, "{") {
+		return nil
+	}
+	var e struct {
+		Title   string `json:"Title"`
+		Message string `json:"Message"`
+	}
+	if err := json.Unmarshal([]byte(extractJSONObject(trimmed)), &e); err != nil || (e.Title == "" && e.Message == "") {
+		return fmt.Errorf("unexpected response (output: %s)", trimmed)
+	}
+	return fmt.Errorf("%s: %s", e.Title, e.Message)
+}
+
+// extractJSONArray trims any non-JSON noise around a top-level JSON array.
+func extractJSONArray(s string) string {
+	start := strings.IndexByte(s, '[')
+	end := strings.LastIndexByte(s, ']')
+	if start < 0 || end < start {
+		return s
+	}
+	return s[start : end+1]
 }
 
 // parseActionResult interprets an AMP action response (SetConfig,

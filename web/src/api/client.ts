@@ -118,18 +118,20 @@ export type SettingLayer = {
 export type ServerSetting = {
   section: string
   key: string
-  type: 'float' | 'int' | 'bool' | 'string'
+  type: 'float' | 'int' | 'bool' | 'string' | 'enum'
   default: string
   label: string
   description: string
   category: string
   current: string
   is_overridden: boolean
-  source: 'userGame' | 'userGameOverrides' | 'userEngine' | 'defaultGame' | 'defaultEngine' | 'amp' | ''
+  source: 'userGame' | 'userGameOverrides' | 'userEngine' | 'userCustom' | 'defaultGame' | 'defaultEngine' | 'amp' | ''
   layers: SettingLayer[]
   // Present for curated settings only — its presence marks the setting as
   // AMP-managed (written via the AMP API under the AMP control plane).
   field_name?: string
+  // Allowed values for an 'enum' setting.
+  options?: string[]
 }
 
 export type ServerSettingUpdate = {

@@ -13,11 +13,11 @@ your machine
 
 ## Prerequisites
 
-| Requirement | Notes |
-|-------------|-------|
-| **Go 1.26.6+** | `brew install go` or <https://go.dev/dl/> |
-| **SSH key** | Private key authorised on the VM |
-| **VM access** | Port 22 reachable; SSH user needs passwordless `sudo kubectl` |
+| Requirement    | Notes                                                         |
+| -------------- | ------------------------------------------------------------- |
+| **Go 1.27.3+** | `brew install go` or <https://go.dev/dl/>                     |
+| **SSH key**    | Private key authorised on the VM                              |
+| **VM access**  | Port 22 reachable; SSH user needs passwordless `sudo kubectl` |
 
 ## Quick start (wizard)
 
@@ -119,19 +119,19 @@ SSH auth behavior in both scripts:
 
 ### Script options
 
-| Purpose | Bash | PowerShell |
-|---|---|---|
-| VM user | `--vm-user dune` | `-VmUser dune` |
-| VM host | `--vm-host 192.168.0.72` | `-VmHost 192.168.0.72` |
-| SSH key path | `--ssh-key ./sshKey` | `-SshKeyPath .\sshKey` |
-| Kubeconfig path | `--kubeconfig ~/.kube/dune-external.yaml` | `-KubeconfigPath "$HOME/.kube/dune-external.yaml"` |
-| Image tag | `--image dune-admin:local` | `-Image dune-admin:local` |
-| Namespace | `--namespace dune-admin` | `-Namespace dune-admin` |
-| Manifest path | `--manifest deploy/k8s/dune-admin.rendered.yaml` | `-Manifest deploy/k8s/dune-admin.rendered.yaml` |
-| Skip kubeconfig pull | `--skip-kubeconfig` | `-SkipKubeconfig` |
-| Skip image build | `--skip-build` | `-SkipBuild` |
-| Skip VM image import | `--skip-image-import` | `-SkipImageImport` |
-| Skip port-forward | `--no-port-forward` | `-NoPortForward` |
+| Purpose              | Bash                                             | PowerShell                                         |
+| -------------------- | ------------------------------------------------ | -------------------------------------------------- |
+| VM user              | `--vm-user dune`                                 | `-VmUser dune`                                     |
+| VM host              | `--vm-host 192.168.0.72`                         | `-VmHost 192.168.0.72`                             |
+| SSH key path         | `--ssh-key ./sshKey`                             | `-SshKeyPath .\sshKey`                             |
+| Kubeconfig path      | `--kubeconfig ~/.kube/dune-external.yaml`        | `-KubeconfigPath "$HOME/.kube/dune-external.yaml"` |
+| Image tag            | `--image dune-admin:local`                       | `-Image dune-admin:local`                          |
+| Namespace            | `--namespace dune-admin`                         | `-Namespace dune-admin`                            |
+| Manifest path        | `--manifest deploy/k8s/dune-admin.rendered.yaml` | `-Manifest deploy/k8s/dune-admin.rendered.yaml`    |
+| Skip kubeconfig pull | `--skip-kubeconfig`                              | `-SkipKubeconfig`                                  |
+| Skip image build     | `--skip-build`                                   | `-SkipBuild`                                       |
+| Skip VM image import | `--skip-image-import`                            | `-SkipImageImport`                                 |
+| Skip port-forward    | `--no-port-forward`                              | `-NoPortForward`                                   |
 
 ### First deploy vs quick redeploy
 
@@ -168,11 +168,11 @@ Override defaults with flags (same names on both scripts), e.g.:
 ```yaml
 control: kubectl
 
-ssh_host: 192.168.0.72:22   # VM host:port
-ssh_user: dune               # SSH user
-ssh_key: /home/you/.ssh/key  # absolute path; omit to use auto-detection
+ssh_host: 192.168.0.72:22 # VM host:port
+ssh_user: dune # SSH user
+ssh_key: /home/you/.ssh/key # absolute path; omit to use auto-detection
 
-db_host: 127.0.0.1           # unused for kubectl — pod IP is discovered automatically
+db_host: 127.0.0.1 # unused for kubectl — pod IP is discovered automatically
 db_port: 15432
 db_user: postgres
 db_pass: yourpassword
@@ -195,16 +195,16 @@ scrip_currency: 1
 
 ## What works
 
-| Feature | Supported |
-|---------|-----------|
-| Battlegroup status (phase, servers) | Yes |
-| Start / stop / restart | Yes — `kubectl patch battlegroup` |
-| Update / backup | Yes — `battlegroup.sh` |
-| Pod list | Yes |
-| Log streaming | Yes — `kubectl logs -f` |
-| DB access | Yes — tunnelled through SSH to pod IP |
-| RabbitMQ broker commands | Yes — `kubectl exec` into broker pod |
-| Backup download / upload / restore | Yes |
+| Feature                             | Supported                             |
+| ----------------------------------- | ------------------------------------- |
+| Battlegroup status (phase, servers) | Yes                                   |
+| Start / stop / restart              | Yes — `kubectl patch battlegroup`     |
+| Update / backup                     | Yes — `battlegroup.sh`                |
+| Pod list                            | Yes                                   |
+| Log streaming                       | Yes — `kubectl logs -f`               |
+| DB access                           | Yes — tunnelled through SSH to pod IP |
+| RabbitMQ broker commands            | Yes — `kubectl exec` into broker pod  |
+| Backup download / upload / restore  | Yes                                   |
 
 ## Backward compatibility
 

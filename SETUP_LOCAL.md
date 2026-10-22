@@ -12,11 +12,11 @@ dune-admin (same machine)
 
 ## Prerequisites
 
-| Requirement | Notes |
-|-------------|-------|
-| **Go 1.26.6+** | `brew install go` or <https://go.dev/dl/> |
-| **PostgreSQL reachable** | `db_host` must be accessible from where dune-admin runs |
-| **Shell commands** | Optional — only needed for start/stop/restart/status in the Battlegroup tab |
+| Requirement              | Notes                                                                       |
+| ------------------------ | --------------------------------------------------------------------------- |
+| **Go 1.27.3+**           | `brew install go` or <https://go.dev/dl/>                                   |
+| **PostgreSQL reachable** | `db_host` must be accessible from where dune-admin runs                     |
+| **Shell commands**       | Optional — only needed for start/stop/restart/status in the Battlegroup tab |
 
 ## Quick start (wizard)
 
@@ -42,10 +42,10 @@ db_name: dune
 db_schema: dune
 
 # Shell commands for Battlegroup tab (all optional):
-cmd_start:   "amp start DuneAwakening"
-cmd_stop:    "amp stop DuneAwakening"
+cmd_start: "amp start DuneAwakening"
+cmd_stop: "amp stop DuneAwakening"
 cmd_restart: "amp restart DuneAwakening"
-cmd_status:  "amp status DuneAwakening"
+cmd_status: "amp status DuneAwakening"
 
 # If RabbitMQ runs inside a container (e.g. AMP uses Podman internally),
 # set this prefix and it will be prepended to all rabbitmqctl calls:
@@ -68,10 +68,10 @@ db_user: postgres
 db_pass: yourpassword
 db_name: dune
 db_schema: dune
-cmd_start:   "ampinstmgr start DuneAwakening01"
-cmd_stop:    "ampinstmgr stop DuneAwakening01"
+cmd_start: "ampinstmgr start DuneAwakening01"
+cmd_stop: "ampinstmgr stop DuneAwakening01"
 cmd_restart: "ampinstmgr restart DuneAwakening01"
-cmd_status:  "ampinstmgr status DuneAwakening01"
+cmd_status: "ampinstmgr status DuneAwakening01"
 ```
 
 ### LGSM example
@@ -84,10 +84,10 @@ db_user: dune
 db_pass: yourpassword
 db_name: dune
 db_schema: dune
-cmd_start:   "/home/dune/duneserver start"
-cmd_stop:    "/home/dune/duneserver stop"
+cmd_start: "/home/dune/duneserver start"
+cmd_stop: "/home/dune/duneserver stop"
 cmd_restart: "/home/dune/duneserver restart"
-cmd_status:  "/home/dune/duneserver status"
+cmd_status: "/home/dune/duneserver status"
 ```
 
 ### DB only (no server control)
@@ -98,17 +98,17 @@ Leave all `cmd_*` fields empty. The Battlegroup tab will show an error for start
 
 ## What works
 
-| Feature | Supported |
-|---------|-----------|
-| Battlegroup status | Partial — runs `cmd_status` and shows raw output |
-| Start / stop / restart | Yes — runs the configured shell commands |
-| Update / backup | Not supported |
-| Pod/process list | Not supported |
-| Log streaming | Not supported — tail your own log files |
-| DB access | Yes — direct TCP to `db_host:db_port` |
+| Feature                  | Supported                                                 |
+| ------------------------ | --------------------------------------------------------- |
+| Battlegroup status       | Partial — runs `cmd_status` and shows raw output          |
+| Start / stop / restart   | Yes — runs the configured shell commands                  |
+| Update / backup          | Not supported                                             |
+| Pod/process list         | Not supported                                             |
+| Log streaming            | Not supported — tail your own log files                   |
+| DB access                | Yes — direct TCP to `db_host:db_port`                     |
 | RabbitMQ broker commands | Yes — runs `rabbitmqctl` directly if available in `$PATH` |
-| Backup download / upload | Yes — through local file I/O |
-| Backup restore | Yes — `pg_restore` run locally |
+| Backup download / upload | Yes — through local file I/O                              |
+| Backup restore           | Yes — `pg_restore` run locally                            |
 
 ## Troubleshooting
 

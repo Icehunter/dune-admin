@@ -11,10 +11,10 @@ dune-admin
 
 ## Prerequisites
 
-| Requirement | Notes |
-|-------------|-------|
-| **Go 1.26.6+** | `brew install go` or <https://go.dev/dl/> |
-| **Docker CLI** | Must be in `$PATH` |
+| Requirement       | Notes                                                                                                    |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
+| **Go 1.27.3+**    | `brew install go` or <https://go.dev/dl/>                                                                |
+| **Docker CLI**    | Must be in `$PATH`                                                                                       |
 | **Docker access** | The user running dune-admin must be able to run `docker` (i.e. in the `docker` group or running as root) |
 
 ### If dune-admin runs on a different host
@@ -83,14 +83,14 @@ control: docker
 #   - dune-server-deepdesert-1-8
 #   - dune-server-survival-1
 
-docker_broker_game: dune-rmq-game      # optional — for broker command path
-docker_broker_admin: dune-rmq-admin    # optional — for broker command path
+docker_broker_game: dune-rmq-game # optional — for broker command path
+docker_broker_admin: dune-rmq-admin # optional — for broker command path
 
 # Optional — fills in players, queue depth, and dimension labels per partition:
 director_url: http://127.0.0.1:11717
 
 # Database — use Docker DNS name or IP:
-db_host: database       # service name in your compose file
+db_host: database # service name in your compose file
 db_port: 15432
 db_user: dune
 db_pass: yourpassword
@@ -99,7 +99,7 @@ db_schema: dune
 
 # Optional:
 backup_dir: /backups
-broker_game_addr: dune-rmq-game:5672   # defaults to docker_broker_game container DNS if omitted
+broker_game_addr: dune-rmq-game:5672 # defaults to docker_broker_game container DNS if omitted
 broker_admin_addr: dune-rmq-admin:5672
 broker_tls: false
 listen_addr: :8080
@@ -115,15 +115,15 @@ Your compose file doesn't need to change. dune-admin just needs the container na
 ```yaml
 services:
   server-overmap:
-    container_name: dune-server-overmap      # ← auto-detected game server
+    container_name: dune-server-overmap # ← auto-detected game server
   server-survival-1:
-    container_name: dune-server-survival-1   # ← auto-detected game server
+    container_name: dune-server-survival-1 # ← auto-detected game server
   database:
     container_name: dune-db
   rmq-game:
-    container_name: dune-rmq-game            # ← docker_broker_game
+    container_name: dune-rmq-game # ← docker_broker_game
   rmq-admin:
-    container_name: dune-rmq-admin           # ← docker_broker_admin
+    container_name: dune-rmq-admin # ← docker_broker_admin
 ```
 
 The legacy singular `docker_gameserver` key still works and is treated as a
@@ -131,19 +131,19 @@ one-entry list, so existing single-container configs keep running unchanged.
 
 ## What works
 
-| Feature | Supported |
-|---------|-----------|
-| Battlegroup status | Yes — one row per game container, with partition and port |
-| Player counts / dimension labels | Yes, when `director_url` is set |
-| Start / stop / restart | Yes — applies to every game container |
-| Restart a single partition | Yes — restarts just that container |
-| Update / backup | Not supported (no `battlegroup.sh`) |
-| Container list | Yes — `docker ps` |
-| Log streaming | Yes — `docker logs -f` |
-| DB access | Yes — direct TCP to `db_host:db_port` |
-| RabbitMQ broker commands | Yes — `docker exec` into broker container |
-| Backup download / upload | Yes — through executor file I/O |
-| Backup restore | Yes — `pg_restore` run via executor |
+| Feature                          | Supported                                                 |
+| -------------------------------- | --------------------------------------------------------- |
+| Battlegroup status               | Yes — one row per game container, with partition and port |
+| Player counts / dimension labels | Yes, when `director_url` is set                           |
+| Start / stop / restart           | Yes — applies to every game container                     |
+| Restart a single partition       | Yes — restarts just that container                        |
+| Update / backup                  | Not supported (no `battlegroup.sh`)                       |
+| Container list                   | Yes — `docker ps`                                         |
+| Log streaming                    | Yes — `docker logs -f`                                    |
+| DB access                        | Yes — direct TCP to `db_host:db_port`                     |
+| RabbitMQ broker commands         | Yes — `docker exec` into broker container                 |
+| Backup download / upload         | Yes — through executor file I/O                           |
+| Backup restore                   | Yes — `pg_restore` run via executor                       |
 
 ## Troubleshooting
 

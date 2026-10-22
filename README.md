@@ -41,12 +41,12 @@ For development or non-Ubuntu hosts, see [Manual build](#manual-build).
 
 Pick the provider that matches your game-server topology. Each guide covers prerequisites, wizard answers, and provider-specific config keys.
 
-| Provider | Use when | Guide |
-|----------|----------|-------|
-| **amp** | Game server runs under CubeCoders AMP (host, or a podman/docker container) | [SETUP_AMP.md](SETUP_AMP.md) |
-| **kubectl** | Game server runs in k3s/K8s on a remote VM | [SETUP_KUBECTL.md](SETUP_KUBECTL.md) |
-| **docker** | Game server runs as Docker containers (compose or standalone) | [SETUP_DOCKER.md](SETUP_DOCKER.md) |
-| **local** | Game server runs on the same machine (bare metal, LGSM, custom) | [SETUP_LOCAL.md](SETUP_LOCAL.md) |
+| Provider    | Use when                                                                   | Guide                                |
+| ----------- | -------------------------------------------------------------------------- | ------------------------------------ |
+| **amp**     | Game server runs under CubeCoders AMP (host, or a podman/docker container) | [SETUP_AMP.md](SETUP_AMP.md)         |
+| **kubectl** | Game server runs in k3s/K8s on a remote VM                                 | [SETUP_KUBECTL.md](SETUP_KUBECTL.md) |
+| **docker**  | Game server runs as Docker containers (compose or standalone)              | [SETUP_DOCKER.md](SETUP_DOCKER.md)   |
+| **local**   | Game server runs on the same machine (bare metal, LGSM, custom)            | [SETUP_LOCAL.md](SETUP_LOCAL.md)     |
 
 ---
 
@@ -109,27 +109,27 @@ Config is loaded in this order (first match wins per field):
 
 ### Common fields
 
-| Env var | Flag | Default | Description |
-|---------|------|---------|-------------|
-| `CONTROL` | `-control` | *(auto)* | Control plane: `amp`, `kubectl`, `docker`, or `local` |
-| `SSH_HOST` | `-host` | - | VM `host:port`, tunnels all connections through SSH when set |
-| `SSH_USER` | `-user` | `dune` | SSH user |
-| `SSH_KEY` | `-key` | *(auto-detected)* | SSH private key path (library mode only) |
-| `SSH_MODE` | `-ssh-mode` | `library` | SSH transport: `library` (golang.org/x/crypto/ssh) or `command` (shells out to the OS `ssh` client — honours `~/.ssh/config`, ProxyJump and ssh-agent; never reads a private key) |
-| `SSH_EXTRA_OPTS` | `-ssh-extra-opts` | - | Extra `ssh -o` options for command mode (space-separated) |
-| `DB_HOST` | `-dbhost` | `127.0.0.1` | PostgreSQL host or Docker DNS name |
-| `DB_PORT` | `-dbport` | `15432` | PostgreSQL port |
-| `DB_USER` | `-dbuser` | `dune` | PostgreSQL user |
-| `DB_PASS` | `-dbpass` | - | PostgreSQL password |
-| `DB_NAME` | `-dbname` | `dune` | PostgreSQL database name |
-| `DB_SCHEMA` | `-schema` | `dune` | PostgreSQL schema |
-| `CONTROL_NAMESPACE` | `-control-ns` | *(auto-discovered)* | K8s namespace (kubectl only) |
-| `AUTO_DISCOVER` | `-auto-discover` | `false` | Fill empty DB/RMQ/Director fields from the running game-server process args at connect time (command mode + kubectl). Explicit config always wins |
-| `BROKER_GAME_ADDR` | `-broker-game` | - | mq-game broker `host:port` |
-| `BROKER_ADMIN_ADDR` | `-broker-admin` | - | mq-admin broker `host:port` |
-| `BACKUP_DIR` | `-backup-dir` | - | Backup directory path |
-| `LISTEN_ADDR` | `-addr` | `:8080` | HTTP listen address |
-| `SCRIP_CURRENCY` | `-scripcurrency` | `1` | Scrip currency ID |
+| Env var             | Flag              | Default             | Description                                                                                                                                                                       |
+| ------------------- | ----------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CONTROL`           | `-control`        | _(auto)_            | Control plane: `amp`, `kubectl`, `docker`, or `local`                                                                                                                             |
+| `SSH_HOST`          | `-host`           | -                   | VM `host:port`, tunnels all connections through SSH when set                                                                                                                      |
+| `SSH_USER`          | `-user`           | `dune`              | SSH user                                                                                                                                                                          |
+| `SSH_KEY`           | `-key`            | _(auto-detected)_   | SSH private key path (library mode only)                                                                                                                                          |
+| `SSH_MODE`          | `-ssh-mode`       | `library`           | SSH transport: `library` (golang.org/x/crypto/ssh) or `command` (shells out to the OS `ssh` client — honours `~/.ssh/config`, ProxyJump and ssh-agent; never reads a private key) |
+| `SSH_EXTRA_OPTS`    | `-ssh-extra-opts` | -                   | Extra `ssh -o` options for command mode (space-separated)                                                                                                                         |
+| `DB_HOST`           | `-dbhost`         | `127.0.0.1`         | PostgreSQL host or Docker DNS name                                                                                                                                                |
+| `DB_PORT`           | `-dbport`         | `15432`             | PostgreSQL port                                                                                                                                                                   |
+| `DB_USER`           | `-dbuser`         | `dune`              | PostgreSQL user                                                                                                                                                                   |
+| `DB_PASS`           | `-dbpass`         | -                   | PostgreSQL password                                                                                                                                                               |
+| `DB_NAME`           | `-dbname`         | `dune`              | PostgreSQL database name                                                                                                                                                          |
+| `DB_SCHEMA`         | `-schema`         | `dune`              | PostgreSQL schema                                                                                                                                                                 |
+| `CONTROL_NAMESPACE` | `-control-ns`     | _(auto-discovered)_ | K8s namespace (kubectl only)                                                                                                                                                      |
+| `AUTO_DISCOVER`     | `-auto-discover`  | `false`             | Fill empty DB/RMQ/Director fields from the running game-server process args at connect time (command mode + kubectl). Explicit config always wins                                 |
+| `BROKER_GAME_ADDR`  | `-broker-game`    | -                   | mq-game broker `host:port`                                                                                                                                                        |
+| `BROKER_ADMIN_ADDR` | `-broker-admin`   | -                   | mq-admin broker `host:port`                                                                                                                                                       |
+| `BACKUP_DIR`        | `-backup-dir`     | -                   | Backup directory path                                                                                                                                                             |
+| `LISTEN_ADDR`       | `-addr`           | `:8080`             | HTTP listen address                                                                                                                                                               |
+| `SCRIP_CURRENCY`    | `-scripcurrency`  | `1`                 | Scrip currency ID                                                                                                                                                                 |
 
 Provider-specific fields (`docker_gameserver`, `amp_instance`, `cmd_start`, etc.) have no env var equivalents and are set via the wizard or `config.yaml` directly. See the provider guides for the full list.
 
@@ -143,7 +143,7 @@ auth_enabled: true
 
 # Method 1 — local username/password (set the hash with: dune-admin --set-password)
 auth_local_username: admin
-auth_local_password_hash: "$2a$10$..."   # bcrypt; never store the plaintext
+auth_local_password_hash: "$2a$10$..." # bcrypt; never store the plaintext
 
 # Method 2 — Discord OAuth (bring your own Discord application)
 auth_discord_enabled: true
@@ -153,13 +153,13 @@ auth_discord_client_secret: "your-app-client-secret"
 # Add scheme://host/api/v1/auth/discord/callback as a redirect in the Discord app.
 
 # Owners always get full access: the guild owner, the local account, plus:
-auth_owner_discord_ids: ""        # comma-separated Discord user IDs
-auth_owner_role_ids: ""           # comma-separated Discord role IDs
+auth_owner_discord_ids: "" # comma-separated Discord user IDs
+auth_owner_role_ids: "" # comma-separated Discord role IDs
 auth_session_ttl_hours: 24
 ```
 
 ```yaml
-auth_guest_enabled: false         # optional: anonymous read-only guest sessions
+auth_guest_enabled: false # optional: anonymous read-only guest sessions
 ```
 
 How it works:
@@ -193,12 +193,12 @@ dune-admin runs the market bot **embedded**, an in-process goroutine that shares
 
 ```yaml
 market_bot_enabled: true
-market_bot_cache_db:       ~/.dune-admin/market-bot-cache.db   # auto-created (SQLite, pure Go)
-market_bot_item_data:      ./item-data.json                    # falls back to standard search paths
-market_bot_buy_interval:   5m
-market_bot_list_interval:  30m
-market_bot_buy_threshold:  1.05
-market_bot_max_buys:       50
+market_bot_cache_db: ~/.dune-admin/market-bot-cache.db # auto-created (SQLite, pure Go)
+market_bot_item_data: ./item-data.json # falls back to standard search paths
+market_bot_buy_interval: 5m
+market_bot_list_interval: 30m
+market_bot_buy_threshold: 1.05
+market_bot_max_buys: 50
 ```
 
 The Market tab's lifecycle buttons map to in-process actions:
@@ -236,12 +236,13 @@ The **Server Settings** tab manages gameplay config (mining/vehicle output, PvP 
 - **amp**: settings are written through AMP's Web API, because AMP regenerates the game INIs from its own config on every start (a direct file edit would be clobbered). This requires AMP API credentials in `config.yaml`:
 
   ```yaml
-  amp_api_user: admin        # an AMP panel login for the instance
+  amp_api_user: admin # an AMP panel login for the instance
   amp_api_pass: yourpassword
-  amp_api_port: 8081         # instance ADS API port (default 8081)
+  amp_api_port: 8081 # instance ADS API port (default 8081)
   ```
 
   A game restart applies them; dune-admin's **Restart** recycles the AMP container (`<runtime> restart`, matching `amp_container_runtime`), which is what actually cycles the game processes. The container-runtime sudoers grant must allow this. See [SETUP_AMP.md](SETUP_AMP.md#server-settings-gameplay-config).
+
 - **docker / kubectl / local**: settings are written straight to `UserGame.ini` / `UserEngine.ini`; no API credentials needed.
 
 Either way, a server restart is required for changes to take effect.
@@ -266,27 +267,27 @@ Tabs are organised into a grouped left sidebar.
 
 **Operations**
 
-| Tab | What it does |
-|-----|--------------|
-| **Battlegroup** | Start/stop game-server pods; stream container logs; manage backups |
-| **Logs** | Stream live logs; view cheat detection events |
-| **Database** | Run raw SQL against the game DB; browse tables |
+| Tab                 | What it does                                                             |
+| ------------------- | ------------------------------------------------------------------------ |
+| **Battlegroup**     | Start/stop game-server pods; stream container logs; manage backups       |
+| **Logs**            | Stream live logs; view cheat detection events                            |
+| **Database**        | Run raw SQL against the game DB; browse tables                           |
 | **Server Settings** | Edit UE5 server settings; writes go to `UserGame.ini` in a managed block |
 
 **Player World**
 
-| Tab | What it does |
-|-----|--------------|
-| **Players** | Browse players; view/edit inventory, specs, currency, XP, faction rep; journey nodes; teleport; session history |
-| **Storage** | Browse server-side storage containers |
-| **Bases** | Browse and export player base placements |
-| **Blueprints** | View all unlockable blueprint definitions |
+| Tab            | What it does                                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Players**    | Browse players; view/edit inventory, specs, currency, XP, faction rep; journey nodes; teleport; session history |
+| **Storage**    | Browse server-side storage containers                                                                           |
+| **Bases**      | Browse and export player base placements                                                                        |
+| **Blueprints** | View all unlockable blueprint definitions                                                                       |
 
 **Economy**
 
-| Tab | What it does |
-|-----|--------------|
-| **Market Bot** | View live market listings; control the embedded market bot |
+| Tab              | What it does                                                                                                                            |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Market Bot**   | View live market listings; control the embedded market bot                                                                              |
 | **Welcome Kits** | Auto-grant a configured item package to every player once, on first login — plus an optional Message-of-the-Day whispered on every join |
 
 ---
@@ -315,7 +316,7 @@ Then run the setup wizard:
 ./dune-admin -setup
 ```
 
-Prerequisites: Go 1.26.6+, Node 20.19+ or 22.12+, pnpm 10.28+, `make`.
+Prerequisites: Go 1.27.3+, Node 20.19+ or 22.12+, pnpm 10.28+, `make`.
 
 > **Windows note:** `make build` works from PowerShell or `cmd.exe` as long as
 > [GNU Make](https://gnuwin32.sourceforge.net/packages/make.htm) is installed (e.g.
@@ -369,23 +370,23 @@ make verify   # fmt-check + vet + test-race + vulncheck + lint + gocognit
 
 ## Makefile targets
 
-| Target | Description |
-|--------|-------------|
-| `make setup` | Run the interactive setup wizard |
-| `make build` | Build frontend + Go binary for the host OS |
-| `make build-prebuilt` | Download prebuilt dist from a release + embed-build (no Pro license needed) |
-| `make linux` | Cross-compile a Linux amd64 binary (`dune-admin-linux`) |
-| `make dev` | Run backend + frontend in live mode (Air + Vite HMR) |
-| `make dev-server` | Run backend only (`go run ./cmd/dune-admin`) |
-| `make web` | Build the frontend only |
-| `make dist-archive` | Package `cmd/dune-admin/dist` as a release asset tarball (CI use) |
-| `make deploy-web` | Build and deploy the SPA to Cloudflare Pages |
-| `make render-k8s` | Render `deploy/k8s/dune-admin.rendered.yaml` from `~/.dune-admin/config.yaml` |
-| `make k8s-dry-run` | Render and run `kubectl apply --dry-run=client` |
-| `make test` | Run tests |
-| `make verify` | Run all quality checks (fmt-check, vet, test-race, vulncheck, lint, gocognit) |
-| `make hooks` | Install the pre-commit + pre-push hooks |
-| `make tools` | Cache the dev toolchain (`golangci-lint`, `gosec`, etc.) |
+| Target                | Description                                                                   |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `make setup`          | Run the interactive setup wizard                                              |
+| `make build`          | Build frontend + Go binary for the host OS                                    |
+| `make build-prebuilt` | Download prebuilt dist from a release + embed-build (no Pro license needed)   |
+| `make linux`          | Cross-compile a Linux amd64 binary (`dune-admin-linux`)                       |
+| `make dev`            | Run backend + frontend in live mode (Air + Vite HMR)                          |
+| `make dev-server`     | Run backend only (`go run ./cmd/dune-admin`)                                  |
+| `make web`            | Build the frontend only                                                       |
+| `make dist-archive`   | Package `cmd/dune-admin/dist` as a release asset tarball (CI use)             |
+| `make deploy-web`     | Build and deploy the SPA to Cloudflare Pages                                  |
+| `make render-k8s`     | Render `deploy/k8s/dune-admin.rendered.yaml` from `~/.dune-admin/config.yaml` |
+| `make k8s-dry-run`    | Render and run `kubectl apply --dry-run=client`                               |
+| `make test`           | Run tests                                                                     |
+| `make verify`         | Run all quality checks (fmt-check, vet, test-race, vulncheck, lint, gocognit) |
+| `make hooks`          | Install the pre-commit + pre-push hooks                                       |
+| `make tools`          | Cache the dev toolchain (`golangci-lint`, `gosec`, etc.)                      |
 
 ---
 

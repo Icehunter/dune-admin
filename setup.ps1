@@ -4,7 +4,7 @@
     Sets up all build dependencies for dune-admin on Windows.
 .DESCRIPTION
     Installs (via winget/chocolatey):
-      - Go 1.26.x
+      - Go 1.27.x
       - Node.js LTS (for pnpm/vite toolchain)
       - pnpm 10.28.1
       - GNU Make 4.x (via Chocolatey)

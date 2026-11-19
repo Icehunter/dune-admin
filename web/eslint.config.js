@@ -5,7 +5,6 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 import stylistic from "@stylistic/eslint-plugin";
-import reactCompiler from "eslint-plugin-react-compiler";
 
 export default defineConfig([
   globalIgnores(["dist"]),
@@ -18,9 +17,6 @@ export default defineConfig([
       reactRefresh.configs.vite,
       stylistic.configs.recommended,
     ],
-    plugins: {
-      "react-compiler": reactCompiler,
-    },
     languageOptions: {
       globals: globals.browser,
     },
@@ -39,7 +35,6 @@ export default defineConfig([
           ignoreTemplateLiterals: true,
         },
       ],
-      "react-compiler/react-compiler": "error",
     },
   },
 ]);
